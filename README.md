@@ -207,9 +207,9 @@ The app listens on HTTP locally. In any real deployment it **must** be placed be
 Split into small, shippable milestones. Each one leaves the app in a usable state.
 
 ### Milestone 0 — Project bootstrap
-- ✅ README, goal, requirements, threat model, roadmap (this document)
-- ✅ Repository layout
-- ✅ `LICENSE`, `.gitignore`, `.editorconfig`
+- [x] README, goal, requirements, threat model, roadmap (this document)
+- [ ] Repository layout
+- [ ] `LICENSE`, `.gitignore`, `.editorconfig`
 
 ### Milestone 1 — Server foundation
 - [ ] Minimal HTTP server (static files + JSON routes)
