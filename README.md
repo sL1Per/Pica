@@ -207,17 +207,17 @@ The app listens on HTTP locally. In any real deployment it **must** be placed be
 Split into small, shippable milestones. Each one leaves the app in a usable state.
 
 ### Milestone 0 — Project bootstrap
-- [x] README, goal, requirements, threat model, roadmap (this document)
-- [ ] Repository layout
-- [ ] `LICENSE`, `.gitignore`, `.editorconfig`
+- ✅ README, goal, requirements, threat model, roadmap (this document)
+- ✅ Repository layout
+- ✅ `LICENSE`, `.gitignore`, `.editorconfig`
 
 ### Milestone 1 — Server foundation
-- [ ] Minimal HTTP server (static files + JSON routes)
-- [ ] Router with method/path matching
-- [ ] Request helpers: body parser (JSON + `multipart/form-data` for uploads), cookie parser
-- [ ] Response helpers: `json`, `html`, `redirect`, `notFound`, `forbidden`
-- [ ] Config file (`config.json`) with port, data dir, backup dir
-- [ ] Simple logger
+- ✅ Minimal HTTP server (static files + JSON routes)
+- ✅ Router with method/path matching
+- ✅ Request helpers: body parser (JSON + `multipart/form-data` for uploads), cookie parser
+- ✅ Response helpers: `json`, `html`, `redirect`, `notFound`, `forbidden`
+- ✅ Config file (`config.json`) with port, data dir, backup dir
+- ✅ Simple logger
 
 ### Milestone 2 — Security foundation
 - [ ] Passphrase prompt on startup + verifier check
