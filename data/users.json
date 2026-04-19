@@ -1,0 +1,11 @@
+{
+  "users": [
+    {
+      "id": "e2b2344e-38ed-476f-9c7e-50934835b798",
+      "username": "pviegas",
+      "passwordHash": "scrypt$32768$8$1$HzCQUwVAQZ0Ij8uKXiCQ1A==$L6q5D/XKt+GdwM46GiXtqzuPVsqMS0EPwAx0+brlnlUWFXSD2j+IrfKBU/pU4WwE9/DITJGjQ04E3P7z9lWaUg==",
+      "role": "employer",
+      "createdAt": "2026-04-19T09:47:31.684Z"
+    }
+  ]
+}

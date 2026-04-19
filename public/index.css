@@ -1,0 +1,9 @@
+.home-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap-4);
+  margin-bottom: var(--gap-4);
+}
+
+.home-header button { margin-top: var(--gap-2); }

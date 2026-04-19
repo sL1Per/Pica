@@ -206,29 +206,29 @@ The app listens on HTTP locally. In any real deployment it **must** be placed be
 
 Split into small, shippable milestones. Each one leaves the app in a usable state.
 
-### Milestone 0 — Project bootstrap
-- ✅ README, goal, requirements, threat model, roadmap (this document)
-- ✅ Repository layout
-- ✅ `LICENSE`, `.gitignore`, `.editorconfig`
+### Milestone 0 — Project bootstrap ✅
+- [x] README, goal, requirements, threat model, roadmap (this document) ✅
+- [x] Repository layout ✅
+- [x] `LICENSE`, `.gitignore`, `.editorconfig` ✅
 
-### Milestone 1 — Server foundation
-- ✅ Minimal HTTP server (static files + JSON routes)
-- ✅ Router with method/path matching
-- ✅ Request helpers: body parser (JSON + `multipart/form-data` for uploads), cookie parser
-- ✅ Response helpers: `json`, `html`, `redirect`, `notFound`, `forbidden`
-- ✅ Config file (`config.json`) with port, data dir, backup dir
-- ✅ Simple logger
+### Milestone 1 — Server foundation ✅
+- [x] Minimal HTTP server (static files + JSON routes) ✅
+- [x] Router with method/path matching ✅
+- [x] Request helpers: body parser (JSON + `multipart/form-data` for uploads), cookie parser ✅
+- [x] Response helpers: `json`, `html`, `redirect`, `notFound`, `forbidden` ✅
+- [x] Config file (`config.json`) with port, data dir, backup dir ✅
+- [x] Simple logger ✅
 
-### Milestone 2 — Security foundation
-- [ ] Passphrase prompt on startup + verifier check
-- [ ] Master-key derivation with `crypto.scrypt`
-- [ ] Crypto helpers: `encryptBlob`, `decryptBlob`, `encryptField`, `decryptField` (AES-256-GCM)
-- [ ] Password hashing + verification (`crypto.scrypt`)
-- [ ] Signed session cookies (HMAC-SHA256)
-- [ ] Login / logout pages
-- [ ] RBAC middleware: `requireAuth`, `requireRole('employer')`, `requireOwnerOrEmployer`
-- [ ] Rate-limited login
-- [ ] First-run setup wizard (creates first employer + picks passphrase)
+### Milestone 2 — Security foundation ✅
+- [x] Passphrase prompt on startup + verifier check ✅
+- [x] Master-key derivation with `crypto.scrypt` ✅
+- [x] Crypto helpers: `encryptBlob`, `decryptBlob`, `encryptField`, `decryptField` (AES-256-GCM) ✅
+- [x] Password hashing + verification (`crypto.scrypt`) ✅
+- [x] Signed session cookies (HMAC-SHA256) ✅
+- [x] Login / logout pages ✅
+- [x] RBAC middleware: `requireAuth`, `requireRole('employer')`, `requireOwnerOrEmployer` ✅
+- [x] Rate-limited login ✅
+- [x] First-run setup wizard (creates first employer + picks passphrase) ✅
 
 ### Milestone 3 — Employee management
 - [ ] List / create / edit / remove employees (employer only)

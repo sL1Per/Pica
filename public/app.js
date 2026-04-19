@@ -1,0 +1,43 @@
+// Shared front-end utilities. Loaded as an ES module.
+
+/**
+ * POST JSON to the given URL. Returns { ok, status, data }.
+ * Never throws — always returns a structured result.
+ */
+export async function postJson(url, payload) {
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'same-origin',
+    });
+    const data = await response.json().catch(() => ({}));
+    return { ok: response.ok, status: response.status, data };
+  } catch (err) {
+    return { ok: false, status: 0, data: { error: err.message || 'Network error' } };
+  }
+}
+
+/** Show a message in the given element. Clears if text is falsy. */
+export function showMessage(el, text, kind = 'error') {
+  if (!el) return;
+  el.className = `message ${kind}`;
+  el.textContent = text || '';
+}
+
+/** Disable/enable a button and change its label while in flight. */
+export function setBusy(button, busy, busyLabel = 'Working…') {
+  if (!button) return;
+  if (busy) {
+    if (!button.dataset.label) button.dataset.label = button.textContent;
+    button.disabled = true;
+    button.textContent = busyLabel;
+  } else {
+    button.disabled = false;
+    if (button.dataset.label) {
+      button.textContent = button.dataset.label;
+      delete button.dataset.label;
+    }
+  }
+}

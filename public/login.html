@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Sign in</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main class="container">
+    <h1>Pica <span class="tagline">Sign in</span></h1>
+
+    <form id="login-form" class="card" autocomplete="on" novalidate>
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required autocomplete="username"
+             autofocus inputmode="text">
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+
+      <button id="submit-btn" type="submit" class="block">Sign in</button>
+
+      <div id="message" class="message"></div>
+    </form>
+  </main>
+
+  <script type="module" src="/login.js"></script>
+</body>
+</html>

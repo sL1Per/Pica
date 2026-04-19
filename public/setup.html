@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Setup</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main class="container">
+    <h1>Pica <span class="tagline">Setup</span></h1>
+    <p class="muted">Create the first employer account.</p>
+
+    <form id="setup-form" class="card" autocomplete="off" novalidate>
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required autocomplete="username"
+             minlength="2" maxlength="64" inputmode="text">
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required autocomplete="new-password"
+             minlength="8">
+
+      <label for="confirm">Confirm password</label>
+      <input type="password" id="confirm" name="confirm" required autocomplete="new-password"
+             minlength="8">
+
+      <button id="submit-btn" type="submit" class="block">Create employer account</button>
+
+      <div id="message" class="message"></div>
+    </form>
+
+    <p class="subtle center" style="margin-top: var(--gap-5);">
+      After setup, you'll be signed in automatically.
+    </p>
+  </main>
+
+  <script type="module" src="/setup.js"></script>
+</body>
+</html>

@@ -4,73 +4,39 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pica — Time Management</title>
-  <style>
-    :root {
-      --accent: #2b4a6f;
-      --code-bg: #f3f3f5;
-      --code-fg: #b8336a;
-      --muted: #666;
-    }
-    * { box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 3rem 1.25rem 4rem;
-      color: #222;
-      line-height: 1.55;
-    }
-    h1 { font-size: 1.9rem; margin: 0 0 0.25rem; letter-spacing: -0.5px; }
-    .tagline { color: var(--accent); font-weight: 600; }
-    .muted { color: var(--muted); }
-    code {
-      background: var(--code-bg);
-      padding: 2px 6px;
-      border-radius: 3px;
-      color: var(--code-fg);
-      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-      font-size: 0.92em;
-    }
-    ul { padding-left: 1.25rem; }
-    li { margin: 0.3rem 0; }
-    hr { border: none; border-top: 1px solid #e3e5ea; margin: 2rem 0; }
-    .status {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 999px;
-      background: #e8f5e9;
-      color: #2e7d32;
-      font-size: 0.85rem;
-      font-weight: 600;
-    }
-  </style>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
 <body>
-  <h1>Pica <span class="tagline">Time Management</span></h1>
-  <p class="muted">Minimalistic, file-based, zero-dependency employee time tracker.</p>
+  <main class="container">
+    <header class="home-header">
+      <div>
+        <h1>Pica <span class="tagline">Time Management</span></h1>
+        <p class="muted">Signed in as <strong id="current-user">…</strong></p>
+      </div>
+      <button id="logout-btn" class="secondary" type="button">Sign out</button>
+    </header>
 
-  <p><span class="status">● Server running</span> &nbsp; Milestone 1 — HTTP foundation</p>
+    <p><span class="status">● Signed in</span></p>
 
-  <hr>
+    <hr>
 
-  <h2>What works right now</h2>
-  <ul>
-    <li>Static files served from <code>public/</code></li>
-    <li>JSON API at <code>GET /api/health</code></li>
-    <li>Echo endpoint at <code>POST /api/echo</code></li>
-    <li>Param matching at <code>GET /api/params/:id</code></li>
-  </ul>
+    <h2>Welcome</h2>
+    <p>
+      The authentication foundation is in place. From here the app grows feature
+      by feature:
+    </p>
+    <ul>
+      <li>Milestone 3 — employee management UI</li>
+      <li>Milestone 4 — clock in / out with geolocation</li>
+      <li>Milestone 5 — leaves</li>
+      <li>Milestone 6 — reports</li>
+      <li>Milestone 7 — backups</li>
+    </ul>
 
-  <h2>What comes next</h2>
-  <ul>
-    <li>Milestone 2 — authentication, sessions, master-key encryption</li>
-    <li>Milestone 3 — employee management UI</li>
-    <li>Milestone 4 — clock in / out with geolocation</li>
-  </ul>
+    <p class="subtle">See <code>README.md</code> for the full roadmap.</p>
+  </main>
 
-  <hr>
-  <p class="muted" style="font-size: 0.85rem;">
-    See <code>README.md</code> for the full roadmap.
-  </p>
+  <script type="module" src="/index.js"></script>
 </body>
 </html>

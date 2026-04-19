@@ -3,8 +3,8 @@
  * Pica — Time Management
  * Entry point. Boots the HTTP server, wires the router, serves static assets.
  *
- * Milestone 1 scope: plumbing only. Auth, encryption, and features arrive
- * in later milestones.
+ * Milestone 2b: authentication wired up. The app boots into setup mode
+ * until the first employer account is created, then into the login flow.
  */
 
 import http from 'node:http';
@@ -19,6 +19,14 @@ import { parseBody, BodyTooLargeError, BadBodyError } from './src/http/body.js';
 import { parseCookies } from './src/http/cookies.js';
 import { enhance } from './src/http/responses.js';
 import { serveStatic } from './src/http/static.js';
+import { initMasterKey } from './src/crypto/masterkey.js';
+import { deriveSessionKey } from './src/auth/sessions.js';
+import { createUsersStore } from './src/auth/users.js';
+import { createRBAC } from './src/auth/rbac.js';
+import { createRateLimiter } from './src/auth/rate-limit.js';
+import { registerAuthRoutes } from './src/routes/auth.js';
+import { registerSetupRoutes } from './src/routes/setup.js';
+import { registerPageRoutes } from './src/routes/pages.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,30 +37,54 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const config = loadConfig(path.join(__dirname, 'config.json'));
 const log = createLogger(config.logLevel);
 
-// Ensure runtime directories exist (they're gitignored and created lazily).
 for (const dir of [config.dataDir, config.backupDir]) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
 const publicDir = path.join(__dirname, 'public');
+const configPath = path.join(__dirname, 'config.json');
+
+// ----------------------------------------------------------------------------
+// Master key — derived before we start accepting requests. Anything that
+// touches encrypted storage gets `masterKey` passed in explicitly.
+// ----------------------------------------------------------------------------
+
+let masterKey;
+try {
+  masterKey = await initMasterKey(config, configPath, log);
+} catch (err) {
+  log.error(err.message);
+  process.exit(1);
+}
+
+// Session signing key is deterministic from the master key — no extra state.
+const sessionKey = deriveSessionKey(masterKey);
+
+// ----------------------------------------------------------------------------
+// Stores, middleware, routes
+// ----------------------------------------------------------------------------
+
+const usersStore = createUsersStore(config.dataDir);
+const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
+const rbac = createRBAC({ sessionKey, usersStore });
+const isProduction = process.env.NODE_ENV === 'production';
+
 const router = createRouter();
 
-// ----------------------------------------------------------------------------
-// Sample routes — these verify the plumbing end-to-end and will be replaced
-// by real feature routes in Milestone 3 onwards.
-// ----------------------------------------------------------------------------
-
+// Liveness probe — unauthenticated, safe to expose.
 router.get('/api/health', (req, res) => {
   res.json({ ok: true, name: 'pica', version: '0.1.0' });
 });
 
-router.post('/api/echo', (req, res) => {
-  res.json({ received: req.body, cookies: req.cookies, query: req.query });
+registerSetupRoutes(router, { usersStore, sessionKey, isProduction });
+registerAuthRoutes(router, {
+  usersStore,
+  sessionKey,
+  loginLimiter,
+  requireAuth: rbac.requireAuth,
+  isProduction,
 });
-
-router.get('/api/params/:id', (req, res) => {
-  res.json({ id: req.params.id });
-});
+registerPageRoutes(router, { publicDir, usersStore, authenticate: rbac.authenticate });
 
 // ----------------------------------------------------------------------------
 // Request handler

@@ -1,0 +1,18 @@
+{
+  "host": "127.0.0.1",
+  "port": 8080,
+  "dataDir": "/Users/pviegas/Documents/Pica/data",
+  "backupDir": "/Users/pviegas/Documents/Pica/backups",
+  "maxBodyBytes": 5242880,
+  "logLevel": "info",
+  "security": {
+    "kdf": {
+      "algorithm": "scrypt",
+      "salt": "71927236c860184395ce5d0406695d5a9ba3d3c74fa7a4d7fa8214f442d8b78f",
+      "cost": 131072,
+      "blockSize": 8,
+      "parallelization": 1
+    },
+    "verifier": "nab9g9ZzBaWca9fIN3WIbYrA45QeikgESRMJvIYd/Gj0srO4pARWyvmoo+Y="
+  }
+}

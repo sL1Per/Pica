@@ -1,0 +1,176 @@
+/* ============================================================================
+   Pica — base styles (shared)
+   Design tokens + reset + common components. Mobile-first.
+   ============================================================================ */
+
+:root {
+  /* Color palette */
+  --accent: #2b4a6f;
+  --accent-hover: #1f3a5c;
+  --accent-soft: #e8eef5;
+  --bg: #ffffff;
+  --surface: #f6f7f9;
+  --border: #d8dbe0;
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --text-subtle: #888;
+  --danger: #b33a3a;
+  --danger-soft: #fbe9e9;
+  --success: #2e7d32;
+  --success-soft: #e8f5e9;
+
+  /* Spacing scale */
+  --gap-1: 4px;
+  --gap-2: 8px;
+  --gap-3: 12px;
+  --gap-4: 16px;
+  --gap-5: 24px;
+  --gap-6: 32px;
+  --gap-7: 48px;
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 0.8rem;
+  --text-sm: 0.9rem;
+  --text-md: 1rem;
+  --text-lg: 1.2rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.9rem;
+
+  /* Radius */
+  --radius: 4px;
+  --radius-lg: 8px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Layout — narrow container, generous padding on mobile. */
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--gap-6) var(--gap-4);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--gap-5);
+}
+
+h1 { font-size: var(--text-2xl); margin: 0 0 var(--gap-1); letter-spacing: -0.5px; }
+h2 { font-size: var(--text-xl); margin: var(--gap-5) 0 var(--gap-2); }
+h3 { font-size: var(--text-lg); margin: var(--gap-4) 0 var(--gap-2); }
+
+.tagline { color: var(--accent); font-weight: 600; }
+.muted   { color: var(--text-muted); }
+.subtle  { color: var(--text-subtle); font-size: var(--text-sm); }
+
+hr { border: none; border-top: 1px solid var(--border); margin: var(--gap-5) 0; }
+
+/* Forms */
+
+label {
+  display: block;
+  margin-top: var(--gap-4);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"] {
+  display: block;
+  width: 100%;
+  margin-top: var(--gap-1);
+  padding: var(--gap-3);
+  font-family: inherit;
+  font-size: var(--text-md);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+button {
+  display: inline-block;
+  margin-top: var(--gap-4);
+  padding: var(--gap-3) var(--gap-5);
+  font-family: inherit;
+  font-size: var(--text-md);
+  font-weight: 600;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { background: var(--accent-hover); }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+button.block { display: block; width: 100%; }
+button.secondary {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+button.secondary:hover:not(:disabled) { background: var(--surface); }
+
+/* Messages */
+
+.message {
+  margin-top: var(--gap-4);
+  padding: var(--gap-3) var(--gap-4);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+.message.error   { background: var(--danger-soft); color: var(--danger); }
+.message.success { background: var(--success-soft); color: var(--success); }
+.message:empty   { display: none; }
+
+/* Inline code */
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--accent-soft);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* Status pill */
+
+.status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* Utility */
+
+.spacer-sm { height: var(--gap-3); }
+.spacer    { height: var(--gap-5); }
+.center    { text-align: center; }
