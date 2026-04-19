@@ -1,0 +1,4 @@
+{"id":"19276de5-8c0c-4f67-9561-a843e883dfca","ts":"2026-04-19T14:56:54.920Z","event":"created","employeeId":"2b1c9b67-05d6-4923-9e9f-ee343648f11a","type":"vacation","unit":"days","start":"2026-04-19","end":"2026-04-19","hours":null,"enc":"9k5QO3Y+6S0PcYjWcE/gkv2ASqDEQ/KZRawIU48YtgBCwChqQHLd4vC8hsvyEwl1XaNTC/N56g2k6DzYHCuRsq6Fn0BFBzYnGg=="}
+{"id":"19276de5-8c0c-4f67-9561-a843e883dfca","ts":"2026-04-19T14:57:12.580Z","event":"approved","actorId":"e2b2344e-38ed-476f-9c7e-50934835b798"}
+{"id":"5b1c79e9-1641-4760-ba77-b69915e24655","ts":"2026-04-19T15:00:31.992Z","event":"created","employeeId":"e2b2344e-38ed-476f-9c7e-50934835b798","type":"vacation","unit":"days","start":"2026-04-21","end":"2026-04-24","hours":null,"enc":"RgIb+NKmDquFGzDA6XlB5jzd+hCqH4BxS+2q1KymVN95Mwkc0olWyxY9ZxuTHaw="}
+{"id":"5b1c79e9-1641-4760-ba77-b69915e24655","ts":"2026-04-19T15:00:33.368Z","event":"approved","actorId":"e2b2344e-38ed-476f-9c7e-50934835b798"}

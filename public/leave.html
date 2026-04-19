@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Leave</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/leave.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1 id="page-title">Leave</h1>
+        <p class="muted"><a href="/leaves">← Back to list</a></p>
+      </div>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <section class="card" id="detail" hidden>
+      <div id="status-banner" class="status-banner"></div>
+
+      <dl class="leave-summary">
+        <dt>Employee</dt>   <dd id="f-employee"></dd>
+        <dt>Type</dt>       <dd id="f-type"></dd>
+        <dt>When</dt>       <dd id="f-when"></dd>
+        <dt>Duration</dt>   <dd id="f-duration"></dd>
+        <dt>Requested</dt>  <dd id="f-created"></dd>
+        <dt id="l-reason-dt" hidden>Reason</dt>
+        <dd id="f-reason" hidden></dd>
+      </dl>
+
+      <div id="decided-note" class="decided-note" hidden>
+        <div class="decided-note__label" id="decided-label"></div>
+        <div id="decided-notes"></div>
+      </div>
+
+      <div class="actions" id="actions"></div>
+
+      <div id="reject-dialog" class="reject-dialog" hidden>
+        <label for="reject-notes">Notes for the employee (optional)</label>
+        <textarea id="reject-notes" rows="3" maxlength="500"></textarea>
+        <div class="actions">
+          <button type="button" id="reject-cancel" class="secondary">Cancel</button>
+          <button type="button" id="reject-confirm" class="btn-reject">Reject</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/leave.js"></script>
+</body>
+</html>

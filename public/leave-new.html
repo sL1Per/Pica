@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Request leave</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/leave.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1>Request leave</h1>
+        <p class="muted"><a href="/leaves">← Back to list</a></p>
+      </div>
+    </header>
+
+    <form id="leave-form" class="card" autocomplete="off" novalidate>
+      <label for="type">Type</label>
+      <select id="type" name="type">
+        <option value="vacation" selected>Vacation</option>
+        <option value="sick">Sick leave</option>
+        <option value="appointment">Appointment</option>
+        <option value="other">Other</option>
+      </select>
+
+      <label>Unit</label>
+      <div class="radio-row">
+        <label class="radio"><input type="radio" name="unit" value="days" checked> Full days</label>
+        <label class="radio"><input type="radio" name="unit" value="hours"> Hours</label>
+      </div>
+
+      <div id="days-fields">
+        <label for="day-start">Start date</label>
+        <input type="date" id="day-start" required>
+
+        <label for="day-end">End date</label>
+        <input type="date" id="day-end" required>
+        <p class="subtle">Inclusive. For a single day, pick the same date twice.</p>
+      </div>
+
+      <div id="hours-fields" hidden>
+        <label for="hour-date">Date</label>
+        <input type="date" id="hour-date">
+
+        <div class="time-row">
+          <div>
+            <label for="hour-start">From</label>
+            <input type="time" id="hour-start">
+          </div>
+          <div>
+            <label for="hour-end">To</label>
+            <input type="time" id="hour-end">
+          </div>
+        </div>
+      </div>
+
+      <label for="reason">Reason (optional)</label>
+      <textarea id="reason" rows="3" maxlength="500" placeholder="Brief explanation. This field is encrypted."></textarea>
+
+      <button id="submit-btn" type="submit" class="block">Submit request</button>
+
+      <div id="message" class="message"></div>
+    </form>
+  </main>
+
+  <script type="module" src="/leave-new.js"></script>
+</body>
+</html>

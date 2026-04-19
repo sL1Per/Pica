@@ -80,6 +80,32 @@ export function registerPageRoutes(router, { publicDir, usersStore, authenticate
     await sendHtml(res, 'punches-today.html');
   });
 
+  // -- Leaves -------------------------------------------------------------
+
+  router.get('/leaves', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'leaves.html');
+  });
+
+  router.get('/leaves/calendar', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'leaves-calendar.html');
+  });
+
+  router.get('/leaves/new', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'leave-new.html');
+  });
+
+  router.get('/leaves/:id', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'leave.html');
+  });
+
   // Matches /employees/:id where :id is not "new" (caught by the route above).
   router.get('/employees/:id', async (req, res) => {
     const a = authed(req);

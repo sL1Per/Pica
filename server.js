@@ -29,8 +29,10 @@ import { registerSetupRoutes } from './src/routes/setup.js';
 import { registerPageRoutes } from './src/routes/pages.js';
 import { registerEmployeeRoutes } from './src/routes/employees.js';
 import { registerPunchRoutes } from './src/routes/punches.js';
+import { registerLeaveRoutes } from './src/routes/leaves.js';
 import { createEmployeesStore } from './src/storage/employees.js';
 import { createPunchesStore } from './src/storage/punches.js';
+import { createLeavesStore } from './src/storage/leaves.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -71,6 +73,7 @@ const sessionKey = deriveSessionKey(masterKey);
 const usersStore = createUsersStore(config.dataDir);
 const employeesStore = createEmployeesStore(config.dataDir, masterKey);
 const punchesStore = createPunchesStore(config.dataDir, masterKey);
+const leavesStore = createLeavesStore(config.dataDir, masterKey);
 const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
 const rbac = createRBAC({ sessionKey, usersStore });
 const isProduction = process.env.NODE_ENV === 'production';
@@ -102,6 +105,12 @@ registerPunchRoutes(router, {
   usersStore,
   requireAuth: rbac.requireAuth,
   requireOwnerOrEmployer: rbac.requireOwnerOrEmployer,
+});
+registerLeaveRoutes(router, {
+  leavesStore,
+  usersStore,
+  requireAuth: rbac.requireAuth,
+  requireRole: rbac.requireRole,
 });
 registerPageRoutes(router, { publicDir, usersStore, authenticate: rbac.authenticate });
 

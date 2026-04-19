@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Leaves</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/leaves.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1>Leaves</h1>
+        <p class="muted"><a href="/">← Home</a></p>
+      </div>
+      <div class="header-actions">
+        <a href="/leaves/calendar" class="btn-link btn-link--secondary">View calendar</a>
+        <a href="/leaves/new" class="btn-link">+ Request leave</a>
+      </div>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <div class="filter-bar">
+      <button class="filter active" data-filter="all">All</button>
+      <button class="filter" data-filter="pending">Pending</button>
+      <button class="filter" data-filter="approved">Approved</button>
+      <button class="filter" data-filter="rejected">Rejected</button>
+      <button class="filter" data-filter="cancelled">Cancelled</button>
+    </div>
+
+    <ul id="leave-list" class="leave-list">
+      <li class="subtle">Loading…</li>
+    </ul>
+  </main>
+
+  <script type="module" src="/leaves.js"></script>
+</body>
+</html>

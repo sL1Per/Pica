@@ -244,12 +244,12 @@ Split into small, shippable milestones. Each one leaves the app in a usable stat
 - ✅ Guard against duplicate open punches
 - ✅ Daily punch list: own punches for employees, all punches for employers
 
-### Milestone 5 — Leaves
-- [ ] Book leave: day range or hour range
-- [ ] Leave types: vacation, sick, appointment, other
-- [ ] Reason / notes field — encrypted
-- [ ] Employee requests → employer approves / rejects
-- [ ] Calendar-style monthly view
+### Milestone 5 — Leaves ✅
+- ✅ Book leave: day range or hour range
+- ✅ Leave types: vacation, sick, appointment, other
+- ✅ Reason / notes field — encrypted
+- ✅ Employee requests → employer approves / rejects
+- ✅ Calendar-style monthly view
 
 ### Milestone 6 — Reports
 - [ ] Worked hours per day / week / month (uses plaintext timestamps, no decryption needed)
@@ -263,11 +263,15 @@ Split into small, shippable milestones. Each one leaves the app in a usable stat
 - [ ] Restore from encrypted archive, with pre-restore safety snapshot
 - [ ] Scheduler with cron-like intervals in `config.json`
 
-### Milestone 8 — Mobile polish
-- [ ] Mobile-first CSS pass
-- [ ] Web App Manifest + home-screen icon
+### Milestone 8 — UI polish (desktop, mobile, general look & feel)
+- [ ] Design-token pass: cohesive typography scale, spacing, color depth, dark mode
+- [ ] Desktop layout: wider containers, multi-column on larger screens, keyboard focus styles
+- [ ] Mobile polish: touch targets ≥ 44px, safe-area insets, larger tap zones
+- [ ] Component refinement: buttons, forms, tables, empty states, loading states, toasts
+- [ ] Navigation: persistent top bar across pages, breadcrumbs where useful
+- [ ] Accessibility pass: ARIA labels, contrast ratios, keyboard navigation, reduced-motion support
+- [ ] Web App Manifest + home-screen icon (installable PWA)
 - [ ] Offline-friendly clock-in (queue locally, sync when online)
-- [ ] Touch-friendly forms and tap targets
 
 ### Milestone 9 — i18n
 - [ ] Language files: `i18n/en.json`, `i18n/pt.json`

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Leaves calendar</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/leaves-calendar.css">
+</head>
+<body>
+  <main class="container container--wide">
+    <header class="page-header">
+      <div>
+        <h1>Leaves calendar</h1>
+        <p class="muted">
+          <a href="/leaves">← My leaves</a>
+          · <span class="subtle">Approved leaves only</span>
+        </p>
+      </div>
+      <a href="/leaves/new" class="btn-link">+ Request leave</a>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <nav class="cal-nav">
+      <button id="prev-month" class="secondary" type="button">←</button>
+      <h2 id="cal-title">…</h2>
+      <button id="next-month" class="secondary" type="button">→</button>
+      <button id="today-btn" class="secondary" type="button">Today</button>
+    </nav>
+
+    <div class="cal-grid" id="cal-grid">
+      <!-- 7 weekday headers + 42 day cells injected by JS -->
+    </div>
+
+    <section class="legend">
+      <strong>Type</strong>
+      <span class="legend__chip legend__chip--vacation">Vacation</span>
+      <span class="legend__chip legend__chip--sick">Sick</span>
+      <span class="legend__chip legend__chip--appointment">Appointment</span>
+      <span class="legend__chip legend__chip--other">Other</span>
+    </section>
+  </main>
+
+  <script type="module" src="/leaves-calendar.js"></script>
+</body>
+</html>
