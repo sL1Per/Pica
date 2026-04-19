@@ -3,6 +3,7 @@ import { postJson } from '/app.js';
 const userEl    = document.getElementById('current-user');
 const logoutBtn = document.getElementById('logout-btn');
 const employeesCard = document.getElementById('employees-card');
+const todayCard     = document.getElementById('today-card');
 
 // Populate current user and tailor navigation by role.
 (async () => {
@@ -11,7 +12,10 @@ const employeesCard = document.getElementById('employees-card');
     if (!res.ok) { window.location.href = '/login'; return; }
     const user = await res.json();
     userEl.textContent = `${user.username} (${user.role})`;
-    if (user.role === 'employer') employeesCard.hidden = false;
+    if (user.role === 'employer') {
+      employeesCard.hidden = false;
+      todayCard.hidden = false;
+    }
   } catch {
     window.location.href = '/login';
   }

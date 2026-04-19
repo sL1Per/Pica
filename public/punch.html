@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Clock</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/punch.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1>Clock</h1>
+        <p class="muted"><a href="/">← Home</a></p>
+      </div>
+    </header>
+
+    <section class="punch-card">
+      <div id="status-block" class="status-block status-block--unknown">
+        <div class="status-dot"></div>
+        <div>
+          <div id="status-label" class="status-label">Checking…</div>
+          <div id="status-meta" class="status-meta"></div>
+        </div>
+      </div>
+
+      <label for="comment">Comment (optional)</label>
+      <textarea id="comment" rows="2" maxlength="500" placeholder="e.g. Starting afternoon shift"></textarea>
+
+      <label class="checkbox">
+        <input type="checkbox" id="share-geo" checked>
+        Include my location
+      </label>
+      <p id="geo-status" class="subtle"></p>
+
+      <button id="action-btn" type="button" class="block punch-action" disabled>…</button>
+
+      <div id="message" class="message"></div>
+    </section>
+
+    <section class="today-section">
+      <h2>Today</h2>
+      <ul id="today-list" class="punch-list">
+        <li class="subtle">Loading…</li>
+      </ul>
+    </section>
+
+    <p class="subtle center" style="margin-top: var(--gap-5);">
+      <a href="/punches/today" id="all-today-link" hidden>See everyone’s punches today →</a>
+    </p>
+  </main>
+
+  <script type="module" src="/punch.js"></script>
+</body>
+</html>

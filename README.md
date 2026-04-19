@@ -237,12 +237,12 @@ Split into small, shippable milestones. Each one leaves the app in a usable stat
 - ✅ Employee self-service: view own profile, edit allowed fields only
 - ✅ Employer profile (same model, different role)
 
-### Milestone 4 — Clock in / out
-- [ ] "Clock in" and "Clock out" buttons (authenticated employee only)
-- [ ] Optional comment on each punch — encrypted
-- [ ] Browser geolocation captured on punch — encrypted (`lat`, `lng`, `accuracy`)
-- [ ] Guard against duplicate open punches
-- [ ] Daily punch list: own punches for employees, all punches for employers
+### Milestone 4 — Clock in / out ✅
+- ✅ "Clock in" and "Clock out" buttons (authenticated employee only)
+- ✅ Optional comment on each punch — encrypted
+- ✅ Browser geolocation captured on punch — encrypted (`lat`, `lng`, `accuracy`)
+- ✅ Guard against duplicate open punches
+- ✅ Daily punch list: own punches for employees, all punches for employers
 
 ### Milestone 5 — Leaves
 - [ ] Book leave: day range or hour range

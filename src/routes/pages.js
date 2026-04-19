@@ -66,6 +66,20 @@ export function registerPageRoutes(router, { publicDir, usersStore, authenticate
     res.redirect(`/employees/${a.ctx.user.id}`);
   });
 
+  // -- Punches ------------------------------------------------------------
+
+  router.get('/punch', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'punch.html');
+  });
+
+  router.get('/punches/today', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'punches-today.html');
+  });
+
   // Matches /employees/:id where :id is not "new" (caught by the route above).
   router.get('/employees/:id', async (req, res) => {
     const a = authed(req);
