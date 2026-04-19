@@ -110,6 +110,19 @@ export function createUsersStore(dataDir) {
       return safe;
     },
 
+    /**
+     * Delete a user by id. Returns true if the user was removed, false
+     * if no such user existed.
+     */
+    deleteById(id) {
+      const data = loadAll();
+      const before = data.users.length;
+      const users = data.users.filter((u) => u.id !== id);
+      if (users.length === before) return false;
+      saveAll({ users });
+      return true;
+    },
+
     /** Drop the in-memory cache — used in tests. */
     invalidate() {
       cache = null;

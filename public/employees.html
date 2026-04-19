@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Employees</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/employees.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1>Employees</h1>
+        <p class="muted"><a href="/">← Home</a></p>
+      </div>
+      <a href="/employees/new" class="btn-link">+ New employee</a>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <ul id="employee-list" class="employee-list">
+      <li class="employee-list__empty subtle">Loading…</li>
+    </ul>
+  </main>
+
+  <script type="module" src="/employees.js"></script>
+</body>
+</html>

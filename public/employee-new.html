@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — New employee</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/employee.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1>New employee</h1>
+        <p class="muted"><a href="/employees">← Back to list</a></p>
+      </div>
+    </header>
+
+    <form id="new-form" class="card" autocomplete="off" novalidate>
+      <h2>Account</h2>
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required autocomplete="off" minlength="2" maxlength="64">
+
+      <label for="password">Initial password</label>
+      <input type="password" id="password" name="password" required autocomplete="new-password" minlength="8">
+      <p class="subtle">Share this with the employee. They can change it later (M10).</p>
+
+      <label for="role">Role</label>
+      <select id="role" name="role">
+        <option value="employee" selected>Employee</option>
+        <option value="employer">Employer</option>
+      </select>
+
+      <h2>Profile</h2>
+      <label for="fullName">Full name</label>
+      <input type="text" id="fullName" name="fullName">
+
+      <label for="age">Age</label>
+      <input type="number" id="age" name="age" min="14" max="120">
+
+      <label for="position">Position</label>
+      <input type="text" id="position" name="position" placeholder="e.g. Backend Developer">
+
+      <label for="contactEmail">Contact email</label>
+      <input type="email" id="contactEmail" name="contactEmail">
+
+      <label for="contactPhone">Contact phone</label>
+      <input type="text" id="contactPhone" name="contactPhone">
+
+      <label for="address">Address</label>
+      <input type="text" id="address" name="address">
+
+      <label for="comments">Comments</label>
+      <textarea id="comments" name="comments" rows="3"></textarea>
+
+      <button id="submit-btn" type="submit" class="block">Create employee</button>
+
+      <div id="message" class="message"></div>
+    </form>
+  </main>
+
+  <script type="module" src="/employee-new.js"></script>
+</body>
+</html>

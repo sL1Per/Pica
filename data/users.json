@@ -6,6 +6,13 @@
       "passwordHash": "scrypt$32768$8$1$HzCQUwVAQZ0Ij8uKXiCQ1A==$L6q5D/XKt+GdwM46GiXtqzuPVsqMS0EPwAx0+brlnlUWFXSD2j+IrfKBU/pU4WwE9/DITJGjQ04E3P7z9lWaUg==",
       "role": "employer",
       "createdAt": "2026-04-19T09:47:31.684Z"
+    },
+    {
+      "id": "2b1c9b67-05d6-4923-9e9f-ee343648f11a",
+      "username": "cpiastas",
+      "passwordHash": "scrypt$32768$8$1$wTOl914dvul5GRM5z0eB7A==$UGJcF9Rge4VFR2yEjVZApMclPFAajjTizbaAhol2Z21jU1xY/OM3qppSxJmupsSKF4XHABLBBXAGgTjgE/U55w==",
+      "role": "employee",
+      "createdAt": "2026-04-19T14:19:05.855Z"
     }
   ]
 }

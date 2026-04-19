@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Employee</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/employee.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1 id="page-title">Profile</h1>
+        <p class="muted"><a id="back-link" href="/">← Back</a></p>
+      </div>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <div class="card">
+      <div class="avatar-block">
+        <div id="avatar" class="avatar">?</div>
+        <div class="avatar-actions">
+          <input type="file" id="picture-input" accept="image/*" hidden>
+          <button id="upload-btn" type="button" class="secondary">Upload picture</button>
+          <button id="remove-pic-btn" type="button" class="secondary" hidden>Remove</button>
+          <p class="subtle">Max 400×400, resized in your browser.</p>
+        </div>
+      </div>
+
+      <form id="profile-form" autocomplete="off" novalidate>
+        <label>Username</label>
+        <div id="username-display" class="readonly-field">—</div>
+
+        <label>Role</label>
+        <div id="role-display" class="readonly-field">—</div>
+
+        <label for="fullName">Full name</label>
+        <input type="text" id="fullName" name="fullName">
+
+        <label for="age">Age</label>
+        <input type="number" id="age" name="age" min="14" max="120">
+
+        <label for="position">Position <span id="position-hint" class="subtle" hidden>(employer-set)</span></label>
+        <input type="text" id="position" name="position">
+
+        <label for="contactEmail">Contact email</label>
+        <input type="email" id="contactEmail" name="contactEmail">
+
+        <label for="contactPhone">Contact phone</label>
+        <input type="text" id="contactPhone" name="contactPhone">
+
+        <label for="address">Address</label>
+        <input type="text" id="address" name="address">
+
+        <label for="comments">Comments <span id="comments-hint" class="subtle" hidden>(employer-set)</span></label>
+        <textarea id="comments" name="comments" rows="3"></textarea>
+
+        <button id="save-btn" type="submit" class="block">Save profile</button>
+      </form>
+
+      <div id="danger-zone" class="danger-zone" hidden>
+        <h3>Danger zone</h3>
+        <button id="delete-btn" type="button">Delete employee</button>
+        <p class="subtle">This removes the user account, profile, and picture. Not reversible.</p>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/employee.js"></script>
+</body>
+</html>

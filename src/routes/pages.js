@@ -20,6 +20,13 @@ export function registerPageRoutes(router, { publicDir, usersStore, authenticate
     res.html(body);
   }
 
+  function authed(req) {
+    if (!usersStore.hasAny()) return { redirect: '/setup' };
+    const ctx = authenticate(req);
+    if (!ctx) return { redirect: '/login' };
+    return { ctx };
+  }
+
   router.get('/', async (req, res) => {
     if (!usersStore.hasAny()) return res.redirect('/setup');
     if (!authenticate(req))   return res.redirect('/login');
@@ -35,5 +42,36 @@ export function registerPageRoutes(router, { publicDir, usersStore, authenticate
     if (!usersStore.hasAny()) return res.redirect('/setup');
     if (authenticate(req))    return res.redirect('/');
     await sendHtml(res, 'login.html');
+  });
+
+  // -- Employee pages -----------------------------------------------------
+
+  router.get('/employees', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    if (a.ctx.user.role !== 'employer') return res.redirect('/profile');
+    await sendHtml(res, 'employees.html');
+  });
+
+  router.get('/employees/new', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    if (a.ctx.user.role !== 'employer') return res.redirect('/profile');
+    await sendHtml(res, 'employee-new.html');
+  });
+
+  router.get('/profile', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    res.redirect(`/employees/${a.ctx.user.id}`);
+  });
+
+  // Matches /employees/:id where :id is not "new" (caught by the route above).
+  router.get('/employees/:id', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    // RBAC is enforced by the API; the page just renders. Non-owners who
+    // aren't employers will see empty data and 403s on the API calls.
+    await sendHtml(res, 'employee.html');
   });
 }

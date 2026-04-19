@@ -17,17 +17,21 @@
       <button id="logout-btn" class="secondary" type="button">Sign out</button>
     </header>
 
-    <p><span class="status">● Signed in</span></p>
+    <nav class="nav-grid">
+      <a href="/profile" class="nav-card">
+        <span class="nav-card__title">My profile</span>
+        <span class="nav-card__desc">View and edit your details</span>
+      </a>
+      <a href="/employees" class="nav-card" id="employees-card" hidden>
+        <span class="nav-card__title">Employees</span>
+        <span class="nav-card__desc">Manage the team</span>
+      </a>
+    </nav>
 
     <hr>
 
-    <h2>Welcome</h2>
-    <p>
-      The authentication foundation is in place. From here the app grows feature
-      by feature:
-    </p>
+    <h2>Coming soon</h2>
     <ul>
-      <li>Milestone 3 — employee management UI</li>
       <li>Milestone 4 — clock in / out with geolocation</li>
       <li>Milestone 5 — leaves</li>
       <li>Milestone 6 — reports</li>

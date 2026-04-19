@@ -27,6 +27,8 @@ import { createRateLimiter } from './src/auth/rate-limit.js';
 import { registerAuthRoutes } from './src/routes/auth.js';
 import { registerSetupRoutes } from './src/routes/setup.js';
 import { registerPageRoutes } from './src/routes/pages.js';
+import { registerEmployeeRoutes } from './src/routes/employees.js';
+import { createEmployeesStore } from './src/storage/employees.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -65,6 +67,7 @@ const sessionKey = deriveSessionKey(masterKey);
 // ----------------------------------------------------------------------------
 
 const usersStore = createUsersStore(config.dataDir);
+const employeesStore = createEmployeesStore(config.dataDir, masterKey);
 const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
 const rbac = createRBAC({ sessionKey, usersStore });
 const isProduction = process.env.NODE_ENV === 'production';
@@ -83,6 +86,13 @@ registerAuthRoutes(router, {
   loginLimiter,
   requireAuth: rbac.requireAuth,
   isProduction,
+});
+registerEmployeeRoutes(router, {
+  usersStore,
+  employeesStore,
+  requireAuth: rbac.requireAuth,
+  requireRole: rbac.requireRole,
+  requireOwnerOrEmployer: rbac.requireOwnerOrEmployer,
 });
 registerPageRoutes(router, { publicDir, usersStore, authenticate: rbac.authenticate });
 
