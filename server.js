@@ -37,6 +37,7 @@ import { createPunchesStore } from './src/storage/punches.js';
 import { createLeavesStore } from './src/storage/leaves.js';
 import { createUserPrefsStore } from './src/storage/user-prefs.js';
 import { createOrgSettingsStore } from './src/storage/org-settings.js';
+import { createCompanyLogoStore } from './src/storage/company-logo.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -80,6 +81,7 @@ const punchesStore = createPunchesStore(config.dataDir, masterKey);
 const leavesStore = createLeavesStore(config.dataDir, masterKey);
 const userPrefsStore = createUserPrefsStore(config.dataDir);
 const orgSettingsStore = createOrgSettingsStore(config.dataDir);
+const companyLogoStore = createCompanyLogoStore(config.dataDir, masterKey);
 const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
 const rbac = createRBAC({ sessionKey, usersStore });
 const isProduction = process.env.NODE_ENV === 'production';
@@ -129,6 +131,7 @@ registerReportRoutes(router, {
 registerSettingsRoutes(router, {
   userPrefsStore,
   orgSettingsStore,
+  companyLogoStore,
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
 });

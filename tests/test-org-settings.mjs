@@ -242,6 +242,71 @@ try {
   });
 
   // ---------------------------------------------------------------------------
+  console.log('\nCompany section');
+  // ---------------------------------------------------------------------------
+
+  await test('defaults include company.name = null', () => {
+    store.invalidate();
+    // Use a clean subdir so we don't pick up state from the earlier tests.
+    const subdir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-org-clean-'));
+    try {
+      const fresh = createOrgSettingsStore(subdir);
+      const s = fresh.get();
+      assert.equal(s.company.name, null);
+    } finally {
+      fs.rmSync(subdir, { recursive: true, force: true });
+    }
+  });
+
+  await test('setting company.name persists', () => {
+    const s = store.update({ company: { name: 'Acme Corp' } });
+    assert.equal(s.company.name, 'Acme Corp');
+    store.invalidate();
+    assert.equal(store.get().company.name, 'Acme Corp');
+  });
+
+  await test('company.name is trimmed', () => {
+    const s = store.update({ company: { name: '   Acme   ' } });
+    assert.equal(s.company.name, 'Acme');
+  });
+
+  await test('empty string becomes null', () => {
+    const s = store.update({ company: { name: '' } });
+    assert.equal(s.company.name, null);
+  });
+
+  await test('explicit null resets to null', () => {
+    store.update({ company: { name: 'Acme' } });
+    const s = store.update({ company: { name: null } });
+    assert.equal(s.company.name, null);
+  });
+
+  await test('non-string, non-null name is rejected', () => {
+    assert.throws(() => store.update({ company: { name: 42 } }),
+      /must be a string or null/);
+  });
+
+  await test('name over 80 chars is rejected', () => {
+    const tooLong = 'a'.repeat(81);
+    assert.throws(() => store.update({ company: { name: tooLong } }),
+      /80 characters or fewer/);
+  });
+
+  await test('name of exactly 80 chars is accepted', () => {
+    const ok = 'a'.repeat(80);
+    const s = store.update({ company: { name: ok } });
+    assert.equal(s.company.name, ok);
+  });
+
+  await test('company patch does not disturb other sections', () => {
+    store.update({ leaves: { defaultAllowances: { vacation: 21 } } });
+    store.update({ company: { name: 'New Name' } });
+    const s = store.get();
+    assert.equal(s.company.name, 'New Name');
+    assert.equal(s.leaves.defaultAllowances.vacation, 21);
+  });
+
+  // ---------------------------------------------------------------------------
   console.log('\nPatch validation');
   // ---------------------------------------------------------------------------
 

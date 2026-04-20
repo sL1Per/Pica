@@ -1,5 +1,8 @@
 import { postJson, showMessage, setBusy } from '/app.js';
 
+import { mountTopBar } from '/topbar.js';
+mountTopBar();
+
 const leaveId = window.location.pathname.split('/').pop();
 
 const $ = (id) => document.getElementById(id);

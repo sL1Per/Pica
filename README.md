@@ -269,13 +269,28 @@ Split into small, shippable milestones. Each one leaves the app in a usable stat
 - ✅ Color mode applied immediately via `<html data-theme>` attribute
 
 ### Milestone 8 — UI polish (desktop, mobile, general look & feel)
-- [ ] Design-token pass: cohesive typography scale, spacing, color depth, dark mode
+Split into three drops:
+
+**M8a — Navigation shell + company identity ✅**
+- ✅ Sticky top menu bar across all pages (employer and employee variants)
+- ✅ Role-filtered nav links (employee sees no Employees / Settings)
+- ✅ Avatar dropdown on the right: user name + role + sign-out
+- ✅ Hamburger drawer on mobile (same nav items)
+- ✅ Company logo upload (encrypted at rest, like employee pictures)
+- ✅ Company name field
+- ✅ Logo + name shown in the top bar, clickable to go home
+- ✅ New Settings section "Company" — employer only
+
+**M8b — Visual polish (per-page iteration)**
+- [ ] Design-token pass: cohesive typography scale, spacing, color depth
 - [ ] Desktop layout: wider containers, multi-column on larger screens, keyboard focus styles
 - [ ] Mobile polish: touch targets ≥ 44px, safe-area insets, larger tap zones
 - [ ] Component refinement: buttons, forms, tables, empty states, loading states, toasts
-- [ ] Navigation: persistent top bar across pages, breadcrumbs where useful
 - [ ] Accessibility pass: ARIA labels, contrast ratios, keyboard navigation, reduced-motion support
 - [ ] Concurrent-leaves warning on approve (honors setting from M7)
+- [ ] Per-page iteration — polish each page individually in small drops
+
+**M8c — PWA + offline**
 - [ ] Web App Manifest + home-screen icon (installable PWA)
 - [ ] Offline-friendly clock-in (queue locally, sync when online)
 

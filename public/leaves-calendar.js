@@ -1,5 +1,8 @@
 import { showMessage } from '/app.js';
 
+import { mountTopBar } from '/topbar.js';
+mountTopBar();
+
 const $ = (id) => document.getElementById(id);
 const grid       = $('cal-grid');
 const titleEl    = $('cal-title');

@@ -10,16 +10,110 @@ tagged as `0.N.0` where N matches the milestone number.
 
 ## [Unreleased]
 
+_Nothing yet — this section fills up as we work toward the next release._
+
+---
+
+## [0.8.1] — 2026-04-20 — Fix: top-bar drawer bug
+
+### Fixed
+- The mobile hamburger drawer (`.topbar__drawer`) had `display: flex` set
+  unconditionally. This overrode the browser's built-in `[hidden] { display: none }`
+  rule, leaving the drawer permanently visible on desktop — a vertical list
+  of nav links hanging below the top bar on top of page content. As a side
+  effect, the drawer also covered the area where the avatar dropdown would
+  open, making avatar clicks appear to do nothing (the menu *was* opening,
+  but the drawer was on top of it at the same `z-index` and vertical
+  position).
+- Fix: split the `.topbar__drawer` rule in two — base styling without
+  `display`, and a `.topbar__drawer:not([hidden]) { display: flex; ... }`
+  rule that only applies when the drawer is actually open. The HTML
+  `hidden` attribute now works as expected.
+
+### Lesson
+- For any element whose visibility is controlled via the `hidden` attribute,
+  never set an unconditional `display` value in CSS. Either omit `display`
+  (letting the default block/inline behavior pair with `[hidden]` naturally),
+  or scope `display:` to `:not([hidden])`.
+
+---
+
+## [0.8.0] — 2026-04-20 — Milestone 8a: Navigation shell + company identity ✅
+
+### Added
+- **Sticky top navigation bar** on every authenticated page, via a shared
+  `public/topbar.js` module that mounts itself on DOM load. No per-page
+  markup required.
+- **Role-filtered nav**: employers see Employees · Calendar · Leaves ·
+  Punches · Reports · Settings. Employees see Calendar · Leaves · Punches.
+- **Avatar dropdown** on the right: user's name + role, "View my profile",
+  and "Sign out". Click avatar to open; click elsewhere or press Escape
+  to close.
+- **Mobile hamburger drawer** below 900px — same nav items, touch-target
+  sized.
+- **Company logo upload** — encrypted at rest with AAD `"company:logo"`,
+  same pattern as employee pictures. Client-side resize to 256×256 PNG
+  before upload.
+- **Company name** field (up to 80 chars), stored in `org-settings.json`
+  alongside existing organization settings.
+- **New Settings section "Company"** on `/settings` — logo preview, file
+  picker, remove button, name input. Employer only.
+- **New endpoints:**
+  - `GET /api/branding` — company name + hasLogo flag. Authenticated, any role.
+  - `GET /api/branding/logo` — decrypted image bytes. Authenticated, any role.
+  - `PUT /api/branding/logo` — multipart upload, employer only.
+  - `DELETE /api/branding/logo` — employer only.
+- Test suites:
+  - `tests/test-company-logo.mjs` — 14 tests covering round-trip, AAD
+    binding against the master key, mode 0600, overwrite, remove
+    idempotency, persistence.
+  - `tests/test-org-settings.mjs` — 9 new tests for the company-name
+    field: defaults, trim, null handling, type validation, 80-char cap.
+
 ### Changed
-- **Roadmap swap**: M9 is now **i18n** and M10 is now **Backups**
-  (previously M9=Backups, M10=i18n). All forward-reference copy updated to
-  match — the language field hint on the settings page, the backup-section
-  notice, the code comments in user-prefs and org-settings storage modules,
-  and the M7 README entry. No code behavior changes.
-- Also corrected stale `TODO(M10)` comments in `employees.js` and the
-  password-change hint on `employee-new.html` — both now reference M11
-  (Hardening), which is where those items actually live after the M7
-  insertion earlier today.
+- `src/storage/org-settings.js` — added a `company` block to the default
+  settings with a `name` field. Validation trims and caps at 80 chars.
+  Partial-merge semantics: patching company alone doesn't disturb leaves
+  or backups (and vice versa).
+- `src/routes/settings.js` — extended with the four branding endpoints
+  above.
+- `public/index.html` — old home page (which duplicated nav as cards) replaced
+  by a minimal dashboard placeholder. Ready for future iteration.
+- All 11 authenticated pages updated: `<link rel="stylesheet" href="/topbar.css">`
+  in `<head>`, and `import { mountTopBar }` + `mountTopBar();` at the top
+  of each module.
+- Redundant "← Home" back-links removed from pages where the top bar now
+  provides equivalent navigation. Context-specific back-links ("← Back to
+  list") preserved.
+
+### Roadmap
+- Milestone 8 split into three tracks:
+  - **M8a** (this release): navigation shell + company identity ✅
+  - **M8b**: per-page visual polish, design tokens, component refinement,
+    a11y pass, concurrent-leaves warning banner. Iterative — one page per
+    small drop.
+  - **M8c**: PWA manifest + offline-friendly clock-in.
+- Also shipped in this drop: the earlier roadmap swap between M9 and M10.
+  M9 is now **i18n**, M10 is now **Backups**. All forward-reference copy
+  and code comments updated (language field hint, backup-section notice,
+  user-prefs / org-settings docstrings). Legacy `TODO(M10)` comments in
+  `employees.js` and the password-change hint on `employee-new.html`
+  repointed to M11 (Hardening).
+
+### Files touched
+- `src/storage/company-logo.js` (new)
+- `src/storage/org-settings.js` (added company block + validation)
+- `src/routes/settings.js` (added branding endpoints)
+- `server.js` (wire-up)
+- `public/topbar.js` (new, shared module)
+- `public/topbar.css` (new)
+- `public/settings.html`, `.css`, `.js` (+Company section)
+- `public/index.html`, `.js`, `.css` (dashboard placeholder)
+- Every other authenticated page's HTML (+topbar.css link) and JS
+  (+mountTopBar import + call)
+- `tests/test-company-logo.mjs` (new)
+- `tests/test-org-settings.mjs` (extended)
+- `README.md` (M8 split into M8a/M8b/M8c, M8a ticked)
 
 ---
 

@@ -1,5 +1,8 @@
 import { showMessage, setBusy } from '/app.js';
 
+import { mountTopBar } from '/topbar.js';
+mountTopBar();
+
 const $ = (id) => document.getElementById(id);
 
 const employeePickerWrap = $('employee-picker-wrap');

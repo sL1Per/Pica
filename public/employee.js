@@ -1,5 +1,8 @@
 import { postJson, showMessage, setBusy } from '/app.js';
 
+import { mountTopBar } from '/topbar.js';
+mountTopBar();
+
 // Pull the employee id out of the URL: /employees/<id>
 const employeeId = window.location.pathname.split('/').pop();
 

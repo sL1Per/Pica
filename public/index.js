@@ -1,27 +1,13 @@
-import { postJson } from '/app.js';
+import { mountTopBar } from '/topbar.js';
 
-const userEl    = document.getElementById('current-user');
-const logoutBtn = document.getElementById('logout-btn');
-const employeesCard = document.getElementById('employees-card');
-const todayCard     = document.getElementById('today-card');
-
-// Populate current user and tailor navigation by role.
 (async () => {
-  try {
-    const res = await fetch('/api/me', { credentials: 'same-origin' });
-    if (!res.ok) { window.location.href = '/login'; return; }
-    const user = await res.json();
-    userEl.textContent = `${user.username} (${user.role})`;
-    if (user.role === 'employer') {
-      employeesCard.hidden = false;
-      todayCard.hidden = false;
-    }
-  } catch {
-    window.location.href = '/login';
+  const data = await mountTopBar();
+  if (!data) return; // mountTopBar redirected to /login
+
+  document.getElementById('current-user').textContent =
+    `${data.user.username} (${data.user.role})`;
+
+  if (data.branding.name) {
+    document.getElementById('company-name').textContent = data.branding.name;
   }
 })();
-
-logoutBtn.addEventListener('click', async () => {
-  await postJson('/api/logout', {});
-  window.location.href = '/login';
-});

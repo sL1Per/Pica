@@ -23,6 +23,10 @@ export const LEAVE_TYPES = Object.freeze(['vacation', 'sick', 'appointment', 'ot
 export const BACKUP_SCHEDULES = Object.freeze(['off', 'hourly', 'daily', 'weekly']);
 
 export const DEFAULT_ORG_SETTINGS = Object.freeze({
+  company: {
+    // Display name for the org. Null means "use the fallback" ('Pica').
+    name: null,
+  },
   leaves: {
     // Company-wide defaults — (b) and (c) combined: one default number
     // per leave type, applied to everyone unless overridden below.
@@ -91,6 +95,11 @@ export function createOrgSettingsStore(dataDir) {
 
   function mergeOntoDefaults(stored) {
     const defaults = cloneDefault();
+    if (stored?.company) {
+      if (typeof stored.company.name === 'string' || stored.company.name === null) {
+        defaults.company.name = stored.company.name;
+      }
+    }
     if (stored?.leaves) {
       if (stored.leaves.defaultAllowances) {
         defaults.leaves.defaultAllowances = {
@@ -182,6 +191,22 @@ export function createOrgSettingsStore(dataDir) {
     return out;
   }
 
+  function cleanCompanyPatch(patch) {
+    const out = {};
+    if ('name' in patch) {
+      if (patch.name === null || patch.name === '') {
+        out.name = null;
+      } else if (typeof patch.name !== 'string') {
+        throw new Error('company.name must be a string or null');
+      } else {
+        const trimmed = patch.name.trim();
+        if (trimmed.length > 80) throw new Error('company.name must be 80 characters or fewer');
+        out.name = trimmed === '' ? null : trimmed;
+      }
+    }
+    return out;
+  }
+
   // --------------------------------------------------------------------------
 
   return {
@@ -191,13 +216,16 @@ export function createOrgSettingsStore(dataDir) {
     },
 
     /**
-     * Partial update. Accepts a patch that may contain `leaves` and/or
-     * `backups` sub-objects; only known keys are persisted.
+     * Partial update. Accepts a patch that may contain `company`, `leaves`
+     * and/or `backups` sub-objects; only known keys are persisted.
      */
     update(patch) {
       if (!patch || typeof patch !== 'object') throw new Error('patch must be an object');
       const data = loadAll();
       const next = JSON.parse(JSON.stringify(data));
+      if (patch.company) {
+        next.company = { ...next.company, ...cleanCompanyPatch(patch.company) };
+      }
       if (patch.leaves) {
         const cleaned = cleanLeavesPatch(patch.leaves);
         // `defaultAllowances` merges per-type: a patch setting vacation=25

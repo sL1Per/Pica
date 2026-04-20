@@ -1,5 +1,8 @@
 import { postJson, showMessage, setBusy } from '/app.js';
 
+import { mountTopBar } from '/topbar.js';
+mountTopBar();
+
 const $ = (id) => document.getElementById(id);
 const statusBlock = $('status-block');
 const statusLabel = $('status-label');

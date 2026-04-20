@@ -1,5 +1,8 @@
 import { showMessage } from '/app.js';
 
+import { mountTopBar } from '/topbar.js';
+mountTopBar();
+
 const listEl = document.getElementById('leave-list');
 const messageEl = document.getElementById('message');
 const filterBar = document.querySelector('.filter-bar');

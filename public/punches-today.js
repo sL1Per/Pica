@@ -1,5 +1,8 @@
 import { showMessage } from '/app.js';
 
+import { mountTopBar } from '/topbar.js';
+mountTopBar();
+
 const groupsEl = document.getElementById('groups');
 const messageEl = document.getElementById('message');
 

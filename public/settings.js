@@ -1,15 +1,28 @@
 import { showMessage, setBusy } from '/app.js';
 
+import { mountTopBar } from '/topbar.js';
+mountTopBar();
+
 const $ = (id) => document.getElementById(id);
 const messageEl = $('message');
 
 const navOrg = $('nav-org');
 const navBak = $('nav-bak');
+const navCompany = $('nav-company');
 
 // Account form
 const accountForm = $('account-form');
 const languageEl  = $('language');
 const colorModeRadios = document.querySelectorAll('input[name="colorMode"]');
+
+// Company form
+const companySection = $('company');
+const companyForm    = $('company-form');
+const companyNameInput = $('company-name-input');
+const logoPreview    = $('logo-preview');
+const logoFile       = $('logo-file');
+const logoUploadBtn  = $('logo-upload-btn');
+const logoRemoveBtn  = $('logo-remove-btn');
 
 // Org form
 const orgSection = $('organization');
@@ -204,19 +217,146 @@ if (orgForm) {
   renderAccount(prefsData.prefs);
 
   if (me.role === 'employer') {
+    navCompany.hidden = false;
     navOrg.hidden = false;
     navBak.hidden = false;
+    companySection.hidden = false;
     orgSection.hidden = false;
     backupsSection.hidden = false;
 
     // Load employees for the overrides table and the org settings.
-    const [empRes, orgRes] = await Promise.all([
+    const [empRes, orgRes, brandRes] = await Promise.all([
       fetch('/api/employees',   { credentials: 'same-origin' }),
       fetch('/api/settings/org', { credentials: 'same-origin' }),
+      fetch('/api/branding',    { credentials: 'same-origin' }),
     ]);
     const empData = await empRes.json();
     const orgData = await orgRes.json();
+    const brandData = await brandRes.json();
     employees = empData.employees;
     renderOrg(orgData.settings);
+    renderCompany(orgData.settings.company, brandData.hasLogo);
   }
 })();
+
+// ---- Company section: render + handlers ----------------------------------
+
+let stagedLogoBlob = null; // holds the resized PNG Blob between select and save
+let logoShouldDelete = false;
+
+function renderCompany(company, hasLogo) {
+  companyNameInput.value = company?.name ?? '';
+  if (hasLogo) {
+    logoPreview.innerHTML = `<img src="/api/branding/logo?t=${Date.now()}" alt="Logo preview">`;
+    logoRemoveBtn.hidden = false;
+  } else {
+    logoPreview.innerHTML = `<span class="logo-preview__placeholder">No logo</span>`;
+    logoRemoveBtn.hidden = true;
+  }
+}
+
+/**
+ * Resize an image file to a max 256×256 PNG blob, preserving aspect ratio.
+ * Same pattern as employee pictures — keeps the server dep-free.
+ */
+function resizeToPngBlob(file, maxSize = 256) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onerror = () => reject(new Error('Could not read image'));
+    img.onload = () => {
+      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/png');
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+logoUploadBtn.addEventListener('click', () => logoFile.click());
+
+logoFile.addEventListener('change', async () => {
+  const file = logoFile.files[0];
+  if (!file) return;
+  if (!/^image\//.test(file.type)) {
+    showMessage(messageEl, 'Please choose an image file.', 'error');
+    return;
+  }
+  try {
+    stagedLogoBlob = await resizeToPngBlob(file);
+    logoShouldDelete = false;
+    const url = URL.createObjectURL(stagedLogoBlob);
+    logoPreview.innerHTML = `<img src="${url}" alt="Logo preview">`;
+    logoRemoveBtn.hidden = false;
+    showMessage(messageEl, 'Image selected. Click "Save company settings" to upload.', 'success');
+  } catch (err) {
+    showMessage(messageEl, err.message, 'error');
+  }
+});
+
+logoRemoveBtn.addEventListener('click', () => {
+  stagedLogoBlob = null;
+  logoShouldDelete = true;
+  logoPreview.innerHTML = `<span class="logo-preview__placeholder">No logo</span>`;
+  logoRemoveBtn.hidden = true;
+  showMessage(messageEl, 'Logo will be removed when you save.', 'success');
+});
+
+companyForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  showMessage(messageEl, '');
+  const btn = companyForm.querySelector('button[type="submit"]');
+  setBusy(btn, true, 'Saving…');
+
+  try {
+    // 1. Save name (via org settings patch).
+    const name = companyNameInput.value.trim();
+    const namePatch = { company: { name: name === '' ? null : name } };
+    const nameRes = await fetch('/api/settings/org', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(namePatch),
+    });
+    if (!nameRes.ok) {
+      const err = await nameRes.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to save name');
+    }
+
+    // 2. Save logo change (upload, delete, or no-op).
+    if (stagedLogoBlob) {
+      const fd = new FormData();
+      fd.append('logo', stagedLogoBlob, 'logo.png');
+      const upRes = await fetch('/api/branding/logo', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        body: fd,
+      });
+      if (!upRes.ok) {
+        const err = await upRes.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to upload logo');
+      }
+      stagedLogoBlob = null;
+    } else if (logoShouldDelete) {
+      const delRes = await fetch('/api/branding/logo', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+      });
+      if (!delRes.ok) {
+        const err = await delRes.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to remove logo');
+      }
+      logoShouldDelete = false;
+    }
+
+    showMessage(messageEl, 'Company settings saved. Refresh to see the top bar update.', 'success');
+  } catch (err) {
+    showMessage(messageEl, err.message, 'error');
+  }
+  setBusy(btn, false);
+});

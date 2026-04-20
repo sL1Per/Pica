@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pica — Settings</title>
   <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/topbar.css">
   <link rel="stylesheet" href="/settings.css">
 </head>
 <body>
@@ -12,12 +13,12 @@
     <header class="page-header">
       <div>
         <h1>Settings</h1>
-        <p class="muted"><a href="/">← Home</a></p>
       </div>
     </header>
 
     <nav class="section-nav">
       <a href="#account">Account</a>
+      <a href="#company" id="nav-company" hidden>Company</a>
       <a href="#organization" id="nav-org" hidden>Organization</a>
       <a href="#backups" id="nav-bak" hidden>Backups</a>
     </nav>
@@ -45,6 +46,32 @@
         </div>
 
         <button type="submit" class="block">Save account settings</button>
+      </form>
+    </section>
+
+    <!-- Company section (employer only) -->
+    <section id="company" class="card" hidden>
+      <h2>Company</h2>
+      <p class="subtle">Branding shown in the top navigation bar. Employer only.</p>
+
+      <form id="company-form" autocomplete="off">
+        <label for="company-name-input">Company name</label>
+        <input type="text" id="company-name-input" maxlength="80" placeholder="Pica">
+
+        <label>Logo</label>
+        <div class="logo-row">
+          <div id="logo-preview" class="logo-preview">
+            <span class="logo-preview__placeholder">No logo</span>
+          </div>
+          <div class="logo-actions">
+            <input type="file" id="logo-file" accept="image/*" hidden>
+            <button type="button" id="logo-upload-btn" class="secondary">Choose image…</button>
+            <button type="button" id="logo-remove-btn" class="secondary" hidden>Remove logo</button>
+            <p class="subtle">Resized client-side to 256×256 PNG before upload.</p>
+          </div>
+        </div>
+
+        <button type="submit" class="block">Save company settings</button>
       </form>
     </section>
 

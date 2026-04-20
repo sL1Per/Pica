@@ -1,5 +1,8 @@
 import { postJson, showMessage, setBusy } from '/app.js';
 
+import { mountTopBar } from '/topbar.js';
+mountTopBar();
+
 const $ = (id) => document.getElementById(id);
 const form = $('leave-form');
 const submitBtn = $('submit-btn');
