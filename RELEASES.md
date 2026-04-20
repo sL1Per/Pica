@@ -14,7 +14,34 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
-## [0.8.1] — 2026-04-20 — Fix: top-bar drawer bug
+## [0.8.2] — 2026-04-20 — Fix: make [hidden] bulletproof app-wide
+
+### Fixed
+- Same drawer-visibility bug from 0.8.1, reported again — the previous fix
+  (scoping `display: flex` to `:not([hidden])` on just the drawer) was
+  correct in isolation but fragile: any future CSS rule that sets `display`
+  on an element using the `hidden` attribute would bring the bug back. With
+  27+ elements across the app relying on `hidden` for show/hide, that's a
+  big surface area for repeat mistakes.
+- Real fix: a single global rule in `app.css`:
+  ```css
+  [hidden] { display: none !important; }
+  ```
+  This guarantees that any element with `hidden` is always hidden, no
+  matter what other CSS says. Reverted the `:not([hidden])` scope on the
+  drawer back to a plain `display: flex` since the global rule now
+  enforces correctness.
+
+### Lesson
+- The browser's built-in `[hidden] { display: none }` rule has the same
+  specificity as any class selector, so `.foo { display: flex }` wins by
+  virtue of coming later — even though it wasn't meant to. Design systems
+  like Bootstrap, Tailwind, and MUI all apply this `!important` rule
+  globally for exactly this reason. Adopting the same pattern now.
+
+---
+
+## [0.8.1] — 2026-04-20 — Fix: top-bar drawer bug (superseded by 0.8.2)
 
 ### Fixed
 - The mobile hamburger drawer (`.topbar__drawer`) had `display: flex` set
@@ -25,16 +52,8 @@ _Nothing yet — this section fills up as we work toward the next release._
   open, making avatar clicks appear to do nothing (the menu *was* opening,
   but the drawer was on top of it at the same `z-index` and vertical
   position).
-- Fix: split the `.topbar__drawer` rule in two — base styling without
-  `display`, and a `.topbar__drawer:not([hidden]) { display: flex; ... }`
-  rule that only applies when the drawer is actually open. The HTML
-  `hidden` attribute now works as expected.
-
-### Lesson
-- For any element whose visibility is controlled via the `hidden` attribute,
-  never set an unconditional `display` value in CSS. Either omit `display`
-  (letting the default block/inline behavior pair with `[hidden]` naturally),
-  or scope `display:` to `:not([hidden])`.
+- Initial fix: scoped `display: flex` to `:not([hidden])` on just the
+  drawer. Superseded by 0.8.2's global solution.
 
 ---
 

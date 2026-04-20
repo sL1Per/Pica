@@ -45,6 +45,15 @@
 
 * { box-sizing: border-box; }
 
+/* Defensive: enforce [hidden] semantics even when later rules set `display`.
+ * The browser default `[hidden] { display: none }` has the same specificity
+ * as a single class selector, so any `display: flex/grid/block/...` declared
+ * after a class wins and accidentally reveals hidden elements. This
+ * `!important` rule prevents that footgun globally. If you need to animate
+ * visibility, use a different mechanism (opacity + transform, or removing
+ * the attribute explicitly). */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;

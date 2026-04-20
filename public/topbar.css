@@ -209,13 +209,9 @@
 .topbar__menu-item--danger { color: var(--danger); }
 .topbar__menu-item--danger:hover { background: var(--danger-soft); color: var(--danger); }
 
-/* Mobile hamburger drawer */
-
-/* IMPORTANT: never set `display` unconditionally here, because the element
- * is controlled via the HTML `hidden` attribute. An explicit `display` value
- * overrides the built-in `[hidden] { display: none }` rule and makes the
- * drawer permanently visible. Scope `display: flex` to :not([hidden]).
- */
+/* Mobile hamburger drawer. Visibility is controlled via the `hidden`
+ * attribute; app.css has a global `[hidden] { display: none !important }`
+ * rule that guarantees this wins over `display: flex` below. */
 .topbar__drawer {
   position: absolute;
   top: calc(100% + 4px);
@@ -227,8 +223,6 @@
   box-shadow: 0 8px 24px rgba(0,0,0,0.08);
   z-index: 101;
   padding: var(--gap-2);
-}
-.topbar__drawer:not([hidden]) {
   display: flex;
   flex-direction: column;
 }
