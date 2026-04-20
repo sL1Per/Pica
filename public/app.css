@@ -174,3 +174,46 @@ code {
 .spacer-sm { height: var(--gap-3); }
 .spacer    { height: var(--gap-5); }
 .center    { text-align: center; }
+
+/* ============================================================================
+   Dark mode tokens.
+   Two paths:
+   1. [data-theme="dark"] — explicit choice via Settings.
+   2. @media(prefers-color-scheme: dark) without an explicit data-theme —
+      the "system" default follows the OS.
+   [data-theme="light"] locks light mode even if the OS wants dark.
+   ============================================================================ */
+
+:root[data-theme="dark"] {
+  --accent:       #5a8fd6;
+  --accent-hover: #4a7ec5;
+  --accent-soft:  #1a2738;
+  --bg:           #14171c;
+  --surface:      #1d2027;
+  --border:       #2d3138;
+  --text:         #e5e7eb;
+  --text-muted:   #9ca3af;
+  --text-subtle:  #6b7280;
+  --danger:       #e06b6b;
+  --danger-soft:  #301717;
+  --success:      #5db562;
+  --success-soft: #122918;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --accent:       #5a8fd6;
+    --accent-hover: #4a7ec5;
+    --accent-soft:  #1a2738;
+    --bg:           #14171c;
+    --surface:      #1d2027;
+    --border:       #2d3138;
+    --text:         #e5e7eb;
+    --text-muted:   #9ca3af;
+    --text-subtle:  #6b7280;
+    --danger:       #e06b6b;
+    --danger-soft:  #301717;
+    --success:      #5db562;
+    --success-soft: #122918;
+  }
+}

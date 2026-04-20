@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Settings</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/settings.css">
+</head>
+<body>
+  <main class="container container--wide">
+    <header class="page-header">
+      <div>
+        <h1>Settings</h1>
+        <p class="muted"><a href="/">← Home</a></p>
+      </div>
+    </header>
+
+    <nav class="section-nav">
+      <a href="#account">Account</a>
+      <a href="#organization" id="nav-org" hidden>Organization</a>
+      <a href="#backups" id="nav-bak" hidden>Backups</a>
+    </nav>
+
+    <div id="message" class="message"></div>
+
+    <!-- Account section (everyone) -->
+    <section id="account" class="card">
+      <h2>Account</h2>
+      <p class="subtle">These settings apply just to you.</p>
+
+      <form id="account-form" autocomplete="off">
+        <label for="language">Language</label>
+        <select id="language" name="language">
+          <option value="en">English</option>
+          <option value="pt">Português (PT)</option>
+        </select>
+        <p class="subtle">Takes effect after Milestone 9 ships i18n.</p>
+
+        <label>Color mode</label>
+        <div class="radio-row">
+          <label class="radio"><input type="radio" name="colorMode" value="light"> Light</label>
+          <label class="radio"><input type="radio" name="colorMode" value="dark"> Dark</label>
+          <label class="radio"><input type="radio" name="colorMode" value="system" checked> Follow system</label>
+        </div>
+
+        <button type="submit" class="block">Save account settings</button>
+      </form>
+    </section>
+
+    <!-- Organization section (employer only) -->
+    <section id="organization" class="card" hidden>
+      <h2>Organization</h2>
+      <p class="subtle">Company-wide policy. Employer only.</p>
+
+      <form id="org-form" autocomplete="off">
+        <h3>Default leave allowances (days/year)</h3>
+        <p class="subtle">Applies to every employee unless overridden below.</p>
+        <div class="grid-2">
+          <div>
+            <label for="def-vacation">Vacation</label>
+            <input type="number" id="def-vacation" min="0" max="365" step="0.5">
+          </div>
+          <div>
+            <label for="def-sick">Sick</label>
+            <input type="number" id="def-sick" min="0" max="365" step="0.5">
+          </div>
+          <div>
+            <label for="def-appointment">Appointment</label>
+            <input type="number" id="def-appointment" min="0" max="365" step="0.5">
+          </div>
+          <div>
+            <label for="def-other">Other</label>
+            <input type="number" id="def-other" min="0" max="365" step="0.5">
+          </div>
+        </div>
+
+        <label class="checkbox">
+          <input type="checkbox" id="carry-forward">
+          Unused allowance carries over to next year
+        </label>
+
+        <h3>Per-employee overrides</h3>
+        <p class="subtle">Set custom caps for specific people. Blank means "use default".</p>
+        <div id="overrides-table-wrap" class="subtle">Loading employees…</div>
+
+        <h3>Leave policy</h3>
+        <label class="checkbox">
+          <input type="checkbox" id="concurrent-allowed">
+          Allow multiple employees on leave at the same time
+        </label>
+        <p class="subtle">Enforcement arrives in Milestone 8 (it's stored for now).</p>
+
+        <button type="submit" class="block">Save organization settings</button>
+      </form>
+    </section>
+
+    <!-- Backups section (employer only, scaffold) -->
+    <section id="backups" class="card" hidden>
+      <h2>Backups</h2>
+      <div class="notice">Scaffold only — buttons and schedule wire up in Milestone 10.</div>
+
+      <form id="backup-form" autocomplete="off">
+        <label class="checkbox">
+          <input type="checkbox" id="backup-enabled" disabled>
+          Enable automatic backups
+        </label>
+
+        <label for="backup-schedule">Schedule</label>
+        <select id="backup-schedule" disabled>
+          <option value="off">Off</option>
+          <option value="hourly">Hourly</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+        </select>
+
+        <label for="backup-retention">Retention (keep last N snapshots)</label>
+        <input type="number" id="backup-retention" min="1" max="365" step="1" disabled>
+
+        <div class="btn-row">
+          <button type="button" class="secondary" disabled>Run full backup now</button>
+          <button type="button" class="secondary" disabled>Run delta backup now</button>
+          <button type="button" class="secondary" disabled>Browse snapshots…</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="/settings.js"></script>
+</body>
+</html>

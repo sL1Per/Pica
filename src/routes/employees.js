@@ -121,7 +121,7 @@ export function registerEmployeeRoutes(router, {
   // DELETE /api/employees/:id — remove employee (employer only).
   //
   // Forbidden to delete self — avoids locking the employer out of their
-  // own app. TODO(M10): prevent deleting the last employer account.
+  // own app. TODO(M11): prevent deleting the last employer account.
   // --------------------------------------------------------------------------
   router.delete('/api/employees/:id', requireRole('employer')(async (req, res) => {
     if (req.params.id === req.user.id) {

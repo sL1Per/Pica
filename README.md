@@ -260,11 +260,13 @@ Split into small, shippable milestones. Each one leaves the app in a usable stat
 - ✅ CSV export (employer only for all; employees get their own data)
 - ✅ Printable view
 
-### Milestone 7 — Backups
-- [ ] Encrypted full backup of `/data`
-- [ ] Encrypted delta backup (files changed since last snapshot — manifest + mtime/hash)
-- [ ] Restore from encrypted archive, with pre-restore safety snapshot
-- [ ] Scheduler with cron-like intervals in `config.json`
+### Milestone 7 — Settings page ✅
+- ✅ Settings page (employee: account section only; employer: all sections)
+- ✅ Account settings (per user): language, color mode (light / dark / system)
+- ✅ Organization settings (per company): default leave allowances per type (vacation / sick / appointment / other), per-employee override, annual carry-forward of unused leave
+- ✅ Concurrent-leaves policy (yes / no) — stored; enforcement in M8
+- ✅ Backup settings UI (scheduler + on-demand buttons) — scaffold only; wired up in M10
+- ✅ Color mode applied immediately via `<html data-theme>` attribute
 
 ### Milestone 8 — UI polish (desktop, mobile, general look & feel)
 - [ ] Design-token pass: cohesive typography scale, spacing, color depth, dark mode
@@ -273,16 +275,24 @@ Split into small, shippable milestones. Each one leaves the app in a usable stat
 - [ ] Component refinement: buttons, forms, tables, empty states, loading states, toasts
 - [ ] Navigation: persistent top bar across pages, breadcrumbs where useful
 - [ ] Accessibility pass: ARIA labels, contrast ratios, keyboard navigation, reduced-motion support
+- [ ] Concurrent-leaves warning on approve (honors setting from M7)
 - [ ] Web App Manifest + home-screen icon (installable PWA)
 - [ ] Offline-friendly clock-in (queue locally, sync when online)
 
 ### Milestone 9 — i18n
 - [ ] Language files: `i18n/en.json`, `i18n/pt.json`
-- [ ] Language switcher in header
-- [ ] Per-user language preference
+- [ ] Language switcher (reads from M7's account settings)
+- [ ] Per-user language preference (already stored in M7)
 - [ ] Date / number formatting via the browser's `Intl` API
 
-### Milestone 10 — Hardening
+### Milestone 10 — Backups
+- [ ] Encrypted full backup of `/data`
+- [ ] Encrypted delta backup (files changed since last snapshot — manifest + mtime/hash)
+- [ ] Restore from encrypted archive, with pre-restore safety snapshot
+- [ ] Scheduler with cron-like intervals, honors M7 settings
+- [ ] Wire up M7's Backup section buttons (run full, run delta, browse snapshots, restore)
+
+### Milestone 11 — Hardening
 - [ ] Input validation on every route
 - [ ] CSRF protection on state-changing routes
 - [ ] Audit log for sensitive actions (user/leave edits, restores, backup runs)

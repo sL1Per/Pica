@@ -10,7 +10,89 @@ tagged as `0.N.0` where N matches the milestone number.
 
 ## [Unreleased]
 
-_Nothing yet — this section fills up as we work toward the next release._
+### Changed
+- **Roadmap swap**: M9 is now **i18n** and M10 is now **Backups**
+  (previously M9=Backups, M10=i18n). All forward-reference copy updated to
+  match — the language field hint on the settings page, the backup-section
+  notice, the code comments in user-prefs and org-settings storage modules,
+  and the M7 README entry. No code behavior changes.
+- Also corrected stale `TODO(M10)` comments in `employees.js` and the
+  password-change hint on `employee-new.html` — both now reference M11
+  (Hardening), which is where those items actually live after the M7
+  insertion earlier today.
+
+---
+
+## [0.7.0] — 2026-04-20 — Milestone 7: Settings page ✅
+
+### Added
+- New storage modules:
+  - `src/storage/user-prefs.js` — per-user language + color mode, plaintext
+    `data/user-prefs.json` keyed by user id. Atomic writes, mode 0600.
+  - `src/storage/org-settings.js` — company-wide policy: default leave
+    allowances per type (vacation / sick / appointment / other), per-employee
+    overrides, carry-forward flag, concurrent-leaves policy, backup
+    scheduler scaffold. Plaintext `data/org-settings.json`, mode 0600.
+- New routes in `src/routes/settings.js`:
+  - `GET /api/settings/me` — current user's prefs (authenticated)
+  - `PUT /api/settings/me` — update own prefs
+  - `GET /api/settings/org` — employer only
+  - `PUT /api/settings/org` — employer only
+- New page `/settings` with three sections:
+  - **Account** — language + color mode (light / dark / system). Visible
+    to all users.
+  - **Organization** — default leave allowances per type, per-employee
+    override table, carry-forward toggle, concurrent-leaves toggle.
+    Employer only.
+  - **Backups** — enabled flag, schedule (off/hourly/daily/weekly),
+    retention count, three action buttons (run full, run delta, browse).
+    Scaffold only — all controls disabled with a "coming in M9" notice.
+- Home nav card "Settings".
+- Color mode applied immediately on every page via a boot IIFE in
+  `public/app.js` that reads `/api/settings/me` and sets
+  `<html data-theme="light|dark">`. `system` removes the attribute and
+  defers to `@media (prefers-color-scheme: dark)`.
+- Dark-mode tokens added to `public/app.css` for both explicit
+  (`[data-theme="dark"]`) and system-follow (`@media ... :not([data-theme])`)
+  paths.
+- Test suites:
+  - `tests/test-user-prefs.mjs` — 17 tests covering defaults, validation,
+    persistence, removeUser, cache invalidation, corrupt-file recovery.
+  - `tests/test-org-settings.mjs` — 26 tests covering the leave allowance
+    partial-merge contract, per-employee override replacement, backup
+    validation, persistence, and the defaultAllowances per-type merge bug
+    found and fixed during testing.
+
+### Changed
+- Roadmap reshuffled: Settings is the new M7. UI polish shifts to M8,
+  Backups to M9, i18n to M10, Hardening to M11.
+
+### Fixed
+- `orgSettingsStore.update()` was replacing `defaultAllowances` wholesale
+  on partial patches — a patch setting `vacation: 25` would nuke `sick`,
+  `appointment`, and `other`. Caught by the unit tests, fixed with an
+  explicit per-type merge for `defaultAllowances` (while keeping the
+  "replace whole map" semantics for `perEmployeeOverrides`, which is what
+  the UI expects).
+
+### Known
+- Deleting a user leaves their entry in `user-prefs.json` orphaned. Harmless
+  (no sensitive data, ~100 bytes per user), fix deferred to a future pass
+  when the employees route is touched again.
+
+### Files touched
+- `src/storage/user-prefs.js` (new)
+- `src/storage/org-settings.js` (new)
+- `src/routes/settings.js` (new)
+- `src/routes/pages.js` (+`/settings`)
+- `server.js` (wire-up)
+- `public/settings.{html,css,js}` (new)
+- `public/app.js` (color-mode bootstrap)
+- `public/app.css` (dark-mode tokens)
+- `public/index.html` (Settings nav card)
+- `tests/test-user-prefs.mjs` (new)
+- `tests/test-org-settings.mjs` (new)
+- `README.md` (roadmap renumber + M7 ticked)
 
 ---
 

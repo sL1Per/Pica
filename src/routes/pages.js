@@ -114,6 +114,14 @@ export function registerPageRoutes(router, { publicDir, usersStore, authenticate
     await sendHtml(res, 'reports.html');
   });
 
+  // -- Settings -----------------------------------------------------------
+
+  router.get('/settings', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'settings.html');
+  });
+
   // Matches /employees/:id where :id is not "new" (caught by the route above).
   router.get('/employees/:id', async (req, res) => {
     const a = authed(req);
