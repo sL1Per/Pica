@@ -87,12 +87,19 @@ export function registerEmployeeRoutes(router, {
     const user = usersStore.findById(req.params.id);
     if (!user) return res.notFound('Employee not found');
     const profile = employeesStore.readProfile(user.id);
+    const hasPicture = employeesStore.hasPicture(user.id);
+    // Surface hasPicture as part of the profile so the UI can render the
+    // avatar without a second request. Null profile still reports picture
+    // state — an uploaded picture lives on disk even without a profile file.
+    const profileWithPic = profile
+      ? { ...profile, hasPicture }
+      : (hasPicture ? { hasPicture } : null);
     res.json({
       id: user.id,
       username: user.username,
       role: user.role,
       createdAt: user.createdAt,
-      profile: profile ?? null,
+      profile: profileWithPic,
     });
   }));
 

@@ -36,8 +36,10 @@ export function mimeFor(filePath) {
  *
  * Directory requests map to index.html when present.
  * Path traversal (../) is blocked by comparing the resolved path to rootDir.
+ *
+ * `req` is optional — when provided, we honor If-None-Match for 304 revalidation.
  */
-export async function serveStatic(urlPath, res, rootDir) {
+export async function serveStatic(urlPath, res, rootDir, req = null) {
   // Strip query string, decode percent-encoding.
   let decoded;
   try {
@@ -71,10 +73,24 @@ export async function serveStatic(urlPath, res, rootDir) {
   }
   if (!stat.isFile()) return false;
 
+  // Weak ETag from mtime + size — cheap and stable.
+  const etag = `W/"${stat.size}-${stat.mtimeMs.toFixed(0)}"`;
+
+  // Honor conditional requests so repeat fetches don't pay for a full response.
+  if (req && req.headers['if-none-match'] === etag) {
+    res.writeHead(304, { ETag: etag });
+    res.end();
+    return true;
+  }
+
   res.writeHead(200, {
     'Content-Type': mimeFor(filePath),
     'Content-Length': stat.size,
-    'Cache-Control': 'no-cache',
+    // Force revalidation on every request. For a small self-hosted tool,
+    // correctness beats the savings from long-lived caches — otherwise a
+    // stale JS file will outlive the fix that was supposed to replace it.
+    'Cache-Control': 'no-store, must-revalidate',
+    ETag: etag,
   });
 
   // Stream the file to avoid loading large assets into memory.

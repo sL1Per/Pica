@@ -30,6 +30,7 @@ import { registerPageRoutes } from './src/routes/pages.js';
 import { registerEmployeeRoutes } from './src/routes/employees.js';
 import { registerPunchRoutes } from './src/routes/punches.js';
 import { registerLeaveRoutes } from './src/routes/leaves.js';
+import { registerReportRoutes } from './src/routes/reports.js';
 import { createEmployeesStore } from './src/storage/employees.js';
 import { createPunchesStore } from './src/storage/punches.js';
 import { createLeavesStore } from './src/storage/leaves.js';
@@ -112,6 +113,14 @@ registerLeaveRoutes(router, {
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
 });
+registerReportRoutes(router, {
+  punchesStore,
+  leavesStore,
+  usersStore,
+  requireAuth: rbac.requireAuth,
+  requireRole: rbac.requireRole,
+  requireOwnerOrEmployer: rbac.requireOwnerOrEmployer,
+});
 registerPageRoutes(router, { publicDir, usersStore, authenticate: rbac.authenticate });
 
 // ----------------------------------------------------------------------------
@@ -152,7 +161,7 @@ async function handle(nodeReq, nodeRes) {
 
     // Fall back to static files on GET only.
     if (nodeReq.method === 'GET') {
-      const served = await serveStatic(nodeReq.path, nodeRes, publicDir);
+      const served = await serveStatic(nodeReq.path, nodeRes, publicDir, nodeReq);
       if (served) return;
     }
 

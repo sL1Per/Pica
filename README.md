@@ -4,6 +4,9 @@ A minimalistic, file-based web application for tracking and managing
 employee working times. Runs on **Node.js alone** — zero npm dependencies,
 zero build steps, zero external databases.
 
+📜 **[See RELEASES.md](./RELEASES.md)** for the full version history and what's
+changed in each iteration.
+
 ---
 
 ## Goal
@@ -251,11 +254,11 @@ Split into small, shippable milestones. Each one leaves the app in a usable stat
 - ✅ Employee requests → employer approves / rejects
 - ✅ Calendar-style monthly view
 
-### Milestone 6 — Reports
-- [ ] Worked hours per day / week / month (uses plaintext timestamps, no decryption needed)
-- [ ] Monthly leaves summary
-- [ ] CSV export (employer only for all; employees get their own data)
-- [ ] Printable view
+### Milestone 6 — Reports ✅
+- ✅ Worked hours per day / week / month (uses plaintext timestamps, no decryption needed)
+- ✅ Monthly leaves summary
+- ✅ CSV export (employer only for all; employees get their own data)
+- ✅ Printable view
 
 ### Milestone 7 — Backups
 - [ ] Encrypted full backup of `/data`

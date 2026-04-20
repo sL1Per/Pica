@@ -220,11 +220,6 @@ deleteBtn.addEventListener('click', async () => {
 
   populateForm(target);
   renderAvatar(target, target.profile?.hasPicture ?? false);
-  // hasPicture isn't in the profile payload; re-derive via a HEAD? Simpler:
-  // try loading the image — if 404, fall back to initials.
-  // For now we rely on list data; for direct navigation we probe with fetch:
-  const pic = await fetch(`/api/employees/${employeeId}/picture`, { method: 'HEAD', credentials: 'same-origin' });
-  renderAvatar(target, pic.ok);
 
   applyPermissions(isEmployer, isSelf);
 })();

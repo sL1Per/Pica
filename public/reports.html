@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pica — Reports</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/reports.css">
+</head>
+<body>
+  <main class="container container--wide">
+    <header class="page-header no-print">
+      <div>
+        <h1>Reports</h1>
+        <p class="muted"><a href="/">← Home</a></p>
+      </div>
+    </header>
+
+    <div class="printable-title" aria-hidden="true">
+      <h1 id="print-title">Pica — Report</h1>
+      <p id="print-subtitle"></p>
+    </div>
+
+    <div id="message" class="message no-print"></div>
+
+    <section class="card no-print">
+      <div class="controls-grid">
+        <div id="employee-picker-wrap" hidden>
+          <label for="employee-picker">Employee</label>
+          <select id="employee-picker"></select>
+        </div>
+
+        <div>
+          <label for="from-date">Hours from</label>
+          <input type="date" id="from-date">
+        </div>
+        <div>
+          <label for="to-date">to</label>
+          <input type="date" id="to-date">
+        </div>
+
+        <div class="groupby-row">
+          <label>Group hours by</label>
+          <div class="chips">
+            <button type="button" class="chip active" data-groupby="day">Day</button>
+            <button type="button" class="chip" data-groupby="week">Week</button>
+            <button type="button" class="chip" data-groupby="month">Month</button>
+          </div>
+        </div>
+
+        <div>
+          <label for="leave-year">Leaves year</label>
+          <input type="number" id="leave-year" min="2000" max="2100">
+        </div>
+        <div>
+          <label for="leave-month">Leaves month</label>
+          <select id="leave-month">
+            <option value="1">January</option><option value="2">February</option>
+            <option value="3">March</option><option value="4">April</option>
+            <option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option>
+            <option value="9">September</option><option value="10">October</option>
+            <option value="11">November</option><option value="12">December</option>
+          </select>
+        </div>
+
+        <div class="controls-actions">
+          <button id="refresh-btn" type="button">Refresh</button>
+          <button id="print-btn" type="button" class="secondary">Print</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hours -->
+    <section class="card report-section" id="hours-section">
+      <div class="report-section__header">
+        <h2>Worked hours</h2>
+        <div class="report-section__meta">
+          <span id="hours-range" class="subtle"></span>
+          <a id="hours-csv-link" class="btn-link btn-link--secondary no-print" href="#" download>Download CSV</a>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="report-table" id="hours-table">
+          <thead><tr><th id="hours-key-col">Day</th><th class="right">Hours</th></tr></thead>
+          <tbody></tbody>
+          <tfoot><tr><th>Total</th><th class="right" id="hours-total">0</th></tr></tfoot>
+        </table>
+      </div>
+      <p id="hours-empty" class="subtle center" hidden>No hours logged in this range.</p>
+    </section>
+
+    <!-- Leaves -->
+    <section class="card report-section" id="leaves-section">
+      <div class="report-section__header">
+        <h2>Leaves — monthly summary</h2>
+        <div class="report-section__meta">
+          <span id="leaves-range" class="subtle"></span>
+          <a id="leaves-csv-link" class="btn-link btn-link--secondary no-print" href="#" download>Download CSV</a>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="stat__num" id="stat-approved">0</div><div class="stat__lbl">Approved</div></div>
+        <div class="stat"><div class="stat__num" id="stat-pending">0</div><div class="stat__lbl">Pending</div></div>
+        <div class="stat"><div class="stat__num" id="stat-rejected">0</div><div class="stat__lbl">Rejected</div></div>
+        <div class="stat"><div class="stat__num" id="stat-cancelled">0</div><div class="stat__lbl">Cancelled</div></div>
+        <div class="stat"><div class="stat__num" id="stat-days">0</div><div class="stat__lbl">Approved days off</div></div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="report-table" id="leaves-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>When</th>
+              <th class="right">Duration</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p id="leaves-empty" class="subtle center" hidden>No leaves this month.</p>
+    </section>
+  </main>
+
+  <script type="module" src="/reports.js"></script>
+</body>
+</html>
