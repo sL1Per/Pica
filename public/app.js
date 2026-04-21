@@ -61,3 +61,89 @@ export function setBusy(button, busy, busyLabel = 'Working…') {
     }
   }
 }
+
+/**
+ * Alternative to setBusy — keeps the original label visible but overlays
+ * a CSS spinner. Better for short async actions where the text stays
+ * stable. The button gets `data-loading="true"` which triggers the
+ * spinner ::after in app.css.
+ */
+export function setLoading(button, loading) {
+  if (!button) return;
+  if (loading) {
+    button.dataset.loading = 'true';
+    button.disabled = true;
+  } else {
+    delete button.dataset.loading;
+    button.disabled = false;
+  }
+}
+
+// -- Toasts -----------------------------------------------------------------
+
+/**
+ * Show a toast notification in the top-right.
+ *
+ *   toast('Saved successfully', 'success');
+ *   toast('Network error', 'error');
+ *   toast('Heads up', 'warning', { duration: 8000 });
+ *
+ * Kinds: 'success' (default), 'error', 'warning', 'info'.
+ * Options:
+ *   duration — ms before auto-dismiss. 0 = manual dismiss only. Default 3500.
+ *   dismissible — render a close button. Default true.
+ */
+export function toast(message, kind = 'success', options = {}) {
+  const duration = options.duration ?? 3500;
+  const dismissible = options.dismissible ?? true;
+
+  const root = ensureToastRoot();
+  const el = document.createElement('div');
+  el.className = `toast toast--${kind}`;
+  el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+  el.setAttribute('aria-live', kind === 'error' ? 'assertive' : 'polite');
+
+  const text = document.createElement('span');
+  text.textContent = message;
+  el.appendChild(text);
+
+  if (dismissible) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-ghost btn-sm toast__close';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Dismiss');
+    btn.style.margin = '0 0 0 auto';
+    btn.style.minHeight = '0';
+    btn.style.padding = '0 6px';
+    btn.textContent = '×';
+    btn.addEventListener('click', () => dismiss(el));
+    // Layout inside the toast: text on the left, close on the right.
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.gap = 'var(--gap-3)';
+    el.appendChild(btn);
+  }
+
+  root.appendChild(el);
+
+  if (duration > 0) {
+    setTimeout(() => dismiss(el), duration);
+  }
+  return el;
+}
+
+function dismiss(el) {
+  if (!el || !el.isConnected) return;
+  el.dataset.dismissing = 'true';
+  setTimeout(() => el.remove(), 200);
+}
+
+function ensureToastRoot() {
+  let root = document.getElementById('toast-root');
+  if (!root) {
+    root = document.createElement('div');
+    root.id = 'toast-root';
+    document.body.appendChild(root);
+  }
+  return root;
+}

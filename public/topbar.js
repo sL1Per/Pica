@@ -9,6 +9,8 @@ const NAV_EMPLOYEE = [
   { href: '/punch',            label: 'Punches' },
   { href: '/leaves/calendar',  label: 'Calendar' },
   { href: '/leaves',           label: 'Leaves' },
+  { href: '/reports',          label: 'Reports' },
+  { href: '/settings',         label: 'Settings' },
 ];
 
 const NAV_EMPLOYER = [

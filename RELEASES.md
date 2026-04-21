@@ -14,6 +14,121 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.9.1] — 2026-04-21 — Nav + link tweaks
+
+### Changed
+- Employees now see **Settings** and **Reports** in the top nav. Backend
+  scoping already existed — Settings page gates Organization/Backups/Company
+  sections to employer only, and `/api/reports/*` uses `requireOwnerOrEmployer`
+  so employees can only pull their own data. The nav bar was the only
+  missing piece.
+- Links no longer underline on hover (default `text-decoration: none` on
+  both states; hover shifts to `--accent-hover` for affordance instead).
+
+---
+
+## [0.9.0] — 2026-04-21 — Milestone 8b.0: UI polish foundations
+
+### Added
+- New design tokens layered on the existing palette/spacing scale:
+  - `--accent-soft` for tinted hover/active backgrounds
+  - `--accent-ring` for focus-ring color (3px, branded)
+  - `--surface-2`, `--border-strong` for elevation/depth nuance
+  - Semantic colors: `--warning`, `--info` (each with `-soft` variant)
+  - Modular type scale: `--text-xs..--text-3xl` at 1.2 ratio
+  - `--leading-tight`, `--leading-normal` for line-height vocabulary
+  - `--shadow-sm/--shadow/--shadow-lg` for three elevation levels
+  - `--t-fast/--t-base` motion timing functions
+  - `--radius-sm/--radius/--radius-lg/--radius-xl` for radii consistency
+- New shared component classes (in `app.css`):
+  - **Buttons:** `.btn-primary`, `.btn-secondary`, `.btn-danger`,
+    `.btn-ghost`, `.btn-sm`, `.btn-row`. Loading state via
+    `data-loading="true"` attribute (CSS spinner overlay preserves the
+    label). 40px min-height on desktop, 44px on mobile (touch target).
+  - **Forms:** unified `.form-control` shape — inputs, selects, and
+    textareas share styles. Custom select chevron via inline data-URI SVG.
+    Custom checkbox/radio with branded focus ring. `aria-invalid="true"`
+    triggers a red border.
+  - **Tables:** `.data-table` with sticky thead, hover row, tabular-nums.
+  - **Badges:** `.badge--neutral/success/warning/danger/info/accent`.
+  - **Alerts:** `.alert--error/success/warning/info` with semantic
+    coloring. Existing `.message.error/success` kept for back-compat.
+  - **Empty states:** `.empty-state` with `__title` and `__action` slots.
+  - **Skeletons:** `.skeleton` with pulse animation; `.spinner` for
+    inline use.
+  - **Toasts:** `#toast-root` container plus `.toast` + `.toast--*`
+    variants. Slide-in/slide-out animations.
+  - **Utilities:** `.sr-only` for screen-reader-only text.
+- New `app.js` helpers:
+  - `setLoading(button, loading)` — alternative to `setBusy()` that uses
+    the CSS spinner overlay and preserves the original label.
+  - `toast(message, kind, options)` — programmatic toasts with
+    `success/error/warning/info` kinds, configurable duration, optional
+    dismiss button, ARIA `role=alert/status` based on kind.
+
+### Changed
+- **Palette refined:** navy accent moved from `#2b4a6f` to `#284a72` for
+  better contrast at small sizes. Neutrals warmer on light, cooler on
+  dark. Borders gain a `--border-strong` companion for hover affordance.
+- **Typography tightened** to a 1.2 modular scale; h1 is now `--text-3xl`
+  (32px), h2 `--text-2xl` (26px), h3 `--text-lg` (18px). Letter-spacing
+  set to `-0.02em` on h1 for a more deliberate look.
+- **Form controls** unified across all input types — same height,
+  padding, border treatment, focus ring. Selects get a custom chevron.
+  Checkboxes and radios fully custom-styled (no more native browser UI).
+  3px branded focus ring (`--accent-ring`) replaces the old 2px outline.
+- **Buttons** now use `inline-flex` so icon+label combinations align
+  cleanly. Default min-height 40px (44px on mobile) for accessibility.
+  Press feedback via subtle `translateY(1px)`. Loading spinner overlay
+  via `data-loading` attribute.
+- **Cards** gain `--shadow-sm` for subtle depth.
+- **Smooth color-mode transitions:** explicit `transition` on root layout
+  elements so theme flips don't snap. Disabled by `prefers-reduced-motion`.
+- **Focus visibility:** `:focus-visible` ring is now consistent across all
+  interactive controls (2px solid + 2px offset) — keyboard users get a
+  visible indicator without flashing it on every mouse click.
+- **Dark mode tuned:** richer surface tokens, stronger shadow tokens,
+  semantic colors with appropriate `-soft` variants for both light and
+  dark contexts.
+
+### Accessibility
+- Global `prefers-reduced-motion` media query disables transitions and
+  animations app-wide.
+- `:focus-visible` rather than `:focus` so the ring appears only for
+  keyboard navigation, not mouse clicks.
+- Toasts respect ARIA: `role="alert"` + `aria-live="assertive"` for
+  errors, `role="status"` + `aria-live="polite"` for everything else.
+- `.sr-only` utility class for screen-reader-only labels on icon-only
+  buttons (will be applied per-page in M8b.1+).
+
+### Strategy
+- Foundations only. **No per-page HTML/JS touched** — every page inherits
+  the new tokens via existing CSS variables. This means `app.css` got a
+  full rewrite while every per-page CSS file (`employee.css`, `punch.css`,
+  etc.) continues to work unchanged.
+- Token names from the previous palette were preserved (`--accent`,
+  `--gap-4`, `--text-sm`, etc.) so existing references resolve correctly.
+- Bare element selectors (`input`, `button`, `h1`) still work — page CSS
+  using these without explicit classes inherits the new look.
+- Per-page polish starts in M8b.1 with the **Settings page** (most
+  form-dense, stress-tests new input/select/checkbox styles).
+
+### Files touched
+- `public/app.css` — full rewrite, 13 sections, ~700 lines
+- `public/app.js` — added `setLoading()` and `toast()`. Original
+  `postJson`, `showMessage`, `setBusy`, color-mode IIFE preserved unchanged.
+
+### Known
+- Per-page CSS files have not been audited against the new tokens. They
+  resolve at runtime since token names are preserved, but visual fit will
+  be addressed in M8b.1+.
+- The dark-mode token block is duplicated between `[data-theme="dark"]`
+  and `@media (prefers-color-scheme: dark)`. Could be DRYed via a CSS
+  custom-property indirection but the duplication is contained and
+  obvious; left as-is for clarity.
+
+---
+
 ## [0.8.2] — 2026-04-20 — Fix: make [hidden] bulletproof app-wide
 
 ### Fixed
