@@ -142,14 +142,14 @@ function renderBar(leave) {
 
   const name = document.createElement('span');
   name.className = 'cal-bar__name';
-  name.textContent = leave.username || 'someone';
+  name.textContent = leave.fullName || leave.username || 'someone';
   a.appendChild(name);
 
   // Title tooltip includes the full span for hover.
   const range = leave.unit === 'days'
     ? (leave.start === leave.end ? leave.start : `${leave.start} → ${leave.end}`)
     : `${leave.start.slice(0,10)}`;
-  a.title = `${leave.username || 'someone'} · ${leave.type} · ${range}`;
+  a.title = `${leave.fullName || leave.username || 'someone'} · ${leave.type} · ${range}`;
   return a;
 }
 

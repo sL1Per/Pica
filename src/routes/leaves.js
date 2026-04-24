@@ -14,14 +14,33 @@ import { LEAVE_TYPES_LIST, LEAVE_UNITS_LIST } from '../storage/leaves.js';
 export function registerLeaveRoutes(router, {
   leavesStore,
   usersStore,
+  employeesStore,
+  orgSettingsStore,
+  leaveTypes,
+  daysOf,
   requireAuth,
   requireRole,
 }) {
 
-  function enrich(leave, usersById) {
+  /** Return a Map(userId → fullName|null) by scanning employee profiles. */
+  function fullNameMap() {
+    if (!employeesStore) return new Map();
+    try {
+      return new Map(employeesStore.list().map((e) => [e.id, e.fullName ?? null]));
+    } catch {
+      return new Map();
+    }
+  }
+
+  function enrich(leave, usersById, namesById) {
     if (!leave) return leave;
     const u = usersById.get(leave.employeeId);
-    return { ...leave, username: u?.username ?? null, _partition: undefined };
+    return {
+      ...leave,
+      username: u?.username ?? null,
+      fullName: namesById.get(leave.employeeId) ?? null,
+      _partition: undefined,
+    };
   }
 
   function usersByIdMap() {
@@ -38,10 +57,11 @@ export function registerLeaveRoutes(router, {
   // --------------------------------------------------------------------------
   router.get('/api/leaves/approved', requireAuth((req, res) => {
     const users = usersByIdMap();
+    const names = fullNameMap();
     const leaves = leavesStore.list()
       .filter((l) => l.status === 'approved')
       .map((l) => {
-        const redacted = enrich(l, users);
+        const redacted = enrich(l, users, names);
         redacted.reason = null;
         redacted.notes = null;
         return redacted;
@@ -50,10 +70,50 @@ export function registerLeaveRoutes(router, {
   }));
 
   // --------------------------------------------------------------------------
+  // GET /api/leaves/balances?year=YYYY — employer only, matrix across all
+  // employees. Returns { year, rows: [{userId, username, fullName,
+  // balances:[{type,allowance,pending,booked,remaining}]}, ...] }.
+  // --------------------------------------------------------------------------
+  router.get('/api/leaves/balances', requireRole('employer')((req, res) => {
+    const year = Number(req.query.year) || new Date().getUTCFullYear();
+    const settings = orgSettingsStore.get();
+    const users = usersStore.list();
+    const names = fullNameMap();
+    const rows = users.map((u) => ({
+      userId: u.id,
+      username: u.username,
+      fullName: names.get(u.id) ?? null,
+      role: u.role,
+      balances: leavesStore.computeBalances({
+        userId: u.id, year, orgSettings: settings, leaveTypes, daysOf,
+      }),
+    }));
+    res.json({ year, rows });
+  }));
+
+  // --------------------------------------------------------------------------
+  // GET /api/leaves/balances/:userId?year=YYYY — employees can hit their own;
+  // employers can hit anyone's. Returns { year, userId, balances: [...] }.
+  // --------------------------------------------------------------------------
+  router.get('/api/leaves/balances/:userId', requireAuth((req, res) => {
+    const { userId } = req.params;
+    if (req.user.role !== 'employer' && req.user.id !== userId) {
+      return res.forbidden('Not your balance');
+    }
+    const year = Number(req.query.year) || new Date().getUTCFullYear();
+    const settings = orgSettingsStore.get();
+    const balances = leavesStore.computeBalances({
+      userId, year, orgSettings: settings, leaveTypes, daysOf,
+    });
+    res.json({ year, userId, balances });
+  }));
+
+  // --------------------------------------------------------------------------
   router.get('/api/leaves', requireAuth((req, res) => {
     const users = usersByIdMap();
+    const names = fullNameMap();
     const filter = req.user.role === 'employer' ? {} : { employeeId: req.user.id };
-    const leaves = leavesStore.list(filter).map((l) => enrich(l, users));
+    const leaves = leavesStore.list(filter).map((l) => enrich(l, users, names));
     res.json({ leaves });
   }));
 
@@ -64,7 +124,7 @@ export function registerLeaveRoutes(router, {
     if (req.user.role !== 'employer' && leave.employeeId !== req.user.id) {
       return res.forbidden('Not your leave');
     }
-    res.json({ leave: enrich(leave, usersByIdMap()) });
+    res.json({ leave: enrich(leave, usersByIdMap(), fullNameMap()) });
   }));
 
   // --------------------------------------------------------------------------
@@ -83,7 +143,7 @@ export function registerLeaveRoutes(router, {
         employeeId: req.user.id,
         type, unit, start, end, hours, reason,
       });
-      res.json({ ok: true, leave: enrich(leave, usersByIdMap()) });
+      res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
       return res.badRequest(err.message);
     }
@@ -95,7 +155,7 @@ export function registerLeaveRoutes(router, {
     if (!existing) return res.notFound('Leave not found');
     try {
       const leave = leavesStore.approve(req.params.id, req.user.id);
-      res.json({ ok: true, leave: enrich(leave, usersByIdMap()) });
+      res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
       return res.badRequest(err.message);
     }
@@ -108,7 +168,7 @@ export function registerLeaveRoutes(router, {
     const notes = req.body?.notes;
     try {
       const leave = leavesStore.reject(req.params.id, req.user.id, notes);
-      res.json({ ok: true, leave: enrich(leave, usersByIdMap()) });
+      res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
       return res.badRequest(err.message);
     }
@@ -130,7 +190,7 @@ export function registerLeaveRoutes(router, {
 
     try {
       const leave = leavesStore.cancel(req.params.id, req.user.id);
-      res.json({ ok: true, leave: enrich(leave, usersByIdMap()) });
+      res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
       return res.badRequest(err.message);
     }

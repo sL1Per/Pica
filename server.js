@@ -31,10 +31,11 @@ import { registerEmployeeRoutes } from './src/routes/employees.js';
 import { registerPunchRoutes } from './src/routes/punches.js';
 import { registerLeaveRoutes } from './src/routes/leaves.js';
 import { registerReportRoutes } from './src/routes/reports.js';
+import { approxDaysOff } from './src/storage/reports.js';
 import { registerSettingsRoutes } from './src/routes/settings.js';
 import { createEmployeesStore } from './src/storage/employees.js';
 import { createPunchesStore } from './src/storage/punches.js';
-import { createLeavesStore } from './src/storage/leaves.js';
+import { createLeavesStore, LEAVE_TYPES_LIST } from './src/storage/leaves.js';
 import { createUserPrefsStore } from './src/storage/user-prefs.js';
 import { createOrgSettingsStore } from './src/storage/org-settings.js';
 import { createCompanyLogoStore } from './src/storage/company-logo.js';
@@ -96,6 +97,7 @@ router.get('/api/health', (req, res) => {
 registerSetupRoutes(router, { usersStore, sessionKey, isProduction });
 registerAuthRoutes(router, {
   usersStore,
+  employeesStore,
   sessionKey,
   loginLimiter,
   requireAuth: rbac.requireAuth,
@@ -117,6 +119,10 @@ registerPunchRoutes(router, {
 registerLeaveRoutes(router, {
   leavesStore,
   usersStore,
+  employeesStore,
+  orgSettingsStore,
+  leaveTypes: LEAVE_TYPES_LIST,
+  daysOf: approxDaysOff,
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
 });

@@ -277,6 +277,65 @@ export function createLeavesStore(dataDir, masterKey) {
   }
 
   /**
+   * Compute per-type balances for one employee, one year.
+   *
+   *   allowance  — configured days from org settings
+   *                (perEmployeeOverrides beats defaultAllowances)
+   *   pending    — sum of `approxDaysOff` over leaves with status='pending'
+   *   booked     — sum of `approxDaysOff` over leaves with status='approved'
+   *   remaining  — allowance - pending - booked (can be negative)
+   *
+   * `year` filters leaves by the year of their `start` field.
+   * Rejected and cancelled leaves are excluded.
+   *
+   * Carry-forward is deferred — the `allowance` returned is the raw
+   * configured value, no previous-year adjustment applied.
+   */
+  function computeBalances({ userId, year, orgSettings, leaveTypes, daysOf }) {
+    if (!userId) throw new Error('userId is required');
+    if (!Number.isInteger(year)) throw new Error('year must be an integer');
+    if (typeof daysOf !== 'function') throw new Error('daysOf helper is required');
+    const types = leaveTypes ?? LEAVE_TYPES;
+
+    // 1. Resolve allowance per type.
+    const defaults = orgSettings?.leaves?.defaultAllowances ?? {};
+    const override = orgSettings?.leaves?.perEmployeeOverrides?.[userId] ?? {};
+    const allowanceFor = (t) =>
+      (t in override ? Number(override[t]) : Number(defaults[t])) || 0;
+
+    // 2. Walk this employee's leaves within the given year.
+    const byType = {};
+    for (const t of types) byType[t] = { pending: 0, booked: 0 };
+
+    for (const leave of list({ employeeId: userId })) {
+      if (leave.status !== 'pending' && leave.status !== 'approved') continue;
+      if (!byType[leave.type]) continue;
+      const leaveYear = Number(leave.start.slice(0, 4));
+      if (leaveYear !== year) continue;
+
+      const days = daysOf(leave);
+      if (leave.status === 'pending')  byType[leave.type].pending += days;
+      if (leave.status === 'approved') byType[leave.type].booked  += days;
+    }
+
+    // 3. Shape output.
+    return types.map((t) => {
+      const allowance = allowanceFor(t);
+      const { pending, booked } = byType[t];
+      // Round to 0.5 to keep half-day math clean — accumulator can drift
+      // slightly with lots of 8-hour-window conversions.
+      const round = (n) => Math.round(n * 2) / 2;
+      return {
+        type: t,
+        allowance: round(allowance),
+        pending:   round(pending),
+        booked:    round(booked),
+        remaining: round(allowance - pending - booked),
+      };
+    });
+  }
+
+  /**
    * Apply a transition event to an existing leave, enforcing the workflow.
    */
   function transition(id, actorId, event, extra = {}) {
@@ -317,6 +376,7 @@ export function createLeavesStore(dataDir, masterKey) {
     create,
     findById,
     list,
+    computeBalances,
     approve,
     reject,
     cancel,

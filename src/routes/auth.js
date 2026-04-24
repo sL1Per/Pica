@@ -10,7 +10,7 @@ import { serializeCookie } from '../http/cookies.js';
  * client IP from the socket; if you front the server with a reverse proxy
  * you'll want to revisit this (X-Forwarded-For) in a future milestone.
  */
-export function registerAuthRoutes(router, { usersStore, sessionKey, loginLimiter, requireAuth, cookieName = 'pica_session', isProduction = false }) {
+export function registerAuthRoutes(router, { usersStore, employeesStore, sessionKey, loginLimiter, requireAuth, cookieName = 'pica_session', isProduction = false }) {
 
   function clientIp(req) {
     return req.socket?.remoteAddress ?? 'unknown';
@@ -82,10 +82,21 @@ export function registerAuthRoutes(router, { usersStore, sessionKey, loginLimite
 
   // --------------------------------------------------------------------------
   router.get('/api/me', requireAuth((req, res) => {
+    // fullName lives in the encrypted employee profile, not the users store.
+    // Look it up; null when the profile doesn't exist (e.g. employer with no
+    // profile row yet, or when the employee profile was deleted).
+    let fullName = null;
+    if (employeesStore) {
+      try {
+        const profile = employeesStore.readProfile(req.user.id);
+        fullName = profile?.fullName ?? null;
+      } catch { /* fall through with null */ }
+    }
     res.json({
       id: req.user.id,
       username: req.user.username,
       role: req.user.role,
+      fullName,
     });
   }));
 }

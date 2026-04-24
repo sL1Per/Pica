@@ -14,6 +14,111 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.9.4] — 2026-04-25 — Display fullName everywhere a user appears
+
+### Added
+- `/api/me` now returns `fullName` alongside `id`, `username`, and `role`.
+  Looked up via `employeesStore.readProfile(req.user.id)`. Returns `null`
+  when no profile exists (e.g. an employer who hasn't created a profile
+  for themselves).
+- `enrich()` in leaves routes now adds `fullName` to every leave payload.
+  All seven endpoints that return leaves (list, single, approved, create,
+  approve, reject, cancel) now include it.
+
+### Changed
+- Frontend now prefers `fullName` (with `username` as fallback) in seven
+  user-facing places:
+  - **Top bar avatar dropdown** — name shown in the menu header.
+  - **Top bar avatar initials** — derived from fullName when available.
+  - **Dashboard welcome line** — "Welcome to Pica, signed in as Alice Lopes".
+  - **Leaves list (employer view)** — row label uses fullName.
+  - **Leave detail page** — "Employee" field.
+  - **Calendar bubbles** — visible label and tooltip.
+- Spots that already preferred fullName remain unchanged: employees list
+  + detail, settings overrides table, reports picker, today's punches
+  groupings.
+
+### Fixed
+- The leaves matrix endpoint (`GET /api/leaves/balances`) was reading
+  `u.fullName` from `usersStore.list()`, which never has a `fullName`
+  field — that data lives in the encrypted employee profile. The matrix
+  was silently returning `null` for every row's fullName, with the UI
+  falling back to username every time. Now uses a `Map(userId →
+  fullName)` built from `employeesStore.list()`. Confirmed in the smoke:
+  alice now shows as `fullName: 'Alice Lopes'` in the matrix; admin shows
+  `null` (no profile, correct fallback).
+
+### Files touched
+- `src/routes/auth.js` — accepts `employeesStore`; `/api/me` reads profile.
+- `src/routes/leaves.js` — accepts `employeesStore`; new `fullNameMap()`
+  helper; `enrich()` adds `fullName`; matrix endpoint uses the map.
+- `server.js` — passes `employeesStore` to auth and leaves route registration.
+- `public/topbar.js` — initials and dropdown name use fullName.
+- `public/index.js` — welcome line uses fullName.
+- `public/leaves.js` — employer list row uses fullName.
+- `public/leaves-calendar.js` — bubble label and tooltip use fullName.
+- `public/leave.js` — detail page Employee field uses fullName.
+
+---
+
+## [0.9.3] — 2026-04-24 — Fix: leaves balance table column alignment
+
+### Fixed
+- Balance table header cells and body cells were computing different
+  column widths (the header got the natural-width of its labels,
+  ALLOWANCE / PENDING / BOOKED / REMAINING, which are all different
+  lengths; the body got whatever space was left after the type tag).
+  This made the table look like the numbers were in the wrong columns,
+  even though the math was correct.
+- Fix: `table-layout: fixed` + explicit per-column widths (28% for Type,
+  18% each for the four numeric columns). Header and body now share
+  the same grid.
+
+### Changed
+- Balance panel widened from `minmax(360px, 42%)` to `minmax(420px, 55%)`,
+  giving the table more breathing room and shrinking the list column.
+
+---
+
+## [0.9.2] — 2026-04-24 — Leaves: balance system
+
+### Added
+- `leavesStore.computeBalances({userId, year, orgSettings, leaveTypes, daysOf})`
+  returns `[{type, allowance, pending, booked, remaining}]`. Approved →
+  booked, pending → pending, rejected and cancelled excluded. Uses
+  per-employee override from org settings when present, else default
+  allowance. Half-day precision via round-to-0.5.
+- `GET /api/leaves/balances?year=YYYY` — employer only, matrix across all
+  users. Returns `{year, rows: [{userId, username, fullName, role, balances}]}`.
+- `GET /api/leaves/balances/:userId?year=YYYY` — self or employer via
+  `requireOwnerOrEmployer` logic inline in the handler. Returns
+  `{year, userId, balances}`.
+- `/leaves` page: two-column layout on desktop (balance panel left,
+  list panel right), stacked on mobile. Balance panel has a year
+  selector (previous / current / next year) and renders a 5-column
+  table for employees or a matrix (rows × type columns) for employers.
+  List, filters, and existing item styling preserved.
+- Tests: 9 new tests in `test-leaves.mjs` covering the balance math —
+  baseline, per-employee override, year filtering, user isolation,
+  hours-to-days (h÷8) conversion, unknown-type rejection in overrides,
+  negative-remaining overbook case, input validation.
+
+### Changed
+- `src/storage/reports.js` — exported `approxDaysOff(leave)` so the leaves
+  balance computation reuses the existing hours-to-days convention
+  (h÷8 for hours-unit leaves, inclusive day-count for days-unit leaves).
+- Leaves container widened to 1100px (from 480px) to host the two panels.
+- Filter bar restyled as a segmented control using the new design tokens.
+
+### Carried over (not yet implemented)
+- **Carry-forward** of unused allowance from the previous year is not yet
+  applied. The balance panel notes this, and the `leaves.carryForward`
+  org setting continues to be stored without enforcement.
+- **Concurrent-leaves warning** (the M7-stored setting) also still
+  unenforced — will land in a later drop.
+
+---
+
 ## [0.9.1] — 2026-04-21 — Nav + link tweaks
 
 ### Changed

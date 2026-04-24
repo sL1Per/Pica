@@ -319,6 +319,132 @@ try {
     assert.equal(first.reason, null);
   });
 
+  // ---------------------------------------------------------------------------
+  console.log('\ncomputeBalances');
+  // ---------------------------------------------------------------------------
+  // Use an isolated directory so leaves from earlier tests don't interfere.
+  const balDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-leaves-bal-'));
+  try {
+    const bstore = createLeavesStore(balDir, masterKey);
+    // Inline helper matching approxDaysOff (hours/8, inclusive day count).
+    const daysOf = (l) => {
+      if (l.unit === 'hours') return (typeof l.hours === 'number') ? l.hours / 8 : 0;
+      const s = new Date(l.start + 'T00:00:00Z').getTime();
+      const e = new Date(l.end   + 'T00:00:00Z').getTime();
+      return Math.round((e - s) / 86_400_000) + 1;
+    };
+    const types = ['vacation', 'sick', 'appointment', 'other'];
+    const baseSettings = {
+      leaves: {
+        defaultAllowances: { vacation: 20, sick: 10, appointment: 3, other: 2 },
+        perEmployeeOverrides: {},
+      },
+    };
+
+    // Fixtures — Alice has vacation:pending(5), vacation:approved(2), sick:rejected(1d hours), sick:cancelled(2).
+    const l1 = bstore.create({ employeeId: aliceId, type: 'vacation', unit: 'days', start: '2026-03-01', end: '2026-03-05' });
+    const l2 = bstore.create({ employeeId: aliceId, type: 'vacation', unit: 'days', start: '2026-06-10', end: '2026-06-11' });
+    bstore.approve(l2.id, adminId);
+    const l3 = bstore.create({ employeeId: aliceId, type: 'sick', unit: 'hours', start: '2026-04-01T08:00:00Z', end: '2026-04-01T16:00:00Z', hours: 8 });
+    bstore.reject(l3.id, adminId, 'no');
+    const l4 = bstore.create({ employeeId: aliceId, type: 'sick', unit: 'days', start: '2026-05-01', end: '2026-05-02' });
+    bstore.approve(l4.id, adminId);
+    bstore.cancel(l4.id, adminId);
+    // Different year — must be excluded.
+    bstore.create({ employeeId: aliceId, type: 'vacation', unit: 'days', start: '2025-12-28', end: '2025-12-30' });
+    // Different employee — must be excluded.
+    bstore.create({ employeeId: bobId, type: 'vacation', unit: 'days', start: '2026-07-01', end: '2026-07-05' });
+
+    await test('baseline balance: pending + booked counted, rejected + cancelled excluded', () => {
+      const out = bstore.computeBalances({ userId: aliceId, year: 2026, orgSettings: baseSettings, leaveTypes: types, daysOf });
+      const vac = out.find((b) => b.type === 'vacation');
+      assert.equal(vac.allowance, 20);
+      assert.equal(vac.pending, 5);
+      assert.equal(vac.booked, 2);
+      assert.equal(vac.remaining, 13);
+      const sick = out.find((b) => b.type === 'sick');
+      assert.equal(sick.pending, 0);
+      assert.equal(sick.booked, 0);
+      assert.equal(sick.remaining, 10);
+    });
+
+    await test('per-employee override beats default allowance', () => {
+      const settings = { leaves: { ...baseSettings.leaves, perEmployeeOverrides: { [aliceId]: { vacation: 25 } } } };
+      const out = bstore.computeBalances({ userId: aliceId, year: 2026, orgSettings: settings, leaveTypes: types, daysOf });
+      const vac = out.find((b) => b.type === 'vacation');
+      assert.equal(vac.allowance, 25);
+      assert.equal(vac.remaining, 18);
+      // Unrelated types unchanged.
+      assert.equal(out.find((b) => b.type === 'sick').allowance, 10);
+    });
+
+    await test('leaves in a different year are excluded', () => {
+      const out = bstore.computeBalances({ userId: aliceId, year: 2025, orgSettings: baseSettings, leaveTypes: types, daysOf });
+      const vac = out.find((b) => b.type === 'vacation');
+      assert.equal(vac.pending, 3); // the 2025-12-28..30 leave, still pending
+      assert.equal(vac.booked, 0);
+    });
+
+    await test('one user\'s leaves do not bleed into another\'s balance', () => {
+      const out = bstore.computeBalances({ userId: bobId, year: 2026, orgSettings: baseSettings, leaveTypes: types, daysOf });
+      const vac = out.find((b) => b.type === 'vacation');
+      assert.equal(vac.pending, 5); // bob's own pending leave
+      assert.equal(vac.booked, 0);
+    });
+
+    await test('hours-unit leave is counted as hours/8 days', () => {
+      // Fresh store isolates this leave from the others.
+      const d = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-leaves-bal2-'));
+      try {
+        const s = createLeavesStore(d, masterKey);
+        const h = s.create({ employeeId: aliceId, type: 'appointment', unit: 'hours', start: '2026-02-01T09:00:00Z', end: '2026-02-01T13:00:00Z', hours: 4 });
+        s.approve(h.id, adminId);
+        const out = s.computeBalances({ userId: aliceId, year: 2026, orgSettings: baseSettings, leaveTypes: types, daysOf });
+        const app = out.find((b) => b.type === 'appointment');
+        assert.equal(app.booked, 0.5);
+        assert.equal(app.remaining, 2.5);
+      } finally {
+        fs.rmSync(d, { recursive: true, force: true });
+      }
+    });
+
+    await test('unknown type in override is ignored (not returned)', () => {
+      const settings = { leaves: { ...baseSettings.leaves, perEmployeeOverrides: { [aliceId]: { sabbatical: 99 } } } };
+      const out = bstore.computeBalances({ userId: aliceId, year: 2026, orgSettings: settings, leaveTypes: types, daysOf });
+      assert.equal(out.find((b) => b.type === 'sabbatical'), undefined);
+      assert.equal(out.length, 4);
+    });
+
+    await test('remaining can go negative when overbooked', () => {
+      const d = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-leaves-bal3-'));
+      try {
+        const s = createLeavesStore(d, masterKey);
+        // Two-year-stretching accrual not supported yet; all in-year.
+        for (let i = 0; i < 3; i++) {
+          const l = s.create({ employeeId: aliceId, type: 'vacation', unit: 'days', start: `2026-0${i + 1}-01`, end: `2026-0${i + 1}-10` });
+          s.approve(l.id, adminId);
+        }
+        const settings = { leaves: { defaultAllowances: { vacation: 5, sick: 0, appointment: 0, other: 0 }, perEmployeeOverrides: {} } };
+        const out = s.computeBalances({ userId: aliceId, year: 2026, orgSettings: settings, leaveTypes: types, daysOf });
+        const vac = out.find((b) => b.type === 'vacation');
+        assert.equal(vac.booked, 30);
+        assert.equal(vac.remaining, -25);
+      } finally {
+        fs.rmSync(d, { recursive: true, force: true });
+      }
+    });
+
+    await test('missing userId throws', () => {
+      assert.throws(() => bstore.computeBalances({ year: 2026, orgSettings: baseSettings, leaveTypes: types, daysOf }), /userId/);
+    });
+
+    await test('non-integer year throws', () => {
+      assert.throws(() => bstore.computeBalances({ userId: aliceId, year: 2026.5, orgSettings: baseSettings, leaveTypes: types, daysOf }), /year/);
+    });
+  } finally {
+    fs.rmSync(balDir, { recursive: true, force: true });
+  }
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

@@ -52,7 +52,7 @@ function formatDuration(l) {
 
 function render() {
   $('page-title').textContent = `Leave · ${leave.type}`;
-  $('f-employee').textContent = leave.username || leave.employeeId;
+  $('f-employee').textContent = leave.fullName || leave.username || leave.employeeId;
   $('f-type').textContent = leave.type;
   $('f-when').textContent = formatWhen(leave);
   $('f-duration').textContent = formatDuration(leave);

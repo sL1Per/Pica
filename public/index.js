@@ -5,7 +5,7 @@ import { mountTopBar } from '/topbar.js';
   if (!data) return; // mountTopBar redirected to /login
 
   document.getElementById('current-user').textContent =
-    `${data.user.username} (${data.user.role})`;
+    `${data.user.fullName || data.user.username} (${data.user.role})`;
 
   if (data.branding.name) {
     document.getElementById('company-name').textContent = data.branding.name;

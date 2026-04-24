@@ -116,7 +116,7 @@ function buildBar({ user, branding, hasOwnPicture }) {
 
   const avatarInner = hasOwnPicture
     ? `<img src="/api/employees/${user.id}/picture" alt="">`
-    : `<span>${initialsFor(user.username)}</span>`;
+    : `<span>${initialsFor(user.fullName || user.username)}</span>`;
 
   const header = document.createElement('header');
   header.className = 'topbar';
@@ -142,7 +142,7 @@ function buildBar({ user, branding, hasOwnPicture }) {
 
       <div class="topbar__menu" role="menu" hidden>
         <div class="topbar__menu-head">
-          <div class="topbar__menu-name">${escapeHtml(user.username)}</div>
+          <div class="topbar__menu-name">${escapeHtml(user.fullName || user.username)}</div>
           <div class="topbar__menu-role">${escapeHtml(user.role)}</div>
         </div>
         <a class="topbar__menu-item" role="menuitem" href="/employees/${user.id}">View my profile</a>

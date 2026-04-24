@@ -247,7 +247,7 @@ function overlapsMonth(l, monthStart, monthEnd) {
   return leaveDay >= monthStart && leaveDay <= monthEnd;
 }
 
-function approxDaysOff(l) {
+export function approxDaysOff(l) {
   if (l.unit === 'hours') {
     return typeof l.hours === 'number' ? l.hours / 8 : 0;
   }
