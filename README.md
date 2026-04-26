@@ -291,9 +291,9 @@ Split into three drops:
 - ✅ Leave-allowance cap enforcement at create + approve (honors per-employee overrides)
 - ✅ Per-page iteration — polished Settings, Leaves, Punches, Dashboard, Preferences
 
-**M8c — PWA + offline**
-- [ ] Web App Manifest + home-screen icon (installable PWA)
-- [ ] Offline-friendly clock-in (queue locally, sync when online)
+**M8c — PWA + offline ✅**
+- ✅ Web App Manifest + home-screen icon (installable PWA)
+- ✅ Offline-friendly clock-in (queue locally, sync when online)
 
 ### Milestone 9 — i18n
 - [ ] Language files: `i18n/en.json`, `i18n/pt.json`

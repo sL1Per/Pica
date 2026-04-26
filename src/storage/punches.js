@@ -83,6 +83,7 @@ export function createPunchesStore(dataDir, masterKey) {
         comment: extra?.comment ?? null,
         geo: extra?.geo ?? null,
         geoSkipReason: extra?.geoSkipReason ?? null,
+        clientId: parsed.clientId ?? null,
         decryptFailed: extra?._decrypt_failed ?? false,
       });
     }
@@ -131,7 +132,7 @@ export function createPunchesStore(dataDir, masterKey) {
    * Atomically append one punch line to the correct month file.
    * Creates the directory tree on demand. Returns the persisted record.
    */
-  function append(employeeId, { type, ts, comment, geo, geoSkipReason }) {
+  function append(employeeId, { type, ts, comment, geo, geoSkipReason, clientId }) {
     if (!PUNCH_TYPES.has(type)) throw new Error(`Invalid punch type: ${type}`);
     if (!ts || typeof ts !== 'string') throw new Error('ts is required');
     const d = new Date(ts);
@@ -158,8 +159,12 @@ export function createPunchesStore(dataDir, masterKey) {
       enc = encryptField(payload, masterKey, aadFor(employeeId, ts));
     }
 
+    // clientId stays on the plaintext line (it's a UUID, not sensitive).
+    // This lets findByClientId scan files without paying the decryption
+    // cost on every line.
     const record = { ts, type };
     if (enc) record.enc = enc;
+    if (clientId) record.clientId = clientId;
 
     const file = monthFile(employeeId, year, month);
     fs.appendFileSync(file, JSON.stringify(record) + '\n', { mode: 0o600 });
@@ -169,7 +174,47 @@ export function createPunchesStore(dataDir, masterKey) {
       comment: comment || null,
       geo: geo || null,
       geoSkipReason: hasReason ? geoSkipReason : null,
+      clientId: clientId || null,
     };
+  }
+
+  /**
+   * Idempotency lookup. Returns the previously-persisted punch with the given
+   * `clientId` for this employee, or null if none. Scans up to 3 months back
+   * (covers any plausible offline-queue replay window). Reads only NDJSON
+   * line headers — no decryption needed since clientId is plaintext.
+   */
+  function findByClientId(employeeId, clientId) {
+    if (!clientId) return null;
+    const now = new Date();
+    for (let i = 0; i < 3; i++) {
+      const probe = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const file = monthFile(employeeId, probe.getUTCFullYear(), probe.getUTCMonth() + 1);
+      if (!fs.existsSync(file)) continue;
+      const lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean);
+      for (const line of lines) {
+        let parsed; try { parsed = JSON.parse(line); } catch { continue; }
+        if (parsed.clientId === clientId) {
+          // Reconstruct a punch record matching the read-path shape.
+          let extra = null;
+          if (parsed.enc) {
+            try {
+              extra = JSON.parse(decryptField(parsed.enc, masterKey, aadFor(employeeId, parsed.ts)));
+            } catch { /* ignore decrypt errors here */ }
+          }
+          return {
+            employeeId,
+            ts: parsed.ts,
+            type: parsed.type,
+            comment: extra?.comment ?? null,
+            geo: extra?.geo ?? null,
+            geoSkipReason: extra?.geoSkipReason ?? null,
+            clientId: parsed.clientId,
+          };
+        }
+      }
+    }
+    return null;
   }
 
   // --------------------------------------------------------------------------
@@ -207,6 +252,7 @@ export function createPunchesStore(dataDir, masterKey) {
 
   return {
     append,
+    findByClientId,
     listDay,
     listMonth,
     listDayAll,

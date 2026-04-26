@@ -59,6 +59,98 @@ function geoFailedThisSession() {
   try { return sessionStorage.getItem(GEO_FAILED_KEY) === '1'; } catch { return false; }
 }
 
+// -------- Offline punch queue ---------------------------------------------
+// When the user clicks Clock in/out and the request fails (network down,
+// server unreachable, response timeout), the punch is queued in localStorage
+// and replayed automatically on next page load + on `window.online`. Each
+// queued item carries a clientId UUID; the backend uses it for idempotency
+// so retries don't create duplicates.
+
+const PUNCH_QUEUE_KEY = 'pica-pending-punches';
+
+function loadQueue() {
+  try {
+    const raw = localStorage.getItem(PUNCH_QUEUE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function saveQueue(arr) {
+  try { localStorage.setItem(PUNCH_QUEUE_KEY, JSON.stringify(arr)); } catch {}
+}
+function enqueuePunch(item) {
+  const q = loadQueue();
+  q.push(item);
+  saveQueue(q);
+  paintQueueBadge();
+}
+function paintQueueBadge() {
+  const badge = document.getElementById('queue-badge');
+  if (!badge) return;
+  const n = loadQueue().length;
+  if (n === 0) { badge.hidden = true; return; }
+  badge.hidden = false;
+  badge.textContent = n === 1
+    ? '1 punch waiting to sync'
+    : `${n} punches waiting to sync`;
+}
+
+function newClientId() {
+  // RFC 4122 v4-ish — random hex with the version + variant bits planted.
+  // crypto.randomUUID would be cleaner but isn't on every target browser.
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  const b = new Uint8Array(16);
+  (crypto?.getRandomValues || ((arr) => arr.forEach((_, i, a) => a[i] = (Math.random()*256)|0)))(b);
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
+}
+
+/**
+ * Try to send every queued punch in chronological order. Successes and
+ * idempotent duplicates are removed from the queue; transient failures stay
+ * for the next attempt. Called on page load and on the `online` event.
+ */
+async function drainQueue() {
+  let q = loadQueue();
+  if (q.length === 0) return;
+  // Sort by clientTs so replays go in the order the user actually punched.
+  q.sort((a, b) => a.clientTs.localeCompare(b.clientTs));
+
+  const remaining = [];
+  for (const item of q) {
+    const url = item.type === 'in' ? '/api/punches/clock-in' : '/api/punches/clock-out';
+    try {
+      const result = await postJson(url, {
+        comment: item.comment,
+        geo: item.geo,
+        geoSkipReason: item.geoSkipReason,
+        clientId: item.clientId,
+        clientTs: item.clientTs,
+      });
+      if (result.ok) {
+        // Success or idempotent duplicate — drop from queue.
+        continue;
+      }
+      // Server rejected (e.g. "already clocked in" — the queue went stale).
+      // Drop it; surfacing every stale-queue error would be more annoying
+      // than helpful. The user can see actual state on the page.
+      continue;
+    } catch {
+      // Network still failing — keep this and later items for next time.
+      remaining.push(item);
+    }
+  }
+  saveQueue(remaining);
+  paintQueueBadge();
+  if (remaining.length === 0 && q.length > 0) {
+    showMessage(messageEl, `Synced ${q.length} offline punch${q.length === 1 ? '' : 'es'}.`, 'success');
+    await refresh();
+  }
+}
+
 // -------- Time formatting (24-hour HH:MM from an ISO timestamp) -------------
 
 function formatTime(iso) {
@@ -333,23 +425,37 @@ async function doPunch(direction) {
     renderMap(lastFix);
   }
 
-  const payload = {
+  // Build the request payload. clientId + clientTs always present:
+  //   - clientId gives the backend an idempotency key for retries.
+  //   - clientTs anchors the punch to "now" client-side, so an offline
+  //     replay 30 minutes later still records the original time.
+  const item = {
+    type: direction,
+    clientId: newClientId(),
+    clientTs: new Date().toISOString(),
     comment: commentEl.value.trim() || undefined,
     geo: geo || undefined,
     geoSkipReason: geo ? undefined : (lastGeoSkipReason || 'unavailable'),
   };
   const url = direction === 'in' ? '/api/punches/clock-in' : '/api/punches/clock-out';
-  const result = await postJson(url, payload);
 
-  if (result.ok) {
+  try {
+    const result = await postJson(url, item);
+    if (result.ok) {
+      commentEl.value = '';
+      showMessage(messageEl, direction === 'in' ? 'Clocked in.' : 'Clocked out.', 'success');
+      await refresh();
+    } else {
+      showMessage(messageEl, result.data.error || 'Action failed', 'error');
+    }
+  } catch (err) {
+    // Network failure — queue for replay. UI keeps showing the optimistic
+    // result via the badge so the user knows the punch is captured.
+    enqueuePunch(item);
     commentEl.value = '';
-    showMessage(messageEl, direction === 'in' ? 'Clocked in.' : 'Clocked out.', 'success');
-    await refresh();
-  } else {
-    showMessage(messageEl, result.data.error || 'Action failed', 'error');
+    showMessage(messageEl, `Saved offline — will sync when online.`, 'success');
   }
-  // refresh() repaints the buttons, so we don't need setBusy(..., false) here —
-  // but call it anyway for the failure path so the original label restores.
+
   setBusy(btn, false);
 }
 
@@ -403,4 +509,10 @@ retryGeoBtn.addEventListener('click', async () => {
       renderMap(lastFix);
     }
   }
+
+  // Queue: paint any outstanding badge, then try to drain. Subsequent
+  // drains run whenever the browser flips back online.
+  paintQueueBadge();
+  drainQueue();
+  window.addEventListener('online', drainQueue);
 })();

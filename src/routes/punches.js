@@ -56,6 +56,29 @@ export function registerPunchRoutes(router, {
     return trimmed;
   }
 
+  function validClientId(id) {
+    if (typeof id !== 'string') return null;
+    if (id.length === 0 || id.length > 64) return null;
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) return null;
+    return id;
+  }
+
+  /**
+   * If the client supplied a timestamp (offline-replay scenario), honor it
+   * provided it parses cleanly AND falls within +/- 7 days of now. The
+   * +/- bound prevents trivial backdating without committing to crypto
+   * signing yet (deferred to M11 hardening). Returns the ISO string or null.
+   */
+  function validClientTs(ts) {
+    if (typeof ts !== 'string') return null;
+    const t = new Date(ts).getTime();
+    if (!Number.isFinite(t)) return null;
+    const now = Date.now();
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    if (Math.abs(now - t) > sevenDays) return null;
+    return new Date(t).toISOString();
+  }
+
   // --------------------------------------------------------------------------
   router.get('/api/punches/status', requireAuth((req, res) => {
     const open = punchesStore.hasOpenPunch(req.user.id);
@@ -68,32 +91,53 @@ export function registerPunchRoutes(router, {
 
   // --------------------------------------------------------------------------
   router.post('/api/punches/clock-in', requireAuth((req, res) => {
+    const clientId = validClientId(req.body?.clientId);
+
+    // Idempotency — if this clientId already maps to a stored punch, return
+    // it as-is. Lets the offline queue safely retry without creating dupes.
+    if (clientId) {
+      const prior = punchesStore.findByClientId(req.user.id, clientId);
+      if (prior) return res.json({ ok: true, punch: prior, duplicate: true });
+    }
+
     if (punchesStore.hasOpenPunch(req.user.id)) {
       return res.badRequest('You are already clocked in');
     }
-    const ts = new Date().toISOString();
+    // Offline replays may carry a clientTs. Honor it if reasonable; otherwise
+    // stamp server-side. The two-source model lets reports later distinguish
+    // "punched at 09:00 (offline, synced 09:47)" from "punched at 09:00 live".
+    const ts = validClientTs(req.body?.clientTs) ?? new Date().toISOString();
     const record = punchesStore.append(req.user.id, {
       type: 'in',
       ts,
       comment: validComment(req.body?.comment),
       geo: validGeo(req.body?.geo),
       geoSkipReason: validGeoSkipReason(req.body?.geoSkipReason),
+      clientId,
     });
     res.json({ ok: true, punch: record });
   }));
 
   // --------------------------------------------------------------------------
   router.post('/api/punches/clock-out', requireAuth((req, res) => {
+    const clientId = validClientId(req.body?.clientId);
+
+    if (clientId) {
+      const prior = punchesStore.findByClientId(req.user.id, clientId);
+      if (prior) return res.json({ ok: true, punch: prior, duplicate: true });
+    }
+
     if (!punchesStore.hasOpenPunch(req.user.id)) {
       return res.badRequest('You are not currently clocked in');
     }
-    const ts = new Date().toISOString();
+    const ts = validClientTs(req.body?.clientTs) ?? new Date().toISOString();
     const record = punchesStore.append(req.user.id, {
       type: 'out',
       ts,
       comment: validComment(req.body?.comment),
       geo: validGeo(req.body?.geo),
       geoSkipReason: validGeoSkipReason(req.body?.geoSkipReason),
+      clientId,
     });
     res.json({ ok: true, punch: record });
   }));

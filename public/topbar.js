@@ -310,3 +310,14 @@ export async function mountFooter() {
   }
   document.body.appendChild(footer);
 }
+
+// Register the service worker so the app is installable + offline-capable.
+// Idempotent: if a previous registration exists, browser quietly updates.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {
+      // Registration may fail in private/incognito or on http (non-localhost).
+      // Not fatal — site continues to work without offline support.
+    });
+  });
+}

@@ -14,6 +14,115 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.11.0] — 2026-04-26 — Milestone 8c: PWA + offline clock-in
+
+This release ships the two M8c items: installable PWA and offline-friendly
+clock-in with idempotent replay. After this drop, the app can be installed
+to the home screen on mobile/desktop, loads instantly from cache on
+revisits, and accepts clock-in/out clicks even when the network is down —
+queueing them in `localStorage` and replaying when connectivity returns.
+
+### Added — Installable PWA
+
+- **`/manifest.json`** with name, short_name, start_url, scope, display
+  `standalone`, theme color matching `--accent` (#2e7d32), background
+  color matching `--bg` (#0f1115).
+- **`/icon.svg`** — a 512×512 SVG "P" mark on the accent green, declared
+  with `purpose: "any maskable"` so OS icon-mask shapes (Android adaptive
+  icons, iOS rounded corners) crop correctly. Going SVG-only avoids the
+  zero-deps PNG generation problem; modern browsers (Chrome/Edge/Safari
+  16.4+) accept SVG manifest icons for installability.
+- **Manifest `<link>` + `<meta name="theme-color">` + apple-touch-icon**
+  added to the `<head>` of all 15 HTML pages.
+
+### Added — Service worker (`/sw.js`)
+
+- **Cache-first** strategy for fingerprintable static assets (CSS, JS,
+  SVG, manifest) so the app shell loads instantly and works offline.
+- **Network-first with cache fallback** for HTML pages and same-origin
+  GET API calls so signed-in users still see their data offline.
+- **Versioned cache name** (`pica-cache-v1`) — bumping the version on
+  any deploy invalidates the cache wholesale via the activate event,
+  avoiding the "users stuck on old build" trap.
+- Pre-caches the app shell (`/`, `/punch`, `/leaves`, `/leaves/calendar`,
+  `/preferences`, plus their CSS/JS) on install.
+- Cross-origin requests (e.g. OpenStreetMap tiles) bypass the SW
+  entirely and go straight to network — they fail gracefully when
+  offline; the punch page already handles map absence.
+- The SW does NOT handle the offline punch queue. That lives in the
+  punch page so it works on iOS Safari (which doesn't support the
+  Background Sync API).
+- SW registered from `topbar.js` (`navigator.serviceWorker.register`),
+  which is loaded on every page including login + setup.
+
+### Added — Offline clock-in queue
+
+- **localStorage queue** under key `pica-pending-punches`. Every clock
+  attempt now generates a `clientId` (UUID) and `clientTs` (current ISO
+  string) regardless of whether it's offline or live.
+- **On network failure** the punch is enqueued instead of erroring.
+  User sees "Saved offline — will sync when online." A queue-badge near
+  the buttons reads "N punch(es) waiting to sync".
+- **Drain triggers**: on every page load + on `window.online` event.
+  Drains in chronological order by `clientTs`; successes and idempotent
+  duplicates are removed; transient failures stay for the next attempt.
+- **Stale-queue handling**: if the server rejects a queued item with a
+  business-logic error (e.g. "you are already clocked in" because state
+  diverged), the client drops it from the queue rather than retrying
+  forever. Surfacing every stale rejection would be more annoying than
+  helpful — the page already shows the real state.
+
+### Added — Backend support
+
+- **`clientId`** (alphanumeric ± dashes/underscores, max 64 chars) is
+  persisted on the plaintext line header of each punch. Stored
+  plaintext (not in the encrypted blob) so `findByClientId()` can scan
+  files without decrypting every line. The ID itself is not sensitive.
+- **`POST /api/punches/clock-in`** and **`/clock-out`**: both routes now
+  perform an idempotency lookup at the top. If the supplied `clientId`
+  matches a previously-stored punch for this user (within the last 3
+  months), the prior record is returned with `{duplicate: true}` and no
+  new punch is created. Lets the offline queue retry safely.
+- **`clientTs`** is honored as the authoritative timestamp on the punch
+  if present and within ±7 days of server "now". Outside that window
+  (or absent) the server stamps the time itself. The 7-day bound
+  prevents trivial backdating without committing to crypto signing yet
+  (deferred to M11 hardening).
+- **`/api/punches/today`** and similar read endpoints now expose the
+  `clientId` field.
+- Forward-compatible: old punch lines without a `clientId` read back
+  with `clientId: null`. No data migration needed.
+
+### Files touched
+- `public/manifest.json`, `icon.svg`, `sw.js` — new files.
+- All 15 `public/*.html` — manifest link, theme-color, apple-touch-icon.
+- `public/topbar.js` — service worker registration.
+- `public/punch.{html,js,css}` — offline queue, badge UI, drain logic,
+  payload always carries `clientId` + `clientTs`.
+- `src/storage/punches.js` — `append()` accepts `clientId`; new
+  `findByClientId()`; read path surfaces clientId.
+- `src/routes/punches.js` — `validClientId`, `validClientTs`;
+  idempotency check; honors clientTs within ±7 days.
+- `tests/test-punches.mjs` — 4 new tests for clientId persistence and
+  scoped lookup.
+- `package.json` — version bump to 0.11.0.
+- `README.md` — M8c ticked.
+
+### What's NOT in this drop (deferred to M11)
+- Cryptographic signing of offline timestamps (currently trusted within
+  ±7 days; sufficient for honest-user offline replay, weak against an
+  adversary).
+- Conflict-resolution UI when a queued punch is rejected because state
+  diverged (e.g. employer force-clocked someone out while they were
+  offline).
+- Background Sync API integration (needs different code path; iOS
+  Safari doesn't support it anyway).
+
+### Test totals
+- 9 suites, 245 passing, 0 failing (was 241; +4 new in test-punches).
+
+---
+
 ## [0.10.2] — 2026-04-26 — Mandatory location with graceful failure
 
 ### Changed

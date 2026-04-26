@@ -253,3 +253,15 @@
   /* Today section title doesn't need top margin when it's its own column. */
   .punch-layout .today-section { margin-top: 0; }
 }
+
+/* Queue badge — visible when offline punches are waiting to sync. */
+.queue-badge {
+  margin: 0 0 var(--gap-3) 0;
+  padding: var(--gap-2) var(--gap-3);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  text-align: center;
+}

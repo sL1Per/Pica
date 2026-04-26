@@ -257,6 +257,72 @@ try {
     assert.equal(list[0].comment, null);
   });
 
+  // --------------------------------------------------------------------------
+
+  console.log('\nclientId / idempotency');
+
+  await test('clientId is persisted plaintext on the line', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-punch-cid-'));
+    try {
+      const s = createPunchesStore(dir, masterKey);
+      const r = s.append('alice', { type: 'in', ts: '2026-05-01T08:00:00Z', clientId: 'abc-123' });
+      assert.equal(r.clientId, 'abc-123');
+      const list = s.listMonth('alice', 2026, 5);
+      assert.equal(list[0].clientId, 'abc-123');
+      // Spot-check the file: clientId is on the plaintext header (so we can
+      // scan for it without decrypting every line).
+      const file = s.paths.monthFile('alice', 2026, 5);
+      const raw = fs.readFileSync(file, 'utf8');
+      assert.match(raw, /"clientId":"abc-123"/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('findByClientId returns the prior punch', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-punch-find-'));
+    try {
+      const s = createPunchesStore(dir, masterKey);
+      // Use "now" so the find-3-months-back window covers it.
+      const ts = new Date().toISOString();
+      s.append('bob', { type: 'in', ts, comment: 'first', clientId: 'idem-1' });
+      const found = s.findByClientId('bob', 'idem-1');
+      assert.ok(found, 'expected to find by clientId');
+      assert.equal(found.clientId, 'idem-1');
+      assert.equal(found.comment, 'first');
+      assert.equal(found.type, 'in');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('findByClientId returns null when no match', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-punch-no-find-'));
+    try {
+      const s = createPunchesStore(dir, masterKey);
+      assert.equal(s.findByClientId('alice', 'nope'), null);
+      assert.equal(s.findByClientId('alice', null), null);
+      assert.equal(s.findByClientId('alice', ''), null);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('findByClientId scopes by employeeId', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-punch-scope-'));
+    try {
+      const s = createPunchesStore(dir, masterKey);
+      const ts = new Date().toISOString();
+      s.append('alice', { type: 'in', ts, clientId: 'shared' });
+      // Bob looking for the same clientId should not find Alice's punch.
+      assert.equal(s.findByClientId('bob', 'shared'), null);
+      // Alice should find it.
+      assert.ok(s.findByClientId('alice', 'shared'));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
