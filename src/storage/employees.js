@@ -19,7 +19,7 @@ import { encryptBlob, decryptBlob } from '../crypto/aes.js';
 
 // Fields an employee may edit on themselves.
 export const EMPLOYEE_EDITABLE = Object.freeze([
-  'fullName', 'age', 'address', 'contactEmail', 'contactPhone',
+  'fullName', 'dateOfBirth', 'address', 'contactEmail', 'contactPhone',
 ]);
 
 // Fields only an employer may edit.

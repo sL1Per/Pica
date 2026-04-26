@@ -1,7 +1,8 @@
 import { postJson, showMessage, setBusy } from '/app.js';
 
-import { mountTopBar } from '/topbar.js';
+import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
+mountFooter();
 
 // Pull the employee id out of the URL: /employees/<id>
 const employeeId = window.location.pathname.split('/').pop();
@@ -63,13 +64,41 @@ function populateForm(emp) {
 
   const p = emp.profile ?? {};
   $('fullName').value     = p.fullName     ?? '';
-  $('age').value          = p.age          ?? '';
+  $('dateOfBirth').value  = p.dateOfBirth  ?? '';
+  updateAgeDisplay();
   $('position').value     = p.position     ?? '';
   $('contactEmail').value = p.contactEmail ?? '';
   $('contactPhone').value = p.contactPhone ?? '';
   $('address').value      = p.address      ?? '';
   $('comments').value     = p.comments     ?? '';
 }
+
+/**
+ * Compute age in years from the DOB picker value and render alongside.
+ * Hidden when no DOB or DOB is invalid / in the future.
+ */
+function updateAgeDisplay() {
+  const dob = $('dateOfBirth').value;
+  const out = $('age-display');
+  if (!dob) { out.hidden = true; out.textContent = ''; return; }
+  // Parse as YYYY-MM-DD in local time (avoid UTC-offset surprises).
+  const [y, m, d] = dob.split('-').map(Number);
+  const birth = new Date(y, m - 1, d);
+  if (Number.isNaN(birth.getTime())) { out.hidden = true; return; }
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
+  if (age < 0 || age > 130) { out.hidden = true; return; }
+  out.textContent = `${age} years old`;
+  out.hidden = false;
+}
+
+// Recompute live as the user changes the picker.
+document.addEventListener('DOMContentLoaded', () => {
+  const dob = document.getElementById('dateOfBirth');
+  if (dob) dob.addEventListener('change', updateAgeDisplay);
+});
 
 // ---------------------------------------------------------------------------
 // Picture resize + upload (client-side)
@@ -147,12 +176,12 @@ form.addEventListener('submit', async (e) => {
   setBusy(saveBtn, true, 'Saving…');
 
   const payload = {};
-  const fields = ['fullName', 'age', 'position', 'contactEmail', 'contactPhone', 'address', 'comments'];
+  const fields = ['fullName', 'dateOfBirth', 'position', 'contactEmail', 'contactPhone', 'address', 'comments'];
   for (const name of fields) {
     const el = $(name);
     if (el.readOnly) continue;
     const v = el.value.trim();
-    if (name === 'age') payload.age = v === '' ? null : Number(v);
+    if (name === 'dateOfBirth') payload.dateOfBirth = v === '' ? null : v;
     else payload[name] = v;
   }
 

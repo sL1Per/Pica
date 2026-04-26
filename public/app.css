@@ -173,6 +173,18 @@ html, body {
   font-feature-settings: "cv02", "cv11", "ss01"; /* harmless on non-supporting fonts */
 }
 
+/* Body is a flex column so the footer sticks to the viewport bottom when
+ * content is short, and scrolls naturally when it overflows.
+ * <main> grows to fill remaining space; <header> (topbar) and <footer>
+ * size to their content. */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+body > main { flex: 1 0 auto; }
+body > .app-footer { flex-shrink: 0; }
+
 /* Smooth color transitions on theme flip, but NOT on layout properties. */
 html, body, .card, .topbar, .btn, .form-control, input, select, textarea, button {
   transition: background-color var(--t-base), border-color var(--t-base), color var(--t-base);
@@ -712,3 +724,24 @@ table.data-table,
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
+
+/* DOB picker + age sidecar */
+.dob-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-3);
+}
+.dob-row input[type="date"] { flex: 0 0 auto; width: auto; min-width: 180px; }
+.dob-age { font-size: var(--text-sm); }
+
+/* App footer — mounted on every page by mountFooter() in topbar.js. */
+.app-footer {
+  margin-top: var(--gap-5);
+  padding: var(--gap-4);
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--text-subtle);
+  border-top: 1px solid var(--border);
+}
+.app-footer a { color: var(--text-subtle); }
+.app-footer a:hover { color: var(--accent); }

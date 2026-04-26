@@ -3,6 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    // The persisted value is written by app.js after fetching /api/settings/me
+    // and updated by preferences.js when the user saves a new choice.
+    // Possible values: "light", "dark", "system" (or null on first visit).
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
   <title>Pica — Clock</title>
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/topbar.css">
@@ -25,16 +39,37 @@
         </div>
       </div>
 
+      <!-- Two-button row: only one is clickable at a time, the other is
+           visually present but disabled. -->
+      <div class="punch-buttons">
+        <button id="clock-in-btn"  type="button" class="punch-btn punch-btn--in"  disabled>Clock in</button>
+        <button id="clock-out-btn" type="button" class="punch-btn punch-btn--out" disabled>Clock out</button>
+      </div>
+
       <label for="comment">Comment (optional)</label>
       <textarea id="comment" rows="2" maxlength="500" placeholder="e.g. Starting afternoon shift"></textarea>
 
       <label class="checkbox">
         <input type="checkbox" id="share-geo" checked>
-        Include my location
+        Share my location
       </label>
-      <p id="geo-status" class="subtle"></p>
+      <p class="subtle map-card__hint">When location sharing is on, a map tile is fetched from OpenStreetMap to show your position.</p>
 
-      <button id="action-btn" type="button" class="block punch-action" disabled>…</button>
+      <!-- Map placeholder. Hidden until first geolocation success. -->
+      <div id="map-card" class="map-card" hidden>
+        <div class="map-card__frame">
+          <img id="map-tile" class="map-card__tile" alt="" decoding="async">
+          <div class="map-card__pin" aria-hidden="true">📍</div>
+        </div>
+        <div id="map-meta" class="map-card__meta"></div>
+        <p class="map-card__attrib">
+          Map data
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>
+        </p>
+      </div>
+
+      <p id="geo-status" class="subtle"></p>
+      <button id="retry-geo-btn" type="button" class="btn-ghost btn-sm" hidden>Retry location</button>
 
       <div id="message" class="message"></div>
     </section>

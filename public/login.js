@@ -1,3 +1,6 @@
+import { mountFooter } from '/topbar.js';
+mountFooter();
+
 import { postJson, showMessage, setBusy } from '/app.js';
 
 const form     = document.getElementById('login-form');

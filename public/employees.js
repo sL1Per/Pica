@@ -1,7 +1,8 @@
 import { showMessage } from '/app.js';
 
-import { mountTopBar } from '/topbar.js';
+import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
+mountFooter();
 
 const listEl = document.getElementById('employee-list');
 const messageEl = document.getElementById('message');

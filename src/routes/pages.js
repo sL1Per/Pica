@@ -114,11 +114,20 @@ export function registerPageRoutes(router, { publicDir, usersStore, authenticate
     await sendHtml(res, 'reports.html');
   });
 
-  // -- Settings -----------------------------------------------------------
+  // -- Preferences (any authenticated user) -------------------------------
+
+  router.get('/preferences', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'preferences.html');
+  });
+
+  // -- Settings (employer only — employees use /preferences) --------------
 
   router.get('/settings', async (req, res) => {
     const a = authed(req);
     if (a.redirect) return res.redirect(a.redirect);
+    if (a.ctx.user.role !== 'employer') return res.redirect('/preferences');
     await sendHtml(res, 'settings.html');
   });
 

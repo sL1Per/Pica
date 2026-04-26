@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    // The persisted value is written by app.js after fetching /api/settings/me
+    // and updated by preferences.js when the user saves a new choice.
+    // Possible values: "light", "dark", "system" (or null on first visit).
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
+  <title>Pica — Preferences</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/topbar.css">
+  <link rel="stylesheet" href="/preferences.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1>Preferences</h1>
+      </div>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <section id="account" class="card">
+      <p class="subtle">These settings apply just to you.</p>
+
+      <form id="prefs-form" autocomplete="off">
+        <label for="language">Language</label>
+        <select id="language" name="language">
+          <option value="en">English</option>
+          <option value="pt">Português (PT)</option>
+        </select>
+        <p class="subtle">Takes effect after Milestone 9 ships i18n.</p>
+
+        <label>Color mode</label>
+        <div class="radio-row">
+          <label class="radio"><input type="radio" name="colorMode" value="light"> Light</label>
+          <label class="radio"><input type="radio" name="colorMode" value="dark"> Dark</label>
+          <label class="radio"><input type="radio" name="colorMode" value="system" checked> Follow system</label>
+        </div>
+
+        <button type="submit" class="block">Save preferences</button>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="/preferences.js"></script>
+</body>
+</html>

@@ -42,6 +42,10 @@ import { createCompanyLogoStore } from './src/storage/company-logo.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Read our own package metadata once at startup. Used by /api/version
+// and the footer that every page renders.
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+
 // ----------------------------------------------------------------------------
 // Startup
 // ----------------------------------------------------------------------------
@@ -91,7 +95,16 @@ const router = createRouter();
 
 // Liveness probe — unauthenticated, safe to expose.
 router.get('/api/health', (req, res) => {
-  res.json({ ok: true, name: 'pica', version: '0.1.0' });
+  res.json({ ok: true, name: 'pica', version: pkg.version });
+});
+
+// Public version metadata — used by the footer on every page.
+router.get('/api/version', (req, res) => {
+  res.json({
+    version: pkg.version,
+    releaseDate: pkg.releaseDate ?? null,
+    repository: pkg.repository ?? null,
+  });
 });
 
 registerSetupRoutes(router, { usersStore, sessionKey, isProduction });

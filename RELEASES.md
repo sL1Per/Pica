@@ -14,6 +14,245 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.9.11] — 2026-04-26 — Footer link + geolocation cache
+
+### Added
+- **Footer version label is now a link** to `RELEASES.md` on GitHub
+  (`{repository}/blob/main/RELEASES.md`). Clicking the version takes
+  you straight to the changelog. The separate "GitHub" link still
+  points to the repo root.
+- **Geolocation cache in `sessionStorage`.** The last successful fix
+  is persisted under `pica-last-geo-fix` and reused on subsequent
+  page loads within the same browser session. Navigating to `/punch`
+  no longer re-triggers the platform geolocation backend if a fix is
+  already known — the map renders instantly with the last-known
+  position. The cache is per-tab (sessionStorage), so closing the tab
+  forgets it.
+- **"Failed this session" sentinel.** When geolocation fails twice
+  (low-accuracy then high-accuracy fallback both error/timeout), the
+  sentinel `pica-geo-failed-this-session` is set. The `/punch`
+  bootstrap reads it on subsequent loads and shows the Retry button
+  *without* auto-triggering a fresh attempt — preventing the macOS
+  `kCLErrorLocationUnknown` console error from repeating on every
+  navigation when location is genuinely unavailable. Clicking Retry
+  clears the sentinel.
+
+### Process notes (carried forward)
+- Every release bumps `version` AND `releaseDate` in `package.json`.
+  The footer auto-updates from these fields.
+- Every change updates `RELEASES.md` with an entry describing what
+  shipped and why.
+
+### Files touched
+- `public/topbar.js` — version text wraps in an anchor pointing at
+  `RELEASES.md`.
+- `public/punch.js` — sessionStorage cache helpers, smarter bootstrap.
+- `package.json` — version + date bump.
+
+---
+
+## [0.9.10] — 2026-04-26 — Fix: theme FOUC on every page navigation
+
+### Fixed
+- A flash of dark theme appeared briefly on every page load when the
+  user's preference was "Light" but their OS was set to dark. Root
+  cause: the color preference was fetched over the network in `app.js`,
+  so between HTML paint and JS-executed `setAttribute('data-theme')`,
+  the browser rendered the page using the default
+  `@media (prefers-color-scheme: dark)` fallback (~50–200ms of dark).
+- Fix: a tiny synchronous `<script>` block in every page's `<head>`
+  reads the persisted color-mode from `localStorage` and sets
+  `data-theme` *before* the stylesheet loads. The first paint now
+  matches the chosen theme — no flash.
+- The async IIFE in `app.js` continues to refresh from the server (so
+  changes from another tab/device propagate) and writes the result back
+  to `localStorage` for the next page's synchronous boot.
+- `preferences.js` writes to `localStorage` immediately on save, so
+  navigating away from `/preferences` carries the new theme without a
+  flash.
+
+### Notes
+- First-ever page load on a new browser still has a brief flash since
+  there's no `localStorage` value yet. Subsequent loads (and all
+  in-session navigation) are flash-free.
+- The inline script is identical across all 15 HTML files. It's small
+  and stable; if it ever needs changing the canonical version is in
+  this RELEASES entry, plus an inline comment in each file.
+
+### Files touched
+- All 15 HTML files in `public/` — added the synchronous theme bootstrap
+  script in `<head>` before the stylesheet.
+- `public/app.js` — IIFE writes the fetched color-mode to `localStorage`.
+- `public/preferences.js` — `applyColorMode()` writes to `localStorage`.
+- `package.json` — version bump.
+
+---
+
+## [0.9.9] — 2026-04-25 — Fix: dashboard color-mode + sticky footer
+
+### Fixed
+- **Dashboard always rendered dark, regardless of preference.** The
+  color-mode bootstrap IIFE in `app.js` only ran on pages that imported
+  `app.js`. Most pages do (for `postJson` / `showMessage` / `setBusy`),
+  but the dashboard imports only `topbar.js` — so its color mode never
+  applied and it inherited whatever the OS reported via
+  `prefers-color-scheme: dark`.
+- Real fix: `topbar.js` now does `import '/app.js'` at the top for the
+  side effect. Every page that mounts the top bar inherits the
+  color-mode bootstrap automatically — present and future.
+
+### Changed
+- **Footer now sticks to the viewport bottom on short pages.** `<body>`
+  becomes a flex column with `min-height: 100vh`; `<main>` grows to fill
+  the remaining space; `.app-footer` sits at the bottom regardless of
+  content length. On long pages, the footer scrolls naturally at the
+  end of content.
+- Footer padding tightened (was `var(--gap-7)` margin-top + `var(--gap-4)`
+  padding; now `var(--gap-5)` margin-top + `var(--gap-4)` padding all
+  around). The flex layout already provides the spacing.
+
+### Files touched
+- `public/topbar.js` — added `import '/app.js'` side effect.
+- `public/app.css` — body flex-column, footer margin tightened.
+- `package.json` — version bump.
+
+---
+
+## [0.9.8] — 2026-04-25 — Preferences split + version footer
+
+### Added
+- New **Preferences** page at `/preferences` containing the per-user
+  language and color-mode controls. Accessible to every authenticated
+  user (employee or employer) via a new "Preferences" entry in the
+  avatar dropdown, between "View my profile" and "Sign out".
+- New **`GET /api/version`** endpoint (unauthenticated) returning
+  `{version, releaseDate, repository}` from `package.json`. Single read
+  at server startup; no per-request file I/O.
+- New `mountFooter()` exported from `public/topbar.js`. Fetches
+  `/api/version` once per session (cached in module scope), renders a
+  centered footer at the bottom of the page reading
+  "Pica v{version} · {date} · GitHub" with the repo URL linked.
+- `package.json` gains `releaseDate` and `repository` fields. Version
+  bumped to `0.9.8`. The release process now includes bumping these.
+
+### Changed
+- The Account section moved out of `/settings`. `/settings` is now
+  **employer-only**: route handler in `pages.js` redirects non-employer
+  users to `/preferences`. Page renders only the Company / Organization
+  / Backups sections.
+- The "Settings" link added to employee nav back in 0.9.1 is **removed**.
+  Employees access their preferences via the avatar dropdown only.
+  Employer top-bar nav still contains "Settings" (they need it for
+  company config). Reports stays for both roles.
+- `/api/health` now reports the real version from `package.json`
+  (was hardcoded to `0.1.0`).
+- Footer is mounted on **every** page including login and setup, by
+  calling `mountFooter()` directly from each page's JS module.
+
+### Files touched
+- `package.json` — version bump + new fields.
+- `server.js` — read package.json once, expose `/api/version`,
+  update `/api/health` version field.
+- `src/routes/pages.js` — `/preferences` route, `/settings` redirect for
+  non-employers.
+- `public/preferences.{html,js,css}` — new page.
+- `public/topbar.js` — Preferences in dropdown, Settings out of employee
+  nav, `mountFooter()` export with version cache.
+- `public/app.css` — `.app-footer` styles.
+- `public/settings.{html,js}` — Account section removed.
+- 14 page modules (`employee.js`, `employee-new.js`, …, `login.js`,
+  `setup.js`) — added `mountFooter()` call.
+
+### Notes
+- Footer position is "end of body content with margin-top + border-top",
+  not sticky-to-viewport. Sticky-to-viewport would need turning `<body>`
+  into a flex column on every page — too invasive for a low-value gain.
+  Pages with short content show the footer just below; long pages let
+  it scroll naturally.
+
+---
+
+## [0.9.7] — 2026-04-25 — Punch: geolocation timeout resilience
+
+### Changed
+- `getGeo()` is now resilient to the common Chrome pattern where the
+  first fix succeeds but subsequent calls time out:
+  - Increased `timeout` from 8s to 15s (low-accuracy attempt) and 20s
+    (high-accuracy attempt).
+  - Increased `maximumAge` from 60s to 300s so the browser can return a
+    recently-cached fix instead of forcing a fresh hardware/network
+    request every time.
+  - On low-accuracy timeout, automatically retry once with
+    `enableHighAccuracy: true`. Some platforms only fill in a position
+    when explicitly asked.
+  - On final failure, distinguish "Location request timed out" from other
+    errors in the user-facing message.
+
+### Added
+- A "Retry location" button appears next to the geo-status text when
+  geolocation fails. Clicking it re-runs the full `getGeo()` flow and
+  refreshes the map on success — no page reload needed.
+
+---
+
+## [0.9.6] — 2026-04-25 — Punch page: two-button + live map
+
+### Added
+- Two side-by-side buttons (**Clock in** / **Clock out**) on the punch
+  page, replacing the single context-flipping button. Only the action
+  that makes sense is clickable; the other is `disabled` but visually
+  identical (no greyed-out wash) so the button is "unclickable" rather
+  than "broken-looking".
+- Live OpenStreetMap tile preview when location sharing is enabled.
+  Fetched on page load (preview), refreshed after each punch (captured
+  position). Single static `<img>` from `tile.openstreetmap.org` — no
+  JS library, no API key, no third-party billing. CSS-positioned pin
+  centered on the tile, with attribution per OSM's usage policy.
+- Privacy hint under the Share-my-location checkbox, mentioning that
+  enabling location sharing also fetches a map tile from OSM.
+
+### Changed
+- `punch.css` rewritten: two-button row replaces the old single-button
+  block. New `.map-card` component with frame, tile, pin, meta, and
+  attribution. Old `.punch-action--in/--out` styles dropped.
+- Disabled-button override (`.punch-btn:disabled { opacity: 1; cursor: default }`)
+  matches user's request to keep the inactive button looking normal
+  while still being unclickable.
+
+### Notes
+- Backend untouched. Punches already store `geo: {lat, lng, accuracy}`
+  and the `/api/punches/status` endpoint already reports clocked-in
+  state. The page now uses both more directly.
+- Map uses zoom level 16 (a single tile covers ~600m at most latitudes)
+  and computes (x, y) tile coordinates locally via standard slippy-map
+  Mercator math. No reverse-geocoding (no address line) — that's a
+  separate feature requiring a Nominatim call, deferred.
+
+---
+
+## [0.9.5] — 2026-04-25 — Profile: date of birth replaces age
+
+### Changed
+- Employee profile field `age` (integer) replaced with `dateOfBirth`
+  (YYYY-MM-DD string). Native `<input type="date">` picker on both the
+  detail and new-employee pages. Age is computed live and shown next to
+  the picker as "N years old" — updates as the user changes the date.
+- Hidden when no DOB, future date, or absurd values (>130).
+- The legacy `age` field is removed from the storage whitelist, so any
+  old `age` data on existing profiles is silently dropped on first save.
+  This was an explicit "clean slate" choice over carrying both fields.
+- Test fixtures + assertions updated to use `dateOfBirth: '1990-04-12'`
+  in place of `age: 29`.
+
+### Files touched
+- `src/storage/employees.js` — whitelist `dateOfBirth` instead of `age`.
+- `public/employee.html`, `employee-new.html` — DOB picker + age sidecar.
+- `public/employee.js`, `employee-new.js` — load/send DOB; live age compute.
+- `public/app.css` — `.dob-row` flex layout for picker + age side-by-side.
+- `tests/test-employees.mjs` — fixture + assertions.
+
+---
+
 ## [0.9.4] — 2026-04-25 — Display fullName everywhere a user appears
 
 ### Added

@@ -1,7 +1,8 @@
 import { showMessage, setBusy } from '/app.js';
 
-import { mountTopBar } from '/topbar.js';
+import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
+mountFooter();
 
 const $ = (id) => document.getElementById(id);
 const messageEl = $('message');
@@ -11,10 +12,6 @@ const navBak = $('nav-bak');
 const navCompany = $('nav-company');
 
 // Account form
-const accountForm = $('account-form');
-const languageEl  = $('language');
-const colorModeRadios = document.querySelectorAll('input[name="colorMode"]');
-
 // Company form
 const companySection = $('company');
 const companyForm    = $('company-form');
@@ -44,27 +41,7 @@ const backupRetention = $('backup-retention');
 let me = null;
 let employees = [];
 
-// ---- Color mode application ----------------------------------------------
-
-function applyColorMode(mode) {
-  // `system` → remove the attribute so CSS falls back to @media(prefers-color-scheme)
-  const root = document.documentElement;
-  if (mode === 'dark' || mode === 'light') {
-    root.setAttribute('data-theme', mode);
-  } else {
-    root.removeAttribute('data-theme');
-  }
-}
-
 // ---- Rendering ------------------------------------------------------------
-
-function renderAccount(prefs) {
-  languageEl.value = prefs.language;
-  for (const r of colorModeRadios) {
-    r.checked = r.value === prefs.colorMode;
-  }
-  applyColorMode(prefs.colorMode);
-}
 
 function renderOrg(settings) {
   const al = settings.leaves.defaultAllowances;
@@ -129,32 +106,6 @@ function escapeHtml(s) {
 
 // ---- Save handlers --------------------------------------------------------
 
-accountForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  showMessage(messageEl, '');
-  const btn = accountForm.querySelector('button');
-  setBusy(btn, true, 'Saving…');
-
-  const colorMode = [...colorModeRadios].find((r) => r.checked)?.value;
-  const patch = { language: languageEl.value, colorMode };
-
-  try {
-    const res = await fetch('/api/settings/me', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify(patch),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to save');
-    applyColorMode(data.prefs.colorMode);
-    showMessage(messageEl, 'Account settings saved.', 'success');
-  } catch (err) {
-    showMessage(messageEl, err.message, 'error');
-  }
-  setBusy(btn, false);
-});
-
 if (orgForm) {
   orgForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -212,9 +163,6 @@ if (orgForm) {
   me = await meRes.json();
 
   // Always: account prefs for the current user.
-  const prefsRes = await fetch('/api/settings/me', { credentials: 'same-origin' });
-  const prefsData = await prefsRes.json();
-  renderAccount(prefsData.prefs);
 
   if (me.role === 'employer') {
     navCompany.hidden = false;

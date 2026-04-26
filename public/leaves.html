@@ -3,6 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    // The persisted value is written by app.js after fetching /api/settings/me
+    // and updated by preferences.js when the user saves a new choice.
+    // Possible values: "light", "dark", "system" (or null on first visit).
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
   <title>Pica — Leaves</title>
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/topbar.css">

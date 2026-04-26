@@ -1,7 +1,8 @@
 import { showMessage, setBusy } from '/app.js';
 
-import { mountTopBar } from '/topbar.js';
+import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
+mountFooter();
 
 const $ = (id) => document.getElementById(id);
 

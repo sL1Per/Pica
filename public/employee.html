@@ -3,6 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    // The persisted value is written by app.js after fetching /api/settings/me
+    // and updated by preferences.js when the user saves a new choice.
+    // Possible values: "light", "dark", "system" (or null on first visit).
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
   <title>Pica — Employee</title>
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/topbar.css">
@@ -40,8 +54,11 @@
         <label for="fullName">Full name</label>
         <input type="text" id="fullName" name="fullName">
 
-        <label for="age">Age</label>
-        <input type="number" id="age" name="age" min="14" max="120">
+        <label for="dateOfBirth">Date of birth</label>
+        <div class="dob-row">
+          <input type="date" id="dateOfBirth" name="dateOfBirth">
+          <span id="age-display" class="dob-age muted" hidden></span>
+        </div>
 
         <label for="position">Position <span id="position-hint" class="subtle" hidden>(employer-set)</span></label>
         <input type="text" id="position" name="position">

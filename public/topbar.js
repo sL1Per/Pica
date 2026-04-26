@@ -1,3 +1,7 @@
+// Importing app.js for its color-mode bootstrap side effect — applies
+// the saved theme on every page that uses this module.
+import '/app.js';
+
 // Shared top navigation bar. Every authenticated page imports mountTopBar().
 //
 // The bar is injected as the first child of <body>. Pages do NOT need to
@@ -10,7 +14,6 @@ const NAV_EMPLOYEE = [
   { href: '/leaves/calendar',  label: 'Calendar' },
   { href: '/leaves',           label: 'Leaves' },
   { href: '/reports',          label: 'Reports' },
-  { href: '/settings',         label: 'Settings' },
 ];
 
 const NAV_EMPLOYER = [
@@ -146,6 +149,7 @@ function buildBar({ user, branding, hasOwnPicture }) {
           <div class="topbar__menu-role">${escapeHtml(user.role)}</div>
         </div>
         <a class="topbar__menu-item" role="menuitem" href="/employees/${user.id}">View my profile</a>
+        <a class="topbar__menu-item" role="menuitem" href="/preferences">Preferences</a>
         <button class="topbar__menu-item topbar__menu-item--danger" role="menuitem" type="button" data-action="logout">Sign out</button>
       </div>
 
@@ -225,4 +229,64 @@ export async function mountTopBar() {
   document.body.insertBefore(header, document.body.firstChild);
   wireEvents(header);
   return data; // pages can reuse user/branding if they need
+}
+
+
+// =====================================================================
+// mountFooter() — appended to <body> on every page.
+// Fetches /api/version once per session and caches the result.
+// =====================================================================
+
+let _footerMounted = false;
+let _versionCache = null;
+
+async function getVersion() {
+  if (_versionCache) return _versionCache;
+  try {
+    const res = await fetch('/api/version', { credentials: 'same-origin' });
+    if (!res.ok) return null;
+    _versionCache = await res.json();
+    return _versionCache;
+  } catch {
+    return null;
+  }
+}
+
+function formatReleaseDate(d) {
+  if (!d) return '';
+  // d is YYYY-MM-DD; format as "Apr 25, 2026" using fixed English months
+  // to keep zero-dependency and avoid locale surprises.
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const [y, m, day] = d.split('-').map(Number);
+  if (!y || !m || !day) return d;
+  return `${months[m - 1]} ${day}, ${y}`;
+}
+
+export async function mountFooter() {
+  if (_footerMounted) return;
+  _footerMounted = true;
+
+  const v = await getVersion();
+  const footer = document.createElement('footer');
+  footer.className = 'app-footer';
+  if (v) {
+    const date = formatReleaseDate(v.releaseDate);
+    // Version label links to the changelog. Repo link stays separate so users
+    // can still get to the source root in one click.
+    const releasesUrl = v.repository ? `${v.repository.replace(/\/+$/, '')}/blob/main/RELEASES.md` : null;
+    const versionEl = releasesUrl
+      ? `<a href="${releasesUrl}" target="_blank" rel="noopener">Pica v${v.version}</a>`
+      : `Pica v${v.version}`;
+    const repoEl = v.repository
+      ? `<a href="${v.repository}" target="_blank" rel="noopener">GitHub</a>`
+      : '';
+    const parts = [versionEl];
+    if (date)   parts.push(date);
+    if (repoEl) parts.push(repoEl);
+    footer.innerHTML = parts.join(' · ');
+  } else {
+    footer.textContent = 'Pica';
+  }
+  document.body.appendChild(footer);
 }

@@ -1,7 +1,8 @@
 import { postJson, showMessage, setBusy } from '/app.js';
 
-import { mountTopBar } from '/topbar.js';
+import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
+mountFooter();
 
 const $ = (id) => document.getElementById(id);
 const statusBlock = $('status-block');
@@ -10,13 +11,51 @@ const statusMeta  = $('status-meta');
 const commentEl   = $('comment');
 const shareGeo    = $('share-geo');
 const geoStatusEl = $('geo-status');
-const actionBtn   = $('action-btn');
+const inBtn       = $('clock-in-btn');
+const outBtn      = $('clock-out-btn');
 const messageEl   = $('message');
 const listEl      = $('today-list');
 const allLink     = $('all-today-link');
+const mapCard     = $('map-card');
+const mapTile     = $('map-tile');
+const mapMeta     = $('map-meta');
+const retryGeoBtn = $('retry-geo-btn');
 
 let isOpen = false;
 let me = null;
+let lastFix = null;     // most recent {lat, lng, accuracy, ts} from a real geolocation reading
+
+// -------- sessionStorage cache --------------------------------------------
+// Cache the last successful fix per browser session so navigating between
+// pages doesn't re-trigger the platform geolocation backend (which on macOS
+// emits a kCLErrorLocationUnknown to the console on every failed call).
+//
+// We also remember a "tried and failed" sentinel so the bootstrap doesn't
+// auto-retry on every page load when location is unavailable. The user can
+// always click "Retry location" to force a fresh attempt.
+
+const GEO_CACHE_KEY = 'pica-last-geo-fix';
+const GEO_FAILED_KEY = 'pica-geo-failed-this-session';
+
+function loadCachedFix() {
+  try {
+    const raw = sessionStorage.getItem(GEO_CACHE_KEY);
+    if (!raw) return null;
+    const fix = JSON.parse(raw);
+    if (typeof fix?.lat === 'number' && typeof fix?.lng === 'number') return fix;
+  } catch {}
+  return null;
+}
+function saveCachedFix(fix) {
+  try { sessionStorage.setItem(GEO_CACHE_KEY, JSON.stringify(fix)); } catch {}
+  try { sessionStorage.removeItem(GEO_FAILED_KEY); } catch {}
+}
+function markGeoFailed() {
+  try { sessionStorage.setItem(GEO_FAILED_KEY, '1'); } catch {}
+}
+function geoFailedThisSession() {
+  try { return sessionStorage.getItem(GEO_FAILED_KEY) === '1'; } catch { return false; }
+}
 
 // -------- Time formatting (24-hour HH:MM from an ISO timestamp) -------------
 
@@ -37,29 +76,47 @@ function relative(iso) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-// -------- Status block ------------------------------------------------------
+// -------- Status block + button enable/disable ------------------------------
 
+/**
+ * Repaint the status header and lock the two buttons so only the one that
+ * makes sense is clickable. The other is `disabled` but stays visually
+ * present (the CSS overrides the default greyed-out wash).
+ */
 function paintStatus({ open, lastPunch }) {
   isOpen = open;
   statusBlock.classList.remove('status-block--in', 'status-block--out', 'status-block--unknown');
   if (open) {
     statusBlock.classList.add('status-block--in');
     statusLabel.textContent = 'Clocked in';
-    statusMeta.textContent = lastPunch ? `since ${formatTime(lastPunch.ts)} (${relative(lastPunch.ts)})` : '';
-    actionBtn.textContent = 'Clock out';
-    actionBtn.className = 'block punch-action punch-action--out';
+    statusMeta.textContent  = lastPunch ? `since ${formatTime(lastPunch.ts)} (${relative(lastPunch.ts)})` : '';
+    inBtn.disabled  = true;
+    outBtn.disabled = false;
   } else {
     statusBlock.classList.add('status-block--out');
     statusLabel.textContent = 'Clocked out';
-    statusMeta.textContent = lastPunch ? `last: ${formatTime(lastPunch.ts)} (${relative(lastPunch.ts)})` : 'no punches yet';
-    actionBtn.textContent = 'Clock in';
-    actionBtn.className = 'block punch-action punch-action--in';
+    statusMeta.textContent  = lastPunch ? `last: ${formatTime(lastPunch.ts)} (${relative(lastPunch.ts)})` : 'no punches yet';
+    inBtn.disabled  = false;
+    outBtn.disabled = true;
   }
-  actionBtn.disabled = false;
 }
 
 // -------- Geolocation -------------------------------------------------------
 
+/**
+ * Get a geolocation fix.
+ *
+ * Strategy:
+ *   1. Try a fast low-accuracy reading (Wi-Fi/IP triangulation, ~15s timeout).
+ *      Accept any reading from the last 5 minutes from the browser's cache.
+ *   2. If that times out or errors, try once more with high-accuracy on
+ *      (some platforms only fill in a position when explicitly asked).
+ *   3. If both fail and we have a remembered last fix, return null without
+ *      clearing the map — the caller decides whether to keep showing the
+ *      stale map or hide it.
+ *
+ * Returns {lat, lng, accuracy} on success, null on failure.
+ */
 function getGeo() {
   return new Promise((resolve) => {
     if (!shareGeo.checked) return resolve(null);
@@ -67,23 +124,78 @@ function getGeo() {
       geoStatusEl.textContent = 'Your browser does not support geolocation.';
       return resolve(null);
     }
+
     geoStatusEl.textContent = 'Getting your location…';
+
+    const success = (pos) => {
+      geoStatusEl.textContent = '';
+      retryGeoBtn.hidden = true;
+      resolve({
+        lat:      pos.coords.latitude,
+        lng:      pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+      });
+    };
+
+    // Attempt #2 — high-accuracy fallback. Some browsers/platforms refuse
+    // to return a quick low-accuracy fix and only respond to this mode.
+    const tryHighAccuracy = (prevErr) => {
+      navigator.geolocation.getCurrentPosition(
+        success,
+        (err) => {
+          const msg = err.code === err.TIMEOUT
+            ? 'Location request timed out. Try again, or move closer to a window.'
+            : `Location unavailable: ${err.message}`;
+          geoStatusEl.textContent = msg;
+          retryGeoBtn.hidden = false;
+          markGeoFailed();
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 300_000 },
+      );
+    };
+
+    // Attempt #1 — fast low-accuracy.
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        geoStatusEl.textContent = '';
-        resolve({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-        });
-      },
-      (err) => {
-        geoStatusEl.textContent = `Location unavailable: ${err.message}`;
-        resolve(null);
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
+      success,
+      tryHighAccuracy,
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300_000 },
     );
   });
+}
+
+// -------- OSM map (single static tile) --------------------------------------
+
+/**
+ * Compute (x, y) tile coordinates for a given (lat, lng, zoom).
+ * Standard slippy-map math (Mercator projection).
+ */
+function lngLatToTile(lng, lat, zoom) {
+  const n = 2 ** zoom;
+  const x = Math.floor((lng + 180) / 360 * n);
+  const latRad = lat * Math.PI / 180;
+  const y = Math.floor(
+    (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n
+  );
+  return { x, y };
+}
+
+/**
+ * Render a single OSM tile centered (close enough) on the given coords.
+ * Fetched directly from tile.openstreetmap.org — no API key, no JS library.
+ */
+function renderMap({ lat, lng, accuracy }) {
+  const zoom = 16;
+  const { x, y } = lngLatToTile(lng, lat, zoom);
+  // Cache-bust per fix so a new punch refreshes the tile reliably.
+  mapTile.src = `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+  const acc = accuracy ? ` (±${Math.round(accuracy)} m)` : '';
+  mapMeta.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}${acc}`;
+  mapCard.hidden = false;
+}
+
+function hideMap() {
+  mapCard.hidden = true;
 }
 
 // -------- Today list --------------------------------------------------------
@@ -139,8 +251,8 @@ function escapeHtml(s) {
 
 async function refresh() {
   const [statusRes, todayRes] = await Promise.all([
-    fetch('/api/punches/status',  { credentials: 'same-origin' }),
-    fetch('/api/punches/today',   { credentials: 'same-origin' }),
+    fetch('/api/punches/status', { credentials: 'same-origin' }),
+    fetch('/api/punches/today',  { credentials: 'same-origin' }),
   ]);
   if (statusRes.status === 401) { window.location.href = '/login'; return; }
   const status = await statusRes.json();
@@ -155,26 +267,67 @@ async function refresh() {
 
 // -------- Action ------------------------------------------------------------
 
-actionBtn.addEventListener('click', async () => {
+async function doPunch(direction) {
   showMessage(messageEl, '');
-  setBusy(actionBtn, true, 'Working…');
+  const btn = direction === 'in' ? inBtn : outBtn;
+  setBusy(btn, true, 'Working…');
 
   const geo = await getGeo();
+  if (geo) {
+    lastFix = { ...geo, ts: new Date().toISOString() };
+    saveCachedFix(lastFix);
+    renderMap(lastFix);
+  }
+
   const payload = {
     comment: commentEl.value.trim() || undefined,
     geo: geo || undefined,
   };
-
-  const url = isOpen ? '/api/punches/clock-out' : '/api/punches/clock-in';
+  const url = direction === 'in' ? '/api/punches/clock-in' : '/api/punches/clock-out';
   const result = await postJson(url, payload);
 
   if (result.ok) {
     commentEl.value = '';
-    showMessage(messageEl, isOpen ? 'Clocked out.' : 'Clocked in.', 'success');
+    showMessage(messageEl, direction === 'in' ? 'Clocked in.' : 'Clocked out.', 'success');
     await refresh();
   } else {
     showMessage(messageEl, result.data.error || 'Action failed', 'error');
-    setBusy(actionBtn, false);
+  }
+  // refresh() repaints the buttons, so we don't need setBusy(..., false) here —
+  // but call it anyway for the failure path so the original label restores.
+  setBusy(btn, false);
+}
+
+inBtn.addEventListener('click', () => {
+  if (inBtn.disabled) return;     // belt-and-suspenders
+  doPunch('in');
+});
+outBtn.addEventListener('click', () => {
+  if (outBtn.disabled) return;
+  doPunch('out');
+});
+
+// Live preview: when the user toggles Share my location, fetch (or hide) on demand.
+shareGeo.addEventListener('change', async () => {
+  if (shareGeo.checked) {
+    const fix = await getGeo();
+    if (fix) {
+      lastFix = { ...fix, ts: new Date().toISOString() };
+      saveCachedFix(lastFix);
+      renderMap(lastFix);
+    }
+  } else {
+    hideMap();
+  }
+});
+
+retryGeoBtn.addEventListener('click', async () => {
+  retryGeoBtn.hidden = true;
+  const fix = await getGeo();
+  if (fix) {
+    lastFix = { ...fix, ts: new Date().toISOString() };
+    saveCachedFix(lastFix);
+    renderMap(lastFix);
   }
 });
 
@@ -186,4 +339,29 @@ actionBtn.addEventListener('click', async () => {
   me = await meRes.json();
   if (me.role === 'employer') allLink.hidden = false;
   await refresh();
+
+  // Map preview at page load. Strategy:
+  //   1. If sharing is off → nothing.
+  //   2. If we have a cached fix from this session → render it immediately,
+  //      don't re-trigger geolocation. Map is "as of last successful fix".
+  //   3. If we tried and failed earlier this session → don't auto-retry;
+  //      show the Retry button so the user opts back in.
+  //   4. Otherwise (first time this session, sharing on) → fetch.
+  if (shareGeo.checked) {
+    const cached = loadCachedFix();
+    if (cached) {
+      lastFix = cached;
+      renderMap(cached);
+    } else if (geoFailedThisSession()) {
+      retryGeoBtn.hidden = false;
+      geoStatusEl.textContent = 'Location unavailable. Click Retry to try again.';
+    } else {
+      const fix = await getGeo();
+      if (fix) {
+        lastFix = { ...fix, ts: new Date().toISOString() };
+        saveCachedFix(lastFix);
+        renderMap(lastFix);
+      }
+    }
+  }
 })();

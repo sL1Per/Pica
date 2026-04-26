@@ -69,7 +69,7 @@ try {
   await test('create writes an encrypted profile', () => {
     const p = store.create(aliceId, {
       fullName: 'Alice Lopes',
-      age: 29,
+      dateOfBirth: '1990-04-12',
       position: 'Engineer',
       contactEmail: 'alice@example.com',
       contactPhone: '+351 912 345 678',
@@ -78,7 +78,7 @@ try {
     });
     assert.equal(p.id, aliceId);
     assert.equal(p.fullName, 'Alice Lopes');
-    assert.equal(p.age, 29);
+    assert.equal(p.dateOfBirth, '1990-04-12');
     assert.ok(p.createdAt);
     assert.ok(p.updatedAt);
   });
@@ -95,7 +95,7 @@ try {
   await test('readProfile round-trips all fields', () => {
     const p = store.readProfile(aliceId);
     assert.equal(p.fullName, 'Alice Lopes');
-    assert.equal(p.age, 29);
+    assert.equal(p.dateOfBirth, '1990-04-12');
     assert.equal(p.position, 'Engineer');
     assert.equal(p.contactEmail, 'alice@example.com');
     assert.equal(p.contactPhone, '+351 912 345 678');
@@ -112,7 +112,7 @@ try {
     await new Promise((r) => setTimeout(r, 5)); // ensure clock tick
     const p = store.update(aliceId, { fullName: 'Alice M. Lopes' });
     assert.equal(p.fullName, 'Alice M. Lopes');
-    assert.equal(p.age, 29);               // other fields preserved
+    assert.equal(p.dateOfBirth, '1990-04-12'); // other fields preserved
     assert.equal(p.position, 'Engineer');
     assert.notEqual(p.updatedAt, before);
   });

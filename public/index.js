@@ -1,7 +1,8 @@
-import { mountTopBar } from '/topbar.js';
+import { mountTopBar, mountFooter } from '/topbar.js';
 
 (async () => {
   const data = await mountTopBar();
+mountFooter();
   if (!data) return; // mountTopBar redirected to /login
 
   document.getElementById('current-user').textContent =

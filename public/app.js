@@ -1,17 +1,18 @@
 // Shared front-end utilities. Loaded as an ES module.
 
 // -- Color mode bootstrap --------------------------------------------------
-// Every page imports this module, so this IIFE runs exactly once per page
-// load. It fetches the current user's stored color-mode preference and
-// applies `data-theme="light"` or `"dark"` on <html>. On `system`
-// (or any error), we remove the attribute and let the CSS fall through to
-// the @media (prefers-color-scheme) fallback.
+// Every page's <head> contains a small synchronous script that reads the
+// theme from localStorage *before* CSS loads, preventing FOUC. This async
+// IIFE refreshes the cache from the server (the source of truth) and
+// applies any change in case the user updated prefs from another tab/device.
 (async () => {
   try {
     const res = await fetch('/api/settings/me', { credentials: 'same-origin' });
     if (!res.ok) return;
     const { prefs } = await res.json();
     const mode = prefs?.colorMode ?? 'system';
+    // Persist for the next page's synchronous boot.
+    try { localStorage.setItem('pica-color-mode', mode); } catch {}
     if (mode === 'light' || mode === 'dark') {
       document.documentElement.setAttribute('data-theme', mode);
     } else {
