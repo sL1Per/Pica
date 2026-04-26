@@ -138,6 +138,31 @@ export function registerLeaveRoutes(router, {
       return res.badRequest(`unit must be one of: ${LEAVE_UNITS_LIST.join(', ')}`);
     }
 
+    // Cap enforcement: refuse to create if approving this request would push
+    // booked days over the configured allowance for this type. allowance===0
+    // means "no cap" (existing semantic from org-settings).
+    try {
+      const additional = daysOf({ unit, start, end, hours });
+      const year = (start ?? new Date().toISOString()).slice(0, 4);
+      const check = leavesStore.wouldExceedCap({
+        userId: req.user.id,
+        type,
+        additionalDays: additional,
+        year: Number(year),
+        orgSettings: orgSettingsStore.get(),
+        daysOf,
+      });
+      if (check.exceeds) {
+        return res.badRequest(
+          `Cannot book leave: allowance for ${type} is ${check.allowance} days; ` +
+          `you currently have ${check.currentBooked} booked, this request adds ${additional} ` +
+          `(would total ${check.wouldBe}).`
+        );
+      }
+    } catch (err) {
+      return res.badRequest(err.message);
+    }
+
     try {
       const leave = leavesStore.create({
         employeeId: req.user.id,
@@ -150,9 +175,75 @@ export function registerLeaveRoutes(router, {
   }));
 
   // --------------------------------------------------------------------------
+  // GET /api/leaves/:id/overlaps — for the concurrent-leaves warning. Returns
+  // approved leaves of OTHER users that overlap with this leave's date range.
+  // The frontend calls this before showing the approve confirmation; if
+  // overlaps exist AND orgSettings.leaves.concurrentAllowed is false, show a
+  // warning. The setting governs whether the warning fires, not whether
+  // approval is allowed — employer always has the final call.
+  router.get('/api/leaves/:id/overlaps', requireRole('employer')((req, res) => {
+    const target = leavesStore.findById(req.params.id);
+    if (!target) return res.notFound('Leave not found');
+
+    // Date-range overlap: [aStart, aEnd] overlaps [bStart, bEnd] iff
+    // aStart ≤ bEnd AND bStart ≤ aEnd.
+    const ts = target.start;
+    const te = target.end ?? target.start;
+
+    const others = leavesStore.list()
+      .filter((l) => l.status === 'approved')
+      .filter((l) => l.id !== target.id)
+      .filter((l) => l.employeeId !== target.employeeId)
+      .filter((l) => {
+        const ls = l.start;
+        const le = l.end ?? l.start;
+        return ls <= te && ts <= le;
+      });
+
+    const users = usersByIdMap();
+    const names = fullNameMap();
+    const enriched = others.map((l) => enrich(l, users, names));
+    res.json({
+      overlaps: enriched,
+      concurrentAllowed: orgSettingsStore.get().leaves.concurrentAllowed,
+    });
+  }));
+
+  // --------------------------------------------------------------------------
   router.post('/api/leaves/:id/approve', requireRole('employer')(async (req, res) => {
     const existing = leavesStore.findById(req.params.id);
     if (!existing) return res.notFound('Leave not found');
+
+    // Cap enforcement at approval time. The pending request might have been
+    // created when the cap had room, then someone else's request got approved
+    // first — now this one would push booked over.
+    try {
+      const additional = daysOf({
+        unit: existing.unit,
+        start: existing.start,
+        end: existing.end,
+        hours: existing.hours,
+      });
+      const year = Number(existing.start.slice(0, 4));
+      const check = leavesStore.wouldExceedCap({
+        userId: existing.employeeId,
+        type: existing.type,
+        additionalDays: additional,
+        year,
+        orgSettings: orgSettingsStore.get(),
+        daysOf,
+      });
+      if (check.exceeds) {
+        return res.badRequest(
+          `Cannot approve: allowance for ${existing.type} is ${check.allowance} days; ` +
+          `employee currently has ${check.currentBooked} booked, this leave adds ${additional} ` +
+          `(would total ${check.wouldBe}).`
+        );
+      }
+    } catch (err) {
+      return res.badRequest(err.message);
+    }
+
     try {
       const leave = leavesStore.approve(req.params.id, req.user.id);
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });

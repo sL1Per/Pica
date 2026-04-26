@@ -10,9 +10,7 @@
 .page-header a:hover { text-decoration: underline; }
 
 /* Container widens for the calendar — list views stay narrow. */
-.container--wide {
-  max-width: 960px;
-}
+
 
 .btn-link {
   display: inline-block;
@@ -162,7 +160,7 @@
 /* ---------- Mobile tuning ------------------------------------------------ */
 
 @media (max-width: 600px) {
-  .container--wide { max-width: 100%; }
+  
   .cal-day {
     min-height: 60px;
     padding: 4px;

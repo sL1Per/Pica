@@ -99,7 +99,7 @@ function renderActions() {
     const approve = document.createElement('button');
     approve.className = 'btn-approve';
     approve.textContent = 'Approve';
-    approve.addEventListener('click', () => action('approve'));
+    approve.addEventListener('click', () => approveWithConcurrencyCheck());
     const reject = document.createElement('button');
     reject.className = 'btn-reject';
     reject.textContent = 'Reject';
@@ -137,6 +137,40 @@ async function action(name, body = {}) {
   } else {
     showMessage(messageEl, res.data.error || `Failed to ${name}`, 'error');
   }
+}
+
+/**
+ * Wrapper around approve that first checks for overlapping approved leaves
+ * of OTHER employees. If any exist and the org setting
+ * `leaves.concurrentAllowed` is false, ask for confirmation before sending
+ * the approve POST. Setting === true → approve silently.
+ */
+async function approveWithConcurrencyCheck() {
+  showMessage(messageEl, '');
+  let overlaps = [];
+  let concurrentAllowed = true;
+  try {
+    const r = await fetch(`/api/leaves/${leaveId}/overlaps`, { credentials: 'same-origin' });
+    if (r.ok) {
+      const j = await r.json();
+      overlaps = j.overlaps ?? [];
+      concurrentAllowed = j.concurrentAllowed !== false;
+    }
+  } catch {
+    // Non-fatal — just skip the warning if the endpoint is unreachable.
+  }
+
+  if (overlaps.length > 0 && !concurrentAllowed) {
+    const names = overlaps.map((l) => l.fullName || l.username || 'someone').join(', ');
+    const ok = confirm(
+      `Concurrent leaves are not allowed by company policy.\n\n` +
+      `Approving this leave would overlap with ${overlaps.length} approved leave(s): ${names}.\n\n` +
+      `Approve anyway?`
+    );
+    if (!ok) return;
+  }
+
+  await action('approve');
 }
 
 $('reject-cancel').addEventListener('click', () => { rejectDialog.hidden = true; });

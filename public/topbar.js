@@ -40,9 +40,29 @@ function initialsFor(name) {
 }
 
 /** True when the current URL matches an item's href exactly or as a prefix. */
-function isActive(currentPath, href) {
+/**
+ * Is `href` the active nav entry for the current path?
+ *
+ * Exact equality always wins. Otherwise, prefix-match (`/leaves` should
+ * highlight while on `/leaves/abc-123`) — UNLESS some OTHER nav entry is
+ * a more-specific prefix match. That sibling rule prevents `/leaves` from
+ * lighting up while on `/leaves/calendar`, which is its own nav item.
+ */
+function isActive(currentPath, href, allHrefs = []) {
   if (href === '/') return currentPath === '/';
-  return currentPath === href || currentPath.startsWith(href + '/');
+  if (currentPath === href) return true;
+  if (!currentPath.startsWith(href + '/')) return false;
+
+  // Path is a sub-route of `href`. Check whether a different nav entry
+  // covers it more specifically — if so, that one wins, not this one.
+  for (const other of allHrefs) {
+    if (other === href) continue;
+    if (other.length <= href.length) continue;
+    if (currentPath === other || currentPath.startsWith(other + '/')) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -108,12 +128,12 @@ function buildBar({ user, branding, hasOwnPicture }) {
     : `<div class="topbar__logo topbar__logo--placeholder" aria-hidden="true">P</div>`;
 
   const navLinks = items.map((it) => {
-    const active = isActive(currentPath, it.href) ? ' topbar__link--active' : '';
+    const active = isActive(currentPath, it.href, items.map((x) => x.href)) ? ' topbar__link--active' : '';
     return `<a class="topbar__link${active}" href="${it.href}">${escapeHtml(it.label)}</a>`;
   }).join('');
 
   const drawerLinks = items.map((it) => {
-    const active = isActive(currentPath, it.href) ? ' topbar__drawer-link--active' : '';
+    const active = isActive(currentPath, it.href, items.map((x) => x.href)) ? ' topbar__drawer-link--active' : '';
     return `<a class="topbar__drawer-link${active}" href="${it.href}">${escapeHtml(it.label)}</a>`;
   }).join('');
 

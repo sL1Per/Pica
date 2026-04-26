@@ -281,14 +281,15 @@ Split into three drops:
 - ✅ Logo + name shown in the top bar, clickable to go home
 - ✅ New Settings section "Company" — employer only
 
-**M8b — Visual polish (per-page iteration)**
-- [ ] Design-token pass: cohesive typography scale, spacing, color depth
-- [ ] Desktop layout: wider containers, multi-column on larger screens, keyboard focus styles
-- [ ] Mobile polish: touch targets ≥ 44px, safe-area insets, larger tap zones
-- [ ] Component refinement: buttons, forms, tables, empty states, loading states, toasts
-- [ ] Accessibility pass: ARIA labels, contrast ratios, keyboard navigation, reduced-motion support
-- [ ] Concurrent-leaves warning on approve (honors setting from M7)
-- [ ] Per-page iteration — polish each page individually in small drops
+**M8b — Visual polish (per-page iteration) ✅**
+- ✅ Design-token pass: cohesive typography scale, spacing, color depth
+- ✅ Desktop layout: wider containers, multi-column on larger screens, keyboard focus styles
+- ✅ Mobile polish: touch targets ≥ 44px, larger tap zones (safe-area-inset deferred)
+- ✅ Component refinement: buttons, forms, tables, empty states, loading states, toasts
+- ✅ Accessibility pass (partial): focus-visible, prefers-reduced-motion, ARIA toasts (full audit deferred)
+- ✅ Concurrent-leaves warning on approve (honors setting from M7)
+- ✅ Leave-allowance cap enforcement at create + approve (honors per-employee overrides)
+- ✅ Per-page iteration — polished Settings, Leaves, Punches, Dashboard, Preferences
 
 **M8c — PWA + offline**
 - [ ] Web App Manifest + home-screen icon (installable PWA)

@@ -96,12 +96,15 @@ function renderEmployeeBalance(balances) {
     const tr = document.createElement('tr');
     const overLimit = b.remaining < 0 ? ' balance-row--over' : '';
     tr.className = `balance-row${overLimit}`;
+    // allowance===0 means "no cap" — display "—" instead of zeros that would
+    // misread as "you have nothing".
+    const unlimited = b.allowance === 0;
     tr.innerHTML = `
       <td><span class="type-tag">${escapeHtml(b.type)}</span></td>
-      <td class="right">${fmt(b.allowance)}</td>
+      <td class="right">${unlimited ? '—' : fmt(b.allowance)}</td>
       <td class="right balance-cell--pending">${b.pending > 0 ? fmt(b.pending) : '—'}</td>
       <td class="right">${fmt(b.booked)}</td>
-      <td class="right balance-cell--remaining">${fmt(b.remaining)}</td>
+      <td class="right balance-cell--remaining">${unlimited ? '—' : fmt(b.remaining)}</td>
     `;
     tbody.appendChild(tr);
   }
@@ -133,12 +136,16 @@ function renderEmployerMatrix({ rows }) {
     const roleTag = row.role === 'employer' ? ` <span class="type-tag type-tag--role">boss</span>` : '';
     let html = `<td>${escapeHtml(displayName)}${subtle}${roleTag}</td>`;
     for (const b of row.balances) {
-      const over = b.remaining < 0;
+      const unlimited = b.allowance === 0;
+      const over = !unlimited && b.remaining < 0;
       const cls = over ? ' balance-matrix__cell--over' : '';
       const pending = b.pending > 0 ? `<span class="balance-matrix__pending">+${fmt(b.pending)}</span>` : '';
+      const main = unlimited
+        ? `<strong>${fmt(b.booked)}</strong> <span class="muted">/ —</span>`
+        : `<strong>${fmt(b.remaining)}</strong> <span class="muted">/ ${fmt(b.allowance)}</span>`;
       html += `
         <td class="right balance-matrix__cell${cls}">
-          <span class="balance-matrix__main"><strong>${fmt(b.remaining)}</strong> <span class="muted">/ ${fmt(b.allowance)}</span></span>
+          <span class="balance-matrix__main">${main}</span>
           ${pending}
         </td>
       `;

@@ -9,7 +9,6 @@
 .page-header a { color: var(--accent); text-decoration: none; }
 .page-header a:hover { text-decoration: underline; }
 
-.container--wide { max-width: 860px; }
 
 .section-nav {
   display: flex;

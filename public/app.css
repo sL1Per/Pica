@@ -252,13 +252,25 @@ p:last-child { margin-bottom: 0; }
 
 /* ----- 5. Layout primitives ----------------------------------------------- */
 
+/* Container — content-width wrapper used by every page.
+ * Single source of truth: edit here, every page benefits.
+ *   .container         — narrow, for forms and reading-line content (~640px)
+ *   .container--wide   — wide, for two-column layouts, tables, dashboards (~1600px)
+ * Both have side padding that grows on larger viewports. */
 .container {
-  max-width: 480px;
+  max-width: 640px;
   margin: 0 auto;
   padding: var(--gap-5) var(--gap-4);
+  width: 100%;
+}
+.container--wide {
+  max-width: 1600px;
 }
 @media (min-width: 600px) {
   .container { padding: var(--gap-6) var(--gap-4); }
+}
+@media (min-width: 1200px) {
+  .container--wide { padding-left: var(--gap-6); padding-right: var(--gap-6); }
 }
 
 .card {

@@ -370,6 +370,49 @@ export function createLeavesStore(dataDir, masterKey) {
   function reject(id, actorId, notes)   { return transition(id, actorId, 'rejected', { notes }); }
   function cancel(id, actorId)          { return transition(id, actorId, 'cancelled'); }
 
+  /**
+   * Check whether booking `additionalDays` of `type` for `userId` in `year`
+   * would push the user's booked total over their allowance.
+   *
+   * Allowance semantics (existing in this codebase):
+   *   - allowance === 0 → no limit (special-case "unlimited", per the
+   *     defaultAllowances comment in org-settings.js)
+   *   - allowance > 0   → enforced cap; booked + additional must be ≤ allowance
+   *
+   * Returns:
+   *   { exceeds: bool, allowance, currentBooked, wouldBe, type }
+   *
+   * The caller decides what to do on `exceeds: true` — typically respond
+   * with a 4xx and a message including these numbers.
+   */
+  function wouldExceedCap({ userId, type, additionalDays, year, orgSettings, daysOf }) {
+    if (typeof additionalDays !== 'number' || !Number.isFinite(additionalDays)) {
+      throw new Error('additionalDays must be a finite number');
+    }
+    const balances = computeBalances({
+      userId, year, orgSettings,
+      leaveTypes: [type],
+      daysOf,
+    });
+    const b = balances[0];
+    if (!b) {
+      // Unknown type — treat as no cap (defensive; caller should have validated).
+      return { exceeds: false, allowance: 0, currentBooked: 0, wouldBe: additionalDays, type };
+    }
+    if (b.allowance === 0) {
+      // Unlimited.
+      return { exceeds: false, allowance: 0, currentBooked: b.booked, wouldBe: b.booked + additionalDays, type };
+    }
+    const wouldBe = b.booked + additionalDays;
+    return {
+      exceeds: wouldBe > b.allowance,
+      allowance: b.allowance,
+      currentBooked: b.booked,
+      wouldBe,
+      type,
+    };
+  }
+
   // --------------------------------------------------------------------------
 
   return {
@@ -377,6 +420,7 @@ export function createLeavesStore(dataDir, masterKey) {
     findById,
     list,
     computeBalances,
+    wouldExceedCap,
     approve,
     reject,
     cancel,

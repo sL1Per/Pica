@@ -14,6 +14,274 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.10.1] — 2026-04-26 — Fix: overlap status filter + nav highlighting
+
+### Fixed
+- **Cancelled (and pending/rejected) leaves were counted as overlaps in
+  the concurrent-leaves warning.** The overlap endpoint passed
+  `{status: 'approved'}` to `leavesStore.list()`, but `list()` only
+  destructures `{employeeId}` and silently ignores any other filter
+  fields. Result: the SQL-style filter was a no-op, and every leave of
+  every status leaked through the date-range check. Replaced with an
+  explicit JS filter `.filter(l => l.status === 'approved')`. Confirmed
+  by smoke: an approved-then-cancelled leave no longer shows in the
+  overlap list; an approved leave still does.
+- **Both "Leaves" and "Calendar" highlighted in the top nav while on
+  `/leaves/calendar`.** The `isActive(currentPath, href)` check was
+  `currentPath === href || currentPath.startsWith(href + '/')`. With
+  href `/leaves`, the path `/leaves/calendar` matched the prefix rule
+  even though `/leaves/calendar` was its own nav entry. Now `isActive`
+  takes the full list of nav hrefs and applies a sibling-precedence
+  rule: a less-specific href (`/leaves`) does NOT match if a
+  more-specific sibling (`/leaves/calendar`) covers the path.
+
+### Files touched
+- `src/routes/leaves.js` — explicit status filter on the overlap query.
+- `public/topbar.js` — `isActive()` signature + both call sites.
+- `package.json` — patch bump.
+
+---
+
+## [0.10.0] — 2026-04-26 — Leave rules: cap enforcement + concurrent warning
+
+This release closes the two remaining behavioural items in M8b that were
+spec'd in M7 but never enforced.
+
+### Added — Leave-cap enforcement
+
+- **`leavesStore.wouldExceedCap({userId, type, additionalDays, year, …})`**
+  helper. Returns `{exceeds, allowance, currentBooked, wouldBe, type}`.
+  Allowance is read from `orgSettings.leaves.defaultAllowances[type]`,
+  with `perEmployeeOverrides[userId][type]` taking precedence.
+  Allowance of `0` is the existing "no cap" semantic — never exceeds.
+- **`POST /api/leaves`** now rejects with 400 when creating a request
+  whose days would push the user's booked total over the cap.
+- **`POST /api/leaves/:id/approve`** now rejects with 400 when approving
+  would push booked over the cap. This catches the case where the
+  request was created when the cap had room, then someone else got
+  approved first.
+- Error messages include the allowance, current booked, request size,
+  and resulting total: e.g. *"Cannot book leave: allowance for vacation
+  is 22 days; you currently have 5 booked, this request adds 20 (would
+  total 25)."*
+- 8 new tests in `test-leaves.mjs` covering:
+  unlimited (allowance=0) accepts any amount; positive cap allows up to
+  exact limit; rejects beyond; pending doesn't count, only booked;
+  per-employee override beats default; cancellation frees up space;
+  year-scoped (last year doesn't block this year); hours-unit
+  conversion (8h = 1d) for cap math.
+
+### Added — Concurrent-leaves warning
+
+- **`GET /api/leaves/:id/overlaps`** (employer-only) returns the list of
+  approved leaves of *other* users that overlap with the given leave's
+  date range, plus the current `concurrentAllowed` setting from
+  org-settings.
+- **Approval flow on the leave detail page** now calls this endpoint
+  before sending the approve POST. If overlaps exist *and*
+  `concurrentAllowed === false`, a confirm dialog lists the overlapping
+  employees and asks "Approve anyway?". Setting === true → silent
+  approval as before.
+- The setting governs *whether the warning fires*, not whether approval
+  is allowed — the employer always has the final call. This matches the
+  M8b README spec ("Concurrent-leaves warning on approve").
+
+### Changed — UI display
+
+- Balance table: when allowance is 0 (no cap), the Allowance and
+  Remaining columns now show "—" instead of `0`. Same for the employer
+  matrix view, where the cell shows `<booked> / —` instead of
+  `<remaining> / 0`. Prevents the "I have zero days" misread for
+  unlimited types.
+
+### Cap semantics — settled
+
+- `allowance === 0` means **unlimited** (existing semantic, comment in
+  org-settings.js line 35: *"0 = no cap by default"*).
+- `allowance > 0` means **enforced cap**.
+- Cap counts **booked only**, not pending. Multiple pending requests can
+  exist; the cap becomes real at approval time. This way employees can
+  always submit requests, and the employer chooses what to approve.
+
+### Files touched
+- `src/storage/leaves.js` — `wouldExceedCap()` helper.
+- `src/routes/leaves.js` — cap check in create + approve; new
+  `/overlaps` endpoint.
+- `tests/test-leaves.mjs` — 8 new tests for the cap helper.
+- `public/leave.js` — `approveWithConcurrencyCheck()` wraps the approve
+  click; fetches overlaps, conditionally confirms.
+- `public/leaves.js` — "—" display when allowance is 0.
+- `package.json` — version + date bump.
+
+### Test totals
+- 9 suites, 241 passing, 0 failing (was 233 before this release).
+  Net new: 8 tests in leaves.
+
+---
+
+## [0.9.17] — 2026-04-26 — Dashboard: role-filtered nav cards
+
+### Added
+- Dashboard (`/`) now renders quick-nav cards above the placeholder.
+  One card per top-bar nav entry, role-filtered:
+  - **Employer:** Employees · Calendar · Leaves · Punches · Reports · Settings
+  - **Employee:** Punches · Calendar · Leaves · Reports
+- Card titles match the top-bar nav labels exactly. Each card has a
+  short one-line description.
+- Responsive grid: 1 column on mobile, 2 on tablet (≥600px), 3 on
+  desktop (≥1000px). Hover shows accent border + subtle lift.
+- The Dashboard placeholder card stays below for the future at-a-glance
+  widgets.
+
+### Notes
+- "My profile" and "Today" — the two cards from the original 0.0.x
+  dashboard that aren't in the current top-bar nav — were intentionally
+  omitted to match the spec ("text should match the links in the menu").
+  Profile is reachable via the avatar dropdown; "Today's punches" is
+  reachable from inside the Punches page.
+
+### Files touched
+- `public/index.html` — `<nav id="nav-cards">` container.
+- `public/index.js` — NAV_EMPLOYER / NAV_EMPLOYEE definitions + renderer.
+- `public/index.css` — `.nav-cards` grid, `.nav-card` block styles.
+- `package.json` — version + date bump.
+
+---
+
+## [0.9.16] — 2026-04-26 — Preferences page also full-width
+
+### Changed
+- Preferences page (`/preferences`) switched from narrow `.container` to
+  `.container--wide`. Missed in 0.9.15.
+- Other narrow form pages (login, setup, leaves/new, leave detail,
+  employee/new) intentionally stay on `.container` since their inputs
+  read better at form widths. If any of those should go wide too,
+  one-line change each.
+
+### Files touched
+- `public/preferences.html` — `<main>` class.
+- `package.json` — version + date bump.
+
+---
+
+## [0.9.15] — 2026-04-26 — Containers: full-width, single source of truth
+
+### Fixed
+- **Major hidden technical debt:** `.container--wide` was redefined four
+  times across `leaves.css` (1100px), `settings.css` (860px),
+  `reports.css` (960px), and `leaves-calendar.css` (960px) with
+  conflicting max-widths. Worse, `punch.html` referenced
+  `.container--wide` but didn't load any CSS file that defined it — so
+  the punch page silently fell back to the narrow `.container` rule,
+  which is why the wide-layout screenshots showed cramped columns
+  centered in a sea of empty space.
+
+### Changed
+- **`.container` and `.container--wide` are now defined in `app.css` as
+  the single source of truth.** Every page inherits the same rules:
+  - `.container` — 640px max (was 480px), used for forms and tight
+    reading-line content.
+  - `.container--wide` — 1600px max (was 1100px or 860/960 depending
+    on which page you were on), used for two-column layouts, tables,
+    and dashboards.
+- All four per-page overrides removed. The legitimate `@media print`
+  rule in `reports.css` stays (it widens both containers to 100% for
+  print, which is the right behavior).
+- **Pages switched from narrow to wide:** dashboard (`/`), employees
+  list, employee detail, punches-today. Two-column pages (punch,
+  leaves) now actually render as wide as intended.
+- **Pages staying narrow** (forms benefit from shorter line lengths):
+  login, setup, preferences, leaves/new, leave detail, employee/new.
+
+### Why not full-width on every page
+- Login / setup / preferences / new-leave / new-employee / leave detail
+  are tight forms. Stretching their inputs to 1600px hurts usability.
+  The two-tier system (narrow / wide) gives forms readable line lengths
+  and dashboards/tables generous space, with consistent rules now
+  centrally defined.
+
+### Files touched
+- `public/app.css` — canonical container definitions added.
+- `public/leaves.css`, `settings.css`, `reports.css`,
+  `leaves-calendar.css` — duplicate `.container--wide` overrides
+  removed.
+- `public/index.html`, `employees.html`, `employee.html`,
+  `punches-today.html` — switched to `.container--wide`.
+- `package.json` — version + date bump.
+
+---
+
+## [0.9.14] — 2026-04-26 — Punch: even two-column split
+
+### Changed
+- The punch page two-column grid was `minmax(420px, 55%) 1fr`, which gave
+  the right column the leftovers. With the wide container that left only
+  ~250px for the today's-list — too narrow, forcing each punch card to
+  wrap "OUT 14:06 50.4808, 5.9912" into three lines.
+- New split: `1fr 1fr` — equal columns. Both panels get ~530px on a
+  1100px container; the list breathes without dominating the buttons +
+  map column. Mobile single-column unchanged.
+
+### Files touched
+- `public/punch.css` — grid-template-columns at the 900px breakpoint.
+- `package.json` — version + date bump.
+
+---
+
+## [0.9.13] — 2026-04-26 — Punch: two-column layout (desktop)
+
+### Changed
+- Punch page now uses a two-column grid on desktop ≥900px: punch-card
+  (status block, buttons, comment, map) on the left, today's punch list
+  on the right. Mirrors the leaves page layout (`minmax(420px, 55%) 1fr`).
+- Container widened to `container--wide` (1100px max).
+- "See everyone's punches today" link moved inside the today section so
+  it stays anchored to the list on the right column.
+- Mobile (<900px) keeps the single-column stack — punch card on top,
+  today list below — exactly as before.
+
+### Files touched
+- `public/punch.html` — wrapped the two existing sections in a
+  `.punch-layout` grid container, moved the all-today link into the
+  today-section column, switched the main container class.
+- `public/punch.css` — appended grid layout + breakpoint.
+- `package.json` — version + date bump.
+
+---
+
+## [0.9.12] — 2026-04-26 — Punch: status block tint + daily total
+
+### Added
+- **Today section header** now shows the cumulative worked time on the
+  right (e.g. "4 minutes" / "1h 23m"). Pairs each in→out, ignores any
+  unmatched in (defensive against data anomalies). If the user is
+  currently clocked in, the open session counts up to "now". Uses
+  tabular-nums and `--text-muted` for a calm, neutral display — not red.
+- The label is hidden when there are no punches today.
+
+### Changed
+- **Status block** ("Clocked in" / "Clocked out") now matches the
+  Clock-in / Clock-out button colors:
+  - Clocked in → `--success-soft` background, `--success` border,
+    bright green dot with a halo.
+  - Clocked out → `--danger-soft` background, `--danger` border, red
+    dot with a halo.
+  Strong visual coupling between current state and the relevant action
+  button. Subtle enough not to compete with the buttons themselves.
+
+### Files touched
+- `public/punch.{html,js,css}` — three small additions.
+- `package.json` — version + date bump.
+
+### Note on the "red" question
+- The screenshot showed the daily total in red. I went with neutral
+  muted instead — red conventionally signals errors/warnings, and the
+  status block above already conveys the "currently clocked out" state
+  in red. Two reds competing diluted the signal. Easy to flip if you
+  prefer the original.
+
+---
+
 ## [0.9.11] — 2026-04-26 — Footer link + geolocation cache
 
 ### Added

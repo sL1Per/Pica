@@ -23,14 +23,16 @@
   <link rel="stylesheet" href="/punch.css">
 </head>
 <body>
-  <main class="container">
+  <main class="container container--wide">
     <header class="page-header">
       <div>
         <h1>Clock</h1>
       </div>
     </header>
 
-    <section class="punch-card">
+    <div class="punch-layout">
+
+      <section class="punch-card">
       <div id="status-block" class="status-block status-block--unknown">
         <div class="status-dot"></div>
         <div>
@@ -75,15 +77,20 @@
     </section>
 
     <section class="today-section">
-      <h2>Today</h2>
+      <div class="today-section__head">
+        <h2>Today</h2>
+        <span id="today-total" class="today-total" hidden></span>
+      </div>
       <ul id="today-list" class="punch-list">
         <li class="subtle">Loading…</li>
       </ul>
-    </section>
+      </section>
 
-    <p class="subtle center" style="margin-top: var(--gap-5);">
-      <a href="/punches/today" id="all-today-link" hidden>See everyone’s punches today →</a>
-    </p>
+      <p class="subtle center" style="margin-top: var(--gap-3);">
+        <a href="/punches/today" id="all-today-link" hidden>See everyone’s punches today →</a>
+      </p>
+
+    </div>
   </main>
 
   <script type="module" src="/punch.js"></script>

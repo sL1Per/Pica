@@ -445,6 +445,112 @@ try {
     fs.rmSync(balDir, { recursive: true, force: true });
   }
 
+  // --------------------------------------------------------------------------
+
+  console.log('\nwouldExceedCap');
+
+  const capDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-leaves-cap-'));
+  try {
+    const cstore = createLeavesStore(capDir, masterKey);
+    const types = ['vacation', 'sick', 'appointment', 'other'];
+    const daysOf = (l) => {
+      if (l.unit === 'hours') return (typeof l.hours === 'number') ? l.hours / 8 : 0;
+      const s = new Date(l.start + 'T00:00:00Z').getTime();
+      const e = new Date(l.end   + 'T00:00:00Z').getTime();
+      return Math.round((e - s) / 86_400_000) + 1;
+    };
+    const settings = {
+      leaves: {
+        defaultAllowances: { vacation: 10, sick: 0, appointment: 5, other: 0 },
+        perEmployeeOverrides: {},
+      },
+    };
+
+    await test('allowance===0 means unlimited (never exceeds)', () => {
+      const out = cstore.wouldExceedCap({
+        userId: aliceId, type: 'sick', additionalDays: 1000,
+        year: 2026, orgSettings: settings, leaveTypes: types, daysOf,
+      });
+      assert.equal(out.exceeds, false);
+      assert.equal(out.allowance, 0);
+    });
+
+    await test('positive cap allows exactly up to the limit', () => {
+      const out = cstore.wouldExceedCap({
+        userId: aliceId, type: 'vacation', additionalDays: 10,
+        year: 2026, orgSettings: settings, leaveTypes: types, daysOf,
+      });
+      assert.equal(out.exceeds, false);
+      assert.equal(out.wouldBe, 10);
+    });
+
+    await test('positive cap rejects beyond the limit', () => {
+      const out = cstore.wouldExceedCap({
+        userId: aliceId, type: 'vacation', additionalDays: 11,
+        year: 2026, orgSettings: settings, leaveTypes: types, daysOf,
+      });
+      assert.equal(out.exceeds, true);
+      assert.equal(out.allowance, 10);
+      assert.equal(out.wouldBe, 11);
+    });
+
+    await test('cap counts approved (booked) leaves only, not pending', () => {
+      // Approve 7 vacation days, leave 5 pending. Adding 4 more should NOT
+      // exceed because 7 (booked) + 4 = 11 > 10 → does exceed (booked counts).
+      // Adding 3 should be OK because 7 + 3 = 10 → not exceed.
+      // Pending 5 is irrelevant to wouldExceedCap.
+      const u = 'cap-user-1';
+      const a = cstore.create({ employeeId: u, type: 'vacation', unit: 'days', start: '2026-02-01', end: '2026-02-07' });
+      cstore.approve(a.id, adminId);
+      cstore.create({ employeeId: u, type: 'vacation', unit: 'days', start: '2026-08-01', end: '2026-08-05' }); // pending
+      const ok = cstore.wouldExceedCap({ userId: u, type: 'vacation', additionalDays: 3, year: 2026, orgSettings: settings, leaveTypes: types, daysOf });
+      assert.equal(ok.exceeds, false);
+      assert.equal(ok.currentBooked, 7);
+      assert.equal(ok.wouldBe, 10);
+      const bad = cstore.wouldExceedCap({ userId: u, type: 'vacation', additionalDays: 4, year: 2026, orgSettings: settings, leaveTypes: types, daysOf });
+      assert.equal(bad.exceeds, true);
+    });
+
+    await test('per-employee override beats default for cap purposes', () => {
+      const u = 'cap-user-2';
+      const ov = { leaves: { ...settings.leaves, perEmployeeOverrides: { [u]: { vacation: 30 } } } };
+      const out = cstore.wouldExceedCap({ userId: u, type: 'vacation', additionalDays: 25, year: 2026, orgSettings: ov, leaveTypes: types, daysOf });
+      assert.equal(out.exceeds, false);
+      assert.equal(out.allowance, 30);
+    });
+
+    await test('cancelled leaves free up cap space', () => {
+      const u = 'cap-user-3';
+      const a = cstore.create({ employeeId: u, type: 'vacation', unit: 'days', start: '2026-03-01', end: '2026-03-08' });
+      cstore.approve(a.id, adminId);
+      let out = cstore.wouldExceedCap({ userId: u, type: 'vacation', additionalDays: 5, year: 2026, orgSettings: settings, leaveTypes: types, daysOf });
+      assert.equal(out.exceeds, true); // 8 booked + 5 = 13 > 10
+      cstore.cancel(a.id, adminId);
+      out = cstore.wouldExceedCap({ userId: u, type: 'vacation', additionalDays: 5, year: 2026, orgSettings: settings, leaveTypes: types, daysOf });
+      assert.equal(out.exceeds, false); // 0 booked + 5 = 5 ≤ 10
+    });
+
+    await test('cap is year-scoped (last year does not block this year)', () => {
+      const u = 'cap-user-4';
+      const a = cstore.create({ employeeId: u, type: 'vacation', unit: 'days', start: '2025-11-01', end: '2025-11-10' });
+      cstore.approve(a.id, adminId);
+      const out = cstore.wouldExceedCap({ userId: u, type: 'vacation', additionalDays: 10, year: 2026, orgSettings: settings, leaveTypes: types, daysOf });
+      assert.equal(out.exceeds, false);
+    });
+
+    await test('hours unit converted to days (8h = 1d) for cap math', () => {
+      const u = 'cap-user-5';
+      // Approve 7 days, then ask about 8 more hours → 7 + 1 = 8 ≤ 10 → ok.
+      const a = cstore.create({ employeeId: u, type: 'vacation', unit: 'days', start: '2026-04-01', end: '2026-04-07' });
+      cstore.approve(a.id, adminId);
+      const out = cstore.wouldExceedCap({ userId: u, type: 'vacation', additionalDays: 1, year: 2026, orgSettings: settings, leaveTypes: types, daysOf });
+      assert.equal(out.exceeds, false);
+    });
+
+  } finally {
+    fs.rmSync(capDir, { recursive: true, force: true });
+  }
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

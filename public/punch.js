@@ -201,6 +201,17 @@ function hideMap() {
 // -------- Today list --------------------------------------------------------
 
 function renderList(punches) {
+  // Update the today-total label next to the section heading.
+  const totalEl = document.getElementById('today-total');
+  if (totalEl) {
+    if (punches.length === 0) {
+      totalEl.hidden = true;
+    } else {
+      totalEl.hidden = false;
+      totalEl.textContent = formatDuration(totalWorkedMs(punches));
+    }
+  }
+
   listEl.innerHTML = '';
   if (punches.length === 0) {
     const li = document.createElement('li');
@@ -245,6 +256,41 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
+}
+
+/**
+ * Sum total time worked from today's punches.
+ * Pair each "in" with the next "out". An open session (in with no
+ * matching out yet) counts from its in-time up to "now".
+ * Returns a milliseconds total; use formatDuration() to render.
+ */
+function totalWorkedMs(punches) {
+  // Punches arrive newest-first from the server. Sort to chronological for pairing.
+  const sorted = [...punches].sort((a, b) => a.ts.localeCompare(b.ts));
+  let total = 0;
+  let openIn = null;
+  for (const p of sorted) {
+    if (p.type === 'in') {
+      // If we already had an unmatched in, drop it (data anomaly, don't crash).
+      openIn = new Date(p.ts).getTime();
+    } else if (p.type === 'out' && openIn != null) {
+      total += new Date(p.ts).getTime() - openIn;
+      openIn = null;
+    }
+  }
+  // Open session — count up to now.
+  if (openIn != null) total += Date.now() - openIn;
+  return total;
+}
+
+function formatDuration(ms) {
+  const totalMins = Math.floor(ms / 60_000);
+  if (totalMins < 1) return 'less than a minute';
+  if (totalMins < 60) return totalMins === 1 ? '1 minute' : `${totalMins} minutes`;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  if (m === 0) return h === 1 ? '1 hour' : `${h} hours`;
+  return `${h}h ${m}m`;
 }
 
 // -------- Data refresh ------------------------------------------------------

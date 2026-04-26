@@ -29,17 +29,19 @@
   padding: var(--gap-3);
   background: var(--bg);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--border);  /* state color injected below */
   border-radius: var(--radius);
   margin-bottom: var(--gap-4);
 }
+.status-block--in  { background: var(--success-soft); border-left-color: var(--success); border-color: var(--success); }
+.status-block--out { background: var(--danger-soft);  border-left-color: var(--danger);  border-color: var(--danger); }
 .status-dot {
   width: 12px; height: 12px;
   border-radius: 50%;
-  background: var(--text-subtle);
   flex-shrink: 0;
 }
-.status-block--in  .status-dot { background: var(--success); box-shadow: 0 0 0 4px rgba(46,125,50,0.15); }
-.status-block--out .status-dot { background: var(--text-subtle); }
+.status-block--in  .status-dot { background: var(--success); box-shadow: 0 0 0 4px rgba(46,125,50,0.18); }
+.status-block--out .status-dot { background: var(--danger);  box-shadow: 0 0 0 4px rgba(168,50,50,0.18); }
 .status-label { font-weight: 600; font-size: var(--text-md); }
 .status-meta  { color: var(--text-muted); font-size: var(--text-sm); }
 
@@ -215,4 +217,39 @@
   margin-top: var(--gap-1);
   margin-bottom: 0;
   font-size: var(--text-xs);
+}
+
+
+/* Today section header — h2 left, total worked right. */
+.today-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-3);
+  margin-bottom: var(--gap-3);
+}
+.today-section__head h2 { margin: 0; }
+.today-total {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----- Two-column layout (desktop) ------------------------------------- */
+/* Mobile (default): single column, sections stack naturally. */
+
+.punch-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap-5);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .punch-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* Today section title doesn't need top margin when it's its own column. */
+  .punch-layout .today-section { margin-top: 0; }
 }
