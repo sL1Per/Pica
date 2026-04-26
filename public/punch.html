@@ -51,13 +51,9 @@
       <label for="comment">Comment (optional)</label>
       <textarea id="comment" rows="2" maxlength="500" placeholder="e.g. Starting afternoon shift"></textarea>
 
-      <label class="checkbox">
-        <input type="checkbox" id="share-geo" checked>
-        Share my location
-      </label>
-      <p class="subtle map-card__hint">When location sharing is on, a map tile is fetched from OpenStreetMap to show your position.</p>
-
-      <!-- Map placeholder. Hidden until first geolocation success. -->
+      <!-- Map placeholder. Hidden until first geolocation success.
+           Location sharing is mandatory; if the browser refuses or
+           times out, the punch still goes through (logged as such). -->
       <div id="map-card" class="map-card" hidden>
         <div class="map-card__frame">
           <img id="map-tile" class="map-card__tile" alt="" decoding="async">

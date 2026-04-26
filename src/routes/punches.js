@@ -40,6 +40,13 @@ export function registerPunchRoutes(router, {
     };
   }
 
+  function validGeoSkipReason(r) {
+    // Whitelist of allowed reasons. Free strings are dropped to keep the
+    // field a clean enum for any future audit/reporting.
+    const ok = new Set(['denied', 'timeout', 'unavailable', 'unsupported']);
+    return typeof r === 'string' && ok.has(r) ? r : null;
+  }
+
   function validComment(c) {
     if (c == null) return null;
     if (typeof c !== 'string') return null;
@@ -70,6 +77,7 @@ export function registerPunchRoutes(router, {
       ts,
       comment: validComment(req.body?.comment),
       geo: validGeo(req.body?.geo),
+      geoSkipReason: validGeoSkipReason(req.body?.geoSkipReason),
     });
     res.json({ ok: true, punch: record });
   }));
@@ -85,6 +93,7 @@ export function registerPunchRoutes(router, {
       ts,
       comment: validComment(req.body?.comment),
       geo: validGeo(req.body?.geo),
+      geoSkipReason: validGeoSkipReason(req.body?.geoSkipReason),
     });
     res.json({ ok: true, punch: record });
   }));

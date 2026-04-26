@@ -82,6 +82,7 @@ export function createPunchesStore(dataDir, masterKey) {
         type: parsed.type,
         comment: extra?.comment ?? null,
         geo: extra?.geo ?? null,
+        geoSkipReason: extra?.geoSkipReason ?? null,
         decryptFailed: extra?._decrypt_failed ?? false,
       });
     }
@@ -130,7 +131,7 @@ export function createPunchesStore(dataDir, masterKey) {
    * Atomically append one punch line to the correct month file.
    * Creates the directory tree on demand. Returns the persisted record.
    */
-  function append(employeeId, { type, ts, comment, geo }) {
+  function append(employeeId, { type, ts, comment, geo, geoSkipReason }) {
     if (!PUNCH_TYPES.has(type)) throw new Error(`Invalid punch type: ${type}`);
     if (!ts || typeof ts !== 'string') throw new Error('ts is required');
     const d = new Date(ts);
@@ -144,9 +145,16 @@ export function createPunchesStore(dataDir, masterKey) {
     // Encrypt the optional payload. If there's nothing to hide, omit `enc`
     // entirely — keeps files smaller and makes it visible at a glance that
     // no comment/geo was stored for this line.
+    // Note: geoSkipReason ('denied' / 'timeout' / 'unavailable') is also
+    // encrypted alongside the rest, since it's a privacy-relevant detail.
     let enc;
-    if ((comment && comment !== '') || geo) {
-      const payload = JSON.stringify({ comment: comment || null, geo: geo || null });
+    const hasReason = typeof geoSkipReason === 'string' && geoSkipReason !== '';
+    if ((comment && comment !== '') || geo || hasReason) {
+      const payload = JSON.stringify({
+        comment: comment || null,
+        geo: geo || null,
+        geoSkipReason: hasReason ? geoSkipReason : null,
+      });
       enc = encryptField(payload, masterKey, aadFor(employeeId, ts));
     }
 
@@ -156,7 +164,12 @@ export function createPunchesStore(dataDir, masterKey) {
     const file = monthFile(employeeId, year, month);
     fs.appendFileSync(file, JSON.stringify(record) + '\n', { mode: 0o600 });
 
-    return { employeeId, ts, type, comment: comment || null, geo: geo || null };
+    return {
+      employeeId, ts, type,
+      comment: comment || null,
+      geo: geo || null,
+      geoSkipReason: hasReason ? geoSkipReason : null,
+    };
   }
 
   // --------------------------------------------------------------------------

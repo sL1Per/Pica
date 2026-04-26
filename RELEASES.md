@@ -14,6 +14,62 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.10.2] — 2026-04-26 — Mandatory location with graceful failure
+
+### Changed
+- **Location sharing on the punch page is now mandatory** — the
+  "Share my location" checkbox and its privacy hint are removed. Every
+  page load attempts geolocation, every punch attempts geolocation.
+- **But punches still go through when geolocation fails** for technical
+  or permission reasons. We don't want a low signal, denied permission,
+  or a flaky Wi-Fi triangulation backend to block someone from clocking
+  in or out — that hurts honest workers more than dishonest ones.
+- The user-facing message on failure now reads "The punch will still be
+  recorded" so the worker isn't surprised when it does.
+
+### Added
+- **`geoSkipReason` field on every punch.** Whitelisted to one of:
+  `denied`, `timeout`, `unavailable`, `unsupported`, or `null` when geo
+  was successfully captured.
+  - Stored encrypted alongside `comment` and `geo` (privacy-relevant).
+  - Returned on read so future audit/reporting can surface "punches
+    without location" if the employer wants to investigate patterns.
+  - Old records read with `geoSkipReason: null` (forward-compatible
+    payload format — adding a third field doesn't break old NDJSON lines).
+- **Frontend captures the reason** when the geolocation API errors out:
+  - `PERMISSION_DENIED` → `'denied'`
+  - `TIMEOUT` → `'timeout'`
+  - any other geolocation error → `'unavailable'`
+  - browser doesn't support geolocation → `'unsupported'`
+
+### Notes — design choice
+- Permission denial is treated the same as a technical failure (punch
+  goes through, reason logged). Alternative would have been blocking the
+  punch and forcing the user to re-grant permission — but that creates
+  exploitation surface free recovery for legit users (Chrome's
+  permissions can get into weird states; slow networks; corporate
+  policies). The honest audit trail comes from the `geoSkipReason` flag,
+  which is enforceable later via reports/dashboards (deferred to M11).
+- The reason is privacy-relevant (it tells you whether someone *blocked*
+  location vs *couldn't get* a fix) so it goes inside the encrypted blob
+  with the other sensitive fields, not on the plaintext line header.
+
+### Files touched
+- `src/storage/punches.js` — `append()` accepts `geoSkipReason`; encrypted
+  payload now carries the third field; read path returns it.
+- `src/routes/punches.js` — `validGeoSkipReason()` whitelist; clock-in
+  and clock-out routes pass it through.
+- `public/punch.html` — share-geo checkbox + privacy hint removed.
+- `public/punch.js` — `shareGeo` references gone; geo always attempted;
+  `lastGeoSkipReason` captured on terminal failure; included in the
+  punch payload when geo is null.
+- `package.json` — patch bump.
+
+### Test totals
+- 9 suites, 241 passing, 0 failing.
+
+---
+
 ## [0.10.1] — 2026-04-26 — Fix: overlap status filter + nav highlighting
 
 ### Fixed

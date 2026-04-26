@@ -9,7 +9,9 @@ const statusBlock = $('status-block');
 const statusLabel = $('status-label');
 const statusMeta  = $('status-meta');
 const commentEl   = $('comment');
-const shareGeo    = $('share-geo');
+// shareGeo removed in 0.10.2 — location is mandatory. If the browser
+// can't deliver a fix we still allow the punch but log the reason.
+let lastGeoSkipReason = null;
 const geoStatusEl = $('geo-status');
 const inBtn       = $('clock-in-btn');
 const outBtn      = $('clock-out-btn');
@@ -119,9 +121,9 @@ function paintStatus({ open, lastPunch }) {
  */
 function getGeo() {
   return new Promise((resolve) => {
-    if (!shareGeo.checked) return resolve(null);
     if (!('geolocation' in navigator)) {
       geoStatusEl.textContent = 'Your browser does not support geolocation.';
+      lastGeoSkipReason = 'unsupported';
       return resolve(null);
     }
 
@@ -130,6 +132,7 @@ function getGeo() {
     const success = (pos) => {
       geoStatusEl.textContent = '';
       retryGeoBtn.hidden = true;
+      lastGeoSkipReason = null;
       resolve({
         lat:      pos.coords.latitude,
         lng:      pos.coords.longitude,
@@ -144,11 +147,16 @@ function getGeo() {
         success,
         (err) => {
           const msg = err.code === err.TIMEOUT
-            ? 'Location request timed out. Try again, or move closer to a window.'
-            : `Location unavailable: ${err.message}`;
+            ? 'Location request timed out. The punch will still be recorded.'
+            : err.code === err.PERMISSION_DENIED
+              ? 'Location permission denied. The punch will still be recorded.'
+              : 'Location unavailable. The punch will still be recorded.';
           geoStatusEl.textContent = msg;
           retryGeoBtn.hidden = false;
           markGeoFailed();
+          lastGeoSkipReason = err.code === err.TIMEOUT ? 'timeout'
+                            : err.code === err.PERMISSION_DENIED ? 'denied'
+                            : 'unavailable';
           resolve(null);
         },
         { enableHighAccuracy: true, timeout: 20000, maximumAge: 300_000 },
@@ -328,6 +336,7 @@ async function doPunch(direction) {
   const payload = {
     comment: commentEl.value.trim() || undefined,
     geo: geo || undefined,
+    geoSkipReason: geo ? undefined : (lastGeoSkipReason || 'unavailable'),
   };
   const url = direction === 'in' ? '/api/punches/clock-in' : '/api/punches/clock-out';
   const result = await postJson(url, payload);
@@ -353,20 +362,6 @@ outBtn.addEventListener('click', () => {
   doPunch('out');
 });
 
-// Live preview: when the user toggles Share my location, fetch (or hide) on demand.
-shareGeo.addEventListener('change', async () => {
-  if (shareGeo.checked) {
-    const fix = await getGeo();
-    if (fix) {
-      lastFix = { ...fix, ts: new Date().toISOString() };
-      saveCachedFix(lastFix);
-      renderMap(lastFix);
-    }
-  } else {
-    hideMap();
-  }
-});
-
 retryGeoBtn.addEventListener('click', async () => {
   retryGeoBtn.hidden = true;
   const fix = await getGeo();
@@ -387,27 +382,25 @@ retryGeoBtn.addEventListener('click', async () => {
   await refresh();
 
   // Map preview at page load. Strategy:
-  //   1. If sharing is off → nothing.
-  //   2. If we have a cached fix from this session → render it immediately,
+  //   1. If we have a cached fix from this session → render it immediately,
   //      don't re-trigger geolocation. Map is "as of last successful fix".
-  //   3. If we tried and failed earlier this session → don't auto-retry;
+  //   2. If we tried and failed earlier this session → don't auto-retry;
   //      show the Retry button so the user opts back in.
-  //   4. Otherwise (first time this session, sharing on) → fetch.
-  if (shareGeo.checked) {
-    const cached = loadCachedFix();
-    if (cached) {
-      lastFix = cached;
-      renderMap(cached);
-    } else if (geoFailedThisSession()) {
-      retryGeoBtn.hidden = false;
-      geoStatusEl.textContent = 'Location unavailable. Click Retry to try again.';
-    } else {
-      const fix = await getGeo();
-      if (fix) {
-        lastFix = { ...fix, ts: new Date().toISOString() };
-        saveCachedFix(lastFix);
-        renderMap(lastFix);
-      }
+  //   3. Otherwise (first time this session) → fetch.
+  // Punches always go through whether or not a fix is obtained.
+  const cached = loadCachedFix();
+  if (cached) {
+    lastFix = cached;
+    renderMap(cached);
+  } else if (geoFailedThisSession()) {
+    retryGeoBtn.hidden = false;
+    geoStatusEl.textContent = 'Location unavailable. Click Retry to try again.';
+  } else {
+    const fix = await getGeo();
+    if (fix) {
+      lastFix = { ...fix, ts: new Date().toISOString() };
+      saveCachedFix(lastFix);
+      renderMap(lastFix);
     }
   }
 })();
