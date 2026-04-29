@@ -30,12 +30,14 @@ import { registerPageRoutes } from './src/routes/pages.js';
 import { registerEmployeeRoutes } from './src/routes/employees.js';
 import { registerPunchRoutes } from './src/routes/punches.js';
 import { registerLeaveRoutes } from './src/routes/leaves.js';
+import { registerCorrectionRoutes } from './src/routes/corrections.js';
 import { registerReportRoutes } from './src/routes/reports.js';
 import { approxDaysOff } from './src/storage/reports.js';
 import { registerSettingsRoutes } from './src/routes/settings.js';
 import { createEmployeesStore } from './src/storage/employees.js';
 import { createPunchesStore } from './src/storage/punches.js';
 import { createLeavesStore, LEAVE_TYPES_LIST } from './src/storage/leaves.js';
+import { createCorrectionsStore } from './src/storage/corrections.js';
 import { createUserPrefsStore } from './src/storage/user-prefs.js';
 import { createOrgSettingsStore } from './src/storage/org-settings.js';
 import { createCompanyLogoStore } from './src/storage/company-logo.js';
@@ -84,6 +86,7 @@ const usersStore = createUsersStore(config.dataDir);
 const employeesStore = createEmployeesStore(config.dataDir, masterKey);
 const punchesStore = createPunchesStore(config.dataDir, masterKey);
 const leavesStore = createLeavesStore(config.dataDir, masterKey);
+const correctionsStore = createCorrectionsStore(config.dataDir, masterKey);
 const userPrefsStore = createUserPrefsStore(config.dataDir);
 const orgSettingsStore = createOrgSettingsStore(config.dataDir);
 const companyLogoStore = createCompanyLogoStore(config.dataDir, masterKey);
@@ -136,6 +139,14 @@ registerLeaveRoutes(router, {
   orgSettingsStore,
   leaveTypes: LEAVE_TYPES_LIST,
   daysOf: approxDaysOff,
+  requireAuth: rbac.requireAuth,
+  requireRole: rbac.requireRole,
+});
+registerCorrectionRoutes(router, {
+  correctionsStore,
+  punchesStore,
+  usersStore,
+  employeesStore,
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
 });

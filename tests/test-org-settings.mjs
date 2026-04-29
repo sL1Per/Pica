@@ -321,6 +321,46 @@ try {
     assert.deepEqual(after, before);
   });
 
+  // ---------------------------------------------------------------------------
+  console.log('\nworkingTime');
+  // ---------------------------------------------------------------------------
+
+  await test('workingTime defaults to 8h daily / 40h weekly', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-os-wt1-')));
+    assert.equal(fresh.get().workingTime.dailyHours, 8);
+    assert.equal(fresh.get().workingTime.weeklyHours, 40);
+  });
+
+  await test('workingTime accepts fractional hours (7.5 / 37.5)', () => {
+    store.update({ workingTime: { dailyHours: 7.5, weeklyHours: 37.5 } });
+    const after = store.get().workingTime;
+    assert.equal(after.dailyHours, 7.5);
+    assert.equal(after.weeklyHours, 37.5);
+  });
+
+  await test('workingTime rejects daily hours over 24', () => {
+    assert.throws(() => store.update({ workingTime: { dailyHours: 25 } }), /between 0 and 24/);
+  });
+
+  await test('workingTime rejects negative hours', () => {
+    assert.throws(() => store.update({ workingTime: { dailyHours: -1 } }), /between 0 and 24/);
+    assert.throws(() => store.update({ workingTime: { weeklyHours: -1 } }), /between 0 and 168/);
+  });
+
+  await test('workingTime rejects non-numeric values', () => {
+    assert.throws(() => store.update({ workingTime: { dailyHours: 'eight' } }), /between 0 and 24/);
+  });
+
+  await test('workingTime patch is independent of leaves/backups patches', () => {
+    const before = store.get();
+    store.update({ workingTime: { dailyHours: 6 } });
+    const after = store.get();
+    assert.equal(after.workingTime.dailyHours, 6);
+    // Other sections must still be present unchanged.
+    assert.deepEqual(after.leaves, before.leaves);
+    assert.deepEqual(after.backups, before.backups);
+  });
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

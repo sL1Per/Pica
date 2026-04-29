@@ -106,6 +106,26 @@ export function registerPageRoutes(router, { publicDir, usersStore, authenticate
     await sendHtml(res, 'leave.html');
   });
 
+  // -- Corrections (manual time entries) ---------------------------------
+
+  router.get('/corrections', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'corrections.html');
+  });
+
+  router.get('/corrections/new', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'correction-new.html');
+  });
+
+  router.get('/corrections/:id', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'correction.html');
+  });
+
   // -- Reports ------------------------------------------------------------
 
   router.get('/reports', async (req, res) => {

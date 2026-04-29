@@ -49,6 +49,12 @@ export const DEFAULT_ORG_SETTINGS = Object.freeze({
     schedule: 'daily',       // off | hourly | daily | weekly
     retention: 7,            // keep most-recent N snapshots
   },
+  workingTime: {
+    // Targets used by reports and the punch page's "today" indicator.
+    // Org-wide for now; per-employee overrides may come in M11.
+    dailyHours: 8,           // expected hours per working day
+    weeklyHours: 40,         // expected hours per working week
+  },
 });
 
 function atomicWrite(filePath, contents) {
@@ -119,6 +125,9 @@ export function createOrgSettingsStore(dataDir) {
     }
     if (stored?.backups) {
       defaults.backups = deepMerge(defaults.backups, stored.backups);
+    }
+    if (stored?.workingTime) {
+      defaults.workingTime = deepMerge(defaults.workingTime, stored.workingTime);
     }
     return defaults;
   }
@@ -191,6 +200,25 @@ export function createOrgSettingsStore(dataDir) {
     return out;
   }
 
+  function cleanWorkingTimePatch(patch) {
+    const out = {};
+    if ('dailyHours' in patch) {
+      const v = Number(patch.dailyHours);
+      if (!Number.isFinite(v) || v < 0 || v > 24) {
+        throw new Error('workingTime.dailyHours must be a number between 0 and 24');
+      }
+      out.dailyHours = Math.round(v * 100) / 100; // 2-decimal precision
+    }
+    if ('weeklyHours' in patch) {
+      const v = Number(patch.weeklyHours);
+      if (!Number.isFinite(v) || v < 0 || v > 168) {
+        throw new Error('workingTime.weeklyHours must be a number between 0 and 168');
+      }
+      out.weeklyHours = Math.round(v * 100) / 100;
+    }
+    return out;
+  }
+
   function cleanCompanyPatch(patch) {
     const out = {};
     if ('name' in patch) {
@@ -241,6 +269,7 @@ export function createOrgSettingsStore(dataDir) {
         next.leaves = { ...next.leaves, ...cleaned };
       }
       if (patch.backups) next.backups = { ...next.backups, ...cleanBackupsPatch(patch.backups) };
+      if (patch.workingTime) next.workingTime = { ...next.workingTime, ...cleanWorkingTimePatch(patch.workingTime) };
       saveAll(next);
       return JSON.parse(JSON.stringify(next));
     },

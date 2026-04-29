@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
+  <title>Pica — New correction</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="theme-color" content="#2e7d32">
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/topbar.css">
+  <link rel="stylesheet" href="/corrections.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1>Register manual time</h1>
+        <p class="subtle">For when you forgot to clock in or out.</p>
+      </div>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <section class="card">
+      <form id="correction-form" autocomplete="off">
+        <label for="start">Start (when you started working)</label>
+        <input type="datetime-local" id="start" name="start" required>
+
+        <label for="end">End (when you stopped working)</label>
+        <input type="datetime-local" id="end" name="end" required>
+
+        <label for="justification">Justification <span class="subtle">(optional)</span></label>
+        <textarea id="justification" name="justification" rows="3" maxlength="500"
+                  placeholder="e.g. Phone battery died, couldnt open the app"></textarea>
+
+        <p id="bank-warning" class="callout callout--warn">
+          Without a justification, these <strong id="bank-warn-hours">hours</strong> will be added to your time bank as compensation owed to the employer.
+        </p>
+
+        <div class="form-actions">
+          <a href="/corrections" class="btn-ghost">Cancel</a>
+          <button type="submit" class="btn-primary">Submit for approval</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="/correction-new.js"></script>
+</body>
+</html>

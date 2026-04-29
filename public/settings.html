@@ -37,6 +37,7 @@
     <nav class="section-nav">
       <a href="#company" id="nav-company" hidden>Company</a>
       <a href="#organization" id="nav-org" hidden>Organization</a>
+      <a href="#working-time" id="nav-wt" hidden>Working time</a>
       <a href="#backups" id="nav-bak" hidden>Backups</a>
     </nav>
 
@@ -112,6 +113,22 @@
         <p class="subtle">Enforcement arrives in Milestone 8 (it's stored for now).</p>
 
         <button type="submit" class="block">Save organization settings</button>
+      </form>
+    </section>
+
+    <!-- Working time section (employer only) -->
+    <section id="working-time" class="card" hidden>
+      <h2>Working time</h2>
+      <p class="subtle">Targets used by reports and the punch page's daily indicator.</p>
+
+      <form id="working-time-form" autocomplete="off">
+        <label for="daily-hours">Daily hours target</label>
+        <input type="number" id="daily-hours" name="dailyHours" min="0" max="24" step="0.5" required>
+
+        <label for="weekly-hours">Weekly hours target</label>
+        <input type="number" id="weekly-hours" name="weeklyHours" min="0" max="168" step="0.5" required>
+
+        <button type="submit" class="block">Save working-time settings</button>
       </form>
     </section>
 

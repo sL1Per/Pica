@@ -295,6 +295,16 @@ Split into three drops:
 - ✅ Web App Manifest + home-screen icon (installable PWA)
 - ✅ Offline-friendly clock-in (queue locally, sync when online)
 
+**M8d — Time corrections + working-time targets ✅**
+- ✅ Manual time entry (employee files retroactive in/out window with optional justification)
+- ✅ Approval flow (pending → approved / rejected / cancelled, mirrors leaves)
+- ✅ Time bank — approved unjustified corrections accumulate as "uncredited hours owed"
+- ✅ Configurable daily / weekly working-hours targets in org settings (defaults 8h / 40h)
+- ✅ Approved corrections materialize as punch records with deterministic clientIds
+- ✅ Frontend: corrections list, new/detail pages, "Register manually" link on punch page
+- ✅ Frontend: working-hours display on punch page + bank balance indicator
+- ✅ Frontend: settings UI for daily/weekly target hours
+
 ### Milestone 9 — i18n
 - [ ] Language files: `i18n/en.json`, `i18n/pt.json`
 - [ ] Language switcher (reads from M7's account settings)

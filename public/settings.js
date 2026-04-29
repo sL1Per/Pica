@@ -38,6 +38,13 @@ const backupEnabled   = $('backup-enabled');
 const backupSchedule  = $('backup-schedule');
 const backupRetention = $('backup-retention');
 
+// Working-time form
+const navWt              = $('nav-wt');
+const workingTimeSection = $('working-time');
+const workingTimeForm    = $('working-time-form');
+const dailyHoursInput    = $('daily-hours');
+const weeklyHoursInput   = $('weekly-hours');
+
 let me = null;
 let employees = [];
 
@@ -58,6 +65,10 @@ function renderOrg(settings) {
   backupEnabled.checked   = !!settings.backups.enabled;
   backupSchedule.value    = settings.backups.schedule ?? 'off';
   backupRetention.value   = settings.backups.retention ?? 7;
+
+  // Working time
+  dailyHoursInput.value  = settings.workingTime?.dailyHours  ?? 8;
+  weeklyHoursInput.value = settings.workingTime?.weeklyHours ?? 40;
 }
 
 function renderOverridesTable(overrides) {
@@ -155,6 +166,36 @@ if (orgForm) {
   });
 }
 
+if (workingTimeForm) {
+  workingTimeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showMessage(messageEl, '');
+    const btn = workingTimeForm.querySelector('button[type="submit"]');
+    setBusy(btn, true, 'Saving…');
+
+    const patch = {
+      workingTime: {
+        dailyHours: Number(dailyHoursInput.value || 8),
+        weeklyHours: Number(weeklyHoursInput.value || 40),
+      },
+    };
+    try {
+      const res = await fetch('/api/settings/org', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save');
+      showMessage(messageEl, 'Working-time settings saved.', 'success');
+    } catch (err) {
+      showMessage(messageEl, err.message, 'error');
+    }
+    setBusy(btn, false);
+  });
+}
+
 // ---- Bootstrap ------------------------------------------------------------
 
 (async () => {
@@ -167,9 +208,11 @@ if (orgForm) {
   if (me.role === 'employer') {
     navCompany.hidden = false;
     navOrg.hidden = false;
+    navWt.hidden = false;
     navBak.hidden = false;
     companySection.hidden = false;
     orgSection.hidden = false;
+    workingTimeSection.hidden = false;
     backupsSection.hidden = false;
 
     // Load employees for the overrides table and the org settings.

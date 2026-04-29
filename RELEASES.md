@@ -14,6 +14,227 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.12.1] — 2026-04-27 — Milestone 8d (frontend): corrections UI + working-time display
+
+This release ships the frontend half of M8d. Employees can now file
+corrections through a real form; employers can review and approve them
+from a dedicated list. The punch page surfaces the time bank balance
+and the daily-hours target. Settings has a Working time card.
+
+### Added — Three new pages
+
+- **`/corrections`** — list page. Splits into "Pending" and "History".
+  Employee sees own; employer sees all (including a per-row employee
+  name). Each row links to the detail page. A bank-balance card sits
+  at the top for employees showing "X hours owed" with a hint
+  explaining the bank semantics.
+- **`/corrections/new`** — create form. Two `datetime-local` pickers
+  (start, end), an optional justification textarea, and a live
+  callout: "Without a justification, these {hours} will be added to
+  your time bank as compensation owed". The callout updates as the
+  user types in the duration and disappears when they enter a
+  justification.
+- **`/corrections/:id`** — detail page. Mirrors the leaves detail
+  layout: definition list of fields, action buttons appropriate to
+  role + status. Employer sees Approve / Reject (with notes dialog)
+  for pending; "Reverse approval" for approved (cancels but keeps
+  materialized punches in the audit log). Owner sees Cancel for
+  pending.
+
+Approve / approve-without-justification both confirm() before sending
+so the employer knows about the bank impact when there's no
+justification.
+
+### Added — Punch page additions
+
+- **`Forgot to clock? Register manual time →`** link below the today
+  list. Single tap to `/corrections/new`.
+- **Time bank line** appears below the today list when the employee's
+  bank is non-zero: "Time bank: 2h 30m" in accent green. Hidden
+  when zero.
+- **Today total now includes the daily target**: shows "5h 23m / 8h"
+  instead of just "5h 23m". Falls back to plain hours if the target
+  isn't configured or fetch fails.
+
+### Added — Settings UI
+
+- **New "Working time" card** in `/settings`, employer-only. Two number
+  inputs (Daily hours, Weekly hours) with reasonable validation
+  attributes (min/max/step). Saves via the existing
+  `PUT /api/settings/org`. Section nav gets a new "Working time"
+  anchor.
+
+### Added — Top-bar + dashboard nav
+
+- **Corrections** added to top-bar nav for both roles, between Leaves
+  and Reports/Punches.
+- **Corrections** added to dashboard nav cards for both roles with
+  role-appropriate descriptions:
+  - Employee: "Manual time entries and bank"
+  - Employer: "Approve manual time entries"
+
+### Added — `GET /api/settings/working-time`
+
+The full `/api/settings/org` endpoint is employer-only, but employees
+need the daily-hours target on their punch page. Added a tiny
+authenticated-but-not-employer-restricted endpoint that returns just
+the working-time slice. Avoids leaking the full org settings (which
+include per-employee leave overrides, backups config, etc.) to
+employees who don't need them.
+
+### Files touched
+- `src/routes/pages.js` — three new page routes (`/corrections`,
+  `/corrections/new`, `/corrections/:id`).
+- `src/routes/settings.js` — new `GET /api/settings/working-time` route.
+- `public/corrections.html`, `correction-new.html`, `correction.html`
+  — new files.
+- `public/corrections.js`, `correction-new.js`, `correction.js` — new
+  files.
+- `public/corrections.css` — new file (list rows, status tags, chips,
+  callout, bank-card, kv list, reject dialog).
+- `public/topbar.js` — Corrections in NAV_EMPLOYEE + NAV_EMPLOYER.
+- `public/index.js` — Corrections in dashboard nav cards.
+- `public/punch.html`, `punch.js`, `punch.css` — bank-line + forgot
+  link + today/target combined display.
+- `public/settings.html`, `settings.js` — Working time card.
+- `README.md` — M8d items all ticked.
+- `package.json` — patch bump to 0.12.1.
+
+### Tests
+- 9-suite regression still 276 passing, 0 failing. No new tests in
+  this drop — the frontend is verified by the smoke test
+  (file/approve/bank/materialize end-to-end works).
+
+---
+
+## [0.12.0] — 2026-04-26 — Milestone 8d (backend): time corrections + working-time targets
+
+This release ships the backend half of M8d. Employees can now file
+retroactive time entries when they forgot to clock in/out; the employer
+approves or rejects them like leaves. Approved corrections materialize as
+real punch records, and approved corrections without a justification
+accumulate as "uncredited hours" in a per-employee bank that the employer
+can later draw against by asking for compensation.
+
+The frontend half of M8d (corrections list page, "Register manually"
+link, settings UI for hour targets, bank/working-time displays) ships in
+the next drop.
+
+### Added — Time corrections (new entity)
+
+- **Storage** at `src/storage/corrections.js`. Event-sourced model
+  mirroring leaves: month-partitioned NDJSON, AES-encrypted sensitive
+  fields (justification, decision notes), reducer over the event stream
+  produces the current state. Files at `data/corrections/<yyyy>/<mm>.ndjson`.
+- **Validation** on create:
+  - `start` and `end` required; `end > start`;
+  - window between 1 minute and 24 hours;
+  - justification optional, truncated at 500 chars.
+- **Status machine**: pending → approved / rejected / cancelled.
+  Approved → cancelled allowed (employer reverses a decision). Other
+  transitions rejected.
+- **Storage exports**: `create`, `findById`, `list({employeeId, status})`,
+  `approve`, `reject`, `cancel`, `computeBank`.
+
+### Added — Routes (`src/routes/corrections.js`)
+
+- `GET /api/corrections` — list (employee: own; employer: all). Optional
+  `?status=pending|approved|rejected|cancelled` filter.
+- `GET /api/corrections/bank` — current user's bank balance.
+- `GET /api/corrections/bank/:userId` — employer-only.
+- `GET /api/corrections/:id` — single, owner or employer.
+- `POST /api/corrections` — employee files a correction.
+- `POST /api/corrections/:id/approve` — employer; **materializes** the
+  correction as in/out punch records.
+- `POST /api/corrections/:id/reject` — employer, with optional notes.
+- `POST /api/corrections/:id/cancel` — owner if pending; employer any.
+
+### Added — Materialization on approve
+
+When an employer approves a correction, the route layer creates the
+corresponding in/out punch records via `punchesStore.append()` BEFORE
+recording the approval. Each materialized punch carries a deterministic
+`clientId` of `correction:<id>:in` and `:out`. This makes the operation
+**idempotent**:
+- A retry caused by network flakiness won't double-create punches.
+- The approval is only recorded if both punches are persisted (or were
+  already present from a prior partial attempt).
+- Re-approving an already-approved correction is rejected at the storage
+  layer (status machine) and surfaces as a 400.
+
+### Added — Time bank semantics
+
+The bank tracks **uncredited hours** the employee accumulated by filing
+manual entries without justification. The intuition: the employee
+admitted to missing the registration without an excuse, so the time is
+recorded as worked (the punches are real) but the duration also counts
+against them as compensation owed. Employer can later request the
+employee work extra unpaid hours to clear the bank.
+
+- `correctionsStore.computeBank({userId, asOf?})` returns hours.
+- Approved + justified correction → bank unchanged.
+- Approved + unjustified correction → adds duration to bank.
+- Cancelled approved correction → its hours are removed from the bank.
+- Pending and rejected corrections never affect the bank.
+- Spending the bank (employer marks hours as "consumed") is **not** in
+  this drop — accumulation only. Spending becomes its own feature later.
+
+### Added — Working-time targets
+
+- **`workingTime.dailyHours`** (default 8) and **`workingTime.weeklyHours`**
+  (default 40) added to org settings.
+- Validators: 0 ≤ daily ≤ 24, 0 ≤ weekly ≤ 168, fractional allowed
+  (7.5 / 37.5 supported).
+- Org-wide for now; per-employee overrides may come in M11. The UI hookup
+  ships in the next drop; for now the values are read/writable via
+  `GET/PUT /api/settings/org`.
+
+### Tests
+
+- **New suite `tests/test-corrections.mjs`** — 25 tests covering create
+  validation, list filtering, all status transitions (legal + illegal),
+  encryption (justification persists with same key, fails with different
+  key), and bank computation across all the edge cases (justified
+  excluded, unjustified summed, status-scoped, user-scoped, cancellation
+  removes hours, fractional precision).
+- **6 new tests in `test-org-settings.mjs`** for the workingTime
+  validator (defaults, fractional accept, range rejection, isolation
+  from other section patches).
+- 9-suite regression: 276 passing, 0 failing (was 245; +25 corrections,
+  +6 workingTime).
+
+### Files touched
+- `src/storage/corrections.js` — new file.
+- `src/routes/corrections.js` — new file.
+- `src/storage/org-settings.js` — workingTime defaults + validator + merge.
+- `server.js` — instantiates correctionsStore, registers routes.
+- `tests/test-corrections.mjs` — new file.
+- `tests/test-org-settings.mjs` — workingTime tests appended.
+- `README.md` — M8d milestone added with backend items ticked, frontend
+  items pending.
+- `package.json` — minor bump to 0.12.0 (substantial new feature).
+
+### What's NOT in this drop (deferred to next 0.12.x)
+- Frontend pages: corrections list, new, detail.
+- "Register manually" link on the punch page.
+- Working-hours display on the punch page (today: Xh / target).
+- Bank balance indicator on the punch page.
+- Settings UI for adjusting daily/weekly target hours.
+- Spending-the-bank flow (employer marks hours as consumed).
+- Per-employee working-time overrides.
+
+### Honest design disclosures
+- **Correction → punch materialization is one-way.** Cancelling an
+  approved correction reverses the bank but does NOT delete the
+  materialized punches. The punches stay in the audit trail. If you
+  want them gone, that needs a separate "delete punches by clientId"
+  feature.
+- **Bank is computed, not stored.** Single source of truth in the
+  correction event stream. Slow on huge stores (full reduction every
+  call); fine at the scales this app targets. Caching can come in M11.
+
+---
+
 ## [0.11.0] — 2026-04-26 — Milestone 8c: PWA + offline clock-in
 
 This release ships the two M8c items: installable PWA and offline-friendly

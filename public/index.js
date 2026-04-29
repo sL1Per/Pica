@@ -1,19 +1,21 @@
 import { mountTopBar, mountFooter } from '/topbar.js';
 
 const NAV_EMPLOYEE = [
-  { href: '/punch',           label: 'Punches',  desc: 'Clock in / out and see today' },
-  { href: '/leaves/calendar', label: 'Calendar', desc: 'Who is on approved leave' },
-  { href: '/leaves',          label: 'Leaves',   desc: 'Your leaves and balances' },
-  { href: '/reports',         label: 'Reports',  desc: 'Your hours and time-off' },
+  { href: '/punch',           label: 'Punches',     desc: 'Clock in / out and see today' },
+  { href: '/leaves/calendar', label: 'Calendar',    desc: 'Who is on approved leave' },
+  { href: '/leaves',          label: 'Leaves',      desc: 'Your leaves and balances' },
+  { href: '/corrections',     label: 'Corrections', desc: 'Manual time entries and bank' },
+  { href: '/reports',         label: 'Reports',     desc: 'Your hours and time-off' },
 ];
 
 const NAV_EMPLOYER = [
-  { href: '/employees',       label: 'Employees', desc: 'Manage the team' },
-  { href: '/leaves/calendar', label: 'Calendar',  desc: 'Who is on approved leave' },
-  { href: '/leaves',          label: 'Leaves',    desc: 'Approve and review requests' },
-  { href: '/punch',           label: 'Punches',   desc: 'Clock in / out and see today' },
-  { href: '/reports',         label: 'Reports',   desc: 'Hours and leaves across the team' },
-  { href: '/settings',        label: 'Settings',  desc: 'Company, organization, backups' },
+  { href: '/employees',       label: 'Employees',   desc: 'Manage the team' },
+  { href: '/leaves/calendar', label: 'Calendar',    desc: 'Who is on approved leave' },
+  { href: '/leaves',          label: 'Leaves',      desc: 'Approve and review requests' },
+  { href: '/corrections',     label: 'Corrections', desc: 'Approve manual time entries' },
+  { href: '/punch',           label: 'Punches',     desc: 'Clock in / out and see today' },
+  { href: '/reports',         label: 'Reports',     desc: 'Hours and leaves across the team' },
+  { href: '/settings',        label: 'Settings',    desc: 'Company, organization, backups' },
 ];
 
 function renderNavCards(role) {

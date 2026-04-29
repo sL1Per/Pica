@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
+  <title>Pica — Time corrections</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="theme-color" content="#2e7d32">
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/topbar.css">
+  <link rel="stylesheet" href="/corrections.css">
+</head>
+<body>
+  <main class="container container--wide">
+    <header class="page-header">
+      <div>
+        <h1>Time corrections</h1>
+        <p class="subtle" id="page-subtitle">Manual entries you forgot to clock at the time.</p>
+      </div>
+      <div class="page-header__actions">
+        <a href="/corrections/new" class="btn-primary">Register manual time</a>
+      </div>
+    </header>
+
+    <section id="bank-card" class="bank-card" hidden>
+      <div class="bank-card__row">
+        <span class="bank-card__label">Time bank</span>
+        <span id="bank-hours" class="bank-card__value">—</span>
+      </div>
+      <p class="bank-card__hint">Hours from approved corrections without a justification. The employer may ask you to compensate these as extra unpaid work.</p>
+    </section>
+
+    <div id="message" class="message"></div>
+
+    <section class="card">
+      <h2 id="list-heading">Pending corrections</h2>
+      <ul id="pending-list" class="correction-list">
+        <li class="subtle">Loading…</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>History</h2>
+      <ul id="history-list" class="correction-list">
+        <li class="subtle">Loading…</li>
+      </ul>
+    </section>
+  </main>
+
+  <script type="module" src="/corrections.js"></script>
+</body>
+</html>

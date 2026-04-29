@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
+  <title>Pica — Correction</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="theme-color" content="#2e7d32">
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/topbar.css">
+  <link rel="stylesheet" href="/corrections.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <a id="back-link" class="back" href="/corrections">← Back to corrections</a>
+        <h1 id="page-title">Correction</h1>
+      </div>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <section class="card">
+      <dl class="kv">
+        <dt>Status</dt>
+        <dd><span id="f-status" class="status-tag">—</span></dd>
+
+        <dt>Employee</dt>
+        <dd id="f-employee">—</dd>
+
+        <dt>Start</dt>
+        <dd id="f-start">—</dd>
+
+        <dt>End</dt>
+        <dd id="f-end">—</dd>
+
+        <dt>Duration</dt>
+        <dd id="f-hours">—</dd>
+
+        <dt>Justification</dt>
+        <dd id="f-justification" class="multiline">—</dd>
+
+        <dt>Bank impact</dt>
+        <dd id="f-bank-impact">—</dd>
+
+        <dt>Filed</dt>
+        <dd id="f-created">—</dd>
+
+        <dt id="dt-decided" hidden>Decision</dt>
+        <dd id="f-decided" hidden>—</dd>
+
+        <dt id="dt-notes" hidden>Notes</dt>
+        <dd id="f-notes" class="multiline" hidden>—</dd>
+      </dl>
+
+      <div id="actions" class="form-actions" hidden></div>
+    </section>
+
+    <dialog id="reject-dialog" class="reject-dialog">
+      <form method="dialog">
+        <h3>Reject correction</h3>
+        <label for="reject-notes">Notes (optional)</label>
+        <textarea id="reject-notes" rows="3" maxlength="500" placeholder="Reason for rejection"></textarea>
+        <div class="form-actions">
+          <button id="reject-cancel" type="button" class="btn-ghost">Cancel</button>
+          <button id="reject-confirm" type="button" class="btn-danger">Reject</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+
+  <script type="module" src="/correction.js"></script>
+</body>
+</html>
