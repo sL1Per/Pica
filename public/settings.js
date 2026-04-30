@@ -44,6 +44,7 @@ const workingTimeSection = $('working-time');
 const workingTimeForm    = $('working-time-form');
 const dailyHoursInput    = $('daily-hours');
 const weeklyHoursInput   = $('weekly-hours');
+const wtOverridesWrap    = $('wt-overrides-table-wrap');
 
 let me = null;
 let employees = [];
@@ -69,6 +70,7 @@ function renderOrg(settings) {
   // Working time
   dailyHoursInput.value  = settings.workingTime?.dailyHours  ?? 8;
   weeklyHoursInput.value = settings.workingTime?.weeklyHours ?? 40;
+  renderWorkingTimeOverridesTable(settings.workingTime?.perEmployeeOverrides ?? {});
 }
 
 function renderOverridesTable(overrides) {
@@ -107,6 +109,40 @@ function renderOverridesTable(overrides) {
     tbody.appendChild(tr);
   }
   overridesWrap.appendChild(t);
+}
+
+function renderWorkingTimeOverridesTable(overrides) {
+  wtOverridesWrap.innerHTML = '';
+  if (employees.length === 0) {
+    wtOverridesWrap.textContent = 'No employees yet.';
+    wtOverridesWrap.className = 'subtle';
+    return;
+  }
+  wtOverridesWrap.className = '';
+  const t = document.createElement('table');
+  t.className = 'overrides-table';
+  t.innerHTML = `
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Daily hours</th>
+        <th>Weekly hours</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  const tbody = t.querySelector('tbody');
+  for (const e of employees) {
+    const o = overrides[e.id] ?? {};
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(e.fullName || e.username)}</td>
+      <td><input type="number" min="0" max="24"  step="0.5" data-uid="${e.id}" data-field="dailyHours"  value="${o.dailyHours  ?? ''}" placeholder="—"></td>
+      <td><input type="number" min="0" max="168" step="0.5" data-uid="${e.id}" data-field="weeklyHours" value="${o.weeklyHours ?? ''}" placeholder="—"></td>
+    `;
+    tbody.appendChild(tr);
+  }
+  wtOverridesWrap.appendChild(t);
 }
 
 function escapeHtml(s) {
@@ -173,10 +209,27 @@ if (workingTimeForm) {
     const btn = workingTimeForm.querySelector('button[type="submit"]');
     setBusy(btn, true, 'Saving…');
 
+    // Collect per-employee overrides from the table — empty input means
+    // "no override for this field". A user with both fields empty is
+    // omitted from the patch entirely (same shape the storage cleaner
+    // expects; users with empty objects are silently dropped there too).
+    const overrides = {};
+    if (wtOverridesWrap) {
+      for (const input of wtOverridesWrap.querySelectorAll('input[data-uid]')) {
+        const uid = input.dataset.uid;
+        const field = input.dataset.field;
+        const v = input.value.trim();
+        if (v === '') continue;
+        if (!overrides[uid]) overrides[uid] = {};
+        overrides[uid][field] = Number(v);
+      }
+    }
+
     const patch = {
       workingTime: {
         dailyHours: Number(dailyHoursInput.value || 8),
         weeklyHours: Number(weeklyHoursInput.value || 40),
+        perEmployeeOverrides: overrides,
       },
     };
     try {

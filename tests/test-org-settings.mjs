@@ -361,6 +361,140 @@ try {
     assert.deepEqual(after.backups, before.backups);
   });
 
+  // ---------------------------------------------------------------------------
+  console.log('\nworkingTime per-employee overrides');
+  // ---------------------------------------------------------------------------
+
+  await test('workingTime.perEmployeeOverrides defaults to empty map', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-os-wt-ov1-')));
+    assert.deepEqual(fresh.get().workingTime.perEmployeeOverrides, {});
+  });
+
+  await test('saves a full per-employee override (both fields)', () => {
+    store.update({
+      workingTime: {
+        perEmployeeOverrides: {
+          alice: { dailyHours: 6, weeklyHours: 30 },
+        },
+      },
+    });
+    const overrides = store.get().workingTime.perEmployeeOverrides;
+    assert.deepEqual(overrides.alice, { dailyHours: 6, weeklyHours: 30 });
+  });
+
+  await test('saves a partial per-employee override (just dailyHours)', () => {
+    store.update({
+      workingTime: {
+        perEmployeeOverrides: {
+          bob: { dailyHours: 4 },
+        },
+      },
+    });
+    const overrides = store.get().workingTime.perEmployeeOverrides;
+    assert.deepEqual(overrides.bob, { dailyHours: 4 });
+  });
+
+  await test('replaces the full overrides map on update (matches leaves semantics)', () => {
+    // Set Alice + Bob.
+    store.update({
+      workingTime: {
+        perEmployeeOverrides: {
+          alice: { dailyHours: 6 },
+          bob:   { dailyHours: 4 },
+        },
+      },
+    });
+    // Send only Alice next — Bob should be wiped.
+    store.update({
+      workingTime: {
+        perEmployeeOverrides: {
+          alice: { dailyHours: 7 },
+        },
+      },
+    });
+    const overrides = store.get().workingTime.perEmployeeOverrides;
+    assert.deepEqual(overrides, { alice: { dailyHours: 7 } });
+  });
+
+  await test('user with empty fields object is dropped (no override)', () => {
+    store.update({
+      workingTime: {
+        perEmployeeOverrides: {
+          alice: {},  // no fields → dropped
+          bob: { dailyHours: 5 },
+        },
+      },
+    });
+    const overrides = store.get().workingTime.perEmployeeOverrides;
+    assert.equal(overrides.alice, undefined);
+    assert.deepEqual(overrides.bob, { dailyHours: 5 });
+  });
+
+  await test('rejects override values out of range', () => {
+    assert.throws(() => store.update({
+      workingTime: {
+        perEmployeeOverrides: { alice: { dailyHours: 25 } },
+      },
+    }), /between 0 and 24/);
+    assert.throws(() => store.update({
+      workingTime: {
+        perEmployeeOverrides: { alice: { weeklyHours: 200 } },
+      },
+    }), /between 0 and 168/);
+  });
+
+  await test('updating overrides does NOT touch the org defaults', () => {
+    // Set a custom default first.
+    store.update({ workingTime: { dailyHours: 7, weeklyHours: 35 } });
+    // Now patch only overrides.
+    store.update({
+      workingTime: {
+        perEmployeeOverrides: { alice: { dailyHours: 6 } },
+      },
+    });
+    const wt = store.get().workingTime;
+    assert.equal(wt.dailyHours, 7);
+    assert.equal(wt.weeklyHours, 35);
+    assert.deepEqual(wt.perEmployeeOverrides.alice, { dailyHours: 6 });
+  });
+
+  await test('resolveWorkingTimeFor: no override → org defaults', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-os-rwt1-')));
+    fresh.update({ workingTime: { dailyHours: 9, weeklyHours: 45 } });
+    const r = fresh.resolveWorkingTimeFor('whoever');
+    assert.equal(r.dailyHours, 9);
+    assert.equal(r.weeklyHours, 45);
+  });
+
+  await test('resolveWorkingTimeFor: full override wins over defaults', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-os-rwt2-')));
+    fresh.update({
+      workingTime: {
+        dailyHours: 8,
+        weeklyHours: 40,
+        perEmployeeOverrides: { alice: { dailyHours: 6, weeklyHours: 30 } },
+      },
+    });
+    const r = fresh.resolveWorkingTimeFor('alice');
+    assert.equal(r.dailyHours, 6);
+    assert.equal(r.weeklyHours, 30);
+  });
+
+  await test('resolveWorkingTimeFor: partial override falls back per-field', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-os-rwt3-')));
+    fresh.update({
+      workingTime: {
+        dailyHours: 8,
+        weeklyHours: 40,
+        // Bob has dailyHours override but no weeklyHours.
+        perEmployeeOverrides: { bob: { dailyHours: 4 } },
+      },
+    });
+    const r = fresh.resolveWorkingTimeFor('bob');
+    assert.equal(r.dailyHours, 4);
+    assert.equal(r.weeklyHours, 40);  // falls back to default
+  });
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

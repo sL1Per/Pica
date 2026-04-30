@@ -14,6 +14,106 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.13.0] — 2026-04-30 — Per-employee working-time overrides
+
+The org-wide daily/weekly hours target now has a **per-employee
+override** layer on top, mirroring the leaves model. Alice can have a
+6h day / 30h week (part-time) while Bob keeps the org default 8h/40h,
+and the punch page picks up the right value for whoever's logged in.
+
+The original org-wide setting is unchanged — overrides are strictly
+additive. Employees without an override keep using the default.
+
+### Added — Per-employee overrides in storage
+
+- **`workingTime.perEmployeeOverrides`** added to `org-settings.json`
+  defaults as an empty map. Shape:
+  `{ [userId]: { dailyHours?, weeklyHours? } }`. Either field is
+  optional — a partial override (just `dailyHours`) is allowed.
+- **Validator** in `cleanWorkingTimePatch`: same range checks as the
+  org defaults (0–24 daily, 0–168 weekly), errors point at the
+  specific user + field. Users with empty `{}` field objects are
+  silently dropped (no override at all).
+- **Update semantics**: the overrides map is replaced wholesale on
+  each PUT (matches the leaves convention — UI sends the whole table
+  every save). Org defaults are merged separately, so updating just
+  the defaults doesn't touch overrides and vice versa.
+
+### Added — `resolveWorkingTimeFor(userId)` on the store
+
+New method that returns `{ dailyHours, weeklyHours }` with per-field
+fallback to the org default:
+
+```js
+// Bob has dailyHours=4 but no weeklyHours override
+resolveWorkingTimeFor('bob') === { dailyHours: 4, weeklyHours: 40 }
+```
+
+### Changed — `GET /api/settings/working-time` returns resolved values
+
+The endpoint now returns the resolved-for-the-calling-user values
+instead of just the org defaults. Punch page automatically picks up
+the right "X / target" display without any frontend change.
+
+`GET /api/settings/org` (employer) still exposes the full structure
+including the overrides map, so the settings UI can render the table.
+
+### Added — Settings UI: working-time overrides table
+
+The Working time card now has two sub-sections:
+
+1. **Default for everyone** — the existing two inputs.
+2. **Per-employee overrides** — a table mirroring the leaves overrides
+   table. Each row has the employee's name and two number inputs
+   (Daily, Weekly). Empty input = use the default for that field.
+
+Both sections are saved together by the existing "Save working-time
+settings" button.
+
+### Files touched
+- `src/storage/org-settings.js` — perEmployeeOverrides default,
+  validator, resolver method.
+- `src/routes/settings.js` — `/api/settings/working-time` uses the
+  resolver.
+- `public/settings.html` — overrides table wrap inside the Working
+  time card, two sub-section headers.
+- `public/settings.js` — `renderWorkingTimeOverridesTable()`,
+  collection in submit handler, render call in `renderOrg()`.
+- `public/sw.js` — cache version bumped to v4.
+- `tests/test-org-settings.mjs` — 10 new tests covering full +
+  partial overrides, replace-on-update, range checks, resolver
+  fallback, isolation from defaults.
+- `package.json` — minor bump to 0.13.0 (new feature).
+
+### Tests
+- 10-suite regression: 294 passing, 0 failing (was 284; +10 new in
+  org-settings).
+
+### What's NOT in this drop (intentionally deferred)
+- **Reports integration** — the daily/weekly targets aren't yet used
+  in the reports module. The punch page benefits from the resolver
+  automatically; reports stay as they were. A future drop can wire
+  "Alice worked 38h this week, target 40h, deficit 2h" using the
+  existing resolver.
+- **Per-day schedules** — overrides only adjust the totals, not the
+  shape of the working week (e.g. "Mon-Thu 8h, Fri 4h"). That's a
+  bigger feature with its own design conversation if/when needed.
+- **Visible default-vs-override indication on the punch page** — the
+  punch page just shows the resolved target ("X / 6h" for Alice).
+  No "(default: 8)" hint nearby. Add later if it becomes confusing.
+
+### Honest disclosures
+- **Replace-on-save semantics** mean a stale browser tab can
+  inadvertently wipe an override added in another tab. Same caveat
+  applies to leaves overrides today — fixing it for both is a
+  cross-cutting concern (probably an `If-Match`-style optimistic
+  concurrency check in M11).
+- **Override values are NOT capped at 24/168 by the HTML inputs**
+  with strict `max` — the inputs accept the full range, validation
+  catches invalid values server-side. Same as leaves overrides.
+
+---
+
 ## [0.12.4] — 2026-04-30 — Button-anchor hover fix + Corrections removed from top nav
 
 Two small fixes after stakeholder review of the corrections list page:

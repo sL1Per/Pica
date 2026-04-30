@@ -51,8 +51,10 @@ export function registerSettingsRoutes(router, {
   // Working-time targets are needed on the punch page for both roles, so
   // expose just that slice to authenticated users (avoid leaking the full
   // org settings, which include per-employee leave overrides, backups, etc.).
+  // The values returned are RESOLVED for the calling user — i.e. their
+  // per-employee override if present, else the org default.
   router.get('/api/settings/working-time', requireAuth((req, res) => {
-    const { workingTime } = orgSettingsStore.get();
+    const workingTime = orgSettingsStore.resolveWorkingTimeFor(req.user.id);
     res.json({ workingTime });
   }));
 

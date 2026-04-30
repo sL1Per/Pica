@@ -51,9 +51,13 @@ export const DEFAULT_ORG_SETTINGS = Object.freeze({
   },
   workingTime: {
     // Targets used by reports and the punch page's "today" indicator.
-    // Org-wide for now; per-employee overrides may come in M11.
+    // Default values apply to anyone WITHOUT a per-employee override.
     dailyHours: 8,           // expected hours per working day
     weeklyHours: 40,         // expected hours per working week
+    // Per-employee overrides. Shape: { [userId]: { dailyHours?, weeklyHours? } }.
+    // Either field may be omitted, meaning "use the org default for THIS field".
+    // Mirrors the leaves.perEmployeeOverrides pattern.
+    perEmployeeOverrides: {},
   },
 });
 
@@ -216,6 +220,35 @@ export function createOrgSettingsStore(dataDir) {
       }
       out.weeklyHours = Math.round(v * 100) / 100;
     }
+    // Per-employee overrides. Same shape rules as defaults but per user.
+    // Each user's record may have dailyHours, weeklyHours, both, or neither
+    // (empty object collapses to no override at all).
+    if (patch.perEmployeeOverrides && typeof patch.perEmployeeOverrides === 'object') {
+      out.perEmployeeOverrides = {};
+      for (const [userId, fields] of Object.entries(patch.perEmployeeOverrides)) {
+        if (!fields || typeof fields !== 'object') continue;
+        const userFields = {};
+        if ('dailyHours' in fields) {
+          const v = Number(fields.dailyHours);
+          if (!Number.isFinite(v) || v < 0 || v > 24) {
+            throw new Error(`workingTime.perEmployeeOverrides[${userId}].dailyHours must be a number between 0 and 24`);
+          }
+          userFields.dailyHours = Math.round(v * 100) / 100;
+        }
+        if ('weeklyHours' in fields) {
+          const v = Number(fields.weeklyHours);
+          if (!Number.isFinite(v) || v < 0 || v > 168) {
+            throw new Error(`workingTime.perEmployeeOverrides[${userId}].weeklyHours must be a number between 0 and 168`);
+          }
+          userFields.weeklyHours = Math.round(v * 100) / 100;
+        }
+        // Skip users with no fields at all — that's "no override", which
+        // is the same as not having the user in the map.
+        if (Object.keys(userFields).length > 0) {
+          out.perEmployeeOverrides[userId] = userFields;
+        }
+      }
+    }
     return out;
   }
 
@@ -241,6 +274,22 @@ export function createOrgSettingsStore(dataDir) {
     /** Read the full settings object, merged over the defaults. */
     get() {
       return JSON.parse(JSON.stringify(loadAll()));
+    },
+
+    /**
+     * Resolve the effective working-time targets for a specific user.
+     * Per-field fallback: if the user has a `dailyHours` override but no
+     * `weeklyHours`, weekly comes from the org default and vice versa.
+     * Returns `{ dailyHours, weeklyHours }` — the same shape the punch
+     * page already consumes.
+     */
+    resolveWorkingTimeFor(userId) {
+      const wt = loadAll().workingTime;
+      const override = wt.perEmployeeOverrides?.[userId] ?? {};
+      return {
+        dailyHours:  override.dailyHours  ?? wt.dailyHours,
+        weeklyHours: override.weeklyHours ?? wt.weeklyHours,
+      };
     },
 
     /**
