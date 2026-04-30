@@ -1,7 +1,7 @@
 {
   "name": "pica",
   "description": "Pica \u2014 Time Management. Minimalistic, file-based, zero-dependency employee time tracker.",
-  "version": "0.13.0",
+  "version": "0.14.1",
   "private": true,
   "type": "module",
   "license": "MIT",

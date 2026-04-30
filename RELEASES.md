@@ -14,6 +14,176 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.14.1] — 2026-04-30 — App-shell polish: tinted chrome + nav-link restyle
+
+Two small visual fixes after stakeholder review of 0.14.0:
+
+1. The header and sidebar shared the same white background as the
+   main content area, so the app shell had no visible "frame" around
+   the working area — header, sidebar, and main all blended together.
+2. The sidebar nav links were rendered with browser-default
+   underlines, which looked unstyled (and inconsistent with the rest
+   of the design tokens).
+
+### Changed — Header and sidebar now use --surface tint
+
+Both the `.appshell__header` and `.appshell__sidebar` switched their
+backgrounds from `var(--bg)` (white) to `var(--surface)` (the soft
+gray that's already used for cards and other secondary surfaces).
+The 1px borders along the inner edges (`border-bottom` on the
+header, `border-right` on the sidebar) are kept for an extra crisp
+edge between chrome and content.
+
+This creates a clear two-tone reading: tinted chrome wraps around
+the white working area. No new CSS variables were introduced —
+`--surface` was already in use elsewhere, so the new layout fits
+right into the existing design system.
+
+### Changed — Sidebar nav links restyled
+
+- **Default state**: regular text colour, weight 500, no underline.
+- **Hover**: pill background using `--surface-2` (the slightly darker
+  gray that's already used for hover states on other interactive
+  surfaces), text stays the regular colour.
+- **Active page**: white pill background (`--bg`) so it pops against
+  the tinted sidebar — like a tab pulled forward — plus the existing
+  accent left-border, accent text colour, and bold weight. A very
+  subtle `box-shadow` (4% black) gives the pill a hint of elevation
+  to reinforce the "this is selected" cue.
+
+The pattern matches how cards interact with their backgrounds
+elsewhere in the app. No underlines anywhere; affordance comes from
+hover background + cursor + the active-page treatment.
+
+### Files touched
+- `public/topbar.css` — `.appshell__header` and `.appshell__sidebar`
+  backgrounds; full rewrite of `.appshell__nav-link` and its
+  `:hover` and `--active` variants.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v6`.
+- `package.json` — patch bump to 0.14.1.
+
+### Tests
+- 10-suite regression: 294 passing, 0 failing. Pure CSS change.
+
+### Honest disclosures
+- **Sub-elements unchanged.** The avatar's `--surface-2` background
+  and the hamburger's `--bg` background still pop against the new
+  `--surface` header tint — actually slightly more so than before,
+  which is a useful side-effect (better affordance for both
+  controls). No tweaks needed.
+- **Mobile drawer** stays the same colour as the sidebar (`--surface`
+  via inheritance) — looks right when sliding in over the scrim.
+
+---
+
+## [0.14.0] — 2026-04-30 — App-shell layout: header + sidebar nav
+
+The single horizontal top-bar from M8 has been replaced with a
+two-axis app shell:
+
+- **Header** (full-width, top): logo on the left, "Company Name —
+  Time management" centered, hamburger + avatar on the right.
+- **Sidebar** (left, vertical column): primary navigation as
+  underlined links (Employees, Calendar, Leaves, Punches, Reports,
+  Settings).
+- **Main content** fills the remaining space to the right of the
+  sidebar.
+- **Footer** stays as before, full-width across the bottom.
+
+This matches the stakeholder mockup and provides more nav real
+estate than a horizontal bar, especially as the app grows.
+
+### Removed — Horizontal top-bar nav
+
+The old `.topbar` / `.topbar__*` markup, classes, and CSS are gone
+entirely. The renaming to `.appshell__*` reflects that this is now
+a layout shell, not just a bar. Everything that was there (logo,
+avatar dropdown, mobile drawer, sign-out, profile shortcut) is
+preserved in the new structure — just rearranged.
+
+### Added — App-shell structure
+
+- **`<header.appshell__header>`** — sticky to the top of the viewport,
+  64px tall. Uses CSS grid with three columns (`80px 1fr auto`) so
+  the title genuinely centers regardless of the right-side controls'
+  width. The title is composed of a bold company name + " — " + a
+  muted "Time management" suffix.
+- **`<aside.appshell__sidebar>`** — 220px fixed-width column on the
+  left, full content height, contains the vertical nav. Active page
+  has an accent left-border and bold weight; non-active pages match
+  the mockup's underlined-link style.
+- **`<div.appshell__body>`** — wrapper around the sidebar + main
+  inserted by `mountTopBar()` automatically; pages don't need any
+  HTML changes.
+- **`<div.appshell__scrim>`** — backdrop for the mobile drawer.
+
+### Changed — Mobile breakpoint
+
+At ≤900px viewport width:
+- Sidebar disappears, hamburger appears in the header.
+- Tapping the hamburger slides the sidebar in from the left over a
+  scrim.
+- Tapping the scrim or any nav link closes the drawer.
+- The "— Time management" suffix is hidden on mobile to keep the
+  header readable on narrow screens (just the company name shows).
+- The brand logo shrinks to 40×40 (from 48×48 on desktop).
+
+### Changed — `mountTopBar()` now wraps `<main>` automatically
+
+Pages that already call `mountTopBar()` (which is all authenticated
+pages via the convention established in M8a) need no changes. The
+function inserts the header at the top of `<body>`, then wraps
+`<main>` plus the sidebar plus the scrim into a flex-row container.
+
+Login + setup pages don't call `mountTopBar()` (they only call
+`mountFooter()`), so their layout is unaffected.
+
+### Files touched
+- `public/topbar.js` — complete rewrite of `buildBar()`,
+  `wireEvents()`, and `mountTopBar()`. The old single-element output
+  is replaced with a `{header, sidebar, scrim}` triple, all inserted
+  in the right places by mountTopBar.
+- `public/topbar.css` — full rewrite around `.appshell__*` classes.
+  Old `.topbar*` rules deleted. New rules cover desktop layout,
+  mobile drawer, scrim, avatar menu.
+- `public/app.css` — `#toast-root` top offset bumped from 56px to
+  64px to clear the new header height. The legacy `.topbar`
+  selector in the transition list is harmless leftover (no element
+  has that class anymore).
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v5` so
+  existing PWA installs invalidate cache and pick up the new shell.
+- `package.json` — minor bump to 0.14.0.
+
+### Tests
+- 10-suite regression: 294 passing, 0 failing. No backend changes,
+  no test changes; the layout refactor is pure frontend.
+
+### Honest disclosures
+- **No automated visual-regression test.** This is a substantial
+  visual change verified by hand-running the smoke and clicking
+  through pages. If the look of any page is off (e.g. content too
+  wide for the new narrower main area), it'll need a follow-up.
+- **The mockup showed plain underlined links;** I added a small
+  visual cue for the active page (accent left-border + bold) because
+  pure underlined links with no active-state indicator is genuinely
+  hard to navigate. Easy to revert if you'd rather match the mockup
+  exactly.
+- **Title assumption**: the mockup said "Title — Time management"
+  and I read "Title" as a stand-in for the company name (so it
+  renders as e.g. "Queijadas Finas Maria Augusta — Time
+  management"). If you meant "Title" to vary by page section
+  (e.g. "Punches — Time management"), that's a one-line change
+  to make `appshell__title-name` derive from the page's `<h1>`
+  instead of the company branding.
+- **Dashboard cards on `/`** are unchanged — they still show a grid
+  of section entry-points. With the sidebar always visible they're
+  somewhat redundant on desktop but useful on mobile (where the
+  sidebar lives behind the hamburger).
+- **The legacy `.topbar` in the transition selector list** in
+  `app.css` is dead code. Tidying it up is a minor follow-up.
+
+---
+
 ## [0.13.0] — 2026-04-30 — Per-employee working-time overrides
 
 The org-wide daily/weekly hours target now has a **per-employee

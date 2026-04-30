@@ -702,7 +702,7 @@ table.data-table,
  */
 #toast-root {
   position: fixed;
-  top: calc(56px + var(--gap-3));  /* clears the topbar */
+  top: calc(64px + var(--gap-3));  /* clears the app-shell header */
   right: var(--gap-3);
   z-index: 200;
   display: flex;
