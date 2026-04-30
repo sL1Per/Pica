@@ -199,3 +199,46 @@
 }
 .reject-dialog h3 { margin-top: 0; }
 .reject-dialog textarea { width: 100%; }
+
+/* Kind selector on the new-correction form. */
+.kind-fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--gap-3);
+  margin: 0 0 var(--gap-4) 0;
+}
+.kind-fieldset legend {
+  padding: 0 var(--gap-2);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.kind-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-2);
+  padding: var(--gap-2);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background var(--t-fast);
+}
+.kind-radio:hover { background: var(--surface-2); }
+.kind-radio input[type="radio"] { margin-top: 4px; flex-shrink: 0; }
+.kind-radio strong { display: block; font-size: var(--text-md); }
+.kind-radio span {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* "Kind" chip style for list rows. */
+.chip--kind { background: var(--surface-2); color: var(--text); font-weight: 600; }
+
+/* Approve / reject button colors on the corrections detail page.
+   The base styling (size, font, padding) comes from app.css; here we just
+   override the background per-action. */
+.btn-approve { background: var(--success); }
+.btn-approve:hover:not(:disabled) { background: #256a29; }
+.btn-reject  { background: var(--danger); }
+.btn-reject:hover:not(:disabled) { background: #902e2e; }

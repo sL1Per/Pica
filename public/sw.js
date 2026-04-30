@@ -21,7 +21,7 @@
  *     handles map absence gracefully.
  */
 
-const CACHE_VERSION = 'pica-cache-v1';
+const CACHE_VERSION = 'pica-cache-v3';
 const PRECACHE_URLS = [
   '/',
   '/punch',

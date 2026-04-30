@@ -14,6 +14,300 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.12.4] — 2026-04-30 — Button-anchor hover fix + Corrections removed from top nav
+
+Two small fixes after stakeholder review of the corrections list page:
+
+1. The "Register manual time" call-to-action button (an `<a class="btn-primary">`)
+   was rendering as a solid block with **invisible text on hover** — the
+   text colour was being pulled into the background colour. Cause: the
+   global `a:hover { color: var(--accent-hover) }` rule was overriding
+   the white-text-on-coloured-background expectation that button-styled
+   anchors need. Specificity quirk: `a:hover` (0,1,1) beats `.btn-primary`
+   (0,1,0) on the same element on hover, so the colour was getting
+   pulled to `--accent-hover` — the same colour as the hover background.
+2. Corrections was removed from the top-bar nav for both roles. Users
+   can still reach `/corrections` from the punch page (two static links
+   added in 0.12.3) and from the dashboard cards on `/`. Top-bar nav
+   was getting crowded.
+
+### Fixed — Button-anchor hover keeps text visible
+
+Added explicit hover rules in `app.css` for the `.btn-*` classes when
+applied to anchors:
+
+```css
+a.btn:hover, a.btn-primary:hover, a.btn-danger:hover,
+a.btn-approve:hover, a.btn-reject:hover { color: white; }
+a.btn-ghost:hover { color: var(--text); }
+```
+
+Specificity (0,2,1) beats the global `a:hover` (0,1,1), so the white
+text wins. `<button>` elements were never affected since they have no
+default `a:hover` rule applied to them.
+
+### Removed — Corrections link from the top nav
+
+`NAV_EMPLOYEE` and `NAV_EMPLOYER` in `topbar.js` no longer include
+Corrections. Both roles still have:
+- Two punch-page links: "View corrections list →" and "Forgot to clock? Register manual time →"
+- A dashboard card on `/` (not removed in this drop — the dashboard is
+  a less-cluttered space than the top bar).
+
+### Service worker cache bumped to v3
+
+Both `app.css` and `topbar.js` are pre-cached static assets. Bumping
+`CACHE_VERSION` from `pica-cache-v2` to `pica-cache-v3` so existing
+PWA users invalidate their caches and pick up the changes on next
+visit without a manual hard refresh.
+
+### Files touched
+- `public/app.css` — added explicit `a.btn-*:hover` colour rules.
+- `public/topbar.js` — Corrections removed from `NAV_EMPLOYEE` and `NAV_EMPLOYER`.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v3`.
+- `package.json` — patch bump to 0.12.4.
+
+### Tests
+- 10-suite regression: 284 passing, 0 failing. No new tests; both
+  fixes are pure UI / nav config changes.
+
+### Honest disclosures
+- **The hover bug also exists in theory** for `a.btn-secondary` if any
+  page uses one as an anchor (no current usage, hence not in the
+  override rule). If a future page introduces `<a class="btn-secondary">`
+  it'll need adding to the list.
+- **Dashboard cards still include Corrections.** Removing it there too
+  was tempting for symmetry with the top-bar removal, but the dashboard
+  is the natural starting point for "what should I do today" and
+  removing Corrections would make the punch-page links the only entry
+  point, which feels too narrow. Easy to revisit if you'd rather strip
+  it from the dashboard too.
+
+---
+
+## [0.12.3] — 2026-04-29 — Punch-page link visibility + button-styling bugfix
+
+Two follow-up fixes from stakeholder testing of 0.12.2:
+
+1. The role-aware corrections link added in 0.12.2 wasn't reaching
+   employers reliably. Likely cause: service worker serving stale
+   `punch.js`. The user reported they only saw the employee-version
+   link ("Forgot to clock? Register manual time →") with no path to
+   the approval list at `/corrections`.
+2. The Cancel button on the new-correction form rendered as bare,
+   unstyled text. Cause: it's an `<a class="btn-ghost">` anchor, but
+   the `.btn-ghost` rule only overrode color/background — it relied
+   on the base `button` selector for sizing/padding/border-radius,
+   which doesn't match anchors.
+
+### Fixed — Two static corrections links on the punch page
+
+Replaced the JS-based role-swap (which depended on the latest
+`punch.js` actually being loaded) with **two statically-rendered
+links** in the HTML:
+
+- "View corrections list →" → `/corrections`
+- "Forgot to clock? Register manual time →" → `/corrections/new`
+
+Both links are visible to both roles. The employer's primary need is
+the review list; the employee's primary need is the registration
+form; either role might want either page on occasion. Showing both
+upfront sidesteps the cache-invalidation problem entirely — there's
+no JS swap to miss.
+
+The role-swap JS in `punch.js` was removed.
+
+### Fixed — `.btn-*` classes work on anchors as well as buttons
+
+The base button styling (size, padding, border-radius, font-weight,
+flex centering) was scoped to `button, .btn` only. The role-specific
+classes (`.btn-primary`, `.btn-ghost`, `.btn-approve`, `.btn-reject`)
+only added color overrides on top, so when applied to an `<a>` tag
+they got the colors but not the structure.
+
+The fix extends the base rule to include all `.btn-*` selectors
+directly, so the same styling applies regardless of element type.
+This means `<a class="btn-ghost">Cancel</a>` now renders as a
+proper button, matching `<button class="btn-ghost">Cancel</button>`.
+
+Also added `.btn-approve` / `.btn-reject` color overrides to
+`corrections.css` (they were previously scoped to `.actions` in
+`leave.css` and didn't apply to the corrections detail page).
+
+### Service worker cache bumped
+
+`CACHE_VERSION` bumped from `pica-cache-v1` to `pica-cache-v2` so
+deployed clients invalidate their cache and pick up the new
+`punch.js` and `app.css` on next visit. Without this bump, users
+already running the site as a PWA would continue seeing the broken
+link until they manually hard-refreshed.
+
+### Files touched
+- `public/punch.html` — replaced the role-swapped link with two
+  static links.
+- `public/punch.js` — removed the role-swap logic.
+- `public/app.css` — extended base button rule to cover `.btn-primary`,
+  `.btn-ghost`, `.btn-approve`, `.btn-reject`. Added `text-decoration: none`
+  for anchor variants.
+- `public/corrections.css` — added `.btn-approve` / `.btn-reject` color
+  overrides at the file scope (no longer dependent on `.actions`).
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v2`.
+- `package.json` — patch bump to 0.12.3.
+
+### Tests
+- 10-suite regression: 284 passing, 0 failing. No new tests needed —
+  these are pure UI fixes.
+
+### Honest disclosures
+- **Showing both links was the pragmatic call** over fixing the JS
+  role-swap to be more robust. The user value (reliable access to
+  /corrections) is delivered either way; statically rendering both
+  links is just less code to break later.
+- **The original `corrections-link` id** is no longer used by any JS
+  but the class `forgot-link` is shared between both new links so
+  styling stays consistent.
+
+---
+
+## [0.12.2] — 2026-04-27 — Corrections fixes: fullName, employer link, three kinds
+
+This release fixes three issues from stakeholder feedback on the M8d
+corrections feature:
+
+1. **Bug**: usernames showing instead of full names in the corrections UI.
+2. **UX**: employer needed an easier path from the punch page to the
+   corrections approval list.
+3. **Feature**: corrections now support `kind = 'both' | 'in' | 'out'` —
+   so users can register only-clock-in or only-clock-out forgots, not
+   just complete in/out windows.
+
+### Fixed — fullName lookup in corrections route
+
+`fullNameMap()` was reaching into `e.profile?.fullName`, but
+`employeesStore.list()` returns flat `{id, fullName, ...}` records
+(matching the leaves route's pattern). The lookup always returned
+`undefined` and the UI fell back to the username. Now uses `e.fullName`
+directly. The leaves route had the right shape; corrections was the
+outlier.
+
+### Changed — Corrections link on the punch page is role-aware
+
+Previously the punch page always showed "Forgot to clock? Register
+manual time →" pointing at `/corrections/new`. For employers this was
+useless — they don't typically file their own corrections, they need
+to approve employees'. The link now adapts:
+
+- **Employee**: "Forgot to clock? Register manual time →" → `/corrections/new`
+- **Employer**: "Review pending corrections →" → `/corrections`
+
+Both roles can still navigate via the top-bar Corrections link if they
+want the other destination.
+
+### Added — Three correction kinds
+
+The store, route, and frontend now support three kinds:
+
+- **`both`** (default) — full window: requires `start` and `end`. Hours
+  computed as the duration. The only kind that can affect the bank.
+- **`in`** — clock-in only: requires only `start`. Materializes a
+  single in-punch on approval. Use case: arrived but forgot to tap.
+- **`out`** — clock-out only: requires only `end`. Materializes a
+  single out-punch on approval. Use case: left without tapping.
+
+#### Bank impact by kind
+
+The bank only counts approved **`both`** corrections without
+justification. Single-side corrections (`in` / `out`) are paperwork
+fixes — there's no duration knowable in isolation, so they never
+contribute to the bank regardless of justification status.
+`computeBank()` enforces this.
+
+The justification field still exists for all kinds — for `in` / `out`
+it serves the audit log but has no bank consequence. The new-form's
+"these N hours will go to the bank" warning hides for `in` / `out`.
+
+#### Approval materialization by kind
+
+- `kind='both'` → creates both in-punch (at `start`) and out-punch (at `end`).
+- `kind='in'` → creates only the in-punch at `start`.
+- `kind='out'` → creates only the out-punch at `end`.
+
+ClientIds remain `correction:<id>:in` / `:out` for idempotency.
+`kind='out'`-only corrections put the comment on the out-punch (since
+there's no in to attach it to); for `kind='both'` the comment lives on
+the in-punch as before.
+
+#### Forward compatibility
+
+Old correction events written before this version don't have a `kind`
+field. On read, `applyEvent()` defaults missing `kind` to `'both'`
+(which matches the original required-both semantics). No data
+migration needed. A test verifies this round-trips correctly.
+
+### Frontend — new-correction form
+
+The form gained a **kind selector** at the top — three radio-button
+options with descriptions:
+
+- "Both clock-in and clock-out" — I worked a window that wasn't tracked at all.
+- "Just clock-in" — I forgot to clock in (e.g. arrived but didn't tap).
+- "Just clock-out" — I forgot to clock out (e.g. left without tapping).
+
+When `in` is selected the End field hides and the Start label changes
+to "When you arrived." When `out` is selected the Start field hides
+and the End label changes to "When you left." The bank-warning
+callout shows only for `kind='both'` without justification.
+
+### Frontend — list and detail pages
+
+- **List rows** now show kind chips (`both` / `in only` / `out only`),
+  render `Arrived HH:MM` for in-only and `Left HH:MM` for out-only
+  rows, and display "in only" or "out only" in the hours column for
+  single-side corrections.
+- **Detail page** hides the Start/End/Duration `<dt>` rows that don't
+  apply to the kind. For `in` the row label becomes "Arrived"; for
+  `out` it becomes "Left". The Bank impact line reads "None —
+  single-side correction" for `in` / `out`.
+- **Approve confirmation** message branches by kind: for `in` / `out`
+  it tells the employer what time the punch will be added at; for
+  `both` unjustified it warns about the bank impact.
+
+### Files touched
+- `src/storage/corrections.js` — `validateWindow()` now branches on
+  kind. `applyEvent()` reads/defaults kind. `create()` accepts kind.
+  `computeBank()` filters by `kind='both'`.
+- `src/routes/corrections.js` — `fullNameMap()` fixed to read `e.fullName`.
+  POST accepts kind. Approve materialization branches by kind.
+- `tests/test-corrections.mjs` — 8 new tests covering kind validation,
+  bank exclusion for single-side, mixed-kind bank totals, and
+  forward-compat for old kind-less events.
+- `public/correction-new.html` + `correction-new.js` — kind selector,
+  conditional fields, kind-aware warning visibility.
+- `public/corrections.js` — list rows render by kind.
+- `public/correction.html` + `correction.js` — detail page renders by
+  kind, hides irrelevant rows, branches approval confirmation.
+- `public/corrections.css` — kind-fieldset, kind-radio, kind chip styles.
+- `public/punch.html` + `punch.js` — corrections link gets an id and
+  swaps href + text by role.
+- `package.json` — patch bump to 0.12.2.
+
+### Tests
+- 10-suite regression: 284 passing, 0 failing (was 276 + 8 new in
+  corrections covering the three kinds).
+
+### Honest disclosures
+- **No frontend tests** for the kind-switching logic. The smoke test
+  exercises the full file/approve flow for all three kinds end-to-end
+  but the UI radio-button visibility is verified by hand.
+- **Re-approving a same-kind correction** is still rejected at the
+  storage layer (status machine: pending → approved is one-way),
+  but if a `kind='out'` correction is approved and then somehow gets
+  another approve event for `kind='in'` materialization, the punch
+  idempotency key (`correction:<id>:in`) would prevent duplication.
+  Both layers agree.
+
+---
+
 ## [0.12.1] — 2026-04-27 — Milestone 8d (frontend): corrections UI + working-time display
 
 This release ships the frontend half of M8d. Employees can now file

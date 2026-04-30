@@ -56,25 +56,55 @@ const TRANSITIONS = Object.freeze({
 function padMonth(m) { return String(m).padStart(2, '0'); }
 function aadFor(correctionId) { return `correction:${correctionId}`; }
 
+const CORRECTION_KINDS = Object.freeze(['both', 'in', 'out']);
+
+function validIsoTs(ts) {
+  if (typeof ts !== 'string') return null;
+  const t = new Date(ts).getTime();
+  if (!Number.isFinite(t)) return null;
+  return new Date(t).toISOString();
+}
+
 /**
- * Validate ISO timestamps. Both must parse, end must be strictly after
- * start, and the window must be reasonable: at most 24 hours, at least
- * 1 minute. The 24-hour cap prevents nonsense like "I worked 3 days
- * straight" being filed as one correction.
+ * Validate the timestamps for a correction of a given kind.
+ *
+ *   kind='both' → both start and end required, end > start,
+ *                 1 min ≤ duration ≤ 24h. Returns startIso, endIso, hours.
+ *   kind='in'   → start required, end ignored. Returns startIso, endIso=null, hours=null.
+ *   kind='out'  → end required, start ignored. Returns startIso=null, endIso, hours=null.
+ *
+ * The 1-minute / 24-hour bounds only apply to 'both' since they are about
+ * the duration of the worked window. Single-side corrections are paperwork
+ * fixes (no duration) so neither bound is relevant.
  */
-function validateWindow(start, end) {
-  if (typeof start !== 'string' || typeof end !== 'string') {
-    throw new Error('start and end are required');
+function validateWindow({ kind, start, end }) {
+  if (!CORRECTION_KINDS.includes(kind)) {
+    throw new Error(`kind must be one of: ${CORRECTION_KINDS.join(', ')}`);
   }
-  const s = new Date(start).getTime();
-  const e = new Date(end).getTime();
-  if (!Number.isFinite(s)) throw new Error('start is not a valid timestamp');
-  if (!Number.isFinite(e)) throw new Error('end is not a valid timestamp');
-  if (e <= s) throw new Error('end must be after start');
-  const hours = (e - s) / 3_600_000;
-  if (hours > 24) throw new Error('correction window cannot exceed 24 hours');
-  if (hours < 1 / 60) throw new Error('correction window must be at least 1 minute');
-  return { startIso: new Date(s).toISOString(), endIso: new Date(e).toISOString(), hours };
+  if (kind === 'both') {
+    const startIso = validIsoTs(start);
+    const endIso = validIsoTs(end);
+    if (!startIso) throw new Error('start is required');
+    if (!endIso) throw new Error('end is required');
+    const s = Date.parse(startIso), e = Date.parse(endIso);
+    if (e <= s) throw new Error('end must be after start');
+    const hours = (e - s) / 3_600_000;
+    if (hours > 24) throw new Error('correction window cannot exceed 24 hours');
+    if (hours < 1 / 60) throw new Error('correction window must be at least 1 minute');
+    return { kind, startIso, endIso, hours };
+  }
+  if (kind === 'in') {
+    const startIso = validIsoTs(start);
+    if (!startIso) throw new Error('start is required for an in-only correction');
+    return { kind, startIso, endIso: null, hours: null };
+  }
+  if (kind === 'out') {
+    const endIso = validIsoTs(end);
+    if (!endIso) throw new Error('end is required for an out-only correction');
+    return { kind, startIso: null, endIso, hours: null };
+  }
+  // unreachable
+  throw new Error(`unsupported kind: ${kind}`);
 }
 
 export function createCorrectionsStore(dataDir, masterKey) {
@@ -133,7 +163,9 @@ export function createCorrectionsStore(dataDir, masterKey) {
 
   function applyEvent(states, ev) {
     if (ev.event === 'created') {
-      const window = validateWindow(ev.start, ev.end);
+      // Kind defaults to 'both' for old events written before kind existed.
+      const kind = CORRECTION_KINDS.includes(ev.kind) ? ev.kind : 'both';
+      const window = validateWindow({ kind, start: ev.start, end: ev.end });
       let justification = null;
       let _decryptFailed = false;
       if (ev.enc) {
@@ -149,6 +181,7 @@ export function createCorrectionsStore(dataDir, masterKey) {
         id: ev.id,
         employeeId: ev.employeeId,
         status: 'pending',
+        kind,
         start: window.startIso,
         end: window.endIso,
         hours: window.hours,
@@ -188,12 +221,17 @@ export function createCorrectionsStore(dataDir, masterKey) {
 
   /**
    * Create a new pending correction. Returns the persisted record.
-   * `justification` is optional; absence means it'll go to the bank if
-   * approved.
+   * `justification` is optional; absence means hours go to the bank if
+   * approved (only relevant for kind='both').
+   *
+   * Required fields by kind:
+   *   - both: start, end
+   *   - in:   start
+   *   - out:  end
    */
-  function create({ employeeId, start, end, justification }) {
+  function create({ employeeId, kind = 'both', start, end, justification }) {
     if (!employeeId) throw new Error('employeeId is required');
-    const window = validateWindow(start, end);
+    const window = validateWindow({ kind, start, end });
     const id = randomUUID();
     const ts = new Date().toISOString();
 
@@ -206,9 +244,10 @@ export function createCorrectionsStore(dataDir, masterKey) {
       ts,
       event: 'created',
       employeeId,
-      start: window.startIso,
-      end: window.endIso,
+      kind: window.kind,
     };
+    if (window.startIso) event.start = window.startIso;
+    if (window.endIso)   event.end   = window.endIso;
     if (justText) {
       event.enc = encryptField(JSON.stringify({ justification: justText }), masterKey, aadFor(id));
     }
@@ -219,6 +258,7 @@ export function createCorrectionsStore(dataDir, masterKey) {
 
     return {
       id, employeeId, status: 'pending',
+      kind: window.kind,
       start: window.startIso, end: window.endIso, hours: window.hours,
       justification: justText,
       isJustified: !!justText,
@@ -270,11 +310,11 @@ export function createCorrectionsStore(dataDir, masterKey) {
   function cancel(id, actorId)         { return transition(id, actorId, 'cancelled'); }
 
   /**
-   * Bank balance = total hours from approved corrections that have NO
-   * justification. The interpretation is "uncredited time" — the
-   * employee admitted to missing the registration without an excuse, so
-   * those hours don't count toward worked time and accumulate as
-   * compensation owed back to the employer.
+   * Bank balance = total hours from approved kind='both' corrections that
+   * have NO justification. Single-side corrections (kind='in' or 'out')
+   * have no duration knowable in isolation — they're paperwork fixes for
+   * a forgotten clock-in or clock-out — so they never contribute to the
+   * bank regardless of justification.
    *
    * Returns hours as a number (floating, fine for hour-resolution math).
    */
@@ -285,6 +325,7 @@ export function createCorrectionsStore(dataDir, masterKey) {
     for (const state of readAll().values()) {
       if (state.employeeId !== userId) continue;
       if (state.status !== 'approved') continue;
+      if (state.kind !== 'both') continue;
       if (state.isJustified) continue;
       if (cutoff != null && new Date(state.decidedAt).getTime() > cutoff) continue;
       total += state.hours;

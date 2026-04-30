@@ -49,25 +49,44 @@ function renderRow(c) {
   li.className = `correction-row correction-row--${c.status}`;
 
   const who = (me.role === 'employer') ? (c.fullName || c.username || 'someone') : '';
+  // When + duration depend on kind.
+  let when, hoursLabel;
+  if (c.kind === 'both') {
+    when = `${fmtDateTime(c.start)} → ${fmtDateTime(c.end)}`;
+    hoursLabel = fmtHours(c.hours);
+  } else if (c.kind === 'in') {
+    when = `Arrived ${fmtDateTime(c.start)}`;
+    hoursLabel = 'in only';
+  } else {
+    when = `Left ${fmtDateTime(c.end)}`;
+    hoursLabel = 'out only';
+  }
+
+  // Justified / no-justification chip on every row.
   const justChip = c.isJustified
     ? `<span class="chip chip--ok">justified</span>`
     : `<span class="chip chip--warn">no justification</span>`;
-  const bankChip = (c.status === 'approved' && !c.isJustified)
+  // Bank chip only on approved both-kind without justification.
+  const bankChip = (c.status === 'approved' && c.kind === 'both' && !c.isJustified)
     ? `<span class="chip chip--bank">+${fmtHours(c.hours)} to bank</span>`
     : '';
+  // Kind chip for visual differentiation in lists.
+  const kindChipMap = { both: 'both', in: 'in only', out: 'out only' };
+  const kindChip = `<span class="chip chip--kind">${kindChipMap[c.kind] ?? c.kind}</span>`;
 
   li.innerHTML = `
     <a class="correction-row__link" href="/corrections/${c.id}">
       <div class="correction-row__main">
         ${who ? `<div class="correction-row__who">${escapeHtml(who)}</div>` : ''}
-        <div class="correction-row__when">${fmtDateTime(c.start)} → ${fmtDateTime(c.end)}</div>
+        <div class="correction-row__when">${when}</div>
         <div class="correction-row__chips">
           <span class="status-tag status-tag--${c.status}">${c.status}</span>
+          ${kindChip}
           ${justChip}
           ${bankChip}
         </div>
       </div>
-      <div class="correction-row__hours">${fmtHours(c.hours)}</div>
+      <div class="correction-row__hours">${hoursLabel}</div>
     </a>
   `;
   return li;

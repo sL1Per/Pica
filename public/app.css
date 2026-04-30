@@ -451,7 +451,13 @@ input[type="radio"]:focus-visible {
  */
 
 button,
-.btn {
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-ghost,
+.btn-approve,
+.btn-reject {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -470,9 +476,19 @@ button,
   cursor: pointer;
   transition: background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
   white-space: nowrap;
+  /* For anchors: kill the underline and inherit the right cursor. */
+  text-decoration: none;
 }
 button:hover:not(:disabled),
-.btn:hover:not(:disabled) { background: var(--accent-hover); }
+.btn:hover:not(:disabled),
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+/* Button-styled anchors must keep their original button text color on
+   hover — otherwise the global `a:hover { color: var(--accent-hover) }`
+   rule (set later in this file) would override it, making the text
+   blend into the background on hover. */
+a.btn:hover, a.btn-primary:hover, a.btn-danger:hover,
+a.btn-approve:hover, a.btn-reject:hover { color: white; }
+a.btn-ghost:hover { color: var(--text); }
 button:active:not(:disabled),
 .btn:active:not(:disabled) { transform: translateY(1px); }
 button:disabled,
@@ -480,7 +496,9 @@ button:disabled,
 
 /* Wider tap target on mobile. */
 @media (max-width: 600px) {
-  button, .btn { min-height: 44px; }
+  button, .btn,
+  .btn-primary, .btn-secondary, .btn-danger, .btn-ghost,
+  .btn-approve, .btn-reject { min-height: 44px; }
 }
 
 button.block,

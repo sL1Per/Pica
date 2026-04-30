@@ -38,15 +38,54 @@ function render() {
   $('f-status').textContent = correction.status;
   $('f-status').className = `status-tag status-tag--${correction.status}`;
   $('f-employee').textContent = correction.fullName || correction.username || correction.employeeId;
-  $('f-start').textContent = fmtDateTime(correction.start);
-  $('f-end').textContent   = fmtDateTime(correction.end);
-  $('f-hours').textContent = fmtHours(correction.hours);
+
+  // Render time fields based on kind.
+  const startDt = document.querySelector('dt[data-row="start"]') || $('f-start')?.previousElementSibling;
+  const endDt = document.querySelector('dt[data-row="end"]') || $('f-end')?.previousElementSibling;
+  const hoursDt = document.querySelector('dt[data-row="hours"]') || $('f-hours')?.previousElementSibling;
+
+  if (correction.kind === 'both') {
+    if (startDt) startDt.hidden = false;
+    $('f-start').hidden = false;
+    $('f-start').textContent = fmtDateTime(correction.start);
+    if (endDt) endDt.hidden = false;
+    $('f-end').hidden = false;
+    $('f-end').textContent = fmtDateTime(correction.end);
+    if (hoursDt) hoursDt.hidden = false;
+    $('f-hours').hidden = false;
+    $('f-hours').textContent = fmtHours(correction.hours);
+  } else if (correction.kind === 'in') {
+    if (startDt) { startDt.hidden = false; startDt.textContent = 'Arrived'; }
+    $('f-start').hidden = false;
+    $('f-start').textContent = fmtDateTime(correction.start);
+    if (endDt) endDt.hidden = true;
+    $('f-end').hidden = true;
+    if (hoursDt) hoursDt.hidden = true;
+    $('f-hours').hidden = true;
+  } else if (correction.kind === 'out') {
+    if (startDt) startDt.hidden = true;
+    $('f-start').hidden = true;
+    if (endDt) { endDt.hidden = false; endDt.textContent = 'Left'; }
+    $('f-end').hidden = false;
+    $('f-end').textContent = fmtDateTime(correction.end);
+    if (hoursDt) hoursDt.hidden = true;
+    $('f-hours').hidden = true;
+  }
+
   $('f-justification').textContent = correction.justification || '— (no justification)';
-  $('f-bank-impact').textContent = correction.isJustified
-    ? 'None — counts as worked time only'
-    : (correction.status === 'approved'
-        ? `+${fmtHours(correction.hours)} added to bank`
-        : `+${fmtHours(correction.hours)} would be added to bank if approved`);
+
+  // Bank impact text adapts to kind.
+  const bankImpactEl = $('f-bank-impact');
+  if (correction.kind !== 'both') {
+    bankImpactEl.textContent = 'None — single-side correction';
+  } else if (correction.isJustified) {
+    bankImpactEl.textContent = 'None — counts as worked time only';
+  } else if (correction.status === 'approved') {
+    bankImpactEl.textContent = `+${fmtHours(correction.hours)} added to bank`;
+  } else {
+    bankImpactEl.textContent = `+${fmtHours(correction.hours)} would be added to bank if approved`;
+  }
+
   $('f-created').textContent = fmtDateTime(correction.createdAt);
 
   if (correction.decidedAt) {
@@ -77,10 +116,17 @@ function renderActions() {
     approve.className = 'btn-approve';
     approve.textContent = 'Approve';
     approve.addEventListener('click', () => {
-      const ok = correction.isJustified
-        ? confirm(`Approve this correction? It will be recorded as worked time and the corresponding punches will be created.`)
-        : confirm(`Approve this correction WITHOUT justification?\n\n${fmtHours(correction.hours)} will be added to the employee's time bank as compensation owed.`);
-      if (ok) action('approve');
+      let msg;
+      if (correction.kind === 'in') {
+        msg = `Approve this correction? An in-punch will be added at ${fmtDateTime(correction.start)}.`;
+      } else if (correction.kind === 'out') {
+        msg = `Approve this correction? An out-punch will be added at ${fmtDateTime(correction.end)}.`;
+      } else if (correction.isJustified) {
+        msg = `Approve this correction? It will be recorded as worked time and the corresponding punches will be created.`;
+      } else {
+        msg = `Approve this correction WITHOUT justification?\n\n${fmtHours(correction.hours)} will be added to the employee's time bank as compensation owed.`;
+      }
+      if (confirm(msg)) action('approve');
     });
 
     const reject = document.createElement('button');

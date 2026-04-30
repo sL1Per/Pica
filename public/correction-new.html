@@ -36,15 +36,44 @@
 
     <section class="card">
       <form id="correction-form" autocomplete="off">
-        <label for="start">Start (when you started working)</label>
-        <input type="datetime-local" id="start" name="start" required>
+        <fieldset class="kind-fieldset">
+          <legend>What did you forget to clock?</legend>
+          <label class="kind-radio">
+            <input type="radio" name="kind" value="both" checked>
+            <div>
+              <strong>Both clock-in and clock-out</strong>
+              <span>I worked a window that wasn't tracked at all.</span>
+            </div>
+          </label>
+          <label class="kind-radio">
+            <input type="radio" name="kind" value="in">
+            <div>
+              <strong>Just clock-in</strong>
+              <span>I forgot to clock in (e.g. arrived but didn't tap).</span>
+            </div>
+          </label>
+          <label class="kind-radio">
+            <input type="radio" name="kind" value="out">
+            <div>
+              <strong>Just clock-out</strong>
+              <span>I forgot to clock out (e.g. left without tapping).</span>
+            </div>
+          </label>
+        </fieldset>
 
-        <label for="end">End (when you stopped working)</label>
-        <input type="datetime-local" id="end" name="end" required>
+        <div id="start-field">
+          <label for="start" id="start-label">Start (when you started working)</label>
+          <input type="datetime-local" id="start" name="start">
+        </div>
+
+        <div id="end-field">
+          <label for="end" id="end-label">End (when you stopped working)</label>
+          <input type="datetime-local" id="end" name="end">
+        </div>
 
         <label for="justification">Justification <span class="subtle">(optional)</span></label>
         <textarea id="justification" name="justification" rows="3" maxlength="500"
-                  placeholder="e.g. Phone battery died, couldnt open the app"></textarea>
+                  placeholder="e.g. Phone battery died, couldn't open the app"></textarea>
 
         <p id="bank-warning" class="callout callout--warn">
           Without a justification, these <strong id="bank-warn-hours">hours</strong> will be added to your time bank as compensation owed to the employer.

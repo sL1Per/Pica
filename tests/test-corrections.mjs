@@ -76,7 +76,7 @@ try {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-c3-'));
     try {
       const s = createCorrectionsStore(dir, masterKey);
-      assert.throws(() => s.create({ employeeId: 'alice' }), /start and end are required/);
+      assert.throws(() => s.create({ employeeId: 'alice' }), /start is required/);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -406,6 +406,142 @@ try {
     try {
       const s = createCorrectionsStore(dir, masterKey);
       assert.throws(() => s.computeBank({}), /userId/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // --------------------------------------------------------------------------
+
+  console.log('\nkind = in / out');
+
+  await test('kind=in requires only start', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k1-'));
+    try {
+      const s = createCorrectionsStore(dir, masterKey);
+      const c = s.create({
+        employeeId: 'alice', kind: 'in',
+        start: '2026-04-27T09:00:00Z',
+      });
+      assert.equal(c.kind, 'in');
+      assert.equal(c.start, '2026-04-27T09:00:00.000Z');
+      assert.equal(c.end, null);
+      assert.equal(c.hours, null);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('kind=in rejects missing start', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k2-'));
+    try {
+      const s = createCorrectionsStore(dir, masterKey);
+      assert.throws(() => s.create({ employeeId: 'alice', kind: 'in' }),
+        /start is required for an in-only correction/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('kind=out requires only end', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k3-'));
+    try {
+      const s = createCorrectionsStore(dir, masterKey);
+      const c = s.create({
+        employeeId: 'alice', kind: 'out',
+        end: '2026-04-27T17:00:00Z',
+      });
+      assert.equal(c.kind, 'out');
+      assert.equal(c.start, null);
+      assert.equal(c.end, '2026-04-27T17:00:00.000Z');
+      assert.equal(c.hours, null);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('kind=out rejects missing end', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k4-'));
+    try {
+      const s = createCorrectionsStore(dir, masterKey);
+      assert.throws(() => s.create({ employeeId: 'alice', kind: 'out' }),
+        /end is required for an out-only correction/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('invalid kind is rejected', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k5-'));
+    try {
+      const s = createCorrectionsStore(dir, masterKey);
+      assert.throws(() => s.create({
+        employeeId: 'alice', kind: 'maybe',
+        start: '2026-04-27T09:00:00Z',
+      }), /kind must be one of/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('kind=in and kind=out do NOT contribute to bank', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k6-'));
+    try {
+      const s = createCorrectionsStore(dir, masterKey);
+      // Both 'in' and 'out' corrections, both unjustified, both approved.
+      const c1 = s.create({ employeeId: 'alice', kind: 'in',  start: '2026-04-27T09:00:00Z' });
+      const c2 = s.create({ employeeId: 'alice', kind: 'out', end:   '2026-04-27T17:00:00Z' });
+      s.approve(c1.id, 'admin');
+      s.approve(c2.id, 'admin');
+      assert.equal(s.computeBank({ userId: 'alice' }), 0);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('mixed kinds: only the both-kind contributes to bank', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k7-'));
+    try {
+      const s = createCorrectionsStore(dir, masterKey);
+      const c1 = s.create({ employeeId: 'alice', kind: 'in',  start: '2026-04-27T09:00:00Z' });
+      const c2 = s.create({
+        employeeId: 'alice', kind: 'both',
+        start: '2026-04-28T09:00:00Z', end: '2026-04-28T11:00:00Z',
+      });
+      s.approve(c1.id, 'admin');
+      s.approve(c2.id, 'admin');
+      // Only the 2-hour 'both' counts.
+      assert.equal(s.computeBank({ userId: 'alice' }), 2);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('old corrections (no kind field) default to both on read', () => {
+    // Simulate an old-format correction by writing the raw NDJSON line.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k8-'));
+    try {
+      // Step 1: create a correction normally to set up the directory.
+      const s = createCorrectionsStore(dir, masterKey);
+      const c = s.create({
+        employeeId: 'alice',
+        start: '2026-04-27T09:00:00Z',
+        end:   '2026-04-27T11:00:00Z',
+      });
+      // Step 2: rewrite the file with an OLD-format event (no kind field).
+      const file = s.paths.monthFile(2026, 4);
+      const lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean);
+      const newLines = lines.map((l) => {
+        const ev = JSON.parse(l);
+        if (ev.event === 'created') delete ev.kind;
+        return JSON.stringify(ev);
+      });
+      fs.writeFileSync(file, newLines.join('\n') + '\n');
+      // Step 3: re-read with a fresh store. kind should default to 'both'.
+      const s2 = createCorrectionsStore(dir, masterKey);
+      const got = s2.findById(c.id);
+      assert.equal(got.kind, 'both');
+      assert.equal(got.hours, 2);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

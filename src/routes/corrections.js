@@ -34,11 +34,12 @@ export function registerCorrectionRoutes(router, {
 }) {
 
   function fullNameMap() {
-    const map = new Map();
-    for (const e of employeesStore.list()) {
-      if (e.profile?.fullName) map.set(e.id, e.profile.fullName);
+    if (!employeesStore) return new Map();
+    try {
+      return new Map(employeesStore.list().map((e) => [e.id, e.fullName ?? null]));
+    } catch {
+      return new Map();
     }
-    return map;
   }
   function usersByIdMap() {
     const map = new Map();
@@ -97,10 +98,10 @@ export function registerCorrectionRoutes(router, {
   // --------------------------------------------------------------------------
 
   router.post('/api/corrections', requireAuth((req, res) => {
-    const { start, end, justification } = req.body ?? {};
+    const { kind, start, end, justification } = req.body ?? {};
     try {
       const correction = correctionsStore.create({
-        employeeId: req.user.id, start, end, justification,
+        employeeId: req.user.id, kind, start, end, justification,
       });
       res.json({ ok: true, correction: enrich(correction, usersByIdMap(), fullNameMap()) });
     } catch (err) {
@@ -119,7 +120,7 @@ export function registerCorrectionRoutes(router, {
       return res.badRequest(`Cannot approve a correction in status '${existing.status}'`);
     }
 
-    // Materialize the in/out punches BEFORE recording the approval, so a
+    // Materialize the punches BEFORE recording the approval, so a
     // crash mid-way leaves the correction pending (we can retry) rather
     // than approved-but-no-punches (we'd need manual cleanup).
     //
@@ -127,25 +128,42 @@ export function registerCorrectionRoutes(router, {
     // from the correction id, which makes the operation idempotent: a
     // retry caused by network flakiness won't create duplicates because
     // punchesStore.findByClientId() will catch them.
+    //
+    // Per kind:
+    //   - 'both' → create both in (at start) and out (at end)
+    //   - 'in'   → create just an in-punch at start
+    //   - 'out'  → create just an out-punch at end
     const baseId = `correction:${existing.id}`;
-    const inMeta = punchesStore.findByClientId(existing.employeeId, `${baseId}:in`);
-    const outMeta = punchesStore.findByClientId(existing.employeeId, `${baseId}:out`);
-    if (!inMeta) {
-      punchesStore.append(existing.employeeId, {
-        type: 'in',
-        ts: existing.start,
-        comment: existing.isJustified
-          ? `Manual entry: ${existing.justification}`.slice(0, 500)
-          : 'Manual entry (no justification — banked)',
-        clientId: `${baseId}:in`,
-      });
+    const commentForIn = existing.isJustified
+      ? `Manual entry: ${existing.justification}`.slice(0, 500)
+      : 'Manual entry (no justification)';
+    const commentForOut = existing.isJustified
+      ? `Manual entry: ${existing.justification}`.slice(0, 500)
+      : 'Manual entry (no justification)';
+
+    if (existing.kind === 'both' || existing.kind === 'in') {
+      const inMeta = punchesStore.findByClientId(existing.employeeId, `${baseId}:in`);
+      if (!inMeta) {
+        punchesStore.append(existing.employeeId, {
+          type: 'in',
+          ts: existing.start,
+          comment: commentForIn,
+          clientId: `${baseId}:in`,
+        });
+      }
     }
-    if (!outMeta) {
-      punchesStore.append(existing.employeeId, {
-        type: 'out',
-        ts: existing.end,
-        clientId: `${baseId}:out`,
-      });
+    if (existing.kind === 'both' || existing.kind === 'out') {
+      const outMeta = punchesStore.findByClientId(existing.employeeId, `${baseId}:out`);
+      if (!outMeta) {
+        punchesStore.append(existing.employeeId, {
+          type: 'out',
+          ts: existing.end,
+          // Only put the comment on the OUT punch when this is an out-only
+          // correction; for 'both' the comment already lives on the in punch.
+          comment: existing.kind === 'out' ? commentForOut : null,
+          clientId: `${baseId}:out`,
+        });
+      }
     }
 
     try {

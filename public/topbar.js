@@ -13,7 +13,6 @@ const NAV_EMPLOYEE = [
   { href: '/punch',            label: 'Punches' },
   { href: '/leaves/calendar',  label: 'Calendar' },
   { href: '/leaves',           label: 'Leaves' },
-  { href: '/corrections',      label: 'Corrections' },
   { href: '/reports',          label: 'Reports' },
 ];
 
@@ -21,7 +20,6 @@ const NAV_EMPLOYER = [
   { href: '/employees',        label: 'Employees' },
   { href: '/leaves/calendar',  label: 'Calendar' },
   { href: '/leaves',           label: 'Leaves' },
-  { href: '/corrections',      label: 'Corrections' },
   { href: '/punch',            label: 'Punches' },
   { href: '/reports',          label: 'Reports' },
   { href: '/settings',         label: 'Settings' },
