@@ -14,6 +14,111 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.15.2] — 2026-05-01 — Service Worker HTML caching fix (i18n correctness)
+
+The user reported "all pages still in English" after upgrading to
+0.15.1, despite a hard refresh. Diagnosis:
+
+- Server is correctly injecting `<html lang="pt-PT">` and
+  `<meta name="pica-locale" content="pt-PT">` per-request.
+- The user's `<html lang>` was correctly `pt-PT` in the live DOM.
+- But `document.querySelector('meta[name="pica-locale"]')` returned
+  no element. So `i18n.js` fell back to `en-US` and showed English
+  fallbacks everywhere.
+- Service Worker (from the previous version's pre-cache install)
+  was serving stale HTML that lacked the meta tag.
+
+### Root cause — two SW bugs working together
+
+1. **HTML pages were in the SW pre-cache list.** At install time,
+   the SW fetches `/`, `/punch`, `/leaves`, etc. with no cookie —
+   the server's `injectLocale()` sees an unauthenticated request
+   and emits the default en-US meta. That's then served on every
+   subsequent navigation as a cache-first hit, regardless of who's
+   logged in or what their locale preference is.
+2. **The runtime `networkFirst` handler also cached HTML responses.**
+   Even after pre-cache eviction, every successful HTML fetch was
+   stored in the cache by URL. Caches are keyed by URL, but HTML
+   pages now embed per-user state (the locale meta). So user A's
+   locale could be served to user B as an offline fallback for the
+   same path — incorrect.
+
+### Fix
+
+- **Removed all HTML pages** from the SW pre-cache list (`PRECACHE_URLS`).
+  Static assets (CSS/JS/SVG/manifest/i18n dictionaries) stay
+  pre-cached because they're identical for every user.
+- **`networkFirst` no longer caches HTML responses.** It only caches
+  JSON API responses going forward. HTML pages always go to the
+  network; if the network is down, no offline HTML is served (the
+  browser shows its standard offline UI).
+- `CACHE_VERSION` bumped to `pica-cache-v9` so existing installs
+  invalidate their stale HTML cache on next visit.
+
+### Tradeoff
+
+Offline HTML page-load support is gone for now. If the user is
+offline and hasn't visited a page recently in the network-first
+window (which is essentially "never" since I removed HTML caching),
+they get the browser's offline UI instead of a cached page.
+Acceptable for now: the punch page's offline-queue feature is what
+actually matters for the work-from-the-road use case, and that
+operates via `localStorage` and the `/api/punches/clock-in` POST
+endpoint (which is queued and replayed on reconnect — entirely
+separate from the SW HTML cache).
+
+If we want offline HTML in the future, the right design is to
+either (a) cache HTML keyed by `URL + locale` so different locales
+get separate cache entries, or (b) drop server-side locale injection
+entirely and have `i18n.js` read the locale from a cookie at
+runtime. (a) is simpler and preserves the no-flicker property.
+Both are out of scope for this fix.
+
+### How users pick up the fix
+
+1. Browser fetches the new `/sw.js` with `CACHE_VERSION = 'pica-cache-v9'`.
+2. Old SW activates the new SW (next page navigation).
+3. New SW's `activate` handler deletes all caches that aren't `v9`
+   — clearing the stale pre-cached HTML.
+4. Subsequent navigations go to the network, get the fresh HTML
+   with the right meta tag, and `i18n.js` reads it correctly.
+
+If a user is stuck (the SW lifecycle is sometimes finicky), the
+unblock is: DevTools → Application → Service Workers → Unregister,
+then reload. Or for a clean reset: Application → Storage → Clear
+site data.
+
+### Files touched
+- `public/sw.js` — `PRECACHE_URLS` no longer contains HTML routes;
+  `networkFirst` no longer caches HTML; `CACHE_VERSION` bumped to v9.
+- `package.json` — patch bump to 0.15.2.
+
+### Tests
+- 11-suite regression: 318 passing, 0 failing. No code/test changes
+  beyond the SW.
+
+### Honest disclosures
+- **Should have caught this in 0.15.0.** Drop 1 introduced
+  per-request HTML rewriting and the SW pre-cache list still
+  contained HTML routes from M8c — but the symptom only surfaced
+  once translations existed to make the locale visible. I tested
+  the locale switch on a fresh install (no SW yet) and it worked,
+  which masked the stale-cache problem entirely.
+- **The "lang attribute is right but meta isn't" symptom was the
+  smoking gun.** Both come from the same `injectLocale()` call. If
+  the lang attribute updates, server injection is working — so
+  whatever's serving the page must be a snapshot taken at a moment
+  when the meta tag wasn't there. That ruled out runtime issues
+  and pointed straight at the SW.
+- **Offline HTML loss is intentional and small.** No part of Pica's
+  workflow needs offline HTML to keep functioning — the punch page's
+  offline queue uses `localStorage` for its data and POST replay for
+  syncing, both of which the SW doesn't touch. The browser's "you're
+  offline" page is fine UX for the rare offline-and-trying-to-load
+  case.
+
+---
+
 ## [0.15.1] — 2026-04-30 — Milestone 9 (Drop 2): full i18n string coverage
 
 The second drop completes M9. Every page that was English-only after

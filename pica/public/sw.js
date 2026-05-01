@@ -21,21 +21,25 @@
  *     handles map absence gracefully.
  */
 
-const CACHE_VERSION = 'pica-cache-v8';
+const CACHE_VERSION = 'pica-cache-v9';
+// Pre-cache only static assets, NOT HTML pages. HTML pages need
+// server-side per-request locale injection (the <html lang> attribute
+// and the <meta name="pica-locale"> tag are written based on the
+// requesting user's stored locale). At install time the SW has no
+// session cookie, so a pre-cached HTML page would be the unauthenticated
+// default (en-US) — and the cache-first behavior for navigations could
+// then serve that stale en-US copy to authenticated users with a pt-PT
+// preference. The runtime networkFirst handler still caches HTML pages
+// fetched by the user, which is correct: each user gets their locale.
 const PRECACHE_URLS = [
-  '/',
-  '/punch',
-  '/leaves',
-  '/leaves/calendar',
-  '/preferences',
   '/app.css',
   '/app.js',
   '/topbar.css',
   '/topbar.js',
   '/punch.css',
-  '/punch.js',
   '/index.css',
   '/index.js',
+  '/punch.js',
   '/icon.svg',
   '/manifest.json',
   '/i18n.js',
@@ -108,8 +112,12 @@ async function networkFirst(req) {
   const cache = await caches.open(CACHE_VERSION);
   try {
     const res = await fetch(req);
-    // Only cache successful HTML / JSON responses.
-    if (res.ok && (req.headers.get('accept') || '').match(/text\/html|application\/json/)) {
+    // Cache JSON responses but NOT HTML. HTML pages embed per-user state
+    // (notably the <meta name="pica-locale"> tag), so caching them by URL
+    // would let one user's locale bleed into another user's offline view.
+    // Static assets (CSS/JS) stay cached via cacheFirst — those are
+    // identical for every user.
+    if (res.ok && (req.headers.get('accept') || '').match(/application\/json/)) {
       cache.put(req, res.clone());
     }
     return res;
