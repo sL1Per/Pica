@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    // The persisted value is written by app.js after fetching /api/settings/me
+    // and updated by preferences.js when the user saves a new choice.
+    // Possible values: "light", "dark", "system" (or null on first visit).
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
+  <title data-i18n="title.employees">Pica — Employees</title>
+    <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="theme-color" content="#2e7d32">
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/topbar.css">
+  <link rel="stylesheet" href="/employees.css">
+</head>
+<body>
+  <main class="container container--wide">
+    <header class="page-header">
+      <div>
+        <h1 data-i18n="employees.title">Employees</h1>
+      </div>
+      <a href="/employees/new" class="btn-link" data-i18n="employeeNew.button">+ New employee</a>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <ul id="employee-list" class="employee-list">
+      <li class="employee-list__empty subtle" data-i18n="employees.loading">Loading…</li>
+    </ul>
+  </main>
+
+  <script type="module" src="/employees.js"></script>
+</body>
+</html>

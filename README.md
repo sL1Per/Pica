@@ -305,11 +305,17 @@ Split into three drops:
 - ✅ Frontend: working-hours display on punch page + bank balance indicator
 - ✅ Frontend: settings UI for daily/weekly target hours
 
-### Milestone 9 — i18n
-- [ ] Language files: `i18n/en.json`, `i18n/pt.json`
-- [ ] Language switcher (reads from M7's account settings)
-- [ ] Per-user language preference (already stored in M7)
-- [ ] Date / number formatting via the browser's `Intl` API
+### Milestone 9 — i18n _(foundation in 0.15.0; full string coverage pending)_
+- ✅ Language dictionaries: `public/locales/en-US.js`, `public/locales/pt-PT.js`
+- ✅ `i18n.js` runtime module with `t(key, params)` interpolation
+- ✅ Language switcher in Preferences (reads/writes user-prefs)
+- ✅ Per-user `locale` preference (replaces the M7 `language` field with backward-compat read)
+- ✅ Server-side locale injection (`<html lang>` + `<meta name="pica-locale">`)
+- ✅ Drop 1 string coverage: app shell, dashboard, preferences, footer
+- ✅ Date formatting via `Intl.DateTimeFormat` (footer release date so far)
+- [ ] Drop 2 string coverage: punch, leaves, reports, employees, corrections, settings, login, setup
+- [ ] Backend error message localization (errorCode → frontend lookup)
+- [ ] Number formatting via `Intl.NumberFormat` where appropriate
 
 ### Milestone 10 — Backups
 - [ ] Encrypted full backup of `/data`

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
+  <title data-i18n="title.correctionNew">Pica — New correction</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="theme-color" content="#2e7d32">
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/topbar.css">
+  <link rel="stylesheet" href="/corrections.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1 data-i18n="correctionNew.title">Register manual time</h1>
+        <p class="subtle" data-i18n="correctionNew.subtitle">For when you forgot to clock in or out.</p>
+      </div>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <section class="card">
+      <form id="correction-form" autocomplete="off">
+        <fieldset class="kind-fieldset">
+          <legend data-i18n="correctionNew.kindLegend">What did you forget to clock?</legend>
+          <label class="kind-radio">
+            <input type="radio" name="kind" value="both" checked>
+            <div>
+              <strong data-i18n="correctionNew.kindBothTitle">Both clock-in and clock-out</strong>
+              <span data-i18n="correctionNew.kindBothDesc">I worked a window that wasn't tracked at all.</span>
+            </div>
+          </label>
+          <label class="kind-radio">
+            <input type="radio" name="kind" value="in">
+            <div>
+              <strong data-i18n="correctionNew.kindInTitle">Just clock-in</strong>
+              <span data-i18n="correctionNew.kindInDesc">I forgot to clock in (e.g. arrived but didn't tap).</span>
+            </div>
+          </label>
+          <label class="kind-radio">
+            <input type="radio" name="kind" value="out">
+            <div>
+              <strong data-i18n="correctionNew.kindOutTitle">Just clock-out</strong>
+              <span data-i18n="correctionNew.kindOutDesc">I forgot to clock out (e.g. left without tapping).</span>
+            </div>
+          </label>
+        </fieldset>
+
+        <div id="start-field">
+          <label for="start" id="start-label" data-i18n="correctionNew.startBoth">Start (when you started working)</label>
+          <input type="datetime-local" id="start" name="start">
+        </div>
+
+        <div id="end-field">
+          <label for="end" id="end-label" data-i18n="correctionNew.endBoth">End (when you stopped working)</label>
+          <input type="datetime-local" id="end" name="end">
+        </div>
+
+        <label for="justification"><span data-i18n="correctionNew.justification">Justification</span> <span class="subtle" data-i18n="correctionNew.justificationOptional">(optional)</span></label>
+        <textarea id="justification" name="justification" rows="3" maxlength="500"
+                  data-i18n-attr="placeholder:correctionNew.justificationPlaceholder" placeholder="e.g. Phone battery died, couldn't open the app"></textarea>
+
+        <p id="bank-warning" class="callout callout--warn"><!-- filled by JS --></p>
+
+        <div class="form-actions">
+          <a href="/corrections" class="btn-ghost" data-i18n="correctionNew.cancel">Cancel</a>
+          <button type="submit" class="btn-primary" data-i18n="correctionNew.submit">Submit for approval</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="/correction-new.js"></script>
+</body>
+</html>

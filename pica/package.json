@@ -1,0 +1,16 @@
+{
+  "name": "pica",
+  "description": "Pica \u2014 Time Management. Minimalistic, file-based, zero-dependency employee time tracker.",
+  "version": "0.15.1",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "releaseDate": "2026-04-30",
+  "repository": "https://github.com/sL1Per/Pica"
+}

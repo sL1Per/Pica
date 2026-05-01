@@ -1,0 +1,19 @@
+{
+  "name": "Pica — Time Management",
+  "short_name": "Pica",
+  "description": "Minimal employee time tracker — clock in/out, leaves, reports.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f1115",
+  "theme_color": "#2e7d32",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

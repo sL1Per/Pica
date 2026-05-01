@@ -21,7 +21,7 @@
  *     handles map absence gracefully.
  */
 
-const CACHE_VERSION = 'pica-cache-v6';
+const CACHE_VERSION = 'pica-cache-v7';
 const PRECACHE_URLS = [
   '/',
   '/punch',
@@ -38,6 +38,9 @@ const PRECACHE_URLS = [
   '/index.js',
   '/icon.svg',
   '/manifest.json',
+  '/i18n.js',
+  '/locales/en-US.js',
+  '/locales/pt-PT.js',
 ];
 
 // On install: pre-fetch the app shell. `addAll` is atomic — if any single

@@ -14,6 +14,166 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.15.0] — 2026-04-30 — Milestone 9 (Drop 1): i18n foundation, en-US + pt-PT
+
+The internationalization foundation. The infrastructure to translate
+the app is in place, with two locales (en-US and pt-PT) and the most
+visible strings already translated: app-shell chrome, dashboard,
+preferences, footer. Pages not yet translated continue to render in
+English and pick up `[key.name]` placeholders for any newly-added
+keys that haven't been registered — making translation gaps obvious.
+
+A second drop (M9 Drop 2) will translate the remaining pages
+(punch, leaves, reports, employees, corrections, settings, login)
+and add backend error-message localization via error codes.
+
+### Added — Locale storage in user-prefs
+
+- **`locale` field** replaces the legacy `language` field. Valid
+  values: `en-US`, `pt-PT`. Default: `en-US`.
+- **Backward compatibility**: existing user-prefs files with
+  `language: 'en'` or `language: 'pt'` are read transparently as
+  `locale: 'en-US'` / `locale: 'pt-PT'`. The legacy field is
+  stripped on the next write. No migration script needed.
+- Validator on `update()` enforces the BCP-47 locale tag list.
+
+### Added — Locale dictionaries
+
+- `public/locales/en-US.js` — English (US) translations.
+- `public/locales/pt-PT.js` — European Portuguese translations.
+  Vocabulary tuned for PT-PT specifically (e.g. "marcar ponto",
+  "férias", "definições", not "registrar", "vacaciones",
+  "configurações").
+- 50 keys per dictionary. Namespace by feature: `nav.*`, `menu.*`,
+  `dashboard.*`, `prefs.*`, `login.*`, `app.suffix`,
+  `footer.releaseDateUnknown`.
+- Both dictionaries are ES modules with `default` exports of plain
+  objects — readable, diffable, no JSON-quoting hassle.
+
+### Added — `i18n.js` runtime module
+
+- `t(key, params)` synchronous lookup. `{name}` placeholders are
+  substituted from the params object; unmatched placeholders stay
+  literal so missing data is visible in the UI.
+- `getLocale()` returns the active BCP-47 tag.
+- `getSupportedLocales()` returns `['en-US', 'pt-PT']`.
+- Missing keys render as `[key.name]` so translation gaps are
+  immediately obvious in dev. Better than silent empty strings.
+- Both dictionaries imported eagerly (~3 KB each); no flash of
+  untranslated content on page load.
+
+### Added — Server-side locale injection
+
+`registerPageRoutes` now resolves the user's locale from
+`userPrefsStore` and rewrites the served HTML on the way out:
+
+- `<html lang="en-US">` → `<html lang="pt-PT">` (or whichever)
+- Inserts `<meta name="pica-locale" content="...">` before the
+  manifest link in `<head>`.
+
+This means `i18n.js` reads the locale synchronously at module load
+time without any async dance — no flicker, no fetch delay, no
+flash of English text on a page meant to be Portuguese.
+
+Unauthenticated pages (login, setup) default to `en-US`.
+
+### Translated — Drop 1 string coverage
+
+The most-visible chrome and entry-points are now localized:
+
+- **App shell** (header, sidebar, hamburger menu): nav labels,
+  "Time management" suffix, profile/preferences/sign-out menu items.
+- **Dashboard (`/`)**: welcome heading, "Signed in as ..." line,
+  all card titles + descriptions (with role-specific variants for
+  Leaves, Corrections, Reports), Dashboard placeholder block.
+- **Preferences (`/preferences`)**: all labels, the language change
+  hint, color-mode option labels, save button, success message.
+- **Footer**: release date now uses `Intl.DateTimeFormat` with the
+  active locale (so "Apr 30, 2026" in en-US becomes
+  "30 de abr. de 2026" in pt-PT). The "Pica vN.N.N" version label
+  and "GitHub" link stay as proper-noun-ish constants.
+
+Saving a new locale on the Preferences page reloads the page so the
+server-rendered locale meta tag picks up the new value and every
+future navigation sees the right strings.
+
+### NOT Translated yet (Drop 2)
+
+The following pages still render in English regardless of the
+selected locale. They'll be translated in M9 Drop 2:
+
+- `/punch`, `/punches/today`
+- `/leaves`, `/leaves/calendar`, `/leaves/new`, `/leaves/:id`
+- `/reports`
+- `/employees`, `/employees/new`, `/employees/:id`
+- `/corrections`, `/corrections/new`, `/corrections/:id`
+- `/settings`
+- `/login`, `/setup`
+- All `confirm()` and `alert()` dialogs
+- All `showMessage()` and toast() text
+
+API error responses also stay English-only in this drop — the
+backend will gain error codes (and frontend translation lookup) in
+Drop 2.
+
+### Files touched
+- `src/storage/user-prefs.js` — `language` → `locale`,
+  `LEGACY_LANGUAGE_MAP`, validator change.
+- `src/routes/pages.js` — locale resolution + HTML injection in
+  `sendHtml`.
+- `server.js` — pass `userPrefsStore` to `registerPageRoutes`.
+- `public/locales/en-US.js` + `pt-PT.js` — new files.
+- `public/i18n.js` — new file.
+- `public/topbar.js` — imports `t`, `getLocale`; nav labels,
+  title suffix, menu items via translation keys; `formatReleaseDate`
+  uses `Intl`.
+- `public/index.{html,js}` — IDs added in HTML for JS-driven text;
+  full rewrite of cards using translation keys.
+- `public/preferences.{html,js}` — IDs for label translation;
+  `language` → `locale`; reload-on-locale-change.
+- `public/sw.js` — pre-cache list extended (`/i18n.js`,
+  `/locales/en-US.js`, `/locales/pt-PT.js`); `CACHE_VERSION` bumped
+  to `pica-cache-v7`.
+- `tests/test-user-prefs.mjs` — 3 new tests for legacy migration
+  and locale validation; existing tests updated to new field name.
+- `tests/test-i18n.mjs` — new file: dictionary parity, placeholder
+  parity, key-naming convention, t() interpolation, missing-key
+  fallback. 11 tests.
+- `package.json` — minor bump to 0.15.0.
+- `README.md` — M9 expanded with what's done and what's pending.
+
+### Tests
+- 11-suite regression: 308 passing, 0 failing (was 294;
+  +3 user-prefs legacy, +11 new i18n suite, +0 changes elsewhere).
+
+### Honest disclosures
+- **Drop 1 is intentionally narrow.** The point is to validate the
+  whole infrastructure (storage, validation, server injection,
+  client lookup, dictionary parity tests) on a small surface
+  area before applying it to ~150 more strings across 15+ pages.
+  If anything in the design is wrong, it's much cheaper to fix
+  now than after Drop 2.
+- **Reload-on-language-change is a pragmatic choice.** Single-page
+  swap (re-rendering everything on the fly) would require every
+  page to listen for a "locale changed" event and re-render its
+  templated DOM, which would mean refactoring 15 page modules.
+  Reload is one line and has no failure modes. Locale changes
+  are rare enough that the reload doesn't sting.
+- **No fancy pluralization** in this drop. The Drop-1 strings
+  don't need it. When Drop 2 hits the queue badge ("1 punch
+  waiting" vs "2 punches waiting") and similar, we'll wire
+  `Intl.PluralRules` then.
+- **The i18n.js module can't be fully unit-tested** without a
+  browser DOM (it reads `<meta>`). The test suite tests the
+  `t()` algorithm in isolation by reimplementing it; the
+  module itself is exercised via the smoke test on the running
+  server. Full E2E browser tests are an open M11 item.
+- **`/i18n.js` and the locales** are pre-cached by the SW now,
+  so existing PWA users will pick them up after the v7 cache
+  invalidation kicks in (next page load after the deploy).
+
+---
+
 ## [0.14.1] — 2026-04-30 — App-shell polish: tinted chrome + nav-link restyle
 
 Two small visual fixes after stakeholder review of 0.14.0:

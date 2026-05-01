@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    // The persisted value is written by app.js after fetching /api/settings/me
+    // and updated by preferences.js when the user saves a new choice.
+    // Possible values: "light", "dark", "system" (or null on first visit).
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
+  <title data-i18n="title.leaveDetail">Pica — Leave</title>
+    <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="theme-color" content="#2e7d32">
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/topbar.css">
+  <link rel="stylesheet" href="/leave.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <div>
+        <h1 id="page-title" data-i18n="leave.title">Leave</h1>
+        <p class="muted"><a href="/leaves" data-i18n="leave.backToLeaves">← Back to list</a></p>
+      </div>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <section class="card" id="detail" hidden>
+      <div id="status-banner" class="status-banner"></div>
+
+      <dl class="leave-summary">
+        <dt data-i18n="leave.fieldEmployee">Employee</dt>   <dd id="f-employee"></dd>
+        <dt data-i18n="leave.fieldType">Type</dt>       <dd id="f-type"></dd>
+        <dt data-i18n="leave.fieldWhen">When</dt>       <dd id="f-when"></dd>
+        <dt data-i18n="leave.fieldDuration">Duration</dt>   <dd id="f-duration"></dd>
+        <dt data-i18n="leave.fieldRequested">Requested</dt>  <dd id="f-created"></dd>
+        <dt id="l-reason-dt" hidden data-i18n="leave.fieldReason">Reason</dt>
+        <dd id="f-reason" hidden></dd>
+      </dl>
+
+      <div id="decided-note" class="decided-note" hidden>
+        <div class="decided-note__label" id="decided-label"></div>
+        <div id="decided-notes"></div>
+      </div>
+
+      <div class="actions" id="actions"></div>
+
+      <div id="reject-dialog" class="reject-dialog" hidden>
+        <label for="reject-notes" data-i18n="leave.rejectNotesEmployee">Notes for the employee (optional)</label>
+        <textarea id="reject-notes" rows="3" maxlength="500"></textarea>
+        <div class="actions">
+          <button type="button" id="reject-cancel" class="secondary" data-i18n="leave.cancelButton">Cancel</button>
+          <button type="button" id="reject-confirm" class="btn-reject" data-i18n="leave.actionReject">Reject</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/leave.js"></script>
+</body>
+</html>

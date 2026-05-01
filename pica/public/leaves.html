@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    // The persisted value is written by app.js after fetching /api/settings/me
+    // and updated by preferences.js when the user saves a new choice.
+    // Possible values: "light", "dark", "system" (or null on first visit).
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
+  <title data-i18n="title.leaves">Pica — Leaves</title>
+    <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="theme-color" content="#2e7d32">
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/topbar.css">
+  <link rel="stylesheet" href="/leaves.css">
+</head>
+<body>
+  <main class="container container--wide">
+    <header class="page-header">
+      <div>
+        <h1 data-i18n="leaves.title">Leaves</h1>
+      </div>
+      <div class="header-actions">
+        <a href="/leaves/calendar" class="btn-link btn-link--secondary" data-i18n="leaves.viewCalendar">View calendar</a>
+        <a href="/leaves/new" class="btn-link" data-i18n="leaves.requestNew">+ Request leave</a>
+      </div>
+    </header>
+
+    <div id="message" class="message"></div>
+
+    <div class="leaves-layout">
+
+      <!-- ======================================================= Balance panel -->
+      <section class="leaves-balance" aria-labelledby="balance-heading">
+        <div class="leaves-balance__head">
+          <h2 id="balance-heading" class="leaves-balance__title" data-i18n="leaves.balanceHeading">Balance</h2>
+          <label class="leaves-balance__year">
+            <span class="sr-only" data-i18n="leaves.year">Year</span>
+            <select id="year-select" class="form-control">
+              <!-- populated in JS -->
+            </select>
+          </label>
+        </div>
+
+        <!-- Employee view: one row per leave type -->
+        <table id="balance-table-employee" class="data-table balance-table" hidden>
+          <thead>
+            <tr>
+              <th data-i18n="leaves.thType">Type</th>
+              <th class="right" data-i18n="leaves.thAllowance">Allowance</th>
+              <th class="right" data-i18n="leaves.thPending">Pending</th>
+              <th class="right" data-i18n="leaves.thBooked">Booked</th>
+              <th class="right" data-i18n="leaves.thRemaining">Remaining</th>
+            </tr>
+          </thead>
+          <tbody><!-- filled in JS --></tbody>
+        </table>
+
+        <!-- Employer view: one row per employee, columns per type -->
+        <div id="balance-table-employer-wrap" class="balance-matrix__wrap" hidden>
+          <table id="balance-table-employer" class="data-table balance-matrix">
+            <thead><!-- filled in JS --></thead>
+            <tbody><!-- filled in JS --></tbody>
+          </table>
+        </div>
+
+        <p class="subtle leaves-balance__note" data-i18n="leaves.balanceNote">Rejected and cancelled leaves are excluded. Carry-forward of unused allowance is not yet applied.</p>
+      </section>
+
+      <!-- ========================================================= List panel -->
+      <section class="leaves-list-panel" aria-labelledby="list-heading">
+        <h2 id="list-heading" class="sr-only" data-i18n="leaves.entries">Entries</h2>
+
+        <div class="filter-bar">
+          <button class="filter active" data-filter="all" data-i18n="leaves.filterAll">All</button>
+          <button class="filter" data-filter="pending" data-i18n="leaves.filterPending">Pending</button>
+          <button class="filter" data-filter="approved" data-i18n="leaves.filterApproved">Approved</button>
+          <button class="filter" data-filter="rejected" data-i18n="leaves.filterRejected">Rejected</button>
+          <button class="filter" data-filter="cancelled" data-i18n="leaves.filterCancelled">Cancelled</button>
+        </div>
+
+        <ul id="leave-list" class="leave-list">
+          <li class="subtle" data-i18n="leaves.loading">Loading…</li>
+        </ul>
+      </section>
+
+    </div>
+  </main>
+
+  <script type="module" src="/leaves.js"></script>
+</body>
+</html>

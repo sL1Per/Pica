@@ -1,0 +1,251 @@
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--gap-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--gap-4);
+}
+.header-actions {
+  display: flex;
+  gap: var(--gap-2);
+  flex-wrap: wrap;
+}
+
+/* Action links styled as buttons. Reuses tokens from app.css. */
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 var(--gap-4);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: white;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+}
+.btn-link:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: white; }
+.btn-link--secondary {
+  color: var(--text);
+  background: var(--bg);
+  border-color: var(--border);
+}
+.btn-link--secondary:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+/* ---------- Two-column layout ------------------------------------------- */
+
+.leaves-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap-5);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .leaves-layout {
+    grid-template-columns: minmax(420px, 55%) 1fr;
+  }
+}
+
+/* ---------- Balance panel ---------------------------------------------- */
+
+.leaves-balance {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--gap-4);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;    /* let the table shrink inside grid */
+}
+.leaves-balance__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-3);
+  margin-bottom: var(--gap-3);
+}
+.leaves-balance__title {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.leaves-balance__year select {
+  min-width: 90px;
+  width: auto;
+}
+.leaves-balance__note {
+  margin-top: var(--gap-3);
+  font-size: var(--text-xs);
+}
+
+/* Employee balance table — tighter than .data-table defaults.
+ * table-layout:fixed + explicit widths prevents the header and body from
+ * computing different column widths (which made them drift apart). */
+.balance-table {
+  width: 100%;
+  font-size: var(--text-sm);
+  table-layout: fixed;
+}
+.balance-table th,
+.balance-table td {
+  padding: var(--gap-2) var(--gap-2);
+}
+.balance-table th:first-child,
+.balance-table td:first-child { width: 28%; }
+.balance-table th:not(:first-child),
+.balance-table td:not(:first-child) { width: 18%; }
+.balance-table .balance-cell--pending { color: var(--warning); font-weight: 500; }
+.balance-table .balance-cell--remaining { font-weight: 700; }
+.balance-table .balance-row--over .balance-cell--remaining { color: var(--danger); }
+
+/* Employer matrix — horizontally scrollable when wide. */
+.balance-matrix__wrap {
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--gap-4));   /* bleed to the card edges */
+  padding: 0 var(--gap-4);
+}
+.balance-matrix {
+  width: 100%;
+  font-size: var(--text-sm);
+  min-width: 100%;
+}
+.balance-matrix th,
+.balance-matrix td {
+  padding: var(--gap-2);
+  white-space: nowrap;
+}
+.balance-matrix__cell { vertical-align: middle; }
+.balance-matrix__main {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+.balance-matrix__pending {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+  color: var(--warning);
+  font-weight: 500;
+}
+.balance-matrix__cell--over .balance-matrix__main strong { color: var(--danger); }
+
+/* Small "role" tag on employer matrix rows. */
+.type-tag--role {
+  margin-left: var(--gap-1);
+  background: var(--accent-soft);
+  color: var(--accent);
+  text-transform: lowercase;
+}
+
+/* ---------- List panel + filters --------------------------------------- */
+
+.leaves-list-panel { min-width: 0; }
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-1);
+  margin-bottom: var(--gap-3);
+  padding: 4px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+.filter-bar .filter {
+  margin: 0;
+  padding: 6px var(--gap-3);
+  min-height: 32px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.filter-bar .filter:hover { color: var(--text); background: var(--bg); }
+.filter-bar .filter.active {
+  background: var(--bg);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.leave-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-2);
+}
+.leave-list .empty {
+  padding: var(--gap-4);
+  text-align: center;
+  color: var(--text-subtle);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.leave-list__item {
+  display: block;
+  padding: var(--gap-3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+.leave-list__item:hover { border-color: var(--border-strong); background: var(--surface); }
+.leave-list__item--pending   { border-left-color: var(--warning); }
+.leave-list__item--approved  { border-left-color: var(--success); }
+.leave-list__item--rejected  { border-left-color: var(--danger); }
+.leave-list__item--cancelled { border-left-color: var(--text-subtle); opacity: 0.7; }
+
+.leave-list__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--gap-2);
+}
+.leave-list__title {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  min-width: 0;
+  font-weight: 500;
+}
+.leave-list__meta {
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  color: var(--text-subtle);
+}
+
+.type-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: 999px;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.status-badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.status-badge--pending   { background: var(--warning-soft); color: var(--warning); }
+.status-badge--approved  { background: var(--success-soft); color: var(--success); }
+.status-badge--rejected  { background: var(--danger-soft);  color: var(--danger); }
+.status-badge--cancelled { background: var(--surface-2);    color: var(--text-muted); }
