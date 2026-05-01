@@ -620,6 +620,33 @@ export default {
   'settings.failedToSave':    'Failed to save',
 
   // ============================================================
+    'widgets.pendingApprovals': 'Pending approvals',
+    'widgets.workingToday': 'Working today',
+    'widgets.onLeaveToday': 'On leave today',
+    'widgets.myPending': 'My pending approvals',
+    'widgets.todayHours': 'Today\'s hours',
+    'widgets.bankSummary': 'Time bank',
+    'widgets.pendingLeaves': 'Leave requests',
+    'widgets.pendingCorrections': 'Time corrections',
+    'widgets.allCaughtUp': 'All caught up — nothing pending.',
+    'widgets.viewAll': 'View all →',
+    'widgets.currentlyWorking': 'Currently working',
+    'widgets.doneForTheDay': 'Done for the day',
+    'widgets.noOneWorkingYet': 'No one has clocked in yet today.',
+    'widgets.sinceTime': 'since {time}',
+        'widgets.noOneOnLeave': 'No one is on leave today.',
+    'widgets.todayWorked': 'Worked today',
+    'widgets.todayTarget': 'Daily target: {target}',
+    'widgets.notClockedInYet': 'You haven\'t clocked in yet today.',
+    'widgets.goClockIn': 'Go to punch →',
+    'widgets.currentlyClockedIn': 'Currently clocked in since {time}',
+    'widgets.bankBalance': 'Balance: {hours}',
+    'widgets.bankZero': 'Your bank is at zero.',
+    'widgets.bankExplain': 'Hours owed in extra unpaid work, from approved corrections without justification.',
+    'widgets.bankViewDetails': 'View corrections →',
+    'widgets.couldNotLoad': 'Couldn\'t load.',
+    'widgets.retry': 'Retry',
+    'widgets.loading': 'Loading…',
   // Backend errors (errorCode → message). Backend returns code in
   // the `errorCode` field of the response; frontend looks up here.
   // ============================================================

@@ -14,6 +14,141 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.16.0] — 2026-05-01 — Milestone 10: Dashboard widgets
+
+The dashboard placeholder card (which has been promising "at-a-glance
+widgets in a future milestone" since M8) is now real. The home page
+shows live, role-appropriate widgets above the quick-nav cards.
+
+Milestone 9 (i18n) is closed. Roadmap re-numbered: M10 is dashboard
+widgets (this drop), M11 is backups, M12 is the hardening grab-bag
+including password management.
+
+### Added — Employer widgets
+
+1. **Pending approvals**: row count of pending leaves and pending
+   corrections, with click-through links to the respective list
+   pages. Empty state: "All caught up — nothing pending."
+2. **Working today**: two sections.
+   - *Currently working* — every employee with an open clock-in,
+     showing their start time and accumulated duration so far.
+   - *Done for the day* — employees who clocked in and out, with
+     their punch pairs (e.g. "08:00–12:00, 13:00–17:30") and total
+     worked time.
+   - Empty state: "No one has clocked in yet today."
+3. **On leave today** (full-width): employees with an approved leave
+   covering today's date, with their leave type. Click-through to the
+   individual leave detail. Empty state: "No one is on leave today."
+
+### Added — Employee widgets
+
+1. **My pending approvals**: count of own pending leaves + own
+   pending corrections.
+2. **Today's hours**: big-number display of total worked time today,
+   accumulating live for the currently-clocked-in case (open in-punch
+   counts up to "now"). Below: caption with current clock-in time, or
+   the daily target if not currently clocked in. Empty state: "You
+   haven't clocked in yet today" + a link to /punch.
+3. **Time bank** (full-width): big-number of bank balance, with a
+   one-line explanation and a link to /corrections. If balance is
+   zero, says so plainly without the explanation noise.
+
+### Layout
+- Mobile: single-column stack.
+- Desktop (≥900px): 2-column grid. The third widget (on-leave-today
+  / bank summary) spans both columns to give it room.
+- Each widget is a card with a title bar (title + optional "View
+  all →" action link), a body that renders independently, and clear
+  loading / empty / error states.
+
+### Auto-refresh on tab focus
+The dashboard listens for `visibilitychange`. When the tab returns
+to visible (user comes back from another tab), all widgets re-fetch.
+This gives a "live" feel without polling — punches and approvals
+that happened while you were away update on your next glance.
+
+### Per-widget independent failure
+Each widget renders independently. If `/api/leaves` is slow or
+fails, the punches widget still renders. Failed widgets show
+"Couldn't load" + a retry button that re-runs the whole load
+cycle (cheap, network round-trips are small here).
+
+### Implementation notes
+- **All client-side aggregation**: no new backend endpoints. The
+  dashboard fetches existing endpoints in parallel
+  (`Promise.allSettled`) and assembles the views.
+- **Endpoints used**: `/api/employees`, `/api/leaves` (filtered to
+  pending client-side, since the route doesn't accept ?status),
+  `/api/corrections?status=pending`, `/api/punches/today`,
+  `/api/leaves/approved`, `/api/corrections/bank`,
+  `/api/settings/working-time`.
+- **Punch grouping**: a small helper on the client groups raw
+  punches into in/out pairs per employee, identifies the open
+  in-punch (if any) for "currently working" status, and computes
+  total worked time by summing closed pairs and adding the open
+  duration.
+- **Translations**: 26 new keys under `widgets.*` in both en-US
+  and pt-PT. All visible strings use `t()` / `tn()`.
+
+### Files touched
+- `public/index.html` — replaced the placeholder card with a
+  `<div id="widget-grid">` container; widgets are JS-rendered.
+- `public/index.js` — full rewrite (~ 400 lines): widget framework,
+  6 render functions (3 employer, 3 employee), parallel-fetch
+  orchestration, visibility-based refresh.
+- `public/index.css` — widget grid + widget card styles.
+  Big-number, count pill, list-row, section-head primitives.
+- `public/locales/en-US.js` + `pt-PT.js` — added 26 `widgets.*`
+  keys per locale.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v12`.
+- `package.json` — minor bump to 0.16.0.
+- `README.md` — closed M9, re-numbered M10/M11/M12.
+
+### Tests
+- 11-suite regression: 318 passing, 0 failing. No backend changes,
+  no test changes.
+- Integration smoke verified end-to-end with two users (admin +
+  alice): all 7 dashboard endpoints return the expected shapes
+  with realistic data (alice clocked in, alice's pending leave +
+  correction visible to admin, alice's bank=0, etc).
+
+### Honest disclosures
+- **No automated UI tests for the widgets.** Verified by smoke +
+  hand-running. If a widget renders weirdly with edge data
+  (employee with only out-punches, leave that started yesterday
+  and ends today, etc.), please send a screenshot and I'll patch.
+- **Auto-refresh-on-visibility is the only refresh mechanism.**
+  No periodic polling, no live-update websocket. If you sit on
+  the dashboard tab for 30 minutes, the data is stale until you
+  switch to another tab and back, or reload. Acceptable for the
+  use case (this isn't a stock ticker), but worth noting.
+- **The "On leave today" widget shows leaves whose date range
+  *includes today*** based on the leave's `start` and `end` fields
+  treated as YYYY-MM-DD. For day-unit leaves this is exactly right;
+  for hour-unit leaves we treat the start day as "on leave" the
+  whole day, which is slightly fuzzy but matches normal expectation
+  of "is this person off today?". If it ever shows someone who's
+  technically only off for a 2pm appointment, that's why.
+- **The bank-summary widget is full-width on the employee view.**
+  In retrospect this is a lot of horizontal space for one number.
+  Trivial to change to side-by-side with today's-hours by removing
+  the `widget--wide` flag — let me know if you'd prefer that
+  layout. I went wide because it keeps the widget grid balanced
+  visually (3 widgets total → odd one spans, like the employer
+  on-leave widget).
+- **Quick-nav cards stayed at the bottom**, somewhat redundant
+  with the always-visible sidebar. Kept because they make sense
+  as a launcher on mobile (where the sidebar is hidden behind a
+  hamburger) and they don't cost much. If you want them gone, easy.
+- **Refresh on tab focus may feel laggy** if a user expects an
+  immediate refresh after, say, approving a leave on the leaves
+  page. Right now the dashboard only refreshes when the tab
+  visibility changes — not on `pageshow`, so navigating back from
+  another in-app page via browser back-button might show stale
+  data. Could add a router-level event later in M12.
+
+---
+
 ## [0.15.4] — 2026-05-01 — Settings: per-employee overrides table — mobile overflow + i18n fix
 
 User reported a visual bug on mobile: the per-employee leave-overrides

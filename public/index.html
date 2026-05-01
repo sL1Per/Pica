@@ -17,7 +17,7 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title>Pica — Dashboard</title>
+  <title data-i18n="title.dashboard">Pica — Dashboard</title>
     <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -33,14 +33,15 @@
       <p class="muted" id="signed-in-line">…</p>
     </section>
 
+    <!-- Widgets — populated by index.js based on role. The grid layout
+         comes from index.css; on mobile each widget stacks full-width,
+         on desktop they flow into a 2-column grid with one widget
+         spanning both columns. -->
+    <div id="widget-grid" class="widget-grid"></div>
+
     <nav id="nav-cards" class="nav-cards" aria-label="Quick navigation">
       <!-- filled in JS based on role -->
     </nav>
-
-    <section class="card dashboard-placeholder">
-      <h2 id="dashboard-title">Dashboard</h2>
-      <p class="subtle" id="dashboard-body">…</p>
-    </section>
   </main>
 
   <script type="module" src="/index.js"></script>

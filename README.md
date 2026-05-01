@@ -317,20 +317,36 @@ Split into three drops:
 - ✅ Plural forms in queue badge ("1 punch waiting" vs "5 punches waiting") in both locales
 - ✅ Error code translation infrastructure (`errors.*` namespace, `translateError(code, fallback)` helper) — frontend ready; backend errorCode emission is a future enhancement
 
-### Milestone 10 — Backups
+### Milestone 10 — Dashboard widgets _(in progress)_
+- [ ] Employer: pending approvals widget (leaves + corrections)
+- [ ] Employer: working-today widget (currently clocked in + done for the day)
+- [ ] Employer: on-leave-today widget
+- [ ] Employee: my pending approvals widget
+- [ ] Employee: today's hours widget
+- [ ] Employee: bank summary widget
+- [ ] Auto-refresh on tab focus
+- [ ] Per-widget independent loading + error states
+- [ ] Translations for widget strings (en-US + pt-PT)
+
+### Milestone 11 — Backups
 - [ ] Encrypted full backup of `/data`
 - [ ] Encrypted delta backup (files changed since last snapshot — manifest + mtime/hash)
 - [ ] Restore from encrypted archive, with pre-restore safety snapshot
 - [ ] Scheduler with cron-like intervals, honors M7 settings
 - [ ] Wire up M7's Backup section buttons (run full, run delta, browse snapshots, restore)
 
-### Milestone 11 — Hardening
-- [ ] Input validation on every route
+### Milestone 12 — Hardening
+- [ ] Password change (authenticated, in Preferences)
+- [ ] Force-change-on-first-login flag
+- [ ] Employer-side password reset for any employee
+- [ ] Backend `errorCode` emission on all user-visible business errors (frontend already plumbed in M9)
+- [ ] Input validation audit on every route
 - [ ] CSRF protection on state-changing routes
 - [ ] Audit log for sensitive actions (user/leave edits, restores, backup runs)
 - [ ] Security headers (CSP, X-Frame-Options, Referrer-Policy)
-- [ ] Smoke-test script using Node's built-in `assert` (no test framework)
 - [ ] Sample Caddy / nginx TLS config
+- [ ] Full E2E browser tests
+- [ ] Number formatting via `Intl.NumberFormat` where appropriate
 
 ---
 

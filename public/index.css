@@ -5,12 +5,167 @@
   margin-bottom: var(--gap-1);
 }
 
-.dashboard-placeholder {
-  padding: var(--gap-5);
+/* ---------- Widget grid ----------------------------------------------- */
+
+.widget-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap-4);
+  margin: var(--gap-5) 0;
 }
-.dashboard-placeholder h2 {
-  margin-bottom: var(--gap-2);
+
+/* On wider viewports: two columns. The third widget (when present)
+   spans both columns by default — see .widget--wide below. */
+@media (min-width: 900px) {
+  .widget-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.widget {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--gap-4) var(--gap-5);
+  box-shadow: var(--shadow-sm);
+  /* Don't let widget contents push the column wider than the grid
+     intends — long employee names should ellipsize, not stretch. */
+  min-width: 0;
+}
+
+.widget--wide {
+  /* On 2-column layouts, span both. Below the breakpoint where there's
+     only 1 column, this is a no-op. */
+  grid-column: 1 / -1;
+}
+
+.widget__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-3);
+  margin-bottom: var(--gap-3);
+  padding-bottom: var(--gap-2);
+  border-bottom: 1px solid var(--border);
+}
+.widget__title {
+  margin: 0;
   font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text);
+}
+.widget__action {
+  font-size: var(--text-sm);
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.widget__action:hover { text-decoration: underline; }
+
+/* Empty / loading / error states */
+.widget__empty,
+.widget__loading,
+.widget__error {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  padding: var(--gap-3) 0;
+  text-align: center;
+}
+.widget__error {
+  color: var(--danger);
+}
+
+/* Section heading inside a widget — used to separate "Currently working"
+   from "Done for the day", or "Leaves" from "Corrections". */
+.widget__section {
+  margin-top: var(--gap-3);
+}
+.widget__section:first-child { margin-top: 0; }
+.widget__section-head {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: var(--gap-2);
+}
+
+/* List of items inside a widget (employees, leave requests, etc.) */
+.widget__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.widget__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-3);
+  padding: var(--gap-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.widget__row:last-child { border-bottom: none; }
+.widget__row-main {
+  min-width: 0;          /* allow ellipsis on the name */
+  flex: 1;
+}
+.widget__row-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.widget__row-detail {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+  /* Punch-pair lists can wrap rather than overflow */
+  white-space: normal;
+}
+.widget__row-aside {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* Big-number display used in "Today's hours" + "Bank summary" */
+.widget__bignum {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin: var(--gap-2) 0 var(--gap-1);
+  font-variant-numeric: tabular-nums;
+}
+.widget__bignum--muted {
+  color: var(--text-muted);
+}
+.widget__bignum-suffix {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 0.25em;
+}
+.widget__caption {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* Pill-style numeric badge used in pending-approvals widget */
+.widget__count {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.widget__count--zero {
+  background: var(--surface-2);
+  color: var(--text-muted);
 }
 
 /* ---------- Quick-nav cards ------------------------------------------- */
