@@ -1,4 +1,5 @@
 import { postJson, showMessage, setBusy } from '/app.js';
+import { t, translateError, applyTranslations } from '/i18n.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();

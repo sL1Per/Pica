@@ -14,6 +14,108 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.16.1] — 2026-05-02 — Fix broken leave-new + leave detail pages
+
+User reported the leave-request form didn't work. Console:
+
+```
+Uncaught ReferenceError: applyTranslations is not defined
+  at leave-new.js:6:1
+```
+
+Two pages — `/leaves/new` and `/leaves/:id` — were calling
+`applyTranslations()` and (in leave-new's case) `translateError()` and
+`t()` without importing them from `/i18n.js`. The module crashed at
+load time, which meant the form's submit handler never got attached
+and the page silently did nothing on click.
+
+### Why this slipped through M9 Drop 2
+
+The batch-translation Python scripts I ran during M9 Drop 2 to add
+i18n to dozens of pages had a fragile sed-style heuristic: they
+prepended a new import line before existing imports, which worked
+for most files but missed the case where I prepended the import
+before `import { showMessage` BUT the source code for that file
+already had a different shape. The scripts didn't verify their work,
+so the failures were silent.
+
+318 tests caught zero of these because the test suite is backend-only
+— no test exercises a frontend module load.
+
+### Fix
+
+- **`public/leave-new.js`**: added the missing
+  `import { t, translateError, applyTranslations } from '/i18n.js';`
+- **`public/leave.js`**: added the same import (uses `t`,
+  `translateError`, `applyTranslations`).
+
+### Added — Static import audit test (`tests/test-frontend-imports.mjs`)
+
+To prevent this class of bug from happening again without waiting
+for the M12 full E2E browser tests, this drop adds a cheap
+static-analysis test that walks every JS file under `public/` and
+verifies that any imported i18n function used in the body is
+actually in the import list.
+
+The test:
+- Knows the i18n.js export list (hardcoded — update when i18n.js
+  changes).
+- For each `.js` file, finds the destructured import block from
+  `/i18n.js` (if any) and the body's function calls.
+- Reports a failure for each `name(` call where `name` is an
+  i18n.js export but isn't in the file's imports.
+- Has an explicit exemption for files that define a local function
+  with the same name (preferences.js has its own
+  `applyTranslations`).
+
+The test catches the exact bug from this drop in <100ms, runs as
+part of the regression alongside the other 11 suites. Verified by
+deliberately re-introducing the bug and confirming the test fails
+loudly with a clear message pointing at the file and symbol.
+
+This is not a substitute for full module-load testing (which would
+need jsdom or a real browser), but it catches the most common
+class of bug — missing imports after a refactor — at near-zero
+cost.
+
+### Files touched
+- `public/leave-new.js` — added missing i18n import.
+- `public/leave.js` — added missing i18n import.
+- `tests/test-frontend-imports.mjs` — new file: 43 import checks
+  across all i18n-using pages.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v13` so
+  users pick up the fixed JS.
+- `package.json` — patch bump to 0.16.1.
+
+### Tests
+- 12-suite regression: 361 passing, 0 failing (was 318;
+  +43 from the new frontend-imports suite, +0 elsewhere).
+
+### Honest disclosures
+- **318 tests passed yesterday and the leave-new page was broken.**
+  That's the gap this static audit closes. Backend tests don't
+  protect the frontend; the M12 plan calls for full E2E browser
+  tests but that's months away. The 100-line static audit added
+  here is the 80/20 fix.
+- **The audit is narrow on purpose.** It only checks i18n.js
+  imports today. Could be extended to other modules
+  (`/topbar.js`, `/app.js`) but those have a smaller surface area
+  and haven't broken in the same way. If any does, the test is
+  easy to extend.
+- **The audit doesn't catch every possible runtime error.** A
+  typo in a key (e.g. `t('punc.heading')` instead of `t('punch.heading')`)
+  would render `[punc.heading]` in the UI but pass the audit.
+  That class of bug surfaces immediately on visual inspection — it's
+  the silent module-load crash that hurts.
+- **No M9-era pages have been re-tested manually after this fix.**
+  Just verified the two known-broken files now have the right
+  imports and the audit is green across all files. If any other
+  page has a similar bug that the audit doesn't catch (e.g.
+  hardcoded `punch.heading` typo), please send a screenshot of
+  the symptom + console output and I'll patch.
+
+---
+
 ## [0.16.0] — 2026-05-01 — Milestone 10: Dashboard widgets
 
 The dashboard placeholder card (which has been promising "at-a-glance
