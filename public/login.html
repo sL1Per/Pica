@@ -17,7 +17,7 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title>Pica — Sign in</title>
+  <title data-i18n="title.login">Pica — Sign in</title>
     <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -26,17 +26,17 @@
 </head>
 <body>
   <main class="container">
-    <h1>Pica <span class="tagline">Sign in</span></h1>
+    <h1>Pica <span class="tagline" data-i18n="login.title">Sign in</span></h1>
 
     <form id="login-form" class="card" autocomplete="on" novalidate>
-      <label for="username">Username</label>
+      <label for="username" data-i18n="login.username">Username</label>
       <input type="text" id="username" name="username" required autocomplete="username"
              autofocus inputmode="text">
 
-      <label for="password">Password</label>
+      <label for="password" data-i18n="login.password">Password</label>
       <input type="password" id="password" name="password" required autocomplete="current-password">
 
-      <button id="submit-btn" type="submit" class="block">Sign in</button>
+      <button id="submit-btn" type="submit" class="block" data-i18n="login.submit">Sign in</button>
 
       <div id="message" class="message"></div>
     </form>

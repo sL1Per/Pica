@@ -1,8 +1,10 @@
 import { showMessage } from '/app.js';
+import { t, applyTranslations, getLocale } from '/i18n.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const $ = (id) => document.getElementById(id);
 const grid       = $('cal-grid');
@@ -12,13 +14,19 @@ const nextBtn    = $('next-month');
 const todayBtn   = $('today-btn');
 const messageEl  = $('message');
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+// Locale-aware month name via Intl. Falls back to the en-US fixed list
+// if Intl errors out for any reason.
+function monthName(monthIndex, year) {
+  try {
+    return new Intl.DateTimeFormat(getLocale(), { month: 'long' }).format(new Date(year, monthIndex, 1));
+  } catch {
+    return ['January','February','March','April','May','June','July','August','September','October','November','December'][monthIndex];
+  }
+}
 
 // Week starts Monday (ISO) — feels natural for a work tool.
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// Localized via the calendar.weekday.* dictionary keys.
+const WEEKDAYS = ['mon','tue','wed','thu','fri','sat','sun'];
 
 let me = null;
 let allLeaves = [];
@@ -76,7 +84,7 @@ function leavesForDay(date) {
 function renderMonth() {
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
-  titleEl.textContent = `${MONTHS[month]} ${year}`;
+  titleEl.textContent = `${monthName(month, year)} ${year}`;
 
   grid.innerHTML = '';
 
@@ -84,7 +92,7 @@ function renderMonth() {
   for (const w of WEEKDAYS) {
     const h = document.createElement('div');
     h.className = 'cal-weekday';
-    h.textContent = w;
+    h.textContent = t('calendar.weekday.' + w);
     grid.appendChild(h);
   }
 
@@ -143,7 +151,7 @@ function renderBar(leave) {
 
   const name = document.createElement('span');
   name.className = 'cal-bar__name';
-  name.textContent = leave.fullName || leave.username || 'someone';
+  name.textContent = leave.fullName || leave.username || '—';
   a.appendChild(name);
 
   // Title tooltip includes the full span for hover.

@@ -34,19 +34,27 @@ console.log('Dictionary structure');
 const enUS = (await import('../public/locales/en-US.js')).default;
 const ptPT = (await import('../public/locales/pt-PT.js')).default;
 
-await test('en-US dictionary loads as an object with string values', () => {
+await test('en-US dictionary loads as an object with string or plural values', () => {
   assert.equal(typeof enUS, 'object');
   assert.ok(Object.keys(enUS).length > 0);
   for (const [k, v] of Object.entries(enUS)) {
-    assert.equal(typeof v, 'string', `key ${k} must be a string`);
+    if (typeof v === 'string') continue;
+    // Plural: must be an object with at least an `other` form, all strings.
+    assert.equal(typeof v, 'object', `key ${k} must be string or plural object`);
+    assert.ok(typeof v.other === 'string', `plural key ${k} must have .other (string)`);
+    for (const [cat, form] of Object.entries(v)) {
+      assert.equal(typeof form, 'string', `plural key ${k}.${cat} must be a string`);
+    }
   }
 });
 
-await test('pt-PT dictionary loads as an object with string values', () => {
+await test('pt-PT dictionary loads as an object with string or plural values', () => {
   assert.equal(typeof ptPT, 'object');
   assert.ok(Object.keys(ptPT).length > 0);
   for (const [k, v] of Object.entries(ptPT)) {
-    assert.equal(typeof v, 'string', `key ${k} must be a string`);
+    if (typeof v === 'string') continue;
+    assert.equal(typeof v, 'object', `key ${k} must be string or plural object`);
+    assert.ok(typeof v.other === 'string', `plural key ${k} must have .other (string)`);
   }
 });
 
@@ -61,22 +69,46 @@ await test('en-US and pt-PT have identical keys', () => {
     `pt-PT has extra keys not in en-US: ${extraInPt.join(', ')}`);
 });
 
+await test('plural keys have matching shape (same plural categories)', () => {
+  for (const k of Object.keys(enUS)) {
+    const en = enUS[k];
+    const pt = ptPT[k];
+    if (typeof en !== 'object') continue;
+    const enCats = Object.keys(en).sort();
+    const ptCats = Object.keys(pt).sort();
+    assert.deepEqual(ptCats, enCats,
+      `plural key ${k}: pt-PT categories ${ptCats.join(',')} differ from en-US ${enCats.join(',')}`);
+  }
+});
+
 await test('all keys use dotted-namespace style', () => {
   for (const k of Object.keys(enUS)) {
-    assert.match(k, /^[a-z][a-zA-Z0-9.]*$/, `key ${k} should be lowerCamelCase with dot namespacing`);
+    // Allow underscores (used in errors.* codes which mirror backend style)
+    // and dots (for namespacing).
+    assert.match(k, /^[a-z][a-zA-Z0-9._]*$/, `key ${k} should be lowerCamelCase with dot namespacing`);
   }
 });
 
 await test('placeholders in en-US match placeholders in pt-PT', () => {
   // Every {name}-style placeholder in the English template should also
   // exist in the Portuguese one (otherwise dynamic data would be lost
-  // when the locale switches).
+  // when the locale switches). Plural keys are checked per-category.
   const placeholderPattern = /\{(\w+)\}/g;
+  const placeholders = (str) => [...str.matchAll(placeholderPattern)].map((m) => m[1]).sort();
+
   for (const k of Object.keys(enUS)) {
-    const enPlaceholders = [...enUS[k].matchAll(placeholderPattern)].map((m) => m[1]).sort();
-    const ptPlaceholders = [...ptPT[k].matchAll(placeholderPattern)].map((m) => m[1]).sort();
-    assert.deepEqual(ptPlaceholders, enPlaceholders,
-      `key ${k}: pt-PT placeholders ${ptPlaceholders.join(',')} differ from en-US ${enPlaceholders.join(',')}`);
+    const en = enUS[k];
+    const pt = ptPT[k];
+    if (typeof en === 'string') {
+      assert.deepEqual(placeholders(pt), placeholders(en),
+        `key ${k}: pt-PT placeholders differ from en-US`);
+    } else {
+      // Plural: each form's placeholders must match.
+      for (const cat of Object.keys(en)) {
+        assert.deepEqual(placeholders(pt[cat]), placeholders(en[cat]),
+          `plural key ${k}.${cat}: pt-PT placeholders differ from en-US`);
+      }
+    }
   }
 });
 
@@ -134,6 +166,84 @@ await test('returns [key] for unknown key', () => {
 await test('coerces non-string params to strings', () => {
   // A number or boolean param should render naturally.
   assert.match(tEn('dashboard.welcome', { name: 42 }), /42$/);
+});
+
+// ---- Plural logic (tn) ----------------------------------------------------
+
+console.log('\nPluralization');
+
+// Reimplementation of i18n.js's tn() — testing the algorithm only.
+function makeTn(dict, locale) {
+  const pr = new Intl.PluralRules(locale);
+  return (key, count, params = {}) => {
+    const forms = dict[key];
+    if (!forms || typeof forms !== 'object') return `[${key}]`;
+    const cat = pr.select(count);
+    const tmpl = forms[cat] ?? forms.other ?? forms.one;
+    return tmpl.replace(/\{(\w+)\}/g, (m, name) => {
+      const all = { count, ...params };
+      return Object.prototype.hasOwnProperty.call(all, name) ? String(all[name]) : m;
+    });
+  };
+}
+
+await test('tn picks "one" form for count=1 in en-US', () => {
+  const tn = makeTn(enUS, 'en-US');
+  assert.equal(tn('punch.queueWaiting', 1), '1 punch waiting to sync');
+});
+
+await test('tn picks "other" form for count=5 in en-US', () => {
+  const tn = makeTn(enUS, 'en-US');
+  assert.equal(tn('punch.queueWaiting', 5), '5 punches waiting to sync');
+});
+
+await test('tn picks "one" form for count=1 in pt-PT', () => {
+  const tn = makeTn(ptPT, 'pt-PT');
+  assert.equal(tn('punch.queueWaiting', 1), '1 marcação a aguardar sincronização');
+});
+
+await test('tn picks "other" form for count=5 in pt-PT', () => {
+  const tn = makeTn(ptPT, 'pt-PT');
+  assert.equal(tn('punch.queueWaiting', 5), '5 marcações a aguardar sincronização');
+});
+
+await test('tn returns [key] for missing or non-object value', () => {
+  const tn = makeTn(enUS, 'en-US');
+  assert.equal(tn('nonexistent.plural', 3), '[nonexistent.plural]');
+});
+
+// ---- Error code translation -----------------------------------------------
+
+console.log('\nError code translation');
+
+// Reimplementation of translateError() — testing the algorithm only.
+function makeTranslateError(dict) {
+  return (errorCode, fallback = '') => {
+    if (!errorCode) return fallback;
+    const tmpl = dict[`errors.${errorCode}`];
+    return typeof tmpl === 'string' ? tmpl : fallback;
+  };
+}
+
+await test('translateError returns dictionary message for known code', () => {
+  const te = makeTranslateError(enUS);
+  assert.equal(te('already_clocked_in', 'fallback'), 'You are already clocked in.');
+});
+
+await test('translateError returns localized message in pt-PT', () => {
+  const te = makeTranslateError(ptPT);
+  assert.equal(te('already_clocked_in', 'fallback'), 'Já tem entrada marcada.');
+});
+
+await test('translateError returns fallback for unknown code', () => {
+  const te = makeTranslateError(enUS);
+  assert.equal(te('mystery_code', 'Server error'), 'Server error');
+});
+
+await test('translateError returns fallback when code is empty', () => {
+  const te = makeTranslateError(enUS);
+  assert.equal(te(null, 'fallback'), 'fallback');
+  assert.equal(te('', 'fallback'), 'fallback');
 });
 
 console.log('');

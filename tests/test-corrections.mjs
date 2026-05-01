@@ -529,7 +529,11 @@ try {
         end:   '2026-04-27T11:00:00Z',
       });
       // Step 2: rewrite the file with an OLD-format event (no kind field).
-      const file = s.paths.monthFile(2026, 4);
+      // Use createdAt (which is "now" at create time) to find the file —
+      // the storage layer paths NDJSON files by createdAt, not by the
+      // event's start time.
+      const created = new Date(c.createdAt);
+      const file = s.paths.monthFile(created.getUTCFullYear(), created.getUTCMonth() + 1);
       const lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean);
       const newLines = lines.map((l) => {
         const ev = JSON.parse(l);

@@ -3,6 +3,7 @@ import { postJson, showMessage, setBusy } from '/app.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const $ = (id) => document.getElementById(id);
 const form = $('leave-form');
@@ -64,12 +65,12 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  setBusy(submitBtn, true, 'Submitting…');
+  setBusy(submitBtn, true, t('leaveNew.submitting'));
   const result = await postJson('/api/leaves', payload);
   if (result.ok) {
     window.location.href = `/leaves/${result.data.leave.id}`;
     return;
   }
-  showMessage(messageEl, result.data.error || 'Failed to submit', 'error');
+  showMessage(messageEl, result.translateError(data.errorCode, data.error) || 'Failed to submit', 'error');
   setBusy(submitBtn, false);
 });

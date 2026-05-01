@@ -14,7 +14,7 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title>Pica — Time corrections</title>
+  <title data-i18n="title.corrections">Pica — Time corrections</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -27,35 +27,35 @@
   <main class="container container--wide">
     <header class="page-header">
       <div>
-        <h1>Time corrections</h1>
-        <p class="subtle" id="page-subtitle">Manual entries you forgot to clock at the time.</p>
+        <h1 data-i18n="corrections.title">Time corrections</h1>
+        <p class="subtle" id="page-subtitle" data-i18n="corrections.subtitleOwn">Manual entries you forgot to clock at the time.</p>
       </div>
       <div class="page-header__actions">
-        <a href="/corrections/new" class="btn-primary">Register manual time</a>
+        <a href="/corrections/new" class="btn-primary" data-i18n="corrections.newButton">Register manual time</a>
       </div>
     </header>
 
     <section id="bank-card" class="bank-card" hidden>
       <div class="bank-card__row">
-        <span class="bank-card__label">Time bank</span>
+        <span class="bank-card__label" data-i18n="corrections.bankLabel">Time bank</span>
         <span id="bank-hours" class="bank-card__value">—</span>
       </div>
-      <p class="bank-card__hint">Hours from approved corrections without a justification. The employer may ask you to compensate these as extra unpaid work.</p>
+      <p class="bank-card__hint" data-i18n="corrections.bankHint">Hours from approved corrections without a justification. The employer may ask you to compensate these as extra unpaid work.</p>
     </section>
 
     <div id="message" class="message"></div>
 
     <section class="card">
-      <h2 id="list-heading">Pending corrections</h2>
+      <h2 id="list-heading" data-i18n="corrections.pendingHeading.own">Pending corrections</h2>
       <ul id="pending-list" class="correction-list">
-        <li class="subtle">Loading…</li>
+        <li class="subtle" data-i18n="employees.loading">Loading…</li>
       </ul>
     </section>
 
     <section class="card">
-      <h2>History</h2>
+      <h2 data-i18n="corrections.historyHeading">History</h2>
       <ul id="history-list" class="correction-list">
-        <li class="subtle">Loading…</li>
+        <li class="subtle" data-i18n="employees.loading">Loading…</li>
       </ul>
     </section>
   </main>

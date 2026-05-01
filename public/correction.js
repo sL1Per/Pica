@@ -1,8 +1,10 @@
 import { postJson, showMessage } from '/app.js';
+import { t, translateError, applyTranslations } from '/i18n.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const $ = (id) => document.getElementById(id);
 const correctionId = window.location.pathname.split('/').pop();
@@ -35,7 +37,7 @@ function fmtHours(h) {
 }
 
 function render() {
-  $('f-status').textContent = correction.status;
+  $('f-status').textContent = t('status.' + correction.status);
   $('f-status').className = `status-tag status-tag--${correction.status}`;
   $('f-employee').textContent = correction.fullName || correction.username || correction.employeeId;
 
@@ -55,7 +57,7 @@ function render() {
     $('f-hours').hidden = false;
     $('f-hours').textContent = fmtHours(correction.hours);
   } else if (correction.kind === 'in') {
-    if (startDt) { startDt.hidden = false; startDt.textContent = 'Arrived'; }
+    if (startDt) { startDt.hidden = false; startDt.textContent = t('correction.fieldArrived'); }
     $('f-start').hidden = false;
     $('f-start').textContent = fmtDateTime(correction.start);
     if (endDt) endDt.hidden = true;
@@ -65,25 +67,25 @@ function render() {
   } else if (correction.kind === 'out') {
     if (startDt) startDt.hidden = true;
     $('f-start').hidden = true;
-    if (endDt) { endDt.hidden = false; endDt.textContent = 'Left'; }
+    if (endDt) { endDt.hidden = false; endDt.textContent = t('correction.fieldLeft'); }
     $('f-end').hidden = false;
     $('f-end').textContent = fmtDateTime(correction.end);
     if (hoursDt) hoursDt.hidden = true;
     $('f-hours').hidden = true;
   }
 
-  $('f-justification').textContent = correction.justification || '— (no justification)';
+  $('f-justification').textContent = correction.justification || t('correction.fieldJustificationNone');
 
   // Bank impact text adapts to kind.
   const bankImpactEl = $('f-bank-impact');
   if (correction.kind !== 'both') {
-    bankImpactEl.textContent = 'None — single-side correction';
+    bankImpactEl.textContent = t('correction.bankImpactNoneSingleSide');
   } else if (correction.isJustified) {
-    bankImpactEl.textContent = 'None — counts as worked time only';
+    bankImpactEl.textContent = t('correction.bankImpactNoneJustified');
   } else if (correction.status === 'approved') {
-    bankImpactEl.textContent = `+${fmtHours(correction.hours)} added to bank`;
+    bankImpactEl.textContent = t('correction.bankImpactAdded', { hours: fmtHours(correction.hours) });
   } else {
-    bankImpactEl.textContent = `+${fmtHours(correction.hours)} would be added to bank if approved`;
+    bankImpactEl.textContent = t('correction.bankImpactWouldAdd', { hours: fmtHours(correction.hours) });
   }
 
   $('f-created').textContent = fmtDateTime(correction.createdAt);
@@ -91,7 +93,7 @@ function render() {
   if (correction.decidedAt) {
     $('dt-decided').hidden = false;
     $('f-decided').hidden = false;
-    $('f-decided').textContent = `${correction.status} on ${fmtDateTime(correction.decidedAt)}`;
+    $('f-decided').textContent = `${t('status.' + correction.status)} · ${fmtDateTime(correction.decidedAt)}`;
   }
   if (correction.notes) {
     $('dt-notes').hidden = false;
@@ -114,24 +116,24 @@ function renderActions() {
   if (correction.status === 'pending' && isEmployer) {
     const approve = document.createElement('button');
     approve.className = 'btn-approve';
-    approve.textContent = 'Approve';
+    approve.textContent = t('correction.actionApprove');
     approve.addEventListener('click', () => {
       let msg;
       if (correction.kind === 'in') {
-        msg = `Approve this correction? An in-punch will be added at ${fmtDateTime(correction.start)}.`;
+        msg = t('correction.confirmApproveIn', { time: fmtDateTime(correction.start) });
       } else if (correction.kind === 'out') {
-        msg = `Approve this correction? An out-punch will be added at ${fmtDateTime(correction.end)}.`;
+        msg = t('correction.confirmApproveOut', { time: fmtDateTime(correction.end) });
       } else if (correction.isJustified) {
-        msg = `Approve this correction? It will be recorded as worked time and the corresponding punches will be created.`;
+        msg = t('correction.confirmApproveBoth');
       } else {
-        msg = `Approve this correction WITHOUT justification?\n\n${fmtHours(correction.hours)} will be added to the employee's time bank as compensation owed.`;
+        msg = t('correction.confirmApproveBothUnjust', { hours: fmtHours(correction.hours) });
       }
       if (confirm(msg)) action('approve');
     });
 
     const reject = document.createElement('button');
     reject.className = 'btn-reject';
-    reject.textContent = 'Reject';
+    reject.textContent = t('correction.actionReject');
     reject.addEventListener('click', () => { rejectDialog.showModal?.() ?? (rejectDialog.hidden = false); });
 
     actionsEl.appendChild(approve);
@@ -140,9 +142,9 @@ function renderActions() {
   } else if (correction.status === 'pending' && isOwner) {
     const cancel = document.createElement('button');
     cancel.className = 'btn-ghost';
-    cancel.textContent = 'Cancel this correction';
+    cancel.textContent = t('correction.actionCancel');
     cancel.addEventListener('click', () => {
-      if (confirm('Cancel this correction?')) action('cancel');
+      if (confirm(t('correction.confirmCancel'))) action('cancel');
     });
     actionsEl.appendChild(cancel);
     actionsEl.hidden = false;
@@ -151,9 +153,9 @@ function renderActions() {
     // punches (they stay in the audit log) — bank reverses though.
     const undo = document.createElement('button');
     undo.className = 'btn-ghost';
-    undo.textContent = 'Reverse approval (cancel)';
+    undo.textContent = t('correction.actionReverse');
     undo.addEventListener('click', () => {
-      if (confirm('Reverse this approval? The bank impact will be removed, but the materialized punch records will remain in the log.')) {
+      if (confirm(t('correction.confirmReverse'))) {
         action('cancel');
       }
     });
@@ -168,9 +170,9 @@ async function action(name, body = {}) {
   if (result.ok) {
     correction = result.data.correction;
     render();
-    showMessage(messageEl, `Correction ${correction.status}.`, 'success');
+    showMessage(messageEl, t('correction.statusUpdated', { status: t('status.' + correction.status) }), 'success');
   } else {
-    showMessage(messageEl, result.data.error || `Could not ${name}`, 'error');
+    showMessage(messageEl, translateError(result.data.errorCode, result.data.error || t('correction.couldNotLoad')), 'error');
   }
 }
 
@@ -193,7 +195,7 @@ $('reject-confirm').addEventListener('click', () => {
 
   const res = await fetch(`/api/corrections/${correctionId}`, { credentials: 'same-origin' });
   if (res.status === 404) {
-    showMessage(messageEl, 'Correction not found.', 'error');
+    showMessage(messageEl, t('correction.notFound'), 'error');
     return;
   }
   if (res.status === 403) {

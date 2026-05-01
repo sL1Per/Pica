@@ -17,7 +17,7 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title>Pica — Leaves calendar</title>
+  <title data-i18n="title.leavesCalendar">Pica — Leaves calendar</title>
     <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -30,13 +30,13 @@
   <main class="container container--wide">
     <header class="page-header">
       <div>
-        <h1>Leaves calendar</h1>
+        <h1 data-i18n="calendar.title">Leaves calendar</h1>
         <p class="muted">
-          <a href="/leaves">← My leaves</a>
-          · <span class="subtle">Approved leaves only</span>
+          <a href="/leaves" data-i18n="calendar.myLeaves">← My leaves</a>
+          · <span class="subtle" data-i18n="calendar.approvedOnly">Approved leaves only</span>
         </p>
       </div>
-      <a href="/leaves/new" class="btn-link">+ Request leave</a>
+      <a href="/leaves/new" class="btn-link" data-i18n="calendar.requestNew">+ Request leave</a>
     </header>
 
     <div id="message" class="message"></div>
@@ -45,7 +45,7 @@
       <button id="prev-month" class="secondary" type="button">←</button>
       <h2 id="cal-title">…</h2>
       <button id="next-month" class="secondary" type="button">→</button>
-      <button id="today-btn" class="secondary" type="button">Today</button>
+      <button id="today-btn" class="secondary" type="button" data-i18n="calendar.today">Today</button>
     </nav>
 
     <div class="cal-grid" id="cal-grid">
@@ -53,11 +53,11 @@
     </div>
 
     <section class="legend">
-      <strong>Type</strong>
-      <span class="legend__chip legend__chip--vacation">Vacation</span>
-      <span class="legend__chip legend__chip--sick">Sick</span>
-      <span class="legend__chip legend__chip--appointment">Appointment</span>
-      <span class="legend__chip legend__chip--other">Other</span>
+      <strong data-i18n="calendar.legendType">Type</strong>
+      <span class="legend__chip legend__chip--vacation" data-i18n="leaves.type.vacation">Vacation</span>
+      <span class="legend__chip legend__chip--sick" data-i18n="leaves.type.sick">Sick</span>
+      <span class="legend__chip legend__chip--appointment" data-i18n="leaves.type.appointment">Appointment</span>
+      <span class="legend__chip legend__chip--other" data-i18n="leaves.type.other">Other</span>
     </section>
   </main>
 

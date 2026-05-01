@@ -1,8 +1,0 @@
-{
-  "host": "127.0.0.1",
-  "port": 8080,
-  "dataDir": "./data",
-  "backupDir": "./backups",
-  "maxBodyBytes": 5242880,
-  "logLevel": "info"
-}

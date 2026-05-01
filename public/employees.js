@@ -1,8 +1,10 @@
 import { showMessage } from '/app.js';
+import { t, applyTranslations } from '/i18n.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const listEl = document.getElementById('employee-list');
 const messageEl = document.getElementById('message');
@@ -36,11 +38,11 @@ function renderItem(emp) {
   name.textContent = emp.fullName || emp.username;
   const meta = document.createElement('div');
   meta.className = 'employee-list__meta';
-  meta.textContent = emp.position || (emp.hasProfile ? '' : 'No profile yet');
+  meta.textContent = emp.position || (emp.hasProfile ? '' : t('employees.noProfile'));
 
   const badge = document.createElement('span');
   badge.className = `employee-list__badge ${emp.role === 'employee' ? 'employee-list__badge--employee' : ''}`;
-  badge.textContent = emp.role;
+  badge.textContent = t('employee.role.' + emp.role);
   name.appendChild(badge);
 
   info.appendChild(name);
@@ -56,7 +58,7 @@ function renderItem(emp) {
   const res = await fetch('/api/employees', { credentials: 'same-origin' });
   if (res.status === 401) { window.location.href = '/login'; return; }
   if (res.status === 403) {
-    showMessage(messageEl, 'Only employers can view this list.', 'error');
+    showMessage(messageEl, t('employees.employerOnly'), 'error');
     return;
   }
   const data = await res.json();
@@ -65,7 +67,7 @@ function renderItem(emp) {
   if (data.employees.length === 0) {
     const li = document.createElement('li');
     li.className = 'employee-list__empty subtle';
-    li.textContent = 'No employees yet — click “New employee” to add one.';
+    li.textContent = t('employees.emptyHint');
     listEl.appendChild(li);
     return;
   }

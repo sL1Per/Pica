@@ -17,7 +17,7 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title>Pica — Today</title>
+  <title data-i18n="title.punchesToday">Pica — Today</title>
     <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -31,15 +31,15 @@
   <main class="container container--wide">
     <header class="page-header">
       <div>
-        <h1>Today</h1>
-        <p class="muted"><a href="/punch">My clock →</a></p>
+        <h1 data-i18n="punchesToday.title">Today</h1>
+        <p class="muted"><a href="/punch" data-i18n="punchesToday.myClock">My clock →</a></p>
       </div>
     </header>
 
     <div id="message" class="message"></div>
 
     <div id="groups" class="groups">
-      <p class="subtle">Loading…</p>
+      <p class="subtle" data-i18n="punchesToday.loading">Loading…</p>
     </div>
   </main>
 

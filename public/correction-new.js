@@ -1,8 +1,10 @@
 import { postJson, showMessage, setBusy } from '/app.js';
+import { t, translateError, applyTranslations } from '/i18n.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const $ = (id) => document.getElementById(id);
 const form         = $('correction-form');
@@ -14,7 +16,13 @@ const startEl      = $('start');
 const endEl        = $('end');
 const justEl       = $('justification');
 const bankWarning  = $('bank-warning');
-const bankWarnHrs  = $('bank-warn-hours');
+
+// Inline escapeHtml for the bank-warning rebuild — keep zero-dep.
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
 const messageEl    = $('message');
 
 // -------- Defaults ----------------------------------------------------------
@@ -45,22 +53,22 @@ function updateForKind() {
     case 'both':
       startField.hidden = false;
       endField.hidden = false;
-      startLabel.textContent = 'Start (when you started working)';
-      endLabel.textContent = 'End (when you stopped working)';
+      startLabel.textContent = t('correctionNew.startBoth');
+      endLabel.textContent = t('correctionNew.endBoth');
       startEl.required = true;
       endEl.required = true;
       break;
     case 'in':
       startField.hidden = false;
       endField.hidden = true;
-      startLabel.textContent = 'When you arrived';
+      startLabel.textContent = t('correctionNew.startIn');
       startEl.required = true;
       endEl.required = false;
       break;
     case 'out':
       startField.hidden = true;
       endField.hidden = false;
-      endLabel.textContent = 'When you left';
+      endLabel.textContent = t('correctionNew.endOut');
       startEl.required = false;
       endEl.required = true;
       break;
@@ -95,11 +103,17 @@ function refreshWarning() {
   // Show with the current computed duration.
   const s = startEl.value && new Date(startEl.value).getTime();
   const e = endEl.value && new Date(endEl.value).getTime();
+  let hoursStr;
   if (!s || !e || !Number.isFinite(s) || !Number.isFinite(e) || e <= s) {
-    bankWarnHrs.textContent = 'hours';
+    hoursStr = t('correctionNew.bankWarningHours');
   } else {
-    bankWarnHrs.textContent = fmtHours((e - s) / 3_600_000);
+    hoursStr = fmtHours((e - s) / 3_600_000);
   }
+  // Render the warning using the translation template, putting the hours
+  // value in a <strong> by splitting around the {hours} marker.
+  const tmpl = t('correctionNew.bankWarning', { hours: '__HOURS__' });
+  const [before, after] = tmpl.split('__HOURS__');
+  bankWarning.innerHTML = `${escapeHtml(before)}<strong id="bank-warn-hours">${escapeHtml(hoursStr)}</strong>${escapeHtml(after || '')}`;
   bankWarning.hidden = false;
 }
 
@@ -120,7 +134,7 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   showMessage(messageEl, '');
   const btn = form.querySelector('button[type="submit"]');
-  setBusy(btn, true, 'Submitting…');
+  setBusy(btn, true, t('correctionNew.submitting'));
 
   const kind = selectedKind();
   const justification = justEl.value.trim() || undefined;
@@ -137,7 +151,7 @@ form.addEventListener('submit', async (e) => {
   if (result.ok) {
     window.location.href = `/corrections/${result.data.correction.id}`;
   } else {
-    showMessage(messageEl, result.data.error || 'Could not file correction', 'error');
+    showMessage(messageEl, translateError(result.data.errorCode, result.data.error || t('correctionNew.couldNotFile')), 'error');
     setBusy(btn, false);
   }
 });

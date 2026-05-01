@@ -1,7 +1,9 @@
 import { mountFooter } from '/topbar.js';
-mountFooter();
-
 import { postJson, showMessage, setBusy } from '/app.js';
+import { t, translateError, applyTranslations } from '/i18n.js';
+
+mountFooter();
+applyTranslations();
 
 const form     = document.getElementById('login-form');
 const username = document.getElementById('username');
@@ -12,7 +14,7 @@ const message  = document.getElementById('message');
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   showMessage(message, '');
-  setBusy(submit, true, 'Signing in…');
+  setBusy(submit, true, t('login.signingIn'));
 
   const result = await postJson('/api/login', {
     username: username.value.trim(),
@@ -24,7 +26,10 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
-  showMessage(message, result.data.error || 'Sign-in failed', 'error');
+  // Prefer the localized message via errorCode; fall back to the
+  // server's English `error` string; final fallback is generic.
+  const msg = translateError(result.data.errorCode, result.data.error || t('login.invalid'));
+  showMessage(message, msg, 'error');
   setBusy(submit, false);
   password.value = '';
   password.focus();

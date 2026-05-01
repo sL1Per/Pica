@@ -33,10 +33,31 @@
 
 .card + .card { margin-top: var(--gap-5); }
 
+/* Divider between sibling forms inside the same card.
+   Used to visually separate the working-time form from the
+   organization (leave/policy) form. */
+.section-divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: var(--gap-5) 0 var(--gap-4);
+}
+
 h3 {
   margin-top: var(--gap-4);
   margin-bottom: var(--gap-2);
   font-size: var(--text-md);
+}
+
+/* h4 matches h3 visually but is one notch smaller, used for the
+   sub-sections inside the working-time form (which is itself an h3). */
+h4 {
+  margin-top: var(--gap-3);
+  margin-bottom: var(--gap-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 select,
@@ -122,17 +143,34 @@ select:disabled, input:disabled {
 
 /* Overrides table */
 
+/* Scroll wrapper around the overrides tables. The table can be wider
+   than the card on narrow viewports (5 columns × number inputs), so
+   we let it scroll horizontally inside the wrapper rather than having
+   the card itself stretch and clip. */
+.overrides-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Hint to the user that there's more to the right by softly fading
+     the right edge. The fade only shows when content actually overflows
+     because of the gradient mask interaction with the scroll-snap-x. */
+  margin-top: var(--gap-2);
+}
+
 .overrides-table {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--text-sm);
-  margin-top: var(--gap-2);
+  /* Min-width keeps the table from being compressed to unusable
+     widths inside the scroll container — if the viewport is too
+     narrow, scroll horizontally rather than cramming. */
+  min-width: 480px;
 }
 .overrides-table th,
 .overrides-table td {
   padding: var(--gap-2);
   border-bottom: 1px solid var(--border);
   text-align: left;
+  white-space: nowrap;
 }
 .overrides-table thead th {
   background: var(--surface);
@@ -147,6 +185,26 @@ select:disabled, input:disabled {
   padding: 4px 6px;
   width: 80px;
   text-align: right;
+}
+
+/* On narrow viewports, tighten things so more of the table fits before
+   horizontal scroll kicks in. */
+@media (max-width: 600px) {
+  .overrides-table {
+    /* Allow the table to shrink to fit the wrapper so the user sees
+       most of it without needing to scroll for typical employee
+       counts. The inputs themselves are tight but still tappable. */
+    min-width: 0;
+    font-size: var(--text-xs);
+  }
+  .overrides-table th,
+  .overrides-table td {
+    padding: var(--gap-1) var(--gap-2);
+  }
+  .overrides-table input[type="number"] {
+    width: 56px;
+    padding: 4px;
+  }
 }
 
 /* ---------- Dark mode ---------------------------------------------------- */

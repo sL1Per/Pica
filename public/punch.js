@@ -1,8 +1,10 @@
 import { postJson, showMessage, setBusy } from '/app.js';
+import { t, tn, translateError, applyTranslations, fmtTime as i18nFmtTime } from '/i18n.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const $ = (id) => document.getElementById(id);
 const statusBlock = $('status-block');
@@ -91,9 +93,7 @@ function paintQueueBadge() {
   const n = loadQueue().length;
   if (n === 0) { badge.hidden = true; return; }
   badge.hidden = false;
-  badge.textContent = n === 1
-    ? '1 punch waiting to sync'
-    : `${n} punches waiting to sync`;
+  badge.textContent = tn('punch.queueWaiting', n);
 }
 
 function newClientId() {
@@ -146,7 +146,7 @@ async function drainQueue() {
   saveQueue(remaining);
   paintQueueBadge();
   if (remaining.length === 0 && q.length > 0) {
-    showMessage(messageEl, `Synced ${q.length} offline punch${q.length === 1 ? '' : 'es'}.`, 'success');
+    showMessage(messageEl, tn('punch.queueSynced', q.length), 'success');
     await refresh();
   }
 }
@@ -163,11 +163,12 @@ function formatTime(iso) {
 function relative(iso) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60_000);
-  if (mins < 1)  return 'just now';
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 1)  return t('punch.relJustNow');
+  if (mins < 60) return t('punch.relMinAgo', { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  if (hrs < 24) return t('punch.relHourAgo', { n: hrs });
+  const days = Math.floor(hrs / 24);
+  return days === 1 ? t('punch.relYesterday') : t('punch.relDaysAgo', { n: days });
 }
 
 // -------- Status block + button enable/disable ------------------------------
@@ -182,14 +183,14 @@ function paintStatus({ open, lastPunch }) {
   statusBlock.classList.remove('status-block--in', 'status-block--out', 'status-block--unknown');
   if (open) {
     statusBlock.classList.add('status-block--in');
-    statusLabel.textContent = 'Clocked in';
-    statusMeta.textContent  = lastPunch ? `since ${formatTime(lastPunch.ts)} (${relative(lastPunch.ts)})` : '';
+    statusLabel.textContent = t('punch.statusIn');
+    statusMeta.textContent  = lastPunch ? t('punch.statusSince', { time: formatTime(lastPunch.ts), rel: relative(lastPunch.ts) }) : '';
     inBtn.disabled  = true;
     outBtn.disabled = false;
   } else {
     statusBlock.classList.add('status-block--out');
-    statusLabel.textContent = 'Clocked out';
-    statusMeta.textContent  = lastPunch ? `last: ${formatTime(lastPunch.ts)} (${relative(lastPunch.ts)})` : 'no punches yet';
+    statusLabel.textContent = t('punch.statusOut');
+    statusMeta.textContent  = lastPunch ? t('punch.statusLast', { time: formatTime(lastPunch.ts), rel: relative(lastPunch.ts) }) : t('punch.statusNoPunches');
     inBtn.disabled  = false;
     outBtn.disabled = true;
   }
@@ -214,12 +215,12 @@ function paintStatus({ open, lastPunch }) {
 function getGeo() {
   return new Promise((resolve) => {
     if (!('geolocation' in navigator)) {
-      geoStatusEl.textContent = 'Your browser does not support geolocation.';
+      geoStatusEl.textContent = t('punch.geoUnsupported');
       lastGeoSkipReason = 'unsupported';
       return resolve(null);
     }
 
-    geoStatusEl.textContent = 'Getting your location…';
+    geoStatusEl.textContent = t('punch.geoFetching');
 
     const success = (pos) => {
       geoStatusEl.textContent = '';
@@ -239,10 +240,10 @@ function getGeo() {
         success,
         (err) => {
           const msg = err.code === err.TIMEOUT
-            ? 'Location request timed out. The punch will still be recorded.'
+            ? t('punch.geoTimeout')
             : err.code === err.PERMISSION_DENIED
-              ? 'Location permission denied. The punch will still be recorded.'
-              : 'Location unavailable. The punch will still be recorded.';
+              ? t('punch.geoDenied')
+              : t('punch.geoFailed');
           geoStatusEl.textContent = msg;
           retryGeoBtn.hidden = false;
           markGeoFailed();
@@ -326,7 +327,7 @@ function renderList(punches) {
   if (punches.length === 0) {
     const li = document.createElement('li');
     li.className = 'subtle';
-    li.textContent = 'No punches yet today.';
+    li.textContent = t('punch.todayEmpty');
     listEl.appendChild(li);
     return;
   }
@@ -337,7 +338,7 @@ function renderList(punches) {
 
     const badge = document.createElement('span');
     badge.className = `punch-list__badge punch-list__badge--${p.type}`;
-    badge.textContent = p.type === 'in' ? 'In' : 'Out';
+    badge.textContent = p.type === 'in' ? t('punch.badgeIn') : t('punch.badgeOut');
 
     const body = document.createElement('div');
     body.className = 'punch-list__body';
@@ -426,7 +427,7 @@ async function refresh() {
 async function doPunch(direction) {
   showMessage(messageEl, '');
   const btn = direction === 'in' ? inBtn : outBtn;
-  setBusy(btn, true, 'Working…');
+  setBusy(btn, true, t('punch.working'));
 
   const geo = await getGeo();
   if (geo) {
@@ -453,17 +454,18 @@ async function doPunch(direction) {
     const result = await postJson(url, item);
     if (result.ok) {
       commentEl.value = '';
-      showMessage(messageEl, direction === 'in' ? 'Clocked in.' : 'Clocked out.', 'success');
+      showMessage(messageEl, direction === 'in' ? t('punch.clockedIn') : t('punch.clockedOut'), 'success');
       await refresh();
     } else {
-      showMessage(messageEl, result.data.error || 'Action failed', 'error');
+      const msg = translateError(result.data.errorCode, result.data.error || t('punch.actionFailed'));
+      showMessage(messageEl, msg, 'error');
     }
   } catch (err) {
     // Network failure — queue for replay. UI keeps showing the optimistic
     // result via the badge so the user knows the punch is captured.
     enqueuePunch(item);
     commentEl.value = '';
-    showMessage(messageEl, `Saved offline — will sync when online.`, 'success');
+    showMessage(messageEl, t('punch.savedOffline'), 'success');
   }
 
   setBusy(btn, false);

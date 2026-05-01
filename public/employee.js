@@ -1,8 +1,10 @@
+import { t, translateError, applyTranslations } from '/i18n.js';
 import { postJson, showMessage, setBusy } from '/app.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 // Pull the employee id out of the URL: /employees/<id>
 const employeeId = window.location.pathname.split('/').pop();

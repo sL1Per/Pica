@@ -17,7 +17,7 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title>Pica — Settings</title>
+  <title data-i18n="title.settings">Pica — Settings</title>
     <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -30,139 +30,137 @@
   <main class="container container--wide">
     <header class="page-header">
       <div>
-        <h1>Settings</h1>
+        <h1 data-i18n="settings.title">Settings</h1>
       </div>
     </header>
 
     <nav class="section-nav">
-      <a href="#company" id="nav-company" hidden>Company</a>
-      <a href="#organization" id="nav-org" hidden>Organization</a>
-      <a href="#working-time" id="nav-wt" hidden>Working time</a>
-      <a href="#backups" id="nav-bak" hidden>Backups</a>
+      <a href="#company" id="nav-company" hidden data-i18n="settings.nav.company">Company</a>
+      <a href="#organization" id="nav-org" hidden data-i18n="settings.nav.org">Organization</a>
+      <a href="#backups" id="nav-bak" hidden data-i18n="settings.nav.backups">Backups</a>
     </nav>
 
     <div id="message" class="message"></div>
 
     <!-- Company section (employer only) -->
     <section id="company" class="card" hidden>
-      <h2>Company</h2>
-      <p class="subtle">Branding shown in the top navigation bar. Employer only.</p>
+      <h2 data-i18n="settings.companyHeading">Company</h2>
+      <p class="subtle" data-i18n="settings.companySubtitle">Branding shown in the top navigation bar. Employer only.</p>
 
       <form id="company-form" autocomplete="off">
-        <label for="company-name-input">Company name</label>
+        <label for="company-name-input" data-i18n="settings.companyName">Company name</label>
         <input type="text" id="company-name-input" maxlength="80" placeholder="Pica">
 
-        <label>Logo</label>
+        <label data-i18n="settings.companyLogo">Logo</label>
         <div class="logo-row">
           <div id="logo-preview" class="logo-preview">
-            <span class="logo-preview__placeholder">No logo</span>
+            <span class="logo-preview__placeholder" data-i18n="settings.logoNone">No logo</span>
           </div>
           <div class="logo-actions">
             <input type="file" id="logo-file" accept="image/*" hidden>
-            <button type="button" id="logo-upload-btn" class="secondary">Choose image…</button>
-            <button type="button" id="logo-remove-btn" class="secondary" hidden>Remove logo</button>
-            <p class="subtle">Resized client-side to 256×256 PNG before upload.</p>
+            <button type="button" id="logo-upload-btn" class="secondary" data-i18n="settings.logoChoose">Choose image…</button>
+            <button type="button" id="logo-remove-btn" class="secondary" hidden data-i18n="settings.removeLogo">Remove logo</button>
+            <p class="subtle" data-i18n="settings.logoResizeHint">Resized client-side to 256×256 PNG before upload.</p>
           </div>
         </div>
 
-        <button type="submit" class="block">Save company settings</button>
+        <button type="submit" class="block" data-i18n="settings.companySave">Save company settings</button>
       </form>
     </section>
 
     <!-- Organization section (employer only) -->
     <section id="organization" class="card" hidden>
-      <h2>Organization</h2>
-      <p class="subtle">Company-wide policy. Employer only.</p>
+      <h2 data-i18n="settings.orgHeading">Organization</h2>
+      <p class="subtle" data-i18n="settings.orgSubtitle">Company-wide policy. Employer only.</p>
 
       <form id="org-form" autocomplete="off">
-        <h3>Default leave allowances (days/year)</h3>
-        <p class="subtle">Applies to every employee unless overridden below.</p>
+        <h3 data-i18n="settings.allowanceHeading">Default leave allowances (days/year)</h3>
+        <p class="subtle" data-i18n="settings.allowanceHint">Applies to every employee unless overridden below.</p>
         <div class="grid-2">
           <div>
-            <label for="def-vacation">Vacation</label>
+            <label for="def-vacation" data-i18n="leaves.type.vacation">Vacation</label>
             <input type="number" id="def-vacation" min="0" max="365" step="0.5">
           </div>
           <div>
-            <label for="def-sick">Sick</label>
+            <label for="def-sick" data-i18n="leaves.type.sick">Sick</label>
             <input type="number" id="def-sick" min="0" max="365" step="0.5">
           </div>
           <div>
-            <label for="def-appointment">Appointment</label>
+            <label for="def-appointment" data-i18n="leaves.type.appointment">Appointment</label>
             <input type="number" id="def-appointment" min="0" max="365" step="0.5">
           </div>
           <div>
-            <label for="def-other">Other</label>
+            <label for="def-other" data-i18n="leaves.type.other">Other</label>
             <input type="number" id="def-other" min="0" max="365" step="0.5">
           </div>
         </div>
 
         <label class="checkbox">
           <input type="checkbox" id="carry-forward">
-          Unused allowance carries over to next year
+          <span data-i18n="settings.carryForwardLabel">Unused allowance carries over to next year</span>
         </label>
 
-        <h3>Per-employee overrides</h3>
-        <p class="subtle">Set custom caps for specific people. Blank means "use default".</p>
-        <div id="overrides-table-wrap" class="subtle">Loading employees…</div>
+        <h3 data-i18n="settings.overridesHeading">Per-employee overrides</h3>
+        <p class="subtle" data-i18n="settings.overridesSubtitle">Set custom caps for specific people. Blank means "use default".</p>
+        <div id="overrides-table-wrap" class="subtle" data-i18n="settings.loadingEmployees">Loading employees…</div>
 
-        <h3>Leave policy</h3>
+        <h3 data-i18n="settings.leavePolicyHeading">Leave policy</h3>
         <label class="checkbox">
           <input type="checkbox" id="concurrent-allowed">
-          Allow multiple employees on leave at the same time
+          <span data-i18n="settings.concurrentLabel">Allow multiple employees on leave at the same time</span>
         </label>
-        <p class="subtle">Enforcement arrives in Milestone 8 (it's stored for now).</p>
+        <p class="subtle" data-i18n="settings.concurrentHint">Enforcement arrives in Milestone 8 (it's stored for now).</p>
 
-        <button type="submit" class="block">Save organization settings</button>
+        <button type="submit" class="block" data-i18n="settings.orgSave">Save organization settings</button>
       </form>
-    </section>
 
-    <!-- Working time section (employer only) -->
-    <section id="working-time" class="card" hidden>
-      <h2>Working time</h2>
-      <p class="subtle">Targets used by reports and the punch page's daily indicator.</p>
+      <hr class="section-divider">
 
       <form id="working-time-form" autocomplete="off">
-        <h3>Default for everyone</h3>
-        <label for="daily-hours">Daily hours target</label>
+        <h3 data-i18n="settings.workingTimeHeading">Working time</h3>
+        <p class="subtle" data-i18n="settings.workingTimeSubtitle">Targets used by reports and the punch page's daily indicator.</p>
+
+        <h4 data-i18n="settings.workingTimeDefault">Default for everyone</h4>
+        <label for="daily-hours" data-i18n="settings.dailyHours">Daily hours target</label>
         <input type="number" id="daily-hours" name="dailyHours" min="0" max="24" step="0.5" required>
 
-        <label for="weekly-hours">Weekly hours target</label>
+        <label for="weekly-hours" data-i18n="settings.weeklyHours">Weekly hours target</label>
         <input type="number" id="weekly-hours" name="weeklyHours" min="0" max="168" step="0.5" required>
 
-        <h3>Per-employee overrides</h3>
-        <p class="subtle">Leave a cell empty to use the default above.</p>
-        <div id="wt-overrides-table-wrap" class="subtle">Loading employees…</div>
+        <h4 data-i18n="settings.wtOverridesHeading">Per-employee working-time overrides</h4>
+        <p class="subtle" data-i18n="settings.wtOverridesHint">Leave a cell empty to use the default above.</p>
+        <div id="wt-overrides-table-wrap" class="subtle" data-i18n="settings.loadingEmployees">Loading employees…</div>
 
-        <button type="submit" class="block">Save working-time settings</button>
+        <button type="submit" class="block" data-i18n="settings.workingTimeSave">Save working-time settings</button>
       </form>
     </section>
 
     <!-- Backups section (employer only, scaffold) -->
     <section id="backups" class="card" hidden>
-      <h2>Backups</h2>
-      <div class="notice">Scaffold only — buttons and schedule wire up in Milestone 10.</div>
+      <h2 data-i18n="settings.backupsHeading">Backups</h2>
+      <div class="notice" data-i18n="settings.backupsScaffoldNotice">Scaffold only — buttons and schedule wire up in Milestone 10.</div>
 
       <form id="backup-form" autocomplete="off">
         <label class="checkbox">
           <input type="checkbox" id="backup-enabled" disabled>
-          Enable automatic backups
+          <span data-i18n="settings.backupEnabledLabel">Enable automatic backups</span>
         </label>
 
-        <label for="backup-schedule">Schedule</label>
+        <label for="backup-schedule" data-i18n="settings.backupSchedule">Schedule</label>
         <select id="backup-schedule" disabled>
-          <option value="off">Off</option>
-          <option value="hourly">Hourly</option>
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
+          <option value="off" data-i18n="settings.scheduleOff">Off</option>
+          <option value="hourly" data-i18n="settings.scheduleHourly">Hourly</option>
+          <option value="daily" data-i18n="settings.scheduleDaily">Daily</option>
+          <option value="weekly" data-i18n="settings.scheduleWeekly">Weekly</option>
         </select>
 
-        <label for="backup-retention">Retention (keep last N snapshots)</label>
+        <label for="backup-retention" data-i18n="settings.backupRetentionLong">Retention (keep last N snapshots)</label>
         <input type="number" id="backup-retention" min="1" max="365" step="1" disabled>
 
         <div class="btn-row">
-          <button type="button" class="secondary" disabled>Run full backup now</button>
-          <button type="button" class="secondary" disabled>Run delta backup now</button>
-          <button type="button" class="secondary" disabled>Browse snapshots…</button>
+          <button type="button" class="secondary" disabled data-i18n="settings.runFull">Run full backup now</button>
+          <button type="button" class="secondary" disabled data-i18n="settings.runDelta">Run delta backup now</button>
+          <button type="button" class="secondary" disabled data-i18n="settings.browseSnapshots">Browse snapshots…</button>
         </div>
       </form>
     </section>

@@ -1,8 +1,10 @@
+import { t, translateError, applyTranslations } from '/i18n.js';
 import { postJson, showMessage, setBusy } from '/app.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const form = document.getElementById('new-form');
 const submit = document.getElementById('submit-btn');
@@ -31,7 +33,7 @@ if (dobInput && ageOut) {
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   showMessage(message, '');
-  setBusy(submit, true, 'Creating…');
+  setBusy(submit, true, t('employeeNew.submitting'));
 
   const fd = new FormData(form);
   const payload = {};

@@ -1,8 +1,10 @@
 import { showMessage } from '/app.js';
+import { t, applyTranslations } from '/i18n.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const groupsEl = document.getElementById('groups');
 const messageEl = document.getElementById('message');
@@ -67,7 +69,7 @@ function renderGroup(name, username, punches) {
 
     const badge = document.createElement('span');
     badge.className = `punch-list__badge punch-list__badge--${p.type}`;
-    badge.textContent = p.type === 'in' ? 'In' : 'Out';
+    badge.textContent = p.type === 'in' ? t('punch.badgeIn') : t('punch.badgeOut');
 
     const body = document.createElement('div');
     body.className = 'punch-list__body';
@@ -102,7 +104,7 @@ function renderGroup(name, username, punches) {
 
   const res = await fetch('/api/punches/today', { credentials: 'same-origin' });
   if (res.status === 403) {
-    showMessage(messageEl, 'Employer access only.', 'error');
+    showMessage(messageEl, t('punchesToday.employerOnly'), 'error');
     return;
   }
   const data = await res.json();
@@ -122,7 +124,7 @@ function renderGroup(name, username, punches) {
   if (byId.size === 0) {
     const empty = document.createElement('div');
     empty.className = 'group__empty';
-    empty.textContent = 'No punches yet today.';
+    empty.textContent = t('punchesToday.empty');
     groupsEl.appendChild(empty);
     return;
   }

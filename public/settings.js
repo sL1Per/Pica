@@ -1,8 +1,10 @@
+import { t, applyTranslations } from '/i18n.js';
 import { showMessage, setBusy } from '/app.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const $ = (id) => document.getElementById(id);
 const messageEl = $('message');
@@ -38,9 +40,8 @@ const backupEnabled   = $('backup-enabled');
 const backupSchedule  = $('backup-schedule');
 const backupRetention = $('backup-retention');
 
-// Working-time form
-const navWt              = $('nav-wt');
-const workingTimeSection = $('working-time');
+// Working-time form (now lives inside the Organization section card —
+// no separate nav link or section wrapper anymore).
 const workingTimeForm    = $('working-time-form');
 const dailyHoursInput    = $('daily-hours');
 const weeklyHoursInput   = $('weekly-hours');
@@ -76,26 +77,30 @@ function renderOrg(settings) {
 function renderOverridesTable(overrides) {
   overridesWrap.innerHTML = '';
   if (employees.length === 0) {
-    overridesWrap.textContent = 'No employees yet.';
+    overridesWrap.textContent = t('settings.overridesEmpty');
     overridesWrap.className = 'subtle';
     return;
   }
-  overridesWrap.className = '';
-  const t = document.createElement('table');
-  t.className = 'overrides-table';
-  t.innerHTML = `
+  // Wrap in a scroll container so the table can be wider than the
+  // viewport on narrow screens (it has 5 columns with fixed-width
+  // number inputs). Without this the card itself stretches and gets
+  // clipped on mobile.
+  overridesWrap.className = 'overrides-scroll';
+  const tbl = document.createElement('table');
+  tbl.className = 'overrides-table';
+  tbl.innerHTML = `
     <thead>
       <tr>
-        <th>Employee</th>
-        <th>Vacation</th>
-        <th>Sick</th>
-        <th>Appointment</th>
-        <th>Other</th>
+        <th>${escapeHtml(t('reports.employee'))}</th>
+        <th>${escapeHtml(t('leaves.type.vacation'))}</th>
+        <th>${escapeHtml(t('leaves.type.sick'))}</th>
+        <th>${escapeHtml(t('leaves.type.appointment'))}</th>
+        <th>${escapeHtml(t('leaves.type.other'))}</th>
       </tr>
     </thead>
     <tbody></tbody>
   `;
-  const tbody = t.querySelector('tbody');
+  const tbody = tbl.querySelector('tbody');
   for (const e of employees) {
     const o = overrides[e.id] ?? {};
     const tr = document.createElement('tr');
@@ -108,30 +113,30 @@ function renderOverridesTable(overrides) {
     `;
     tbody.appendChild(tr);
   }
-  overridesWrap.appendChild(t);
+  overridesWrap.appendChild(tbl);
 }
 
 function renderWorkingTimeOverridesTable(overrides) {
   wtOverridesWrap.innerHTML = '';
   if (employees.length === 0) {
-    wtOverridesWrap.textContent = 'No employees yet.';
+    wtOverridesWrap.textContent = t('settings.overridesEmpty');
     wtOverridesWrap.className = 'subtle';
     return;
   }
-  wtOverridesWrap.className = '';
-  const t = document.createElement('table');
-  t.className = 'overrides-table';
-  t.innerHTML = `
+  wtOverridesWrap.className = 'overrides-scroll';
+  const tbl = document.createElement('table');
+  tbl.className = 'overrides-table';
+  tbl.innerHTML = `
     <thead>
       <tr>
-        <th>Employee</th>
-        <th>Daily hours</th>
-        <th>Weekly hours</th>
+        <th>${escapeHtml(t('reports.employee'))}</th>
+        <th>${escapeHtml(t('settings.dailyHoursShort'))}</th>
+        <th>${escapeHtml(t('settings.weeklyHoursShort'))}</th>
       </tr>
     </thead>
     <tbody></tbody>
   `;
-  const tbody = t.querySelector('tbody');
+  const tbody = tbl.querySelector('tbody');
   for (const e of employees) {
     const o = overrides[e.id] ?? {};
     const tr = document.createElement('tr');
@@ -142,7 +147,7 @@ function renderWorkingTimeOverridesTable(overrides) {
     `;
     tbody.appendChild(tr);
   }
-  wtOverridesWrap.appendChild(t);
+  wtOverridesWrap.appendChild(tbl);
 }
 
 function escapeHtml(s) {
@@ -193,8 +198,8 @@ if (orgForm) {
         body: JSON.stringify(patch),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save');
-      showMessage(messageEl, 'Organization settings saved.', 'success');
+      if (!res.ok) throw new Error(data.error || t('settings.failedToSave'));
+      showMessage(messageEl, t('settings.savedOrg'), 'success');
     } catch (err) {
       showMessage(messageEl, err.message, 'error');
     }
@@ -240,8 +245,8 @@ if (workingTimeForm) {
         body: JSON.stringify(patch),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save');
-      showMessage(messageEl, 'Working-time settings saved.', 'success');
+      if (!res.ok) throw new Error(data.error || t('settings.failedToSave'));
+      showMessage(messageEl, t('settings.savedWorkingTime'), 'success');
     } catch (err) {
       showMessage(messageEl, err.message, 'error');
     }
@@ -261,11 +266,9 @@ if (workingTimeForm) {
   if (me.role === 'employer') {
     navCompany.hidden = false;
     navOrg.hidden = false;
-    navWt.hidden = false;
     navBak.hidden = false;
     companySection.hidden = false;
     orgSection.hidden = false;
-    workingTimeSection.hidden = false;
     backupsSection.hidden = false;
 
     // Load employees for the overrides table and the org settings.

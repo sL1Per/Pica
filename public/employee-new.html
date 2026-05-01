@@ -17,7 +17,7 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title>Pica — New employee</title>
+  <title data-i18n="title.employeeNew">Pica — New employee</title>
     <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -30,52 +30,52 @@
   <main class="container">
     <header class="page-header">
       <div>
-        <h1>New employee</h1>
-        <p class="muted"><a href="/employees">← Back to list</a></p>
+        <h1 data-i18n="employeeNew.title">New employee</h1>
+        <p class="muted"><a href="/employees" data-i18n="employeeNew.backToList">← Back to list</a></p>
       </div>
     </header>
 
     <form id="new-form" class="card" autocomplete="off" novalidate>
-      <h2>Account</h2>
-      <label for="username">Username</label>
+      <h2 data-i18n="employeeNew.account">Account</h2>
+      <label for="username" data-i18n="employeeNew.username">Username</label>
       <input type="text" id="username" name="username" required autocomplete="off" minlength="2" maxlength="64">
 
-      <label for="password">Initial password</label>
+      <label for="password" data-i18n="employeeNew.initialPwd">Initial password</label>
       <input type="password" id="password" name="password" required autocomplete="new-password" minlength="8">
-      <p class="subtle">Share this with the employee. They can change it later (M11).</p>
+      <p class="subtle" data-i18n="employeeNew.pwdShareHint">Share this with the employee. They can change it later (M11).</p>
 
-      <label for="role">Role</label>
+      <label for="role" data-i18n="employeeNew.role">Role</label>
       <select id="role" name="role">
-        <option value="employee" selected>Employee</option>
-        <option value="employer">Employer</option>
+        <option value="employee" selected data-i18n="employee.role.employee">Employee</option>
+        <option value="employer" data-i18n="employee.role.employer">Employer</option>
       </select>
 
-      <h2>Profile</h2>
-      <label for="fullName">Full name</label>
+      <h2 data-i18n="employeeNew.profile">Profile</h2>
+      <label for="fullName" data-i18n="employeeNew.fullName">Full name</label>
       <input type="text" id="fullName" name="fullName">
 
-      <label for="dateOfBirth">Date of birth</label>
+      <label for="dateOfBirth" data-i18n="employeeNew.dob">Date of birth</label>
       <div class="dob-row">
         <input type="date" id="dateOfBirth" name="dateOfBirth">
         <span id="age-display" class="dob-age muted" hidden></span>
       </div>
 
-      <label for="position">Position</label>
-      <input type="text" id="position" name="position" placeholder="e.g. Backend Developer">
+      <label for="position" data-i18n="employeeNew.position">Position</label>
+      <input type="text" id="position" name="position" data-i18n-attr="placeholder:employeeNew.positionPh" placeholder="e.g. Backend Developer">
 
-      <label for="contactEmail">Contact email</label>
+      <label for="contactEmail" data-i18n="employeeNew.contactEmail">Contact email</label>
       <input type="email" id="contactEmail" name="contactEmail">
 
-      <label for="contactPhone">Contact phone</label>
+      <label for="contactPhone" data-i18n="employeeNew.contactPhone">Contact phone</label>
       <input type="text" id="contactPhone" name="contactPhone">
 
-      <label for="address">Address</label>
+      <label for="address" data-i18n="employeeNew.address">Address</label>
       <input type="text" id="address" name="address">
 
-      <label for="comments">Comments</label>
+      <label for="comments" data-i18n="employeeNew.comments">Comments</label>
       <textarea id="comments" name="comments" rows="3"></textarea>
 
-      <button id="submit-btn" type="submit" class="block">Create employee</button>
+      <button id="submit-btn" type="submit" class="block" data-i18n="employeeNew.submit">Create employee</button>
 
       <div id="message" class="message"></div>
     </form>

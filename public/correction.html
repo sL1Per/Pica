@@ -14,7 +14,7 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title>Pica — Correction</title>
+  <title data-i18n="title.correctionDetail">Pica — Correction</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -27,8 +27,8 @@
   <main class="container">
     <header class="page-header">
       <div>
-        <a id="back-link" class="back" href="/corrections">← Back to corrections</a>
-        <h1 id="page-title">Correction</h1>
+        <a id="back-link" class="back" href="/corrections" data-i18n="correction.backToList">← Back to corrections</a>
+        <h1 id="page-title" data-i18n="correction.title">Correction</h1>
       </div>
     </header>
 
@@ -36,34 +36,34 @@
 
     <section class="card">
       <dl class="kv">
-        <dt>Status</dt>
+        <dt data-i18n="correction.fieldStatus">Status</dt>
         <dd><span id="f-status" class="status-tag">—</span></dd>
 
-        <dt>Employee</dt>
+        <dt data-i18n="correction.fieldEmployee">Employee</dt>
         <dd id="f-employee">—</dd>
 
-        <dt data-row="start">Start</dt>
+        <dt data-row="start" data-i18n="correction.fieldStart">Start</dt>
         <dd id="f-start">—</dd>
 
-        <dt data-row="end">End</dt>
+        <dt data-row="end" data-i18n="correction.fieldEnd">End</dt>
         <dd id="f-end">—</dd>
 
-        <dt data-row="hours">Duration</dt>
+        <dt data-row="hours" data-i18n="correction.fieldDuration">Duration</dt>
         <dd id="f-hours">—</dd>
 
-        <dt>Justification</dt>
+        <dt data-i18n="correction.fieldJustification">Justification</dt>
         <dd id="f-justification" class="multiline">—</dd>
 
-        <dt>Bank impact</dt>
+        <dt data-i18n="correction.fieldBankImpact">Bank impact</dt>
         <dd id="f-bank-impact">—</dd>
 
-        <dt>Filed</dt>
+        <dt data-i18n="correction.fieldFiled">Filed</dt>
         <dd id="f-created">—</dd>
 
-        <dt id="dt-decided" hidden>Decision</dt>
+        <dt id="dt-decided" hidden data-i18n="correction.fieldDecision">Decision</dt>
         <dd id="f-decided" hidden>—</dd>
 
-        <dt id="dt-notes" hidden>Notes</dt>
+        <dt id="dt-notes" hidden data-i18n="correction.fieldNotes">Notes</dt>
         <dd id="f-notes" class="multiline" hidden>—</dd>
       </dl>
 
@@ -72,12 +72,12 @@
 
     <dialog id="reject-dialog" class="reject-dialog">
       <form method="dialog">
-        <h3>Reject correction</h3>
-        <label for="reject-notes">Notes (optional)</label>
-        <textarea id="reject-notes" rows="3" maxlength="500" placeholder="Reason for rejection"></textarea>
+        <h3 data-i18n="correction.rejectTitle">Reject correction</h3>
+        <label for="reject-notes" data-i18n="correction.rejectNotes">Notes (optional)</label>
+        <textarea id="reject-notes" rows="3" maxlength="500" data-i18n-attr="placeholder:correction.rejectPlaceholder" placeholder="Reason for rejection"></textarea>
         <div class="form-actions">
-          <button id="reject-cancel" type="button" class="btn-ghost">Cancel</button>
-          <button id="reject-confirm" type="button" class="btn-danger">Reject</button>
+          <button id="reject-cancel" type="button" class="btn-ghost" data-i18n="correctionNew.cancel">Cancel</button>
+          <button id="reject-confirm" type="button" class="btn-danger" data-i18n="correction.actionReject">Reject</button>
         </div>
       </form>
     </dialog>

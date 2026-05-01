@@ -1,8 +1,10 @@
+import { t, applyTranslations } from '/i18n.js';
 import { showMessage, setBusy } from '/app.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const $ = (id) => document.getElementById(id);
 
@@ -123,7 +125,7 @@ function renderLeaves(report) {
         <td>${escapeHtml(l.type)}</td>
         <td>${escapeHtml(formatWhen(l))}</td>
         <td class="right">${escapeHtml(formatDuration(l))}</td>
-        <td><span class="status-badge status-badge--${l.status}">${l.status}</span></td>
+        <td><span class="status-badge status-badge--${l.status}">${escapeHtml(t("status." + l.status))}</span></td>
       `;
       leavesTbody.appendChild(tr);
     }

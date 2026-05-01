@@ -1,8 +1,10 @@
 import { showMessage } from '/app.js';
+import { t, applyTranslations } from '/i18n.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 // -- DOM refs ---------------------------------------------------------------
 
@@ -60,8 +62,8 @@ function renderList() {
     const li = document.createElement('li');
     li.className = 'empty';
     li.textContent = activeFilter === 'all'
-      ? 'No leaves yet. Click "+ Request leave" to add one.'
-      : `No ${activeFilter} leaves.`;
+      ? t('leaves.noEntriesAll')
+      : t('leaves.noEntriesFiltered', { filter: t('leaves.filter' + activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)).toLowerCase() });
     listEl.appendChild(li);
     return;
   }
@@ -76,9 +78,9 @@ function renderList() {
     a.innerHTML = `
       <div class="leave-list__row">
         <div class="leave-list__title">
-          <span class="type-tag">${l.type}</span>${who ? escapeHtml(who) : escapeHtml(formatRange(l))}
+          <span class="type-tag">${escapeHtml(t('leaves.type.' + l.type))}</span>${who ? escapeHtml(who) : escapeHtml(formatRange(l))}
         </div>
-        <span class="status-badge status-badge--${l.status}">${l.status}</span>
+        <span class="status-badge status-badge--${l.status}">${escapeHtml(t('status.' + l.status))}</span>
       </div>
       <div class="leave-list__meta">${who ? escapeHtml(formatRange(l)) : ''}${l.reason ? (who ? ' · ' : '') + escapeHtml(l.reason) : ''}</div>
     `;
@@ -100,7 +102,7 @@ function renderEmployeeBalance(balances) {
     // misread as "you have nothing".
     const unlimited = b.allowance === 0;
     tr.innerHTML = `
-      <td><span class="type-tag">${escapeHtml(b.type)}</span></td>
+      <td><span class="type-tag">${escapeHtml(t('leaves.type.' + b.type))}</span></td>
       <td class="right">${unlimited ? '—' : fmt(b.allowance)}</td>
       <td class="right balance-cell--pending">${b.pending > 0 ? fmt(b.pending) : '—'}</td>
       <td class="right">${fmt(b.booked)}</td>
@@ -124,8 +126,8 @@ function renderEmployerMatrix({ rows }) {
   // Header row — Employee column then one per type with colspan for
   // remaining / allowance presentation.
   const trh = document.createElement('tr');
-  trh.innerHTML = `<th>Employee</th>` + types
-    .map((t) => `<th class="right">${escapeHtml(t)}</th>`)
+  trh.innerHTML = `<th>${escapeHtml(t('reports.employee'))}</th>` + types
+    .map((typ) => `<th class="right">${escapeHtml(t('leaves.type.' + typ))}</th>`)
     .join('');
   thead.appendChild(trh);
 
@@ -133,7 +135,7 @@ function renderEmployerMatrix({ rows }) {
     const tr = document.createElement('tr');
     const displayName = row.fullName ? `${row.fullName}` : row.username;
     const subtle = row.fullName ? `<span class="muted"> · ${escapeHtml(row.username)}</span>` : '';
-    const roleTag = row.role === 'employer' ? ` <span class="type-tag type-tag--role">boss</span>` : '';
+    const roleTag = row.role === 'employer' ? ` <span class="type-tag type-tag--role">${escapeHtml(t('employee.role.employer'))}</span>` : '';
     let html = `<td>${escapeHtml(displayName)}${subtle}${roleTag}</td>`;
     for (const b of row.balances) {
       const unlimited = b.allowance === 0;
@@ -212,7 +214,7 @@ filterBar.addEventListener('click', (e) => {
   populateYears();
 
   if (!leavesRes.ok) {
-    showMessage(messageEl, 'Failed to load leaves.', 'error');
+    showMessage(messageEl, t('leaves.failedToLoad'), 'error');
     return;
   }
   allLeaves = (await leavesRes.json()).leaves;

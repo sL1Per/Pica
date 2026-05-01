@@ -17,7 +17,7 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title>Pica — Employee</title>
+  <title data-i18n="title.employeeDetail">Pica — Employee</title>
     <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -30,8 +30,8 @@
   <main class="container container--wide">
     <header class="page-header">
       <div>
-        <h1 id="page-title">Profile</h1>
-        <p class="muted"><a id="back-link" href="/">← Back</a></p>
+        <h1 id="page-title" data-i18n="employee.profile">Profile</h1>
+        <p class="muted"><a id="back-link" href="/" data-i18n="employee.back">← Back</a></p>
       </div>
     </header>
 
@@ -42,50 +42,50 @@
         <div id="avatar" class="avatar">?</div>
         <div class="avatar-actions">
           <input type="file" id="picture-input" accept="image/*" hidden>
-          <button id="upload-btn" type="button" class="secondary">Upload picture</button>
-          <button id="remove-pic-btn" type="button" class="secondary" hidden>Remove</button>
-          <p class="subtle">Max 400×400, resized in your browser.</p>
+          <button id="upload-btn" type="button" class="secondary" data-i18n="employee.uploadPicture">Upload picture</button>
+          <button id="remove-pic-btn" type="button" class="secondary" hidden data-i18n="employee.remove">Remove</button>
+          <p class="subtle" data-i18n="employee.maxPictureHint">Max 400×400, resized in your browser.</p>
         </div>
       </div>
 
       <form id="profile-form" autocomplete="off" novalidate>
-        <label>Username</label>
+        <label data-i18n="employee.fieldUsername">Username</label>
         <div id="username-display" class="readonly-field">—</div>
 
-        <label>Role</label>
+        <label data-i18n="employee.fieldRole">Role</label>
         <div id="role-display" class="readonly-field">—</div>
 
-        <label for="fullName">Full name</label>
+        <label for="fullName" data-i18n="employee.fieldFullName">Full name</label>
         <input type="text" id="fullName" name="fullName">
 
-        <label for="dateOfBirth">Date of birth</label>
+        <label for="dateOfBirth" data-i18n="employee.fieldDob">Date of birth</label>
         <div class="dob-row">
           <input type="date" id="dateOfBirth" name="dateOfBirth">
           <span id="age-display" class="dob-age muted" hidden></span>
         </div>
 
-        <label for="position">Position <span id="position-hint" class="subtle" hidden>(employer-set)</span></label>
+        <label for="position"><span data-i18n="employee.fieldPosition">Position</span> <span id="position-hint" class="subtle" hidden data-i18n="employee.employerSet">(employer-set)</span></label>
         <input type="text" id="position" name="position">
 
-        <label for="contactEmail">Contact email</label>
+        <label for="contactEmail" data-i18n="employeeNew.contactEmail">Contact email</label>
         <input type="email" id="contactEmail" name="contactEmail">
 
-        <label for="contactPhone">Contact phone</label>
+        <label for="contactPhone" data-i18n="employeeNew.contactPhone">Contact phone</label>
         <input type="text" id="contactPhone" name="contactPhone">
 
-        <label for="address">Address</label>
+        <label for="address" data-i18n="employeeNew.address">Address</label>
         <input type="text" id="address" name="address">
 
-        <label for="comments">Comments <span id="comments-hint" class="subtle" hidden>(employer-set)</span></label>
+        <label for="comments"><span data-i18n="employeeNew.comments">Comments</span> <span id="comments-hint" class="subtle" hidden data-i18n="employee.employerSet">(employer-set)</span></label>
         <textarea id="comments" name="comments" rows="3"></textarea>
 
-        <button id="save-btn" type="submit" class="block">Save profile</button>
+        <button id="save-btn" type="submit" class="block" data-i18n="employee.savePic">Save profile</button>
       </form>
 
       <div id="danger-zone" class="danger-zone" hidden>
-        <h3>Danger zone</h3>
-        <button id="delete-btn" type="button">Delete employee</button>
-        <p class="subtle">This removes the user account, profile, and picture. Not reversible.</p>
+        <h3 data-i18n="employee.dangerZone">Danger zone</h3>
+        <button id="delete-btn" type="button" data-i18n="employee.delete">Delete employee</button>
+        <p class="subtle" data-i18n="employee.deleteHint">This removes the user account, profile, and picture. Not reversible.</p>
       </div>
     </div>
   </main>

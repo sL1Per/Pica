@@ -17,7 +17,7 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title>Pica — Employees</title>
+  <title data-i18n="title.employees">Pica — Employees</title>
     <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
@@ -30,15 +30,15 @@
   <main class="container container--wide">
     <header class="page-header">
       <div>
-        <h1>Employees</h1>
+        <h1 data-i18n="employees.title">Employees</h1>
       </div>
-      <a href="/employees/new" class="btn-link">+ New employee</a>
+      <a href="/employees/new" class="btn-link" data-i18n="employeeNew.button">+ New employee</a>
     </header>
 
     <div id="message" class="message"></div>
 
     <ul id="employee-list" class="employee-list">
-      <li class="employee-list__empty subtle">Loading…</li>
+      <li class="employee-list__empty subtle" data-i18n="employees.loading">Loading…</li>
     </ul>
   </main>
 

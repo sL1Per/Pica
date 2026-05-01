@@ -14,6 +14,510 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.15.4] — 2026-05-01 — Settings: per-employee overrides table — mobile overflow + i18n fix
+
+User reported a visual bug on mobile: the per-employee leave-overrides
+table was wider than the viewport, causing the entire Organization
+section card to be clipped on the left. Column headers also showed
+in English (`VACATION`, `SICK`, `APPOINTMENT`, `OTHER`) on a
+Portuguese page.
+
+### Two bugs in one screenshot
+
+1. **Mobile overflow**: The table has 5 columns × number inputs at
+   80px each + an employee-name column. Roughly 500px minimum width.
+   On a 380px phone viewport, the table forced its parent card to
+   stretch beyond the viewport, clipping the left edge of all
+   content (including the employee name column users actually need
+   to read).
+2. **Hardcoded English headers**: M9 Drop 2 translated almost
+   everything but missed the dynamically-rendered column headers in
+   `renderOverridesTable()` and `renderWorkingTimeOverridesTable()`
+   — they were inside `innerHTML` template literals as raw
+   English strings.
+
+### Fixes
+
+**Visual / overflow.** Wrapped both overrides tables in a
+`<div class="overrides-scroll">` container with `overflow-x: auto`.
+The card now keeps a sane width; if the table is wider than the
+container, it scrolls horizontally inside that wrapper. On viewports
+≤600px, the table also tightens up: `min-width: 0` so it shrinks to
+fit, smaller font (`--text-xs`), tighter padding, narrower number
+inputs (56px down from 80px). For typical employee counts this means
+no horizontal scrolling is needed at all on phones; for larger
+teams the scroll kicks in cleanly.
+
+**i18n.** Column headers now use existing dictionary keys:
+- Employee → `t('reports.employee')`
+- Vacation/Sick/Appointment/Other → `t('leaves.type.*')`
+- Daily hours / Weekly hours → new keys
+  `settings.dailyHoursShort` / `settings.weeklyHoursShort` (the
+  long forms `Daily hours target` / `Weekly hours target` are
+  too verbose for a column header).
+
+Also fixed an incidental bug while I was in there: both render
+functions had `const t = document.createElement('table')` which
+shadowed the imported `t()` translation function in their scope.
+That meant any future `t('some.key')` call inside those functions
+would have crashed with a "t is not a function" error. The variable
+is now named `tbl`. Caught preemptively; no observable regression
+in the field.
+
+### Files touched
+- `public/settings.js` — both render functions: scroll wrapper class,
+  translated column headers, renamed `t` → `tbl` to avoid shadowing.
+- `public/settings.css` — added `.overrides-scroll` rule, expanded
+  `.overrides-table` rules with a mobile breakpoint at ≤600px.
+- `public/locales/en-US.js` + `pt-PT.js` — added
+  `settings.dailyHoursShort` / `settings.weeklyHoursShort` keys.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v11` so
+  users pick up the new CSS+JS.
+- `package.json` — patch bump to 0.15.4.
+
+### Tests
+- 11-suite regression: 318 passing, 0 failing.
+- Dictionary parity verified by the i18n test suite (21/21).
+
+### Honest disclosures
+- **No automated visual-regression test.** The fix was verified by
+  a smoke test (HTML+CSS+JS shape) and reasoning about CSS layout
+  semantics. If the scroll wrapper looks weird in some browser/zoom
+  combination I haven't seen, ping me with a screenshot.
+- **The mobile breakpoint is at ≤600px.** That's narrower than the
+  app shell's main breakpoint (900px) on purpose — between 600px and
+  900px the card is wide enough for the full table without needing
+  the tighter mobile styling. The 600px boundary roughly matches
+  "phone landscape or small tablet portrait".
+- **A more ambitious version of this fix** would replace the table
+  with a card-per-employee layout on mobile (each row becomes a
+  vertical stack: name + 4 labeled inputs). That would be more
+  touch-friendly than a horizontally-scrolling table. Not done in
+  this drop because the scroll-wrapper fix is faithful to the
+  existing table structure and ships in 30 minutes; the card layout
+  would be an hour or two and a noticeable UX shift. Easy follow-up
+  if you want it.
+
+---
+
+## [0.15.3] — 2026-05-01 — Move Working time into Organization settings
+
+The Working time section is no longer a separate top-level settings
+card with its own nav link. It now lives inside the Organization
+section, after the leave allowances + per-employee leave overrides
++ leave policy form, separated by a horizontal divider.
+
+This makes the Settings page shorter — three cards instead of four
+(Company / Organization / Backups) — and groups the working-time
+target with the rest of the company-wide policy where it
+conceptually belongs.
+
+### Changed
+- **`public/settings.html`**: removed the standalone
+  `<section id="working-time">` element and the
+  `<a href="#working-time" id="nav-wt">` link from the section
+  nav. The working-time `<form>` is now a sibling of the org-form
+  inside the existing `<section id="organization">`. The form's
+  former `<h2>` heading is now an `<h3>` (it's a sub-section of
+  Organization). The form's internal sub-headings ("Default for
+  everyone", "Per-employee overrides") are now `<h4>` to keep the
+  hierarchy consistent.
+- **The duplicate "Per-employee overrides" h-heading** is gone:
+  the existing org-form keeps `Per-employee overrides` (for
+  leave caps), and the working-time form uses the new
+  `settings.wtOverridesHeading` key →
+  `Per-employee working-time overrides` /
+  `Substituições de horário por funcionário`. Easier to scan,
+  no ambiguity which "overrides" applies to what.
+- **`public/settings.css`**: added `.section-divider` rule
+  (1px top border with vertical spacing) and an `h4` rule
+  (smaller, uppercase, muted — clearly subordinate to h3).
+- **`public/settings.js`**: removed the dead `navWt` and
+  `workingTimeSection` `getElementById` calls and their
+  visibility toggles. The working-time form is automatically
+  visible alongside the org form because both live inside the
+  org section, which is shown to employers as before.
+- **`public/locales/en-US.js` + `pt-PT.js`**: added
+  `settings.wtOverridesHeading` key in both locales.
+
+### NOT changed
+- **The two forms still save independently.** Each has its own
+  submit button and POSTs to its own API endpoint. A future drop
+  could merge into a single form with one save button if that's
+  the preferred UX, but that's a different question — this drop
+  is a pure visual restructure faithful to "move it in".
+- **Backend API endpoints**: `/api/settings/org` and
+  `/api/settings/working-time` both work as before. No data
+  schema change. Existing stored settings unaffected.
+- **Tests**: 318 across 11 suites, no changes needed (no logic
+  changed).
+
+### Files touched
+- `public/settings.html` — section restructure
+- `public/settings.css` — divider + h4 styling
+- `public/settings.js` — removed dead refs (10-line cleanup)
+- `public/locales/en-US.js` + `pt-PT.js` — one new key each
+- `public/sw.js` — `CACHE_VERSION` bumped to v10 (settings.css/js
+  are runtime-cached cache-first; bump invalidates the old copies)
+- `package.json` — patch bump to 0.15.3
+
+### Tests
+- 11-suite regression: 318 passing, 0 failing. No changes to
+  business logic or API.
+
+### Honest disclosures
+- **Two save buttons in one card is a minor UX wart.** It's
+  unusual to have two submit buttons in a single visual card, and
+  on a quick scan a user might wonder which one "saves
+  everything". The h3 + divider clearly signals two distinct
+  sub-forms, and each save button's label is specific (`Save
+  organization settings` vs `Save working-time settings`), but
+  there's a tiny cognitive cost. If this becomes annoying, the
+  fix is to merge into a single form with one save button — about
+  20 lines of JS to coordinate the two API calls.
+- **Heading semantics**: the working-time form's inner
+  sub-sections are now h4. Visually they're styled as small
+  uppercase labels (clearly subordinate to h3). Screen readers
+  will announce them at the right level. No accessibility
+  regression.
+
+---
+
+## [0.15.2] — 2026-05-01 — Service Worker HTML caching fix (i18n correctness)
+
+The user reported "all pages still in English" after upgrading to
+0.15.1, despite a hard refresh. Diagnosis:
+
+- Server is correctly injecting `<html lang="pt-PT">` and
+  `<meta name="pica-locale" content="pt-PT">` per-request.
+- The user's `<html lang>` was correctly `pt-PT` in the live DOM.
+- But `document.querySelector('meta[name="pica-locale"]')` returned
+  no element. So `i18n.js` fell back to `en-US` and showed English
+  fallbacks everywhere.
+- Service Worker (from the previous version's pre-cache install)
+  was serving stale HTML that lacked the meta tag.
+
+### Root cause — two SW bugs working together
+
+1. **HTML pages were in the SW pre-cache list.** At install time,
+   the SW fetches `/`, `/punch`, `/leaves`, etc. with no cookie —
+   the server's `injectLocale()` sees an unauthenticated request
+   and emits the default en-US meta. That's then served on every
+   subsequent navigation as a cache-first hit, regardless of who's
+   logged in or what their locale preference is.
+2. **The runtime `networkFirst` handler also cached HTML responses.**
+   Even after pre-cache eviction, every successful HTML fetch was
+   stored in the cache by URL. Caches are keyed by URL, but HTML
+   pages now embed per-user state (the locale meta). So user A's
+   locale could be served to user B as an offline fallback for the
+   same path — incorrect.
+
+### Fix
+
+- **Removed all HTML pages** from the SW pre-cache list (`PRECACHE_URLS`).
+  Static assets (CSS/JS/SVG/manifest/i18n dictionaries) stay
+  pre-cached because they're identical for every user.
+- **`networkFirst` no longer caches HTML responses.** It only caches
+  JSON API responses going forward. HTML pages always go to the
+  network; if the network is down, no offline HTML is served (the
+  browser shows its standard offline UI).
+- `CACHE_VERSION` bumped to `pica-cache-v9` so existing installs
+  invalidate their stale HTML cache on next visit.
+
+### Tradeoff
+
+Offline HTML page-load support is gone for now. If the user is
+offline and hasn't visited a page recently in the network-first
+window (which is essentially "never" since I removed HTML caching),
+they get the browser's offline UI instead of a cached page.
+Acceptable for now: the punch page's offline-queue feature is what
+actually matters for the work-from-the-road use case, and that
+operates via `localStorage` and the `/api/punches/clock-in` POST
+endpoint (which is queued and replayed on reconnect — entirely
+separate from the SW HTML cache).
+
+If we want offline HTML in the future, the right design is to
+either (a) cache HTML keyed by `URL + locale` so different locales
+get separate cache entries, or (b) drop server-side locale injection
+entirely and have `i18n.js` read the locale from a cookie at
+runtime. (a) is simpler and preserves the no-flicker property.
+Both are out of scope for this fix.
+
+### How users pick up the fix
+
+1. Browser fetches the new `/sw.js` with `CACHE_VERSION = 'pica-cache-v9'`.
+2. Old SW activates the new SW (next page navigation).
+3. New SW's `activate` handler deletes all caches that aren't `v9`
+   — clearing the stale pre-cached HTML.
+4. Subsequent navigations go to the network, get the fresh HTML
+   with the right meta tag, and `i18n.js` reads it correctly.
+
+If a user is stuck (the SW lifecycle is sometimes finicky), the
+unblock is: DevTools → Application → Service Workers → Unregister,
+then reload. Or for a clean reset: Application → Storage → Clear
+site data.
+
+### Files touched
+- `public/sw.js` — `PRECACHE_URLS` no longer contains HTML routes;
+  `networkFirst` no longer caches HTML; `CACHE_VERSION` bumped to v9.
+- `package.json` — patch bump to 0.15.2.
+
+### Tests
+- 11-suite regression: 318 passing, 0 failing. No code/test changes
+  beyond the SW.
+
+### Honest disclosures
+- **Should have caught this in 0.15.0.** Drop 1 introduced
+  per-request HTML rewriting and the SW pre-cache list still
+  contained HTML routes from M8c — but the symptom only surfaced
+  once translations existed to make the locale visible. I tested
+  the locale switch on a fresh install (no SW yet) and it worked,
+  which masked the stale-cache problem entirely.
+- **The "lang attribute is right but meta isn't" symptom was the
+  smoking gun.** Both come from the same `injectLocale()` call. If
+  the lang attribute updates, server injection is working — so
+  whatever's serving the page must be a snapshot taken at a moment
+  when the meta tag wasn't there. That ruled out runtime issues
+  and pointed straight at the SW.
+- **Offline HTML loss is intentional and small.** No part of Pica's
+  workflow needs offline HTML to keep functioning — the punch page's
+  offline queue uses `localStorage` for its data and POST replay for
+  syncing, both of which the SW doesn't touch. The browser's "you're
+  offline" page is fine UX for the rare offline-and-trying-to-load
+  case.
+
+---
+
+## [0.15.1] — 2026-04-30 — Milestone 9 (Drop 2): full i18n string coverage
+
+The second drop completes M9. Every page that was English-only after
+0.15.0 now switches between en-US and pt-PT via the user's locale
+preference. Drop 1 was the foundation (storage + server-side
+injection + dictionary parity tests + chrome translated); Drop 2
+filled in the remaining ~280 strings across 14 pages.
+
+### Added — `tn()` for pluralization
+
+The new `tn(key, count, params)` helper looks up plural-form
+templates using `Intl.PluralRules`. The dictionary value for a
+plural key is an object instead of a string:
+
+```js
+'punch.queueWaiting': {
+  one:   '{count} punch waiting to sync',
+  other: '{count} punches waiting to sync',
+}
+```
+
+`tn('punch.queueWaiting', 1)` → `1 punch waiting to sync`.
+`tn('punch.queueWaiting', 5)` → `5 punches waiting to sync`.
+
+PT-PT mirrors the structure with `marcação` / `marcações`. Used in
+two places in this drop: the queue badge on the punch page, and the
+"synced N offline punches" toast.
+
+### Added — `applyTranslations(root)` helper
+
+A small DOM walker that finds every element with a `data-i18n="key"`
+attribute and replaces its `textContent` with `t(key)`. Also handles
+attribute translations via `data-i18n-attr="placeholder:some.key"`.
+
+This is the pattern used everywhere in Drop 2: HTML stays declarative
+with the English fallback right there in the markup, and a single
+`applyTranslations()` call at module load translates the whole page.
+
+### Added — `translateError(errorCode, fallback)` helper
+
+Backend errors that come back with a known `errorCode` get translated
+via `errors.<code>` keys; unknown codes fall back to the English
+`error` field. Frontend code uses the pattern:
+
+```js
+showMessage(el, translateError(result.data.errorCode, result.data.error || 'Generic message'));
+```
+
+The dictionary registers the 18 most common business errors (invalid
+credentials, already clocked in, leave overlaps, password too short,
+etc.). Backend error responses don't yet emit `errorCode` — this is
+infrastructure-only; when the backend starts including the field,
+every frontend call site will pick up localized error messages with
+no further changes. Documented as a future task in M11.
+
+### Added — `fmtDate`, `fmtTime`, `fmtDateTime` Intl helpers
+
+Replace the per-page ad-hoc date formatters with locale-aware
+`Intl.DateTimeFormat` wrappers. So far called from corrections.js
+and the calendar; per-page replacement of the remaining `formatDate`
+helpers is incremental.
+
+### Translated — Drop 2 pages
+
+Every page from the M9 Drop 1 "NOT translated yet" list:
+
+- **`/login`, `/setup`**: form labels, submit/busy states, error
+  messages routed through `translateError`.
+- **`/punch`**: heading, status block (Clocked in/Clocked out, "since
+  09:00" / "last: 09:00"), comment label/placeholder, retry/today
+  empty/badges, geo statuses, queue badge with plurals, doPunch
+  action toasts, relative-time helper ("just now", "5 min ago",
+  "yesterday").
+- **`/punches/today`**: heading, link, "Loading…", In/Out badges,
+  empty state.
+- **`/leaves`**: title, balance heading + table headers, filter chips
+  (All / Pending / Approved / Rejected / Cancelled), employee column,
+  type tags + status badges (rendered dynamically through
+  `t('leaves.type.' + type)` / `t('status.' + status)`), filtered
+  empty state.
+- **`/leaves/new`**: every form label, type options, unit radio
+  labels, end-date hint, reason textarea placeholder.
+- **`/leaves/:id`** (detail): every dl/dt label, dynamic status
+  banner, decided-on text, Approve / Reject / Cancel buttons,
+  cancel-approved confirm, status-updated toast.
+- **`/leaves/calendar`**: title, navigation, weekday headers
+  (translated via dictionary keys), month name (`Intl.DateTimeFormat`
+  for proper localized "abril" vs "April"), legend chips.
+- **`/reports`**: title, all controls, group-by chips, leave-month
+  options (12 months), table headers, footer total, stat labels
+  (Approved / Pending / Rejected / Cancelled / Approved days off),
+  CSV download links, dynamic type/status badges in table rows,
+  empty state messages.
+- **`/employees`**: title, "+ New employee" link, empty hints,
+  "no profile yet" placeholder, role badge.
+- **`/employees/new`**: every form section header and label,
+  position placeholder, role options.
+- **`/employees/:id`**: profile heading, all field labels,
+  upload/remove picture buttons, "(employer-set)" hint, save button,
+  danger zone heading, delete button + confirm, profile-saved toast.
+- **`/corrections`**: title, subtitle (own vs employer-view variants),
+  bank card label + hint, pending vs history headings, register
+  button, dynamic kind chips (both / in only / out only) + justified
+  vs no-justification chips + bank chip, status badges, empty state
+  variants per role.
+- **`/corrections/new`**: title, subtitle, three-radio kind legend
+  with all six titles+descriptions, dynamic start/end labels (change
+  per kind), justification placeholder, bank-warning paragraph
+  (re-rendered via JS so the `{hours}` placeholder appears in a
+  `<strong>` element), submit/cancel buttons.
+- **`/corrections/:id`**: title, all dl labels, status tag, dynamic
+  Arrived/Left labels for kind=in/out, justification placeholder,
+  four bank-impact variants (none-single-side / none-justified /
+  +Nh added / would-add), Approve / Reject / Cancel / Reverse
+  buttons, four approve confirms (one per kind+justified variant),
+  cancel/reverse confirms, decision line, reject dialog.
+- **`/settings`**: section nav, all four section headings (Company /
+  Organization / Working time / Backups), every label, hints,
+  carry-forward checkbox label, concurrent-leaves checkbox label,
+  save buttons for each section, backup schedule options
+  (Off / Hourly / Daily / Weekly), three disabled scaffold buttons.
+
+### Translated — Backend error code dictionary
+
+`errors.*` namespace registered in both locales for 18 business
+errors:
+- `invalid_credentials`, `unauthorized`, `forbidden`, `not_found`
+- `already_clocked_in`, `not_clocked_in`
+- `invalid_date`, `invalid_timestamp`, `required`, `invalid_value`
+- `password_too_short`, `username_taken`
+- `cannot_delete_self`, `cannot_demote_self`
+- `leave_overlaps`, `leave_cap_exceeded`
+- `correction_window_too_long`, `correction_window_too_short`,
+  `correction_end_before_start`
+
+Frontend calls `translateError(errorCode, fallback)` everywhere it
+shows a backend error. Today the backend doesn't emit `errorCode`
+yet, so every call falls back to the server's English `error`
+string — but the wiring is in place so when the backend starts
+emitting codes, the frontend instantly localizes without further
+changes.
+
+### Files touched
+- `public/i18n.js` — added `tn`, `translateError`, `applyTranslations`,
+  `fmtDate`, `fmtTime`, `fmtDateTime`. The `t()` semantics are
+  unchanged for backward compat.
+- `public/locales/en-US.js` + `pt-PT.js` — dictionary expansion from
+  ~50 keys to **533 keys each**. Plural keys are objects with
+  `one`/`other`. `errors.*` namespace registered.
+- 15 HTML files updated with `data-i18n` / `data-i18n-attr` attributes:
+  `login.html`, `setup.html`, `punch.html`, `punches-today.html`,
+  `leaves.html`, `leaves-calendar.html`, `leave.html`, `leave-new.html`,
+  `reports.html`, `employees.html`, `employee.html`,
+  `employee-new.html`, `corrections.html`, `correction-new.html`,
+  `correction.html`, `settings.html`.
+- 15 JS files updated to import `t` / `tn` / `translateError` /
+  `applyTranslations` and call them at module load.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v8`. (No
+  pre-cache list change — locales were already in v7.)
+- `package.json` — patch bump to 0.15.1.
+- `README.md` — M9 marked complete.
+- `tests/test-i18n.mjs` — expanded from 11 to 21 tests:
+  - 5 dictionary structure tests (string-or-plural shape, parity,
+    plural-shape parity, key-naming, placeholder parity)
+  - 6 interpolation tests (no params, single, multi, unmatched,
+    missing key, type coercion)
+  - 5 plural tests (en-US one/other, pt-PT one/other, missing key)
+  - 4 error-code tests (known/missing/empty/pt-PT)
+- `tests/test-corrections.mjs` — fixed a date-flaky test that
+  assumed April 2026 was the createdAt month. Now uses the actual
+  `c.createdAt` to find the file.
+
+### Tests
+- 11-suite regression: 318 passing, 0 failing (was 308).
+  - +10 tests in i18n suite (now 21 from 11).
+  - +0 in corrections suite (the date-flaky test now correctly
+    counts as 33 passing, where it was at 32 before today's actual
+    date crossed into May).
+
+### Honest disclosures
+- **Backend stays English-only.** The `error` field on every API
+  response is still the source of truth. Frontend calls
+  `translateError(errorCode, fallback)`, which falls back to that
+  English string when no `errorCode` is present (which is always,
+  today). Backend errorCode emission is a clean follow-up: edit
+  ~15 error response sites to include the code, and frontend picks
+  up localized errors automatically.
+- **Some hardcoded English remains in stored data.** When a
+  correction is approved, the materialized punch's comment is
+  built server-side as `Manual entry: ...` (English). Punches are
+  persistent records — changing them when the locale changes would
+  be confusing. Acceptable.
+- **`<title>` tags are translated client-side**, not at server-render
+  time. There's a brief flash of the English fallback on first paint
+  before `applyTranslations()` runs. Acceptable for a feature that's
+  mostly cosmetic (browser-tab text). Could be moved server-side in
+  a future drop if it becomes a problem.
+- **`Intl.NumberFormat`** — not used yet. Numbers in the app today
+  are integers (days, hours-as-integers, employee counts). When we
+  add currency or percentages they'll need formatting. Deferred.
+- **`fmtDate`/`fmtTime`/`fmtDateTime`** are exported but most pages
+  still use their per-page formatters. Switching all of them in one
+  drop felt unnecessarily risky — they all look right today; the
+  Intl helpers are there for new code and for incremental migration.
+- **No automated browser tests** — the translation infrastructure is
+  validated by the i18n test suite (parity, plurals, interpolation,
+  errorCode lookup) and the smoke test (every page returns 200 in
+  both locales, the meta tag flips correctly). End-to-end browser
+  testing is a M11 item.
+- **Dictionary parity is enforced by tests.** Every key in en-US
+  must exist in pt-PT, plural categories must match, and `{name}`
+  placeholders must match across both. This makes drift impossible
+  to merge without it failing CI — the most important guarantee for
+  long-term i18n maintenance.
+- **No retranslation of existing approved leave/correction data.**
+  The "since 09:00 (5 min ago)" relative time on the punch page
+  is computed live, so it switches with the locale. But static
+  decision notes (e.g. notes the employer typed in English when
+  rejecting a leave) stay in whichever language they were written.
+  Correct semantics for free-form data.
+
+### Roadmap status
+- ✅ M0–M9 (both drops)
+- ⏳ M10: Backups
+- ⏳ M11: Hardening (offline-trust signing, conflict resolution,
+  spend-bank flow, full E2E browser tests, backend errorCode
+  emission, password change, full Intl.NumberFormat coverage)
+
+---
+
 ## [0.15.0] — 2026-04-30 — Milestone 9 (Drop 1): i18n foundation, en-US + pt-PT
 
 The internationalization foundation. The infrastructure to translate

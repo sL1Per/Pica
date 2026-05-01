@@ -1,8 +1,10 @@
 import { showMessage } from '/app.js';
+import { t, applyTranslations, fmtDateTime as i18nFmtDateTime } from '/i18n.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const $ = (id) => document.getElementById(id);
 const messageEl    = $('message');
@@ -48,30 +50,30 @@ function renderRow(c) {
   const li = document.createElement('li');
   li.className = `correction-row correction-row--${c.status}`;
 
-  const who = (me.role === 'employer') ? (c.fullName || c.username || 'someone') : '';
+  const who = (me.role === 'employer') ? (c.fullName || c.username || '—') : '';
   // When + duration depend on kind.
   let when, hoursLabel;
   if (c.kind === 'both') {
     when = `${fmtDateTime(c.start)} → ${fmtDateTime(c.end)}`;
     hoursLabel = fmtHours(c.hours);
   } else if (c.kind === 'in') {
-    when = `Arrived ${fmtDateTime(c.start)}`;
-    hoursLabel = 'in only';
+    when = t('corrections.arrived', { time: fmtDateTime(c.start) });
+    hoursLabel = t('corrections.kindIn');
   } else {
-    when = `Left ${fmtDateTime(c.end)}`;
-    hoursLabel = 'out only';
+    when = t('corrections.left', { time: fmtDateTime(c.end) });
+    hoursLabel = t('corrections.kindOut');
   }
 
   // Justified / no-justification chip on every row.
   const justChip = c.isJustified
-    ? `<span class="chip chip--ok">justified</span>`
-    : `<span class="chip chip--warn">no justification</span>`;
+    ? `<span class="chip chip--ok">${escapeHtml(t('corrections.justified'))}</span>`
+    : `<span class="chip chip--warn">${escapeHtml(t('corrections.noJustification'))}</span>`;
   // Bank chip only on approved both-kind without justification.
   const bankChip = (c.status === 'approved' && c.kind === 'both' && !c.isJustified)
-    ? `<span class="chip chip--bank">+${fmtHours(c.hours)} to bank</span>`
+    ? `<span class="chip chip--bank">${escapeHtml(t('corrections.bankChip', { hours: fmtHours(c.hours) }))}</span>`
     : '';
   // Kind chip for visual differentiation in lists.
-  const kindChipMap = { both: 'both', in: 'in only', out: 'out only' };
+  const kindChipMap = { both: t('corrections.kindBoth'), in: t('corrections.kindIn'), out: t('corrections.kindOut') };
   const kindChip = `<span class="chip chip--kind">${kindChipMap[c.kind] ?? c.kind}</span>`;
 
   li.innerHTML = `
@@ -80,7 +82,7 @@ function renderRow(c) {
         ${who ? `<div class="correction-row__who">${escapeHtml(who)}</div>` : ''}
         <div class="correction-row__when">${when}</div>
         <div class="correction-row__chips">
-          <span class="status-tag status-tag--${c.status}">${c.status}</span>
+          <span class="status-tag status-tag--${c.status}">${escapeHtml(t('status.' + c.status))}</span>
           ${kindChip}
           ${justChip}
           ${bankChip}
@@ -108,8 +110,8 @@ function render(corrections) {
   if (pending.length === 0) {
     pendingList.appendChild(renderEmptyMsg(
       me.role === 'employer'
-        ? 'No corrections waiting for your decision.'
-        : 'No pending corrections. Use the button above to register one.'
+        ? t('corrections.noPendingEmployer')
+        : t('corrections.noPendingOwn')
     ));
   } else {
     pending.forEach((c) => pendingList.appendChild(renderRow(c)));
@@ -117,7 +119,7 @@ function render(corrections) {
 
   historyList.innerHTML = '';
   if (history.length === 0) {
-    historyList.appendChild(renderEmptyMsg('No history yet.'));
+    historyList.appendChild(renderEmptyMsg(t('corrections.noHistory')));
   } else {
     history.forEach((c) => historyList.appendChild(renderRow(c)));
   }
@@ -143,7 +145,7 @@ async function load() {
     const { corrections } = await res.json();
     render(corrections);
   } catch (err) {
-    showMessage(messageEl, 'Could not load corrections.', 'error');
+    showMessage(messageEl, t('corrections.couldNotLoad'), 'error');
   }
 }
 
@@ -154,8 +156,8 @@ async function load() {
   if (meRes.status === 401) { window.location.href = '/login'; return; }
   me = await meRes.json();
   if (me.role === 'employer') {
-    subtitleEl.textContent = 'Manual time entries filed by employees, awaiting your decision.';
-    headingEl.textContent = 'Awaiting decision';
+    subtitleEl.textContent = t('corrections.subtitleAll');
+    headingEl.textContent = t('corrections.pendingHeading.employer');
   }
   await Promise.all([load(), loadBank()]);
 })();

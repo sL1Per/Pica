@@ -1,7 +1,9 @@
 import { mountFooter } from '/topbar.js';
-mountFooter();
-
 import { postJson, showMessage, setBusy } from '/app.js';
+import { t, translateError, applyTranslations } from '/i18n.js';
+
+mountFooter();
+applyTranslations();
 
 const form     = document.getElementById('setup-form');
 const username = document.getElementById('username');
@@ -15,15 +17,15 @@ form.addEventListener('submit', async (e) => {
   showMessage(message, '');
 
   if (password.value !== confirm.value) {
-    showMessage(message, 'Passwords do not match', 'error');
+    showMessage(message, t('setup.passwordMismatch'), 'error');
     return;
   }
   if (password.value.length < 8) {
-    showMessage(message, 'Password must be at least 8 characters', 'error');
+    showMessage(message, t('errors.password_too_short'), 'error');
     return;
   }
 
-  setBusy(submit, true, 'Creating account…');
+  setBusy(submit, true, t('setup.submitting'));
 
   const result = await postJson('/api/setup', {
     username: username.value.trim(),
@@ -31,11 +33,12 @@ form.addEventListener('submit', async (e) => {
   });
 
   if (result.ok) {
-    showMessage(message, 'Account created — redirecting…', 'success');
+    showMessage(message, t('setup.created'), 'success');
     window.location.href = '/';
     return;
   }
 
-  showMessage(message, result.data.error || 'Setup failed', 'error');
+  const msg = translateError(result.data.errorCode, result.data.error || t('setup.failed'));
+  showMessage(message, msg, 'error');
   setBusy(submit, false);
 });

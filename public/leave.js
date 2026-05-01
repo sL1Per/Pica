@@ -3,6 +3,7 @@ import { postJson, showMessage, setBusy } from '/app.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
 mountFooter();
+applyTranslations();
 
 const leaveId = window.location.pathname.split('/').pop();
 
@@ -52,7 +53,7 @@ function formatDuration(l) {
 }
 
 function render() {
-  $('page-title').textContent = `Leave · ${leave.type}`;
+  $('page-title').textContent = t('leave.titleWithType', { type: t('leaves.type.' + leave.type) });
   $('f-employee').textContent = leave.fullName || leave.username || leave.employeeId;
   $('f-type').textContent = leave.type;
   $('f-when').textContent = formatWhen(leave);
@@ -66,21 +67,21 @@ function render() {
   }
 
   banner.className = `status-banner status-banner--${leave.status}`;
-  banner.innerHTML = `<span>${leave.status.toUpperCase()}</span>`;
+  banner.innerHTML = `<span>${t('status.' + leave.status).toUpperCase()}</span>`;
 
   // Decision history note.
   const note = $('decided-note');
   if (leave.status === 'approved') {
     note.hidden = false;
-    $('decided-label').textContent = `Approved ${formatDate(leave.decidedAt)}`;
+    $('decided-label').textContent = t('leave.decidedApproved', { date: formatDate(leave.decidedAt) });
     $('decided-notes').textContent = '';
   } else if (leave.status === 'rejected') {
     note.hidden = false;
-    $('decided-label').textContent = `Rejected ${formatDate(leave.decidedAt)}`;
+    $('decided-label').textContent = t('leave.decidedRejected', { date: formatDate(leave.decidedAt) });
     $('decided-notes').textContent = leave.notes || '';
   } else if (leave.status === 'cancelled') {
     note.hidden = false;
-    $('decided-label').textContent = `Cancelled ${formatDate(leave.cancelledAt)}`;
+    $('decided-label').textContent = t('leave.decidedCancelled', { date: formatDate(leave.cancelledAt) });
     $('decided-notes').textContent = '';
   } else {
     note.hidden = true;
@@ -98,11 +99,11 @@ function renderActions() {
   if (leave.status === 'pending' && isEmployer) {
     const approve = document.createElement('button');
     approve.className = 'btn-approve';
-    approve.textContent = 'Approve';
+    approve.textContent = t('leave.actionApprove');
     approve.addEventListener('click', () => approveWithConcurrencyCheck());
     const reject = document.createElement('button');
     reject.className = 'btn-reject';
-    reject.textContent = 'Reject';
+    reject.textContent = t('leave.actionReject');
     reject.addEventListener('click', () => { rejectDialog.hidden = false; });
     actionsEl.appendChild(approve);
     actionsEl.appendChild(reject);
@@ -111,7 +112,7 @@ function renderActions() {
   if (leave.status === 'pending' && isOwner) {
     const cancel = document.createElement('button');
     cancel.className = 'secondary';
-    cancel.textContent = 'Cancel request';
+    cancel.textContent = t('leave.cancelRequest');
     cancel.addEventListener('click', () => action('cancel'));
     actionsEl.appendChild(cancel);
   }
@@ -119,7 +120,7 @@ function renderActions() {
   if (leave.status === 'approved' && isEmployer) {
     const cancel = document.createElement('button');
     cancel.className = 'secondary';
-    cancel.textContent = 'Cancel approved leave';
+    cancel.textContent = t('leave.cancelApproved');
     cancel.addEventListener('click', () => {
       if (confirm('Cancel this approved leave?')) action('cancel');
     });

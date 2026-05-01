@@ -305,17 +305,17 @@ Split into three drops:
 - ✅ Frontend: working-hours display on punch page + bank balance indicator
 - ✅ Frontend: settings UI for daily/weekly target hours
 
-### Milestone 9 — i18n _(foundation in 0.15.0; full string coverage pending)_
+### Milestone 9 — i18n ✅
 - ✅ Language dictionaries: `public/locales/en-US.js`, `public/locales/pt-PT.js`
-- ✅ `i18n.js` runtime module with `t(key, params)` interpolation
+- ✅ `i18n.js` runtime module with `t(key, params)` and `tn(key, count, params)` (plurals via `Intl.PluralRules`)
 - ✅ Language switcher in Preferences (reads/writes user-prefs)
 - ✅ Per-user `locale` preference (replaces the M7 `language` field with backward-compat read)
 - ✅ Server-side locale injection (`<html lang>` + `<meta name="pica-locale">`)
 - ✅ Drop 1 string coverage: app shell, dashboard, preferences, footer
-- ✅ Date formatting via `Intl.DateTimeFormat` (footer release date so far)
-- [ ] Drop 2 string coverage: punch, leaves, reports, employees, corrections, settings, login, setup
-- [ ] Backend error message localization (errorCode → frontend lookup)
-- [ ] Number formatting via `Intl.NumberFormat` where appropriate
+- ✅ Drop 2 string coverage: punch, punches-today, leaves, leave detail, leave-new, calendar, reports, employees, employee detail, employee-new, corrections (list + new + detail), settings, login, setup
+- ✅ Date formatting via `Intl.DateTimeFormat` (footer release date, calendar month names)
+- ✅ Plural forms in queue badge ("1 punch waiting" vs "5 punches waiting") in both locales
+- ✅ Error code translation infrastructure (`errors.*` namespace, `translateError(code, fallback)` helper) — frontend ready; backend errorCode emission is a future enhancement
 
 ### Milestone 10 — Backups
 - [ ] Encrypted full backup of `/data`
