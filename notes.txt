@@ -1,13 +1,8 @@
 ## Pica ##
+# Bugs: 
 
-
-# BUGS: 
-- on mobile version, settings page -> Allowance per employee table style is bugged
 
 # TODO:
-- change password for employee and also ability for employer to reset passwords of employees
-- Move working ours in the settings page into the organization settings section
-- Widgets on main page, like total hours this week, next leave is scheduled for:, for employer, anything that is pending approval, etc.
 - punches view for employers, want a table with the day / week and month overview per employee.
 - As employer, in the employees page, click on employee -> Card page with employee details and card to his/her leaves (maybe redirect to report), his/her punches (maybe redirect to report) and his/her profile.
 - Reports revamp:
