@@ -180,10 +180,15 @@ async function refresh() {
 
 // ---- Controls -------------------------------------------------------------
 
-for (const chip of document.querySelectorAll('.chip')) {
+// Scope to the controls card only — the team-overview section also has
+// chips (with data-period instead of data-groupby), and a global
+// .chip selector would catch both: clicking a team chip would set
+// groupBy=undefined and stomp the per-employee chip's active state.
+const groupByChips = document.querySelectorAll('.controls-grid .chip[data-groupby]');
+for (const chip of groupByChips) {
   chip.addEventListener('click', () => {
     groupBy = chip.dataset.groupby;
-    for (const c of document.querySelectorAll('.chip')) c.classList.toggle('active', c === chip);
+    for (const c of groupByChips) c.classList.toggle('active', c === chip);
     refresh();
   });
 }
@@ -212,6 +217,84 @@ function initDefaults() {
   leaveMonth.value = String(m);
 }
 
+// ---- Team overview (employer only) -------------------------------------
+
+const teamSection      = $('team-section');
+const teamPeriodChips  = $('team-period-chips');
+const teamRange        = $('team-range');
+const teamTbody        = $('team-table')?.querySelector('tbody');
+const teamEmpty        = $('team-empty');
+const teamError        = $('team-error');
+let teamPeriod = 'month';
+
+function fmtHoursCell(h) {
+  // 0 → "0", 9 → "9", 9.5 → "9.5". Matches the Timesheets column in the example.
+  if (!Number.isFinite(h)) return '0';
+  if (Math.abs(h - Math.round(h)) < 0.05) return String(Math.round(h));
+  return String(Math.round(h * 10) / 10);
+}
+
+function renderTeamRows(data) {
+  if (!teamTbody) return;
+  teamTbody.innerHTML = '';
+  teamRange.textContent = data.label || '';
+
+  if (!data.rows || data.rows.length === 0) {
+    teamEmpty.hidden = false;
+    return;
+  }
+  teamEmpty.hidden = true;
+
+  for (const r of data.rows) {
+    const tr = document.createElement('tr');
+    const periodCell = data.label;
+    const name = r.fullName || r.username;
+    const avatar = r.hasPicture
+      ? `<img class="team-avatar" src="/api/employees/${encodeURIComponent(r.id)}/picture" alt="">`
+      : `<span class="team-avatar team-avatar--placeholder" aria-hidden="true">${escapeHtml(name.charAt(0).toUpperCase())}</span>`;
+    tr.innerHTML = `
+      <td class="team-period">${escapeHtml(periodCell)}</td>
+      <td class="team-staff">${avatar}<span class="team-staff__name">${escapeHtml(name)}</span></td>
+      <td class="right">${escapeHtml(fmtHoursCell(r.scheduled))}</td>
+      <td class="right">${escapeHtml(fmtHoursCell(r.worked))}</td>
+    `;
+    teamTbody.appendChild(tr);
+  }
+}
+
+async function loadTeamOverview() {
+  if (!teamSection || teamSection.hidden) return;
+  teamError.hidden = true;
+  try {
+    const res = await fetch(`/api/reports/team-hours?period=${encodeURIComponent(teamPeriod)}`, {
+      credentials: 'same-origin',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderTeamRows(data);
+  } catch (err) {
+    teamTbody.innerHTML = '';
+    teamEmpty.hidden = true;
+    teamError.hidden = false;
+    teamError.textContent = t('widgets.couldNotLoad');
+  }
+}
+
+function wireTeamPeriodChips() {
+  if (!teamPeriodChips) return;
+  teamPeriodChips.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-period]');
+    if (!btn) return;
+    const p = btn.dataset.period;
+    if (p === teamPeriod) return;
+    teamPeriod = p;
+    teamPeriodChips.querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('active', b.dataset.period === p);
+    });
+    loadTeamOverview();
+  });
+}
+
 (async () => {
   initDefaults();
 
@@ -233,6 +316,10 @@ function initDefaults() {
       if (e.id === me.id) opt.selected = true;
       employeePicker.appendChild(opt);
     }
+    // Show the team-overview section and wire its chips.
+    teamSection.hidden = false;
+    wireTeamPeriodChips();
+    loadTeamOverview();
   }
 
   await refresh();

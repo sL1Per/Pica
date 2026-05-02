@@ -154,6 +154,8 @@ registerReportRoutes(router, {
   punchesStore,
   leavesStore,
   usersStore,
+  employeesStore,
+  orgSettingsStore,
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
   requireOwnerOrEmployer: rbac.requireOwnerOrEmployer,

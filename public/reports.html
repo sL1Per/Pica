@@ -41,6 +41,36 @@
 
     <div id="message" class="message no-print"></div>
 
+    <!-- Team overview (employer only) -->
+    <section class="card no-print" id="team-section" hidden>
+      <div class="report-section__header">
+        <h2 data-i18n="reports.teamOverview">Team overview</h2>
+        <div class="report-section__meta">
+          <div class="chips" id="team-period-chips" role="tablist">
+            <button type="button" class="chip" data-period="today" data-i18n="reports.periodToday">Today</button>
+            <button type="button" class="chip" data-period="week" data-i18n="reports.periodWeek">This week</button>
+            <button type="button" class="chip active" data-period="month" data-i18n="reports.periodMonth">This month</button>
+          </div>
+        </div>
+      </div>
+      <p id="team-range" class="subtle"></p>
+      <div class="table-wrap">
+        <table class="report-table team-table" id="team-table">
+          <thead>
+            <tr>
+              <th data-i18n="reports.teamPeriod">Period</th>
+              <th data-i18n="reports.teamStaff">Staff</th>
+              <th class="right" data-i18n="reports.teamScheduled">Scheduled</th>
+              <th class="right" data-i18n="reports.teamWorked">Timesheets</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p id="team-empty" class="subtle center" hidden data-i18n="reports.teamEmpty">No employees yet.</p>
+      <p id="team-error" class="subtle center" hidden></p>
+    </section>
+
     <section class="card no-print">
       <div class="controls-grid">
         <div id="employee-picker-wrap" hidden>

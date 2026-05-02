@@ -3,7 +3,6 @@
 
 
 # TODO:
-- punches view for employers, want a table with the day / week and month overview per employee.
 - As employer, in the employees page, click on employee -> Card page with employee details and card to his/her leaves (maybe redirect to report), his/her punches (maybe redirect to report) and his/her profile.
 - Reports revamp:
 	- 

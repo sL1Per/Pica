@@ -14,6 +14,196 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.16.3] — 2026-05-02 — Reports: fix chip selector clash from 0.16.2
+
+The 0.16.2 team-overview added period chips (Today / This week /
+This month) using class `.chip` — same class as the existing
+group-by chips (Day / Week / Month) in the per-employee detail
+section below. The existing reports.js had a global handler:
+
+```js
+for (const chip of document.querySelectorAll('.chip')) { ... }
+```
+
+That selector now matched both chip groups. Clicking a team-overview
+chip would:
+1. Set `groupBy = chip.dataset.groupby` — which is `undefined` for
+   team chips (they use `data-period`).
+2. Fire `refresh()` → `GET /api/reports/hours/:id?groupBy=undefined`
+   → server replied 400 with `groupBy must be day, week or month`.
+3. Stomp the active state of the per-employee chips along the way.
+
+User reported the visible 400 errors and a red banner with the
+groupBy validation message. Smoke missed it because the smoke didn't
+exercise chip interactions.
+
+### Fix
+
+Scoped the existing handler to `.controls-grid .chip[data-groupby]` —
+exactly the chips it was meant to handle. The team-overview chips
+already had their own scoped handler in `wireTeamPeriodChips()` that
+listens on the chips' parent element and matches `[data-period]`,
+so nothing changed there.
+
+### Files touched
+- `public/reports.js` — narrowed the global `.chip` querySelectorAll
+  to a card-scoped, attribute-qualified selector.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v15`.
+- `package.json` — patch bump to 0.16.3.
+
+### Tests
+- 12-suite regression: 361 passing, 0 failing. No code or test
+  changes beyond the selector.
+
+### Honest disclosures
+- **Smoke didn't catch this in 0.16.2** because it didn't simulate
+  chip clicks. A regression test would either need a real browser
+  (out of scope until M12 E2E) or a structural lint rule
+  ("don't use bare `.classname` selectors when multiple sections
+  use the same class"). Practical follow-up: when adding a new
+  card/section that reuses common class names like `.chip`, scope
+  any `querySelectorAll` to the section's container.
+- **The fix is minimal on purpose** — I considered renaming the
+  team-overview chips' class to `.team-chip` to make them
+  structurally distinct, but that would either require duplicating
+  the existing `.chip` styling or adding a `.chip.team-chip` cascade
+  that buys nothing the attribute selector doesn't already give us.
+
+---
+
+## [0.16.2] — 2026-05-02 — Reports: team overview table
+
+The Reports page now starts with a cross-employee at-a-glance table
+(employer only). One row per user, switchable between today / this
+week / this month, showing scheduled vs actually-worked hours.
+
+The previous reports page was per-employee only — to compare staff
+you had to switch the employee picker for each one. The new section
+flips that: see everyone in one glance, then drill in via the
+existing per-employee detail below.
+
+### Added — `GET /api/reports/team-hours?period=today|week|month`
+
+Employer-only. Returns:
+
+```json
+{
+  "period": "month",
+  "label": "2026-05",
+  "from": "2026-05-01",
+  "to":   "2026-05-31",
+  "rows": [
+    { "id": "...", "username": "alice", "fullName": "Alice Anders",
+      "hasPicture": true, "scheduled": 168, "worked": 87.5,
+      "role": "employee" },
+    ...
+  ]
+}
+```
+
+Computation:
+- **Today**: `[today, today]`. Scheduled = the user's `dailyHours`.
+- **Week**: ISO week (Mon-Sun) containing today. Scheduled = `weeklyHours`.
+- **Month**: the calendar month containing today. Scheduled =
+  `dailyHours × number of weekdays in the month`. Excludes Sat/Sun;
+  doesn't yet account for public holidays.
+- **Worked**: reuses the existing `hoursReport()` storage helper
+  (which pairs in/out punches and clips intervals to the requested
+  range, ±0.1h precision).
+
+Per-employee `dailyHours`/`weeklyHours` come from `org-settings`
+via `resolveWorkingTimeFor(userId)` — the same resolver used by the
+punch page's daily indicator. So per-employee overrides set in
+Settings → Organization → Working time are honored automatically.
+
+### Added — Team overview section on `/reports`
+
+A new card, employer-only, at the top of the page:
+
+- Section title: "Team overview"
+- Period switcher chips: Today / This week / This month (defaults to month)
+- Period range label (e.g. "2026-05" or "2026-04-27 → 2026-05-03")
+- Table with four columns: Period · Staff · Scheduled · Timesheets
+- Avatar in the Staff column: profile picture if available, otherwise
+  a circle with the first letter of the name as a placeholder
+- Empty state for "no employees yet"
+- Error state with the i18n "Couldn't load" message if the fetch fails
+
+The original per-employee detail sections (Worked hours, Leaves)
+stay below, unchanged. Mobile gets the same scroll-wrap pattern as
+the overrides table from 0.15.4 (smaller font, tighter padding,
+horizontal scroll if the columns don't fit).
+
+### Files touched
+- `src/routes/reports.js` — new `/api/reports/team-hours` route +
+  private `computePeriod` / `isWeekday` / `ymdOf` / `pad2` / `round1`
+  helpers. Function signature now also accepts `employeesStore` and
+  `orgSettingsStore` (passed in from server.js).
+- `server.js` — wired `employeesStore` + `orgSettingsStore` into
+  the reports route registration.
+- `public/reports.html` — new `<section id="team-section">` between
+  the message div and the controls card.
+- `public/reports.js` — `loadTeamOverview()`, `renderTeamRows()`,
+  `wireTeamPeriodChips()`, plus initialization in the existing
+  employer branch of the IIFE.
+- `public/reports.css` — `.team-table`, `.team-staff`,
+  `.team-avatar`, `.team-avatar--placeholder`, `#team-range`,
+  mobile breakpoint at ≤600px.
+- `public/locales/en-US.js` + `pt-PT.js` — 9 new keys
+  (`reports.teamOverview`, `reports.periodToday|Week|Month`,
+  `reports.teamPeriod|Staff|Scheduled|Worked|Empty`).
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v14`.
+- `package.json` — patch bump to 0.16.2.
+- `docs/architecture.md` — last-touched footer bumped.
+
+### Tests
+- 12-suite regression: 361 passing, 0 failing. No backend tests
+  changed; the new route is exercised by smoke tests but not yet
+  by an automated suite. Adding a `test-reports-team.mjs` is a
+  reasonable follow-up — the existing `test-reports.mjs` already
+  exercises `hoursReport` heavily, so the new test would mostly
+  cover the period-boundary helpers and the org-settings
+  integration.
+
+### Honest disclosures
+- **No automated test for the new route yet.** Verified by smoke
+  test (alice 8am→5pm = 9h worked, 8h scheduled today, 168h
+  scheduled this month). I'd rather ship this and add the test
+  next turn than gate on test coverage for a thin aggregation
+  endpoint that reuses well-tested primitives.
+- **Monthly scheduled hours are an approximation.** Mon-Fri ×
+  `dailyHours` is the most common European workweek model, but it
+  doesn't account for: public holidays (which we don't track),
+  approved leaves (which would reduce the scheduled hours for
+  that user), or non-Mon-Fri schedules (which we don't model
+  either). For most teams this is fine — the column is intended
+  as a rough comparison baseline, not a payroll-grade calculation.
+  If your team has a non-standard work week, the "Scheduled"
+  column should be read with a grain of salt.
+- **No "currently working" indicator.** I considered adding a
+  green dot next to anyone with an open clock-in, but it adds a
+  second API call (or a second pass over today's punches) that's
+  noticeably out of scope for a UI sketch matching your example
+  image. Easy follow-up if useful.
+- **Avatar fallback is a single letter, not the silhouette in your
+  example.** I went with the simpler placeholder so we don't need
+  a new SVG asset. The colored circle with an initial reads cleanly
+  enough; if you want a generic person silhouette, send the SVG
+  and I'll swap it in.
+- **Period switcher resets to "This month" on every page load.**
+  No state persistence (localStorage / URL). Felt too small to
+  justify the persistence layer; tell me if you'd like it sticky.
+- **Sorted alphabetically by name.** No column-click sorting yet.
+  The example image was unsorted (or sorted by ID); alphabetical
+  felt more useful as a default. If you want click-to-sort by
+  Worked or Scheduled, that's another small follow-up.
+- **The route accepts only fixed periods** (today/week/month). It
+  doesn't take arbitrary `from`/`to` because the per-employee
+  detail section below already does that for cases where you need
+  custom ranges.
+
+---
+
 ## [0.16.1] — 2026-05-02 — Fix broken leave-new + leave detail pages
 
 User reported the leave-request form didn't work. Console:
