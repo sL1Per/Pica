@@ -1,4 +1,5 @@
 import { EMPLOYEE_EDITABLE, ALL_EDITABLE } from '../storage/employees.js';
+import { hoursReport } from '../storage/reports.js';
 
 /**
  * Employee management endpoints.
@@ -6,6 +7,7 @@ import { EMPLOYEE_EDITABLE, ALL_EDITABLE } from '../storage/employees.js';
  * Authorization:
  *   list / create / delete    → employer only
  *   read / update / picture   → owner or employer
+ *   summary                   → employer only
  *
  * Field filtering on update:
  *   Employees can only modify a whitelisted subset of their own fields.
@@ -14,6 +16,10 @@ import { EMPLOYEE_EDITABLE, ALL_EDITABLE } from '../storage/employees.js';
 export function registerEmployeeRoutes(router, {
   usersStore,
   employeesStore,
+  punchesStore,
+  leavesStore,
+  correctionsStore,
+  orgSettingsStore,
   requireAuth,
   requireRole,
   requireOwnerOrEmployer,
@@ -100,6 +106,138 @@ export function registerEmployeeRoutes(router, {
       role: user.role,
       createdAt: user.createdAt,
       profile: profileWithPic,
+    });
+  }));
+
+  // --------------------------------------------------------------------------
+  // GET /api/employees/:id/summary — employer dashboard for one employee.
+  //
+  // Aggregates everything the employer-facing summary page needs in a
+  // single response:
+  //   - profile (same shape as GET /api/employees/:id)
+  //   - weekHours: hours worked in the current ISO week (Mon-Sun containing today)
+  //   - weekScheduled: scheduled hours for the same window (from working-time settings)
+  //   - bankHours: current time-bank balance
+  //   - upcomingLeaves[]: approved leaves whose date range either starts in
+  //     the next 30 days or is currently in progress
+  //   - pending: { leaves: [...], corrections: [...] } — items still
+  //     awaiting employer decision
+  //
+  // Employer-only — the summary is the employer's lens on someone else's
+  // activity. Employees viewing themselves should look at the dashboard
+  // (which shows the same numbers from their own POV).
+  // --------------------------------------------------------------------------
+  router.get('/api/employees/:id/summary', requireRole('employer')((req, res) => {
+    const user = usersStore.findById(req.params.id);
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
+
+    // Profile with hasPicture decoration, mirroring GET /api/employees/:id.
+    const profile = employeesStore.readProfile(user.id);
+    const hasPicture = employeesStore.hasPicture(user.id);
+    const profileWithPic = profile
+      ? { ...profile, hasPicture }
+      : (hasPicture ? { hasPicture } : null);
+
+    // ISO week boundaries (Monday → Sunday) containing today.
+    const now = new Date();
+    const dayIdx = (now.getDay() + 6) % 7;          // 0=Mon..6=Sun
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - dayIdx);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    function ymd(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    const weekFrom = ymd(monday);
+    const weekTo   = ymd(sunday);
+
+    // Worked hours this week. Defensive try/catch so a bad punches file
+    // doesn't 500 the whole summary.
+    let weekHours = 0;
+    try {
+      weekHours = hoursReport(punchesStore, user.id, weekFrom, weekTo, 'day').totalHours;
+    } catch {
+      weekHours = 0;
+    }
+
+    // Scheduled hours for this user (with per-employee override).
+    const wt = orgSettingsStore?.resolveWorkingTimeFor
+      ? orgSettingsStore.resolveWorkingTimeFor(user.id)
+      : { dailyHours: 8, weeklyHours: 40 };
+    const weekScheduled = wt.weeklyHours;
+
+    // Bank balance.
+    let bankHours = 0;
+    try {
+      bankHours = correctionsStore.computeBank({ userId: user.id });
+    } catch {
+      bankHours = 0;
+    }
+
+    // Upcoming leaves: approved, this user only, whose [start, end] window
+    // intersects [today, today+30d]. Includes leaves currently in progress.
+    const todayYmd = ymd(now);
+    const horizon = new Date(now);
+    horizon.setDate(now.getDate() + 30);
+    const horizonYmd = ymd(horizon);
+
+    const allLeaves = leavesStore.list({ employeeId: user.id });
+    const upcomingLeaves = allLeaves
+      .filter((l) => l.status === 'approved')
+      .filter((l) => {
+        const s = String(l.start).slice(0, 10);
+        const e = String(l.end).slice(0, 10);
+        // window-intersect test: range [s,e] overlaps [today, horizon]
+        return s <= horizonYmd && e >= todayYmd;
+      })
+      .map((l) => ({
+        id: l.id,
+        type: l.type,
+        unit: l.unit,
+        start: l.start,
+        end: l.end,
+      }))
+      .sort((a, b) => String(a.start).localeCompare(String(b.start)));
+
+    // Pending items, this user only.
+    const pendingLeaves = allLeaves
+      .filter((l) => l.status === 'pending')
+      .map((l) => ({
+        id: l.id,
+        type: l.type,
+        unit: l.unit,
+        start: l.start,
+        end: l.end,
+      }))
+      .sort((a, b) => String(a.start).localeCompare(String(b.start)));
+
+    const allCorrections = correctionsStore.list({ employeeId: user.id });
+    const pendingCorrections = allCorrections
+      .filter((c) => c.status === 'pending')
+      .map((c) => ({
+        id: c.id,
+        kind: c.kind,
+        start: c.start,
+        end: c.end,
+        hours: c.hours,
+      }))
+      .sort((a, b) => String(a.start).localeCompare(String(b.start)));
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      createdAt: user.createdAt,
+      profile: profileWithPic,
+      week: { from: weekFrom, to: weekTo, hours: weekHours, scheduled: weekScheduled },
+      bankHours,
+      upcomingLeaves,
+      pending: {
+        leaves: pendingLeaves,
+        corrections: pendingCorrections,
+      },
     });
   }));
 

@@ -128,7 +128,8 @@ pica/
 │   ├── reports.{html,js,css}
 │   ├── employees.{html,js,css}
 │   ├── employee-new.{html,js}
-│   ├── employee.{html,js,css}  # employee detail
+│   ├── employee.{html,js,css}          # employer's per-employee summary
+│   ├── employee-profile.{html,js,css}  # full profile editor (sub-route)
 │   ├── corrections.{html,js,css}
 │   ├── correction-new.{html,js}
 │   ├── correction.{html,js}  # correction detail
@@ -340,4 +341,4 @@ because they only add half a punch pair.
 
 ---
 
-_Last touched in 0.16.2._
+_Last touched in 0.16.4._

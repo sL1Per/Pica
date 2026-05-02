@@ -14,6 +14,138 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.16.4] — 2026-05-02 — Employee summary page (employer view)
+
+Clicking an employee from the Employees list used to drop you straight
+into the profile editor. That's overkill when you just want to know
+"how is this person doing?" — so 0.16.4 introduces a summary page.
+
+### What's new
+
+When an employer clicks an employee, they now land on a summary view
+showing:
+
+- **Profile header** — avatar, name, role, position, plus two action
+  buttons (Reset password, Go to profile)
+- **Stats row** — three widget-style cards:
+  - This week's worked hours (with the user's weekly target as the
+    caption)
+  - Bank balance (or "no bank time owed" if zero)
+  - Pending approvals counts (leaves + corrections, or "all caught up")
+- **Upcoming leaves** — approved leaves whose date range either starts
+  in the next 30 days or is currently in progress
+- **Items awaiting your decision** — full list of pending leaves and
+  corrections from this employee, with click-through to review
+
+The full profile editor moved to `/employees/:id/profile` (a new
+sub-route). The "Go to profile →" button on the summary takes you
+there.
+
+### URL changes
+
+| Before                       | After                              |
+|------------------------------|------------------------------------|
+| `/employees/:id` (editor)    | `/employees/:id` (summary)         |
+| —                            | `/employees/:id/profile` (editor)  |
+
+The employees-list and any "go to this employee" link still target
+`/employees/:id` — the destination just renders differently. From the
+profile editor, the back-link returns to the summary instead of the
+employees list (it's the more useful place to go after editing).
+
+### Reset password button
+
+Disabled with a tooltip saying it's coming in a future release. The
+button has a click handler attached anyway (showing a "not yet
+available" message) so when M12 lands and we just remove the
+`disabled` attribute, the button is already wired.
+
+### Backend — `GET /api/employees/:id/summary`
+
+New employer-only endpoint returning the page's data in one round-trip.
+Computed:
+- **week**: `{ from, to, hours, scheduled }` — Mon-Sun ISO week
+  containing today, hours from `hoursReport`, scheduled from the
+  user's resolved working-time settings (with per-employee override
+  honored).
+- **bankHours**: from `correctionsStore.computeBank({ userId })`.
+- **upcomingLeaves**: approved leaves whose `[start, end]` window
+  intersects `[today, today+30d]`. Sorted by start date.
+- **pending.leaves** + **pending.corrections**: pending items from
+  this employee, sorted by start date.
+
+The 30-day horizon is fixed for now; when M12 adds password reset
+we may also want to make this configurable.
+
+### Files touched
+- **New**: `public/employee.html`, `public/employee.js`,
+  `public/employee.css` — the summary page
+- **Renamed**: the old summary→`/employees/:id` route's files moved
+  from `employee.{html,js,css}` to `employee-profile.{html,js,css}`.
+  Internal asset references and the URL-parsing logic in
+  `employee-profile.js` updated to handle the new
+  `/employees/:id/profile` path.
+- `src/routes/pages.js` — added `/employees/:id/profile` route
+  before the existing `/employees/:id` route. Order matters
+  (more-specific paths first).
+- `src/routes/employees.js` — added `GET /api/employees/:id/summary`
+  endpoint. The route module's destructure now also accepts
+  `punchesStore`, `leavesStore`, `correctionsStore`,
+  `orgSettingsStore`. Imported `hoursReport` from the reports
+  storage module.
+- `server.js` — pass the new stores into the employees route
+  registration.
+- `public/locales/en-US.js` + `pt-PT.js` — 18 new keys under
+  `employee.summary.*` and `title.employeeSummary`.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v16`.
+- `package.json` — patch bump to 0.16.4.
+- `docs/architecture.md` — updated the repository layout to
+  reflect the new file split. Last-touched bumped.
+
+### Tests
+- 12-suite regression: 363 passing, 0 failing (was 361; +3 from
+  the frontend-imports audit picking up the new `employee.js`).
+- No backend test added for the new summary endpoint yet — the
+  primitives it composes (`hoursReport`, `computeBank`,
+  `leavesStore.list`, `correctionsStore.list`) are all covered by
+  existing tests. A `test-employees-summary.mjs` is a reasonable
+  follow-up.
+
+### Honest disclosures
+- **The "upcoming leaves" widget shows leaves intersecting [today,
+  today+30d]**, not just leaves starting in that window. So a leave
+  that started yesterday and ends next week shows up — which feels
+  right (the person *is* on leave) but might surprise someone reading
+  "upcoming" strictly. Tell me if you want a stricter "starts in the
+  next 30 days" filter.
+- **Approved leaves more than 30 days out vanish from the summary.**
+  They're still in the full leaves list, just not surfaced on the
+  summary card. Reasonable for a "what should I be aware of soon"
+  view but worth noting.
+- **The summary's pending-detail card duplicates the count widget.**
+  The stats row says "2 leaves pending"; the detail card lists those
+  same 2 leaves with click-through. Could feel redundant — but the
+  count is for a glance, the detail is for action. Keeping both.
+- **No live updates.** Page loads once, doesn't auto-refresh. The
+  dashboard auto-refreshes on visibilitychange; I considered adding
+  the same here but the summary page is a dive-in destination, not
+  an at-a-glance view, so a stale refresh felt less valuable. Easy
+  to add.
+- **"Reset password" is non-functional by design.** Disabled button
+  with a tooltip and a click handler that shows a placeholder
+  message. Will become real in M12.
+- **The backend route is new and untested by automated tests.**
+  Smoke-verified end-to-end (alice's leave moves from `pending` to
+  `upcomingLeaves` after admin approves it; bank balance reads
+  correctly; 403 for non-employer; 404 for unknown id). I'd rather
+  ship it now than block on writing the test suite first.
+- **Employer viewing themselves** lands on a summary of themselves.
+  No special-case. The "This week" stat reads correctly, bank reads
+  correctly, pending shows their own approvals queue (typically 0
+  for an employer). Acceptable.
+
+---
+
 ## [0.16.3] — 2026-05-02 — Reports: fix chip selector clash from 0.16.2
 
 The 0.16.2 team-overview added period chips (Today / This week /

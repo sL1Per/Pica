@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script>
     // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
-    // The persisted value is written by app.js after fetching /api/settings/me
-    // and updated by preferences.js when the user saves a new choice.
-    // Possible values: "light", "dark", "system" (or null on first visit).
     try {
       var m = localStorage.getItem('pica-color-mode');
       if (m === 'light' || m === 'dark') {
@@ -17,8 +14,8 @@
       }
     } catch (e) { /* localStorage blocked → fall back to system */ }
   </script>
-  <title data-i18n="title.employeeDetail">Pica — Employee</title>
-    <link rel="manifest" href="/manifest.json">
+  <title data-i18n="title.employeeSummary">Pica — Employee</title>
+  <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/icon.svg">
   <meta name="theme-color" content="#2e7d32">
@@ -28,66 +25,91 @@
 </head>
 <body>
   <main class="container container--wide">
-    <header class="page-header">
-      <div>
-        <h1 id="page-title" data-i18n="employee.profile">Profile</h1>
-        <p class="muted"><a id="back-link" href="/" data-i18n="employee.back">← Back</a></p>
-      </div>
-    </header>
+    <p class="muted">
+      <a id="back-link" href="/employees" data-i18n="employee.summary.back">← Back to employees</a>
+    </p>
 
     <div id="message" class="message"></div>
 
-    <div class="card">
-      <div class="avatar-block">
-        <div id="avatar" class="avatar">?</div>
-        <div class="avatar-actions">
-          <input type="file" id="picture-input" accept="image/*" hidden>
-          <button id="upload-btn" type="button" class="secondary" data-i18n="employee.uploadPicture">Upload picture</button>
-          <button id="remove-pic-btn" type="button" class="secondary" hidden data-i18n="employee.remove">Remove</button>
-          <p class="subtle" data-i18n="employee.maxPictureHint">Max 400×400, resized in your browser.</p>
+    <!-- Profile header card: avatar, name, role, position, action buttons -->
+    <section class="card summary-header" id="header-section" hidden>
+      <div class="summary-header__main">
+        <div class="summary-header__avatar-wrap">
+          <img id="avatar" class="summary-avatar" alt="" hidden>
+          <div id="avatar-placeholder" class="summary-avatar summary-avatar--placeholder" aria-hidden="true"></div>
+        </div>
+        <div class="summary-header__text">
+          <h1 id="name" class="summary-name">…</h1>
+          <p id="role-line" class="muted summary-role">…</p>
+          <p id="position-line" class="muted summary-position" hidden></p>
         </div>
       </div>
-
-      <form id="profile-form" autocomplete="off" novalidate>
-        <label data-i18n="employee.fieldUsername">Username</label>
-        <div id="username-display" class="readonly-field">—</div>
-
-        <label data-i18n="employee.fieldRole">Role</label>
-        <div id="role-display" class="readonly-field">—</div>
-
-        <label for="fullName" data-i18n="employee.fieldFullName">Full name</label>
-        <input type="text" id="fullName" name="fullName">
-
-        <label for="dateOfBirth" data-i18n="employee.fieldDob">Date of birth</label>
-        <div class="dob-row">
-          <input type="date" id="dateOfBirth" name="dateOfBirth">
-          <span id="age-display" class="dob-age muted" hidden></span>
-        </div>
-
-        <label for="position"><span data-i18n="employee.fieldPosition">Position</span> <span id="position-hint" class="subtle" hidden data-i18n="employee.employerSet">(employer-set)</span></label>
-        <input type="text" id="position" name="position">
-
-        <label for="contactEmail" data-i18n="employeeNew.contactEmail">Contact email</label>
-        <input type="email" id="contactEmail" name="contactEmail">
-
-        <label for="contactPhone" data-i18n="employeeNew.contactPhone">Contact phone</label>
-        <input type="text" id="contactPhone" name="contactPhone">
-
-        <label for="address" data-i18n="employeeNew.address">Address</label>
-        <input type="text" id="address" name="address">
-
-        <label for="comments"><span data-i18n="employeeNew.comments">Comments</span> <span id="comments-hint" class="subtle" hidden data-i18n="employee.employerSet">(employer-set)</span></label>
-        <textarea id="comments" name="comments" rows="3"></textarea>
-
-        <button id="save-btn" type="submit" class="block" data-i18n="employee.savePic">Save profile</button>
-      </form>
-
-      <div id="danger-zone" class="danger-zone" hidden>
-        <h3 data-i18n="employee.dangerZone">Danger zone</h3>
-        <button id="delete-btn" type="button" data-i18n="employee.delete">Delete employee</button>
-        <p class="subtle" data-i18n="employee.deleteHint">This removes the user account, profile, and picture. Not reversible.</p>
+      <div class="summary-header__actions">
+        <button id="reset-pw-btn" type="button" class="secondary" disabled
+                title="Reset password coming in a future release"
+                data-i18n-attr="title:employee.summary.resetPwTooltip"
+                data-i18n="employee.summary.resetPw">Reset password</button>
+        <a id="profile-link" href="#" class="btn-primary" data-i18n="employee.summary.viewProfile">Go to profile →</a>
       </div>
+    </section>
+
+    <!-- Stats row: 3 quick-look numbers -->
+    <div id="stats-grid" class="widget-grid summary-stats" hidden>
+      <section class="widget">
+        <div class="widget__head">
+          <h2 class="widget__title" data-i18n="employee.summary.weekHoursTitle">This week</h2>
+        </div>
+        <div class="widget__body">
+          <div class="widget__bignum">
+            <span id="week-hours">0</span><span class="widget__bignum-suffix">h</span>
+          </div>
+          <div class="widget__caption" id="week-caption">…</div>
+        </div>
+      </section>
+      <section class="widget">
+        <div class="widget__head">
+          <h2 class="widget__title" data-i18n="employee.summary.bankTitle">Bank balance</h2>
+        </div>
+        <div class="widget__body">
+          <div class="widget__bignum" id="bank-bignum">0<span class="widget__bignum-suffix">h</span></div>
+          <div class="widget__caption" id="bank-caption">…</div>
+        </div>
+      </section>
+      <section class="widget">
+        <div class="widget__head">
+          <h2 class="widget__title" data-i18n="employee.summary.pendingTitle">Pending approvals</h2>
+        </div>
+        <div class="widget__body" id="pending-body">
+          <!-- filled by JS: counts, or "all caught up" -->
+        </div>
+      </section>
     </div>
+
+    <!-- Upcoming leaves -->
+    <section class="card summary-section" id="upcoming-section" hidden>
+      <div class="report-section__header">
+        <h2 data-i18n="employee.summary.upcomingTitle">Upcoming leaves (next 30 days)</h2>
+      </div>
+      <ul class="summary-list" id="upcoming-list"></ul>
+      <p id="upcoming-empty" class="subtle center" hidden data-i18n="employee.summary.upcomingEmpty">No upcoming leaves in the next 30 days.</p>
+    </section>
+
+    <!-- Pending detail (expanded list when employer wants to act) -->
+    <section class="card summary-section" id="pending-section" hidden>
+      <div class="report-section__header">
+        <h2 data-i18n="employee.summary.pendingDetailTitle">Items awaiting your decision</h2>
+      </div>
+      <div id="pending-leaves-block" hidden>
+        <h3 class="subtle" data-i18n="widgets.pendingLeaves">Leave requests</h3>
+        <ul class="summary-list" id="pending-leaves-list"></ul>
+      </div>
+      <div id="pending-corrections-block" hidden>
+        <h3 class="subtle" data-i18n="widgets.pendingCorrections">Time corrections</h3>
+        <ul class="summary-list" id="pending-corrections-list"></ul>
+      </div>
+    </section>
+
+    <p id="error" class="subtle center" hidden></p>
   </main>
 
   <script type="module" src="/employee.js"></script>

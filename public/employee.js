@@ -1,259 +1,270 @@
-import { t, translateError, applyTranslations } from '/i18n.js';
-import { postJson, showMessage, setBusy } from '/app.js';
+/**
+ * Employee summary page (employer view).
+ *
+ * One round-trip via /api/employees/:id/summary returns everything we
+ * need: profile, week hours, bank balance, upcoming leaves, pending
+ * approvals. We render in a single pass — no per-section loading
+ * spinners because the underlying request is server-aggregated and
+ * fast.
+ */
 
 import { mountTopBar, mountFooter } from '/topbar.js';
+import { t, applyTranslations, fmtDate } from '/i18n.js';
+import { showMessage } from '/app.js';
+
 mountTopBar();
 mountFooter();
 applyTranslations();
 
-// Pull the employee id out of the URL: /employees/<id>
-const employeeId = window.location.pathname.split('/').pop();
-
 const $ = (id) => document.getElementById(id);
-const titleEl   = $('page-title');
-const backLink  = $('back-link');
-const message   = $('message');
-const avatarEl  = $('avatar');
-const uploadBtn = $('upload-btn');
-const pictureIn = $('picture-input');
-const removePic = $('remove-pic-btn');
-const form      = $('profile-form');
-const saveBtn   = $('save-btn');
-const deleteBtn = $('delete-btn');
-const dangerZone= $('danger-zone');
 
-let me;
-let target;
+// Pull the employee id from /employees/<id>
+const segs = window.location.pathname.split('/').filter(Boolean);
+const employeeId = segs[segs.indexOf('employees') + 1];
 
-function initials(name) {
-  if (!name) return '?';
-  return name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('');
+const headerSection = $('header-section');
+const avatar         = $('avatar');
+const avatarPlaceholder = $('avatar-placeholder');
+const nameEl         = $('name');
+const roleLine       = $('role-line');
+const positionLine   = $('position-line');
+const profileLink    = $('profile-link');
+const messageEl      = $('message');
+
+const statsGrid      = $('stats-grid');
+const weekHoursEl    = $('week-hours');
+const weekCaptionEl  = $('week-caption');
+const bankBignumEl   = $('bank-bignum');
+const bankCaptionEl  = $('bank-caption');
+const pendingBody    = $('pending-body');
+
+const upcomingSection  = $('upcoming-section');
+const upcomingListEl   = $('upcoming-list');
+const upcomingEmptyEl  = $('upcoming-empty');
+
+const pendingSection            = $('pending-section');
+const pendingLeavesBlock        = $('pending-leaves-block');
+const pendingLeavesListEl       = $('pending-leaves-list');
+const pendingCorrectionsBlock   = $('pending-corrections-block');
+const pendingCorrectionsListEl  = $('pending-corrections-list');
+
+const errorEl = $('error');
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
 }
 
-function renderAvatar(emp, hasPicture) {
-  avatarEl.innerHTML = '';
-  if (hasPicture) {
-    const img = document.createElement('img');
-    // Cache bust so the avatar updates after upload.
-    img.src = `/api/employees/${emp.id}/picture?t=${Date.now()}`;
-    img.alt = '';
-    avatarEl.appendChild(img);
-    removePic.hidden = false;
+function fmtBankHours(hours) {
+  if (!Number.isFinite(hours) || hours === 0) return '0h';
+  const sign = hours > 0 ? '+' : '−';
+  const abs = Math.abs(hours);
+  const str = (Math.round(abs * 10) / 10).toFixed(1).replace(/\.0$/, '');
+  return `${sign}${str}h`;
+}
+
+function fmtRange(startStr, endStr, unit) {
+  // YYYY-MM-DD or ISO ts. For days we show a date range; for hours
+  // we show start day with hour times.
+  const s = String(startStr);
+  const e = String(endStr);
+  if (unit === 'hours') {
+    const sDate = new Date(s);
+    const eDate = new Date(e);
+    return `${fmtDate(sDate)} ${formatTimeOnly(sDate)}–${formatTimeOnly(eDate)}`;
+  }
+  const sYmd = s.slice(0, 10);
+  const eYmd = e.slice(0, 10);
+  if (sYmd === eYmd) return fmtDate(sYmd);
+  return `${fmtDate(sYmd)} → ${fmtDate(eYmd)}`;
+}
+
+function formatTimeOnly(d) {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function renderHeader(data) {
+  const profile = data.profile || {};
+  const name = profile.fullName || data.username;
+  nameEl.textContent = name;
+  document.title = `Pica — ${name}`;
+
+  // Role line: "Employer" / "Employee" via existing dictionary
+  roleLine.textContent = t('employee.role.' + data.role);
+
+  // Position is optional
+  if (profile.position) {
+    positionLine.textContent = profile.position;
+    positionLine.hidden = false;
+  }
+
+  // Avatar
+  if (profile.hasPicture) {
+    avatar.src = `/api/employees/${encodeURIComponent(employeeId)}/picture`;
+    avatar.hidden = false;
+    avatarPlaceholder.hidden = true;
   } else {
-    avatarEl.textContent = initials(emp.profile?.fullName || emp.username);
-    removePic.hidden = true;
+    avatarPlaceholder.textContent = (name.charAt(0) || '?').toUpperCase();
+    avatarPlaceholder.hidden = false;
+    avatar.hidden = true;
   }
+
+  // Profile link
+  profileLink.href = `/employees/${encodeURIComponent(employeeId)}/profile`;
+
+  headerSection.hidden = false;
 }
 
-function applyPermissions(isEmployer, isSelf) {
-  // Employees can't edit position or comments on any profile.
-  const readonlyForEmployee = ['position', 'comments'];
-  if (!isEmployer) {
-    for (const name of readonlyForEmployee) {
-      $(name).readOnly = true;
-      const hint = $(`${name}-hint`);
-      if (hint) hint.hidden = false;
-    }
+function renderStats(data) {
+  // Week hours
+  const wh = data.week?.hours ?? 0;
+  weekHoursEl.textContent = (Math.round(wh * 10) / 10).toString();
+  if (data.week?.scheduled) {
+    weekCaptionEl.textContent = t('employee.summary.weekTarget', {
+      target: data.week.scheduled + 'h',
+    });
+  } else {
+    weekCaptionEl.textContent = '';
   }
-  // Delete button only for employers, and not on self.
-  dangerZone.hidden = !(isEmployer && !isSelf);
+
+  // Bank
+  const bh = data.bankHours ?? 0;
+  bankBignumEl.innerHTML = bh === 0
+    ? `0<span class="widget__bignum-suffix">h</span>`
+    : `${escapeHtml(fmtBankHours(bh))}`;
+  bankCaptionEl.textContent = bh === 0
+    ? t('employee.summary.bankZero')
+    : t('employee.summary.bankExplain');
+
+  // Pending counts (employer-actionable)
+  const pendingLeaves = data.pending?.leaves?.length ?? 0;
+  const pendingCorrs  = data.pending?.corrections?.length ?? 0;
+  if (pendingLeaves === 0 && pendingCorrs === 0) {
+    pendingBody.innerHTML = `<div class="widget__empty">${escapeHtml(t('employee.summary.pendingEmpty'))}</div>`;
+  } else {
+    pendingBody.innerHTML = `
+      <div class="widget__row">
+        <div class="widget__row-main"><div class="widget__row-name">${escapeHtml(t('widgets.pendingLeaves'))}</div></div>
+        <div class="widget__row-aside">
+          <span class="widget__count${pendingLeaves === 0 ? ' widget__count--zero' : ''}">${pendingLeaves}</span>
+        </div>
+      </div>
+      <div class="widget__row">
+        <div class="widget__row-main"><div class="widget__row-name">${escapeHtml(t('widgets.pendingCorrections'))}</div></div>
+        <div class="widget__row-aside">
+          <span class="widget__count${pendingCorrs === 0 ? ' widget__count--zero' : ''}">${pendingCorrs}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  statsGrid.hidden = false;
 }
 
-function populateForm(emp) {
-  $('username-display').textContent = emp.username;
-  $('role-display').textContent = emp.role;
-  titleEl.textContent = emp.profile?.fullName || emp.username;
-
-  const p = emp.profile ?? {};
-  $('fullName').value     = p.fullName     ?? '';
-  $('dateOfBirth').value  = p.dateOfBirth  ?? '';
-  updateAgeDisplay();
-  $('position').value     = p.position     ?? '';
-  $('contactEmail').value = p.contactEmail ?? '';
-  $('contactPhone').value = p.contactPhone ?? '';
-  $('address').value      = p.address      ?? '';
-  $('comments').value     = p.comments     ?? '';
+function renderUpcoming(data) {
+  const leaves = data.upcomingLeaves || [];
+  if (leaves.length === 0) {
+    upcomingListEl.innerHTML = '';
+    upcomingEmptyEl.hidden = false;
+  } else {
+    upcomingEmptyEl.hidden = true;
+    upcomingListEl.innerHTML = leaves.map((l) => `
+      <li class="summary-list__item">
+        <div class="summary-list__main">
+          <div class="summary-list__when">${escapeHtml(fmtRange(l.start, l.end, l.unit))}</div>
+          <div class="summary-list__detail">${escapeHtml(t('leaves.type.' + l.type))}</div>
+        </div>
+        <a class="summary-list__link" href="/leaves/${encodeURIComponent(l.id)}" data-i18n="employee.summary.viewLeave">View →</a>
+      </li>
+    `).join('');
+  }
+  upcomingSection.hidden = false;
 }
 
-/**
- * Compute age in years from the DOB picker value and render alongside.
- * Hidden when no DOB or DOB is invalid / in the future.
- */
-function updateAgeDisplay() {
-  const dob = $('dateOfBirth').value;
-  const out = $('age-display');
-  if (!dob) { out.hidden = true; out.textContent = ''; return; }
-  // Parse as YYYY-MM-DD in local time (avoid UTC-offset surprises).
-  const [y, m, d] = dob.split('-').map(Number);
-  const birth = new Date(y, m - 1, d);
-  if (Number.isNaN(birth.getTime())) { out.hidden = true; return; }
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const monthDiff = today.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
-  if (age < 0 || age > 130) { out.hidden = true; return; }
-  out.textContent = `${age} years old`;
-  out.hidden = false;
+function renderPending(data) {
+  const leaves = data.pending?.leaves ?? [];
+  const corrs  = data.pending?.corrections ?? [];
+
+  if (leaves.length === 0 && corrs.length === 0) {
+    // Don't render the detail card at all when nothing is pending.
+    pendingSection.hidden = true;
+    return;
+  }
+
+  if (leaves.length > 0) {
+    pendingLeavesListEl.innerHTML = leaves.map((l) => `
+      <li class="summary-list__item">
+        <div class="summary-list__main">
+          <div class="summary-list__when">${escapeHtml(fmtRange(l.start, l.end, l.unit))}</div>
+          <div class="summary-list__detail">${escapeHtml(t('leaves.type.' + l.type))}</div>
+        </div>
+        <a class="summary-list__link" href="/leaves/${encodeURIComponent(l.id)}">${escapeHtml(t('employee.summary.review'))} →</a>
+      </li>
+    `).join('');
+    pendingLeavesBlock.hidden = false;
+  } else {
+    pendingLeavesBlock.hidden = true;
+  }
+
+  if (corrs.length > 0) {
+    const KIND_KEYS = { both: 'corrections.kindBoth', in: 'corrections.kindIn', out: 'corrections.kindOut' };
+    pendingCorrectionsListEl.innerHTML = corrs.map((c) => {
+      const hrs = (Math.round((c.hours || 0) * 10) / 10);
+      const kindLabel = t(KIND_KEYS[c.kind] || 'corrections.kindBoth');
+      return `
+        <li class="summary-list__item">
+          <div class="summary-list__main">
+            <div class="summary-list__when">${escapeHtml(fmtRange(c.start, c.end, 'hours'))}</div>
+            <div class="summary-list__detail">${escapeHtml(kindLabel)} · ${hrs}h</div>
+          </div>
+          <a class="summary-list__link" href="/corrections/${encodeURIComponent(c.id)}">${escapeHtml(t('employee.summary.review'))} →</a>
+        </li>
+      `;
+    }).join('');
+    pendingCorrectionsBlock.hidden = false;
+  } else {
+    pendingCorrectionsBlock.hidden = true;
+  }
+
+  pendingSection.hidden = false;
 }
 
-// Recompute live as the user changes the picker.
-document.addEventListener('DOMContentLoaded', () => {
-  const dob = document.getElementById('dateOfBirth');
-  if (dob) dob.addEventListener('change', updateAgeDisplay);
-});
-
-// ---------------------------------------------------------------------------
-// Picture resize + upload (client-side)
-// ---------------------------------------------------------------------------
-
-function loadImage(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload  = () => { URL.revokeObjectURL(url); resolve(img); };
-    img.onerror = (e) => { URL.revokeObjectURL(url); reject(e); };
-    img.src = url;
-  });
-}
-
-async function resizeToJpeg(file, maxDim = 400, quality = 0.85) {
-  const img = await loadImage(file);
-  const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-  const canvas = document.createElement('canvas');
-  canvas.width  = Math.round(img.width * scale);
-  canvas.height = Math.round(img.height * scale);
-  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-  return await new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('resize failed')), 'image/jpeg', quality);
-  });
-}
-
-uploadBtn.addEventListener('click', () => pictureIn.click());
-
-pictureIn.addEventListener('change', async () => {
-  const file = pictureIn.files?.[0];
-  if (!file) return;
-  showMessage(message, '');
-
+async function load() {
+  errorEl.hidden = true;
   try {
-    const blob = await resizeToJpeg(file);
-    const fd = new FormData();
-    fd.append('picture', blob, 'avatar.jpg');
-    const res = await fetch(`/api/employees/${employeeId}/picture`, {
-      method: 'PUT',
-      body: fd,
+    const res = await fetch(`/api/employees/${encodeURIComponent(employeeId)}/summary`, {
       credentials: 'same-origin',
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || `Upload failed (${res.status})`);
+    if (res.status === 401) { window.location.href = '/login'; return; }
+    if (res.status === 403) {
+      // Employee viewing themselves via this URL — not allowed; send home.
+      window.location.href = '/';
+      return;
     }
-    renderAvatar(target, true);
-    showMessage(message, 'Picture updated', 'success');
+    if (res.status === 404) {
+      errorEl.hidden = false;
+      errorEl.textContent = t('employee.summary.notFound');
+      return;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+    renderHeader(data);
+    renderStats(data);
+    renderUpcoming(data);
+    renderPending(data);
   } catch (err) {
-    showMessage(message, err.message, 'error');
-  } finally {
-    pictureIn.value = '';
+    errorEl.hidden = false;
+    errorEl.textContent = t('widgets.couldNotLoad');
   }
+}
+
+// "Reset password" placeholder — disabled until M12. We attach a click
+// listener anyway so a future enabling just removes the disabled
+// attribute and this becomes the real handler.
+$('reset-pw-btn').addEventListener('click', () => {
+  showMessage(messageEl, t('employee.summary.resetPwUnavailable'), 'error');
 });
 
-removePic.addEventListener('click', async () => {
-  const res = await fetch(`/api/employees/${employeeId}/picture`, {
-    method: 'DELETE',
-    credentials: 'same-origin',
-  });
-  if (res.ok) {
-    renderAvatar(target, false);
-    showMessage(message, 'Picture removed', 'success');
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Save profile
-// ---------------------------------------------------------------------------
-
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  showMessage(message, '');
-  setBusy(saveBtn, true, 'Saving…');
-
-  const payload = {};
-  const fields = ['fullName', 'dateOfBirth', 'position', 'contactEmail', 'contactPhone', 'address', 'comments'];
-  for (const name of fields) {
-    const el = $(name);
-    if (el.readOnly) continue;
-    const v = el.value.trim();
-    if (name === 'dateOfBirth') payload.dateOfBirth = v === '' ? null : v;
-    else payload[name] = v;
-  }
-
-  const res = await fetch(`/api/employees/${employeeId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (res.ok) {
-    target.profile = data.profile;
-    titleEl.textContent = data.profile?.fullName || target.username;
-    showMessage(message, 'Saved', 'success');
-  } else {
-    showMessage(message, data.error || 'Save failed', 'error');
-  }
-  setBusy(saveBtn, false);
-});
-
-// ---------------------------------------------------------------------------
-// Delete
-// ---------------------------------------------------------------------------
-
-deleteBtn.addEventListener('click', async () => {
-  if (!confirm(`Delete ${target.username}? This cannot be undone.`)) return;
-  const res = await fetch(`/api/employees/${employeeId}`, {
-    method: 'DELETE',
-    credentials: 'same-origin',
-  });
-  const data = await res.json().catch(() => ({}));
-  if (res.ok) {
-    window.location.href = '/employees';
-  } else {
-    showMessage(message, data.error || 'Delete failed', 'error');
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Bootstrap
-// ---------------------------------------------------------------------------
-
-(async () => {
-  const [meRes, empRes] = await Promise.all([
-    fetch('/api/me', { credentials: 'same-origin' }),
-    fetch(`/api/employees/${employeeId}`, { credentials: 'same-origin' }),
-  ]);
-
-  if (meRes.status === 401) { window.location.href = '/login'; return; }
-  me = await meRes.json();
-
-  if (empRes.status === 403) {
-    showMessage(message, 'You don’t have access to this employee.', 'error');
-    form.hidden = true;
-    return;
-  }
-  if (empRes.status === 404) {
-    showMessage(message, 'Employee not found.', 'error');
-    form.hidden = true;
-    return;
-  }
-  target = await empRes.json();
-
-  const isSelf = me.id === target.id;
-  const isEmployer = me.role === 'employer';
-  backLink.href = isEmployer ? '/employees' : '/';
-  if (isSelf) backLink.textContent = '← Home';
-
-  populateForm(target);
-  renderAvatar(target, target.profile?.hasPicture ?? false);
-
-  applyPermissions(isEmployer, isSelf);
-})();
+load();

@@ -195,12 +195,21 @@ export function registerPageRoutes(router, { publicDir, usersStore, userPrefsSto
     await sendHtml(res, 'settings.html', req);
   });
 
-  // Matches /employees/:id where :id is not "new" (caught by the route above).
+  // /employees/:id/profile — full profile editor (was the old /employees/:id).
+  // Must be registered BEFORE /employees/:id so the more-specific path wins.
+  router.get('/employees/:id/profile', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'employee-profile.html', req);
+  });
+
+  // /employees/:id — employer's summary page for an employee. RBAC is
+  // enforced by the API: the page renders for everyone, but the underlying
+  // /api/employees/:id/summary endpoint is employer-only and the JS
+  // handles the 403 redirect to /.
   router.get('/employees/:id', async (req, res) => {
     const a = authed(req);
     if (a.redirect) return res.redirect(a.redirect);
-    // RBAC is enforced by the API; the page just renders. Non-owners who
-    // aren't employers will see empty data and 403s on the API calls.
     await sendHtml(res, 'employee.html', req);
   });
 }

@@ -122,6 +122,10 @@ registerAuthRoutes(router, {
 registerEmployeeRoutes(router, {
   usersStore,
   employeesStore,
+  punchesStore,
+  leavesStore,
+  correctionsStore,
+  orgSettingsStore,
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
   requireOwnerOrEmployer: rbac.requireOwnerOrEmployer,
