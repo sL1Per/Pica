@@ -678,6 +678,10 @@ export default {
   // Backend errors (errorCode → message). Backend returns code in
   // the `errorCode` field of the response; frontend looks up here.
   // ============================================================
+  'errors.internal_error': 'Something went wrong on our end. Please try again.',
+  'errors.profile_create_failed': 'Could not create the employee profile.',
+  'errors.rate_limited': 'Too many attempts. Please wait a moment and try again.',
+  'errors.setup_already_done': 'Setup has already been completed.',
   'errors.invalid_credentials':    'Invalid username or password.',
   'errors.unauthorized':           'You are not authorized to do that.',
   'errors.forbidden':              'You don\'t have permission to do that.',

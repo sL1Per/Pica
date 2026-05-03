@@ -38,24 +38,41 @@ export function noContent(res) {
   res.end();
 }
 
-export function notFound(res, message = 'Not Found') {
-  json(res, { error: message }, 404);
+/**
+ * Build an error body that always includes `error` (English fallback message)
+ * and optionally `errorCode` (machine-readable code for the i18n layer to
+ * translate). Helpers below accept an `opts` object: `{ errorCode: '...' }`.
+ *
+ * The frontend's `translateError(code, fallback)` looks up `errors.<code>`
+ * in the dictionary and falls back to the `error` field when the code is
+ * absent or unknown. So `errorCode` is purely additive.
+ */
+function errorBody(message, opts) {
+  const body = { error: message };
+  if (opts && typeof opts.errorCode === 'string') {
+    body.errorCode = opts.errorCode;
+  }
+  return body;
 }
 
-export function forbidden(res, message = 'Forbidden') {
-  json(res, { error: message }, 403);
+export function notFound(res, message = 'Not Found', opts) {
+  json(res, errorBody(message, opts), 404);
 }
 
-export function unauthorized(res, message = 'Unauthorized') {
-  json(res, { error: message }, 401);
+export function forbidden(res, message = 'Forbidden', opts) {
+  json(res, errorBody(message, opts), 403);
 }
 
-export function badRequest(res, message = 'Bad Request') {
-  json(res, { error: message }, 400);
+export function unauthorized(res, message = 'Unauthorized', opts) {
+  json(res, errorBody(message, opts), 401);
 }
 
-export function serverError(res, message = 'Internal Server Error') {
-  json(res, { error: message }, 500);
+export function badRequest(res, message = 'Bad Request', opts) {
+  json(res, errorBody(message, opts), 400);
+}
+
+export function serverError(res, message = 'Internal Server Error', opts) {
+  json(res, errorBody(message, opts), 500);
 }
 
 /**
@@ -68,10 +85,10 @@ export function enhance(res) {
   res.text         = (body, status)       => text(res, body, status);
   res.redirect     = (loc, status)        => redirect(res, loc, status);
   res.noContent    = ()                   => noContent(res);
-  res.notFound     = (m)                  => notFound(res, m);
-  res.forbidden    = (m)                  => forbidden(res, m);
-  res.unauthorized = (m)                  => unauthorized(res, m);
-  res.badRequest   = (m)                  => badRequest(res, m);
-  res.serverError  = (m)                  => serverError(res, m);
+  res.notFound     = (m, opts)            => notFound(res, m, opts);
+  res.forbidden    = (m, opts)            => forbidden(res, m, opts);
+  res.unauthorized = (m, opts)            => unauthorized(res, m, opts);
+  res.badRequest   = (m, opts)            => badRequest(res, m, opts);
+  res.serverError  = (m, opts)            => serverError(res, m, opts);
   return res;
 }

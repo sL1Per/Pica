@@ -38,7 +38,7 @@ export function registerSettingsRoutes(router, {
       const prefs = userPrefsStore.update(req.user.id, patch);
       res.json({ ok: true, prefs });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
@@ -63,7 +63,7 @@ export function registerSettingsRoutes(router, {
       const settings = orgSettingsStore.update(req.body ?? {});
       res.json({ ok: true, settings });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
@@ -87,12 +87,12 @@ export function registerSettingsRoutes(router, {
    * user can fetch this — employees need it to render their nav bar.
    */
   router.get('/api/branding/logo', requireAuth((req, res) => {
-    if (!companyLogoStore.exists()) return res.notFound('No logo uploaded');
+    if (!companyLogoStore.exists()) return res.notFound('No logo uploaded', { errorCode: 'not_found' });
     let bytes;
     try {
       bytes = companyLogoStore.read();
     } catch (err) {
-      return res.serverError('Failed to read logo');
+      return res.serverError('Failed to read logo', { errorCode: 'internal_error' });
     }
     res.writeHead(200, {
       'Content-Type': 'image/png',
@@ -109,11 +109,11 @@ export function registerSettingsRoutes(router, {
   router.put('/api/branding/logo', requireRole('employer')((req, res) => {
     const files = req.body?.files;
     if (!Array.isArray(files) || files.length === 0) {
-      return res.badRequest('No logo uploaded');
+      return res.badRequest('No logo uploaded', { errorCode: 'required' });
     }
     const file = files[0];
     if (file.data.length > MAX_LOGO_BYTES) {
-      return res.badRequest(`Logo exceeds ${MAX_LOGO_BYTES} bytes`);
+      return res.badRequest(`Logo exceeds ${MAX_LOGO_BYTES} bytes`, { errorCode: 'invalid_value' });
     }
     companyLogoStore.write(file.data);
     res.json({ ok: true });

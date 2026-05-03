@@ -40,12 +40,12 @@ export function registerAuthRoutes(router, { usersStore, employeesStore, session
   router.post('/api/login', async (req, res) => {
     const ip = clientIp(req);
     if (!loginLimiter.allow(ip)) {
-      return res.json({ error: 'Too many login attempts. Try again in a minute.' }, 429);
+      return res.json({ error: 'Too many login attempts. Try again in a minute.', errorCode: 'rate_limited' }, 429);
     }
 
     const { username, password } = req.body ?? {};
     if (typeof username !== 'string' || typeof password !== 'string') {
-      return res.badRequest('Username and password are required');
+      return res.badRequest('Username and password are required', { errorCode: 'required' });
     }
 
     const user = usersStore.findByUsername(username);
@@ -59,7 +59,7 @@ export function registerAuthRoutes(router, { usersStore, employeesStore, session
     }
 
     if (!ok) {
-      return res.json({ error: 'Invalid username or password' }, 401);
+      return res.json({ error: 'Invalid username or password', errorCode: 'invalid_credentials' }, 401);
     }
 
     // Successful login — reset the limiter for this IP.

@@ -83,16 +83,24 @@ export function createUsersStore(dataDir) {
      */
     async create({ username, password, role }) {
       if (!USERNAME_RE.test(username ?? '')) {
-        throw new Error('Invalid username — use 2–64 chars: letters, digits, and . _ - @');
+        const e = new Error('Invalid username — use 2–64 chars: letters, digits, and . _ - @');
+        e.code = 'invalid_value';
+        throw e;
       }
       if (typeof password !== 'string' || password.length < 8) {
-        throw new Error('Password must be at least 8 characters');
+        const e = new Error('Password must be at least 8 characters');
+        e.code = 'password_too_short';
+        throw e;
       }
       if (!VALID_ROLES.has(role)) {
-        throw new Error(`Invalid role: ${role}`);
+        const e = new Error(`Invalid role: ${role}`);
+        e.code = 'invalid_value';
+        throw e;
       }
       if (this.findByUsername(username)) {
-        throw new Error('Username already exists');
+        const e = new Error('Username already exists');
+        e.code = 'username_taken';
+        throw e;
       }
 
       const data = loadAll();

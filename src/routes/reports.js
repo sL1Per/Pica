@@ -2,6 +2,7 @@ import {
   hoursReport, leavesReport,
   hoursReportToCsv, leavesReportToCsv,
 } from '../storage/reports.js';
+import { computePeriod } from '../storage/period.js';
 
 /**
  * Reports endpoints. All require authentication. Access follows the
@@ -55,14 +56,14 @@ export function registerReportRoutes(router, {
   // --------------------------------------------------------------------------
   router.get('/api/reports/hours/:id.csv', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
     const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found');
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
     const { from, to, groupBy } = parseHoursQuery(req.query);
     try {
       const report = hoursReport(punchesStore, user.id, from, to, groupBy);
       const fname = `pica-hours-${user.username}-${from}-to-${to}-${groupBy}.csv`;
       sendCsv(res, fname, hoursReportToCsv(report));
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
@@ -71,13 +72,13 @@ export function registerReportRoutes(router, {
   // --------------------------------------------------------------------------
   router.get('/api/reports/hours/:id', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
     const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found');
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
     const { from, to, groupBy } = parseHoursQuery(req.query);
     try {
       const report = hoursReport(punchesStore, user.id, from, to, groupBy);
       res.json({ ...report, username: user.username });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
@@ -86,14 +87,14 @@ export function registerReportRoutes(router, {
   // --------------------------------------------------------------------------
   router.get('/api/reports/leaves/:id.csv', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
     const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found');
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
     const { year, month } = parseMonthQuery(req.query);
     try {
       const report = leavesReport(leavesStore, user.id, year, month);
       const fname = `pica-leaves-${user.username}-${year}-${String(month).padStart(2,'0')}.csv`;
       sendCsv(res, fname, leavesReportToCsv(report));
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
@@ -102,13 +103,13 @@ export function registerReportRoutes(router, {
   // --------------------------------------------------------------------------
   router.get('/api/reports/leaves/:id', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
     const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found');
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
     const { year, month } = parseMonthQuery(req.query);
     try {
       const report = leavesReport(leavesStore, user.id, year, month);
       res.json({ ...report, username: user.username });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
@@ -266,73 +267,6 @@ export function registerReportRoutes(router, {
   void requireAuth;
 }
 
-// ---- Period helpers (private to this module) -----------------------------
-
-function pad2(n) { return String(n).padStart(2, '0'); }
-
-function ymdOf(d) {
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
+// ---- Local helpers -------------------------------------------------------
 
 function round1(h) { return Math.round(h * 10) / 10; }
-
-/**
- * For a period name and a "now" Date, return the boundaries plus a
- * human-readable label. The week is ISO (Monday → Sunday). The
- * `weekdays` field is the number of Mon-Fri days in the window — used
- * for monthly scheduled-hours computation.
- */
-function computePeriod(period, now) {
-  if (period === 'today') {
-    const ymd = ymdOf(now);
-    return {
-      from: ymd, to: ymd,
-      label: ymd,
-      weekdays: isWeekday(now) ? 1 : 0,
-    };
-  }
-
-  if (period === 'week') {
-    // ISO week: Monday is the first day. JS getDay() has Sunday=0,
-    // so we shift: 1=Mon → offset 0, 2=Tue → 1, ..., 0=Sun → 6.
-    const dayIdx = (now.getDay() + 6) % 7;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - dayIdx);
-    monday.setHours(0, 0, 0, 0);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    let weekdays = 0;
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      if (isWeekday(d)) weekdays++;
-    }
-    return {
-      from: ymdOf(monday),
-      to:   ymdOf(sunday),
-      label: `${ymdOf(monday)} → ${ymdOf(sunday)}`,
-      weekdays, // typically 5
-    };
-  }
-
-  // month
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-  const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  let weekdays = 0;
-  for (let day = 1; day <= last.getDate(); day++) {
-    const d = new Date(now.getFullYear(), now.getMonth(), day);
-    if (isWeekday(d)) weekdays++;
-  }
-  return {
-    from: ymdOf(first),
-    to:   ymdOf(last),
-    label: `${first.getFullYear()}-${pad2(first.getMonth() + 1)}`,
-    weekdays,
-  };
-}
-
-/** True for Mon-Fri, false for Saturday/Sunday. */
-function isWeekday(d) {
-  const day = d.getDay();
-  return day !== 0 && day !== 6;
-}

@@ -1,5 +1,6 @@
 import { EMPLOYEE_EDITABLE, ALL_EDITABLE } from '../storage/employees.js';
 import { hoursReport } from '../storage/reports.js';
+import { computePeriod, ymdOf } from '../storage/period.js';
 
 /**
  * Employee management endpoints.
@@ -64,14 +65,14 @@ export function registerEmployeeRoutes(router, {
     const { username, password, role = 'employee', ...profileFields } = req.body ?? {};
 
     if (role !== 'employee' && role !== 'employer') {
-      return res.badRequest('role must be "employee" or "employer"');
+      return res.badRequest('role must be "employee" or "employer"', { errorCode: 'invalid_value' });
     }
 
     let user;
     try {
       user = await usersStore.create({ username, password, role });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
 
     try {
@@ -79,7 +80,7 @@ export function registerEmployeeRoutes(router, {
     } catch (err) {
       // Rollback the user so we don't leave an orphan account.
       usersStore.deleteById(user.id);
-      return res.json({ error: `Failed to create profile: ${err.message}` }, 500);
+      return res.json({ error: `Failed to create profile: ${err.message}`, errorCode: 'profile_create_failed' }, 500);
     }
 
     const profile = employeesStore.readProfile(user.id);
@@ -91,7 +92,7 @@ export function registerEmployeeRoutes(router, {
   // --------------------------------------------------------------------------
   router.get('/api/employees/:id', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
     const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found');
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
     const profile = employeesStore.readProfile(user.id);
     const hasPicture = employeesStore.hasPicture(user.id);
     // Surface hasPicture as part of the profile so the UI can render the
@@ -140,18 +141,9 @@ export function registerEmployeeRoutes(router, {
 
     // ISO week boundaries (Monday → Sunday) containing today.
     const now = new Date();
-    const dayIdx = (now.getDay() + 6) % 7;          // 0=Mon..6=Sun
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - dayIdx);
-    monday.setHours(0, 0, 0, 0);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-
-    function ymd(d) {
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-    const weekFrom = ymd(monday);
-    const weekTo   = ymd(sunday);
+    const week = computePeriod('week', now);
+    const weekFrom = week.from;
+    const weekTo   = week.to;
 
     // Worked hours this week. Defensive try/catch so a bad punches file
     // doesn't 500 the whole summary.
@@ -178,10 +170,10 @@ export function registerEmployeeRoutes(router, {
 
     // Upcoming leaves: approved, this user only, whose [start, end] window
     // intersects [today, today+30d]. Includes leaves currently in progress.
-    const todayYmd = ymd(now);
+    const todayYmd = ymdOf(now);
     const horizon = new Date(now);
     horizon.setDate(now.getDate() + 30);
-    const horizonYmd = ymd(horizon);
+    const horizonYmd = ymdOf(horizon);
 
     const allLeaves = leavesStore.list({ employeeId: user.id });
     const upcomingLeaves = allLeaves
@@ -248,7 +240,7 @@ export function registerEmployeeRoutes(router, {
   // --------------------------------------------------------------------------
   router.put('/api/employees/:id', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
     const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found');
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
 
     const allowed = req.user.role === 'employer' ? ALL_EDITABLE : EMPLOYEE_EDITABLE;
     const profile = employeesStore.update(user.id, req.body ?? {}, allowed);
@@ -263,10 +255,10 @@ export function registerEmployeeRoutes(router, {
   // --------------------------------------------------------------------------
   router.delete('/api/employees/:id', requireRole('employer')(async (req, res) => {
     if (req.params.id === req.user.id) {
-      return res.badRequest('You cannot delete your own account');
+      return res.badRequest('You cannot delete your own account', { errorCode: 'cannot_delete_self' });
     }
     const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found');
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
 
     employeesStore.remove(user.id);
     usersStore.deleteById(user.id);
@@ -279,7 +271,7 @@ export function registerEmployeeRoutes(router, {
   // --------------------------------------------------------------------------
   router.get('/api/employees/:id/picture', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
     if (!employeesStore.hasPicture(req.params.id)) {
-      return res.notFound('No picture');
+      return res.notFound('No picture', { errorCode: 'not_found' });
     }
     const bytes = employeesStore.readPicture(req.params.id);
     res.writeHead(200, {
@@ -300,11 +292,11 @@ export function registerEmployeeRoutes(router, {
   router.put('/api/employees/:id/picture', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
     const files = req.body?.files;
     if (!Array.isArray(files) || files.length === 0) {
-      return res.badRequest('No picture uploaded');
+      return res.badRequest('No picture uploaded', { errorCode: 'required' });
     }
     const file = files[0];
     if (file.data.length > MAX_PICTURE_BYTES) {
-      return res.badRequest(`Picture exceeds ${MAX_PICTURE_BYTES} bytes`);
+      return res.badRequest(`Picture exceeds ${MAX_PICTURE_BYTES} bytes`, { errorCode: 'invalid_value' });
     }
     if (!employeesStore.exists(req.params.id)) {
       // Create an empty profile first, so the picture has something to attach to.

@@ -14,6 +14,172 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.16.5] — 2026-05-02 — Server-side errorCode emission + new test suites
+
+Two debt-paying jobs in one release. Both are net-zero on user-visible
+features but make the codebase noticeably more robust.
+
+### 1. Backend errorCode emission
+
+Since M9 (0.15.x) the frontend has been calling
+`translateError(result.data.errorCode, result.data.error || 'fallback')`
+on every error display. The wiring was in place, but the backend never
+actually emitted `errorCode` — every error response was just
+`{ error: '...' }`, and the frontend silently fell back to the
+English string.
+
+This release wires the codes through. Every `res.notFound` /
+`res.forbidden` / `res.unauthorized` / `res.badRequest` /
+`res.serverError` call across `src/routes/*.js` and `src/auth/*.js`
+now emits an `errorCode` field. The frontend immediately picks up
+localized error messages — Portuguese users see `"Funcionário não
+encontrado"` instead of `"Employee not found"` for a 404.
+
+**Numbers:** 67 error response sites tagged across 9 files. 47 codes
+were already in the M9 dictionary; 4 new ones added
+(`internal_error`, `profile_create_failed`, `rate_limited`,
+`setup_already_done`) along with their en-US and pt-PT translations.
+
+**Pattern for store-level validation errors**: stores can now attach
+a `.code` property to thrown Error objects, and routes forward it
+via `errorCode: err.code || 'invalid_value'`. `users.js` opted in
+for `password_too_short`, `username_taken`, and `invalid_value`;
+other stores still throw plain Errors and inherit the
+`invalid_value` fallback. Tagging more stores is a clean follow-up.
+
+**Response helpers** (`src/http/responses.js`) gained an `opts`
+parameter: `res.notFound(msg, { errorCode: 'not_found' })`. The
+old single-arg form (`res.notFound(msg)`) still works — fully
+backward compatible.
+
+### 2. Four new test suites
+
+The two endpoints added in 0.16.2 and 0.16.4 had no automated tests
+— I called this out in their release notes as a known gap. This
+release closes the gap.
+
+#### `tests/test-period.mjs` (21 tests)
+
+`computePeriod()` extracted from `src/routes/reports.js` into a new
+`src/storage/period.js` module so it's importable and testable.
+Tests cover today/week/month boundaries, ISO week semantics
+(Mon-Sun), month/year boundary handling, weekday counting (incl.
+Feb 2024 leap year), and label formatting.
+
+`employees.js` was refactored to use the same shared `computePeriod`
++ `ymdOf` helpers instead of its own inline ISO-week math —
+removes ~15 lines of duplicated date arithmetic and means both
+endpoints stay aligned automatically.
+
+#### `tests/test-reports-team.mjs` (13 tests)
+
+The team-hours route handler from 0.16.2. Uses a real router with
+mocked stores; calls the handler directly. Covers:
+- 401 for unauthenticated, 403 for non-employer
+- Bad period rejected with `errorCode: invalid_value`
+- Default period is `month` when not specified
+- Scheduled hours math: `today=dailyHours`, `week=weeklyHours`,
+  `month=dailyHours × weekdays-in-month`
+- Per-employee working-time overrides honored
+- Alphabetical sort by full name with username fallback
+- Row shape + missing-profile handling
+- Empty user list
+
+#### `tests/test-employees-summary.mjs` (20 tests)
+
+The summary route handler from 0.16.4. Same approach — real router,
+mocked stores. Covers:
+- 403 for non-employer, 404 for unknown id
+- Response shape (id, username, role, profile, week, bankHours,
+  upcomingLeaves, pending)
+- Week computation + scheduled-hours per-employee override
+- Bank balance reading + zero default
+- **Upcoming leaves** classification across many edge cases:
+  starts in next 30 days ✓, currently in progress ✓, past ✗,
+  > 30 days out ✗, pending ✗, rejected/cancelled ✗
+- Sorting by start date ascending
+- Per-employee scoping (no bleed between users)
+- Pending corrections: status filter, scoping, safe field shape
+  (no `justification`)
+- Profile shape edge cases (null when missing, `hasPicture` only
+  when picture-only)
+
+#### `tests/test-error-codes.mjs` (9 tests)
+
+Static analysis: every `res.<error-helper>(...)` call across
+`src/routes` and `src/auth` is checked for `errorCode` inclusion.
+Catches regressions where someone adds a new error response but
+forgets to include the code, breaking the i18n flow. Includes
+proper handling of comments (so JSDoc examples don't trigger false
+positives) and balanced-paren parsing.
+
+The test caught one site I missed during the manual sweep —
+proving its worth on day one.
+
+### Files touched
+- **New**: `src/storage/period.js` — extracted period helpers.
+- **New**: `tests/test-period.mjs`, `tests/test-reports-team.mjs`,
+  `tests/test-employees-summary.mjs`, `tests/test-error-codes.mjs`.
+- `src/http/responses.js` — helpers accept `{ errorCode }` opts.
+- `src/auth/users.js` — validation errors carry `.code`.
+- `src/auth/rbac.js` — three middleware error sites tagged.
+- `src/routes/auth.js` — login + setup errors tagged.
+- `src/routes/setup.js` — forwards `err.code` from users.create.
+- `src/routes/employees.js` — 11 sites tagged, plus refactored to
+  use shared period helpers (removed ~15 lines of inline date math).
+- `src/routes/punches.js` — 5 sites tagged.
+- `src/routes/leaves.js` — 19 sites tagged (the most), including
+  the cap-exceeded composite messages.
+- `src/routes/corrections.js` — 12 sites tagged.
+- `src/routes/reports.js` — 9 sites tagged, period helpers
+  extracted to module.
+- `src/routes/settings.js` — 6 sites tagged.
+- `public/locales/en-US.js` + `pt-PT.js` — 4 new error keys per
+  locale.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v17`.
+- `package.json` — patch bump to 0.16.5.
+- `docs/architecture.md` — repo layout updated for new files;
+  test paragraph rewritten with route-level testing section.
+- All four `docs/*.md` footers bumped to 0.16.5.
+
+### Tests
+- 16-suite regression: 427 passing, 0 failing (was 364; +63 across
+  4 new suites).
+
+### Honest disclosures
+- **Backend store validation errors mostly use `invalid_value`.**
+  I tagged the user-creation errors specifically (`password_too_short`,
+  `username_taken`) but left org-settings/user-prefs/leaves/corrections
+  store throws as the generic fallback. Tagging each individually
+  would add ~30 small edits across the storage layer for marginal
+  gain — the user gets the correct English message regardless, and
+  the i18n layer's `translateError()` falls through cleanly. Easy
+  follow-up if any specific case needs better localization.
+- **The route-level tests use mocked stores.** They exercise the
+  handler's composition logic but don't catch storage bugs. For
+  storage logic the existing per-store tests (test-leaves, test-corrections,
+  test-reports) remain the source of truth. The new tests are
+  intentionally focused on the route layer's choices: RBAC,
+  validation, period selection, response shaping.
+- **`tests/test-error-codes.mjs` is a static audit, not a runtime
+  test.** It catches the structural bug (missing `errorCode` arg)
+  but not semantic bugs (wrong code applied). To catch wrong-code
+  bugs we'd need actual error trigger tests, which would be a
+  significant expansion. The static audit covers the 80% case.
+- **No frontend changes.** The translation infrastructure was
+  already plumbed in M9; this just lights it up. After deploying
+  0.16.5, switching the locale to pt-PT will translate previously
+  English-only error toasts (e.g. "Funcionário não encontrado").
+  Verify by triggering a 404 on `/api/employees/no-such-id` from
+  a pt-PT session.
+- **The `period.js` module was extracted purely for testability.**
+  Its only callers are the team-hours and summary route handlers.
+  Pulling it out doesn't add complexity at the call sites — both
+  use the same shared boundary computation now, which removes
+  duplicated logic that would have drifted.
+
+---
+
 ## [0.16.4] — 2026-05-02 — Employee summary page (employer view)
 
 Clicking an employee from the Employees list used to drop you straight

@@ -86,9 +86,9 @@ export function registerCorrectionRoutes(router, {
 
   router.get('/api/corrections/:id', requireAuth((req, res) => {
     const c = correctionsStore.findById(req.params.id);
-    if (!c) return res.notFound('Correction not found');
+    if (!c) return res.notFound('Correction not found', { errorCode: 'not_found' });
     if (req.user.role !== 'employer' && c.employeeId !== req.user.id) {
-      return res.forbidden('Not yours');
+      return res.forbidden('Not yours', { errorCode: 'forbidden' });
     }
     res.json({ correction: enrich(c, usersByIdMap(), fullNameMap()) });
   }));
@@ -105,7 +105,7 @@ export function registerCorrectionRoutes(router, {
       });
       res.json({ ok: true, correction: enrich(correction, usersByIdMap(), fullNameMap()) });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
@@ -115,9 +115,9 @@ export function registerCorrectionRoutes(router, {
 
   router.post('/api/corrections/:id/approve', requireRole('employer')((req, res) => {
     const existing = correctionsStore.findById(req.params.id);
-    if (!existing) return res.notFound('Correction not found');
+    if (!existing) return res.notFound('Correction not found', { errorCode: 'not_found' });
     if (existing.status !== 'pending') {
-      return res.badRequest(`Cannot approve a correction in status '${existing.status}'`);
+      return res.badRequest(`Cannot approve a correction in status '${existing.status}'`, { errorCode: 'invalid_value' });
     }
 
     // Materialize the punches BEFORE recording the approval, so a
@@ -170,7 +170,7 @@ export function registerCorrectionRoutes(router, {
       const correction = correctionsStore.approve(req.params.id, req.user.id);
       res.json({ ok: true, correction: enrich(correction, usersByIdMap(), fullNameMap()) });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
@@ -180,30 +180,30 @@ export function registerCorrectionRoutes(router, {
 
   router.post('/api/corrections/:id/reject', requireRole('employer')((req, res) => {
     const existing = correctionsStore.findById(req.params.id);
-    if (!existing) return res.notFound('Correction not found');
+    if (!existing) return res.notFound('Correction not found', { errorCode: 'not_found' });
     try {
       const correction = correctionsStore.reject(req.params.id, req.user.id, req.body?.notes);
       res.json({ ok: true, correction: enrich(correction, usersByIdMap(), fullNameMap()) });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
   router.post('/api/corrections/:id/cancel', requireAuth((req, res) => {
     const existing = correctionsStore.findById(req.params.id);
-    if (!existing) return res.notFound('Correction not found');
+    if (!existing) return res.notFound('Correction not found', { errorCode: 'not_found' });
     // Owner may cancel only while pending. Employer may cancel any state.
     if (req.user.role !== 'employer') {
-      if (existing.employeeId !== req.user.id) return res.forbidden('Not yours');
+      if (existing.employeeId !== req.user.id) return res.forbidden('Not yours', { errorCode: 'forbidden' });
       if (existing.status !== 'pending') {
-        return res.badRequest('Only pending corrections can be cancelled by the owner');
+        return res.badRequest('Only pending corrections can be cancelled by the owner', { errorCode: 'forbidden' });
       }
     }
     try {
       const correction = correctionsStore.cancel(req.params.id, req.user.id);
       res.json({ ok: true, correction: enrich(correction, usersByIdMap(), fullNameMap()) });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 }

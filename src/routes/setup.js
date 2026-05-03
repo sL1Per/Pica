@@ -12,7 +12,7 @@ import { serializeCookie } from '../http/cookies.js';
 export function registerSetupRoutes(router, { usersStore, sessionKey, cookieName = 'pica_session', isProduction = false }) {
   router.post('/api/setup', async (req, res) => {
     if (usersStore.hasAny()) {
-      return res.forbidden('Setup has already been completed');
+      return res.forbidden('Setup has already been completed', { errorCode: 'setup_already_done' });
     }
 
     const { username, password } = req.body ?? {};
@@ -20,7 +20,7 @@ export function registerSetupRoutes(router, { usersStore, sessionKey, cookieName
     try {
       user = await usersStore.create({ username, password, role: 'employer' });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
 
     const cookie = signSession({ uid: user.id, role: user.role }, sessionKey);

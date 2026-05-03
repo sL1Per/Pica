@@ -28,7 +28,7 @@ export function createRBAC({ sessionKey, usersStore, cookieName = 'pica_session'
   function requireAuth(handler) {
     return async (req, res) => {
       const auth = authenticate(req);
-      if (!auth) return res.unauthorized('Sign in required');
+      if (!auth) return res.unauthorized('Sign in required', { errorCode: 'unauthorized' });
       req.session = auth.session;
       req.user = auth.user;
       return handler(req, res);
@@ -37,7 +37,7 @@ export function createRBAC({ sessionKey, usersStore, cookieName = 'pica_session'
 
   function requireRole(role) {
     return (handler) => requireAuth(async (req, res) => {
-      if (req.user.role !== role) return res.forbidden(`Requires role: ${role}`);
+      if (req.user.role !== role) return res.forbidden(`Requires role: ${role}`, { errorCode: 'forbidden' });
       return handler(req, res);
     });
   }
@@ -53,7 +53,7 @@ export function createRBAC({ sessionKey, usersStore, cookieName = 'pica_session'
       if (req.user.role === 'employer' || req.user.id === ownerId) {
         return handler(req, res);
       }
-      return res.forbidden('Not your resource');
+      return res.forbidden('Not your resource', { errorCode: 'forbidden' });
     });
   }
 

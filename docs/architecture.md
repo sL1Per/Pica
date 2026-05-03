@@ -91,6 +91,7 @@ pica/
 │   │   ├── leaves.js        # NDJSON, encrypted reason
 │   │   ├── corrections.js   # NDJSON, encrypted justification
 │   │   ├── reports.js       # aggregations over plaintext fields
+│   │   ├── period.js        # period boundary helpers (today/week/month)
 │   │   ├── user-prefs.js    # locale + colorMode (plaintext)
 │   │   ├── org-settings.js  # leave allowances, working time targets
 │   │   └── company-logo.js  # encrypted blob
@@ -147,7 +148,11 @@ pica/
 │   ├── test-company-logo.mjs
 │   ├── test-corrections.mjs
 │   ├── test-i18n.mjs
-│   └── test-frontend-imports.mjs  # static i18n-import audit
+│   ├── test-frontend-imports.mjs   # static i18n-import audit
+│   ├── test-period.mjs             # period boundary helpers
+│   ├── test-reports-team.mjs       # /api/reports/team-hours route
+│   ├── test-employees-summary.mjs  # /api/employees/:id/summary route
+│   └── test-error-codes.mjs        # static audit: every error response carries errorCode
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -280,7 +285,17 @@ corrupts an existing record) and gives us an audit log for free.
   `public/*.js` and verifies any used `i18n.js` symbol is also
   imported. Catches the most common refactor bug (missing import
   after a batch edit) without needing a browser.
-- Total: 12 suites, 361 passing as of 0.16.1.
+- The `error-codes` suite is a similar static check on the backend —
+  every `res.notFound`/`res.forbidden`/etc. call must include an
+  `errorCode` so the frontend's `translateError()` can localize.
+- Route-level tests (`reports-team`, `employees-summary`) register
+  their target route on a real router instance with mocked stores
+  and call the resulting handler directly. Lighter than spinning up
+  the full HTTP server, heavier than pure unit tests of the
+  underlying primitives — the right granularity for testing
+  composition logic (period boundaries × scheduled-hours math ×
+  per-employee overrides ×  RBAC enforcement).
+- Total: 16 suites, 427 passing as of 0.16.5.
 
 ---
 
@@ -341,4 +356,4 @@ because they only add half a punch pair.
 
 ---
 
-_Last touched in 0.16.4._
+_Last touched in 0.16.5._

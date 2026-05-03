@@ -98,7 +98,7 @@ export function registerLeaveRoutes(router, {
   router.get('/api/leaves/balances/:userId', requireAuth((req, res) => {
     const { userId } = req.params;
     if (req.user.role !== 'employer' && req.user.id !== userId) {
-      return res.forbidden('Not your balance');
+      return res.forbidden('Not your balance', { errorCode: 'forbidden' });
     }
     const year = Number(req.query.year) || new Date().getUTCFullYear();
     const settings = orgSettingsStore.get();
@@ -120,9 +120,9 @@ export function registerLeaveRoutes(router, {
   // --------------------------------------------------------------------------
   router.get('/api/leaves/:id', requireAuth((req, res) => {
     const leave = leavesStore.findById(req.params.id);
-    if (!leave) return res.notFound('Leave not found');
+    if (!leave) return res.notFound('Leave not found', { errorCode: 'not_found' });
     if (req.user.role !== 'employer' && leave.employeeId !== req.user.id) {
-      return res.forbidden('Not your leave');
+      return res.forbidden('Not your leave', { errorCode: 'forbidden' });
     }
     res.json({ leave: enrich(leave, usersByIdMap(), fullNameMap()) });
   }));
@@ -132,10 +132,10 @@ export function registerLeaveRoutes(router, {
     const { type, unit, start, end, hours, reason } = req.body ?? {};
 
     if (!LEAVE_TYPES_LIST.includes(type)) {
-      return res.badRequest(`type must be one of: ${LEAVE_TYPES_LIST.join(', ')}`);
+      return res.badRequest(`type must be one of: ${LEAVE_TYPES_LIST.join(', ')}`, { errorCode: 'invalid_value' });
     }
     if (!LEAVE_UNITS_LIST.includes(unit)) {
-      return res.badRequest(`unit must be one of: ${LEAVE_UNITS_LIST.join(', ')}`);
+      return res.badRequest(`unit must be one of: ${LEAVE_UNITS_LIST.join(', ')}`, { errorCode: 'invalid_value' });
     }
 
     // Cap enforcement: refuse to create if approving this request would push
@@ -156,11 +156,12 @@ export function registerLeaveRoutes(router, {
         return res.badRequest(
           `Cannot book leave: allowance for ${type} is ${check.allowance} days; ` +
           `you currently have ${check.currentBooked} booked, this request adds ${additional} ` +
-          `(would total ${check.wouldBe}).`
+          `(would total ${check.wouldBe}).`,
+          { errorCode: 'leave_cap_exceeded' }
         );
       }
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
 
     try {
@@ -170,7 +171,7 @@ export function registerLeaveRoutes(router, {
       });
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
@@ -183,7 +184,7 @@ export function registerLeaveRoutes(router, {
   // approval is allowed — employer always has the final call.
   router.get('/api/leaves/:id/overlaps', requireRole('employer')((req, res) => {
     const target = leavesStore.findById(req.params.id);
-    if (!target) return res.notFound('Leave not found');
+    if (!target) return res.notFound('Leave not found', { errorCode: 'not_found' });
 
     // Date-range overlap: [aStart, aEnd] overlaps [bStart, bEnd] iff
     // aStart ≤ bEnd AND bStart ≤ aEnd.
@@ -212,7 +213,7 @@ export function registerLeaveRoutes(router, {
   // --------------------------------------------------------------------------
   router.post('/api/leaves/:id/approve', requireRole('employer')(async (req, res) => {
     const existing = leavesStore.findById(req.params.id);
-    if (!existing) return res.notFound('Leave not found');
+    if (!existing) return res.notFound('Leave not found', { errorCode: 'not_found' });
 
     // Cap enforcement at approval time. The pending request might have been
     // created when the cap had room, then someone else's request got approved
@@ -237,53 +238,54 @@ export function registerLeaveRoutes(router, {
         return res.badRequest(
           `Cannot approve: allowance for ${existing.type} is ${check.allowance} days; ` +
           `employee currently has ${check.currentBooked} booked, this leave adds ${additional} ` +
-          `(would total ${check.wouldBe}).`
+          `(would total ${check.wouldBe}).`,
+          { errorCode: 'leave_cap_exceeded' }
         );
       }
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
 
     try {
       const leave = leavesStore.approve(req.params.id, req.user.id);
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
   // --------------------------------------------------------------------------
   router.post('/api/leaves/:id/reject', requireRole('employer')(async (req, res) => {
     const existing = leavesStore.findById(req.params.id);
-    if (!existing) return res.notFound('Leave not found');
+    if (!existing) return res.notFound('Leave not found', { errorCode: 'not_found' });
     const notes = req.body?.notes;
     try {
       const leave = leavesStore.reject(req.params.id, req.user.id, notes);
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 
   // --------------------------------------------------------------------------
   router.post('/api/leaves/:id/cancel', requireAuth((req, res) => {
     const existing = leavesStore.findById(req.params.id);
-    if (!existing) return res.notFound('Leave not found');
+    if (!existing) return res.notFound('Leave not found', { errorCode: 'not_found' });
 
     // Owner can cancel only while still pending.
     // Employer can cancel pending OR approved (not rejected/cancelled — transition() enforces).
     const isOwner = existing.employeeId === req.user.id;
     const isEmployer = req.user.role === 'employer';
-    if (!isOwner && !isEmployer) return res.forbidden('Not your leave');
+    if (!isOwner && !isEmployer) return res.forbidden('Not your leave', { errorCode: 'forbidden' });
     if (isOwner && !isEmployer && existing.status !== 'pending') {
-      return res.forbidden('You can only cancel leaves that are still pending');
+      return res.forbidden('You can only cancel leaves that are still pending', { errorCode: 'forbidden' });
     }
 
     try {
       const leave = leavesStore.cancel(req.params.id, req.user.id);
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
-      return res.badRequest(err.message);
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
   }));
 }

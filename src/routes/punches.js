@@ -101,7 +101,7 @@ export function registerPunchRoutes(router, {
     }
 
     if (punchesStore.hasOpenPunch(req.user.id)) {
-      return res.badRequest('You are already clocked in');
+      return res.badRequest('You are already clocked in', { errorCode: 'already_clocked_in' });
     }
     // Offline replays may carry a clientTs. Honor it if reasonable; otherwise
     // stamp server-side. The two-source model lets reports later distinguish
@@ -128,7 +128,7 @@ export function registerPunchRoutes(router, {
     }
 
     if (!punchesStore.hasOpenPunch(req.user.id)) {
-      return res.badRequest('You are not currently clocked in');
+      return res.badRequest('You are not currently clocked in', { errorCode: 'not_clocked_in' });
     }
     const ts = validClientTs(req.body?.clientTs) ?? new Date().toISOString();
     const record = punchesStore.append(req.user.id, {
@@ -169,7 +169,7 @@ export function registerPunchRoutes(router, {
     const { date, year, month } = req.query;
 
     if (date) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.badRequest('date must be YYYY-MM-DD');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.badRequest('date must be YYYY-MM-DD', { errorCode: 'invalid_date' });
       return res.json({
         date,
         punches: punchesStore.listDay(req.params.id, date),
@@ -178,8 +178,8 @@ export function registerPunchRoutes(router, {
 
     if (year || month) {
       const y = Number(year), m = Number(month);
-      if (!Number.isInteger(y) || y < 2000 || y > 2100) return res.badRequest('year must be a 4-digit year');
-      if (!Number.isInteger(m) || m < 1 || m > 12)      return res.badRequest('month must be 1–12');
+      if (!Number.isInteger(y) || y < 2000 || y > 2100) return res.badRequest('year must be a 4-digit year', { errorCode: 'invalid_value' });
+      if (!Number.isInteger(m) || m < 1 || m > 12)      return res.badRequest('month must be 1–12', { errorCode: 'invalid_value' });
       return res.json({
         year: y, month: m,
         punches: punchesStore.listMonth(req.params.id, y, m),

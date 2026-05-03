@@ -673,6 +673,10 @@ export default {
     'widgets.loading': 'A carregar…',
   // Backend errors
   // ============================================================
+  'errors.internal_error': 'Ocorreu um erro inesperado. Por favor tente novamente.',
+  'errors.profile_create_failed': 'Não foi possível criar o perfil do funcionário.',
+  'errors.rate_limited': 'Demasiadas tentativas. Aguarde um momento e tente novamente.',
+  'errors.setup_already_done': 'A configuração inicial já foi concluída.',
   'errors.invalid_credentials':    'Utilizador ou palavra-passe inválidos.',
   'errors.unauthorized':           'Não tem autorização para fazer isso.',
   'errors.forbidden':              'Não tem permissão para fazer isso.',
