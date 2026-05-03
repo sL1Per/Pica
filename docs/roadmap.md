@@ -24,7 +24,8 @@ app in a usable state.
 | M8        | UI polish (a/b/c/d drops)          | ✅ Done       |
 | M9        | i18n (Drop 1 + Drop 2)             | ✅ Done       |
 | M10       | Dashboard widgets                  | ✅ Done       |
-| M11       | Backups                            | ⏳ Next       |
+| M11       | Backups — Drop 1 (create/list/download) | ✅ 0.17.0     |
+| M11.2     | Backups — Drop 2 (restore/scheduler)    | ✅ 0.18.0     |
 | M12       | Hardening                          | 📋 Planned    |
 
 The roadmap was renumbered after M9 closed: M10 was originally
@@ -166,25 +167,36 @@ Split into four drops:
 The Settings page already has a Backups section UI (scaffolded in
 M7). M11 wires it up.
 
-- [ ] **Encrypted full backup of `/data`** — single-archive snapshot,
-      AES-256-GCM with the master key, header includes KDF salt for
-      cross-machine restore
-- [ ] **Encrypted delta backup** (files changed since last snapshot —
-      manifest with mtime + content hash)
-- [ ] **Restore from encrypted archive**, with a pre-restore safety
-      snapshot of current `/data`
-- [ ] **Scheduler** with cron-like intervals (off / hourly / daily /
-      weekly), honors the org settings configured in M7
-- [ ] **Wire up** the M7 Backup section buttons (run full, run delta,
-      browse snapshots, restore-from-archive)
+**Drop 1 (✅ shipped in 0.17.0):**
+- ✅ **Encrypted full backup of `/data`** — single-archive snapshot,
+      AES-256-GCM with a per-backup HKDF-derived key, magic header
+      `PICA_BACKUP_V1`, includes config.json so backups are
+      self-contained
+- ✅ **List + create + download** endpoints, employer-only
+- ✅ Backup section UI rebuilt: manual create button, list table,
+      per-row download links
 
-Open design questions for M11:
-- Where do backups live by default? (`./backups` next to `./data` is
-  the obvious choice but means a single-disk failure loses both.)
-- Are deltas chained (delta-N depends on delta-N-1) or full-relative
-  (delta-N depends on the most recent full)? Full-relative is
-  simpler to restore but uses more space.
-- Restore semantics: full replace `/data`? Or merge?
+**Drop 2 (✅ shipped in 0.18.0):**
+- ✅ **Restore from encrypted archive** — with a pre-restore safety
+      snapshot of current `/data`. Server enters a lockdown mode after
+      restore and refuses other API calls until the process is restarted.
+- ✅ **Scheduler** — wakes every 5 minutes, makes backups when due
+      based on the off/hourly/daily/weekly schedule from M7's settings.
+- ✅ **Retention** — auto-prunes backups beyond the configured keep-N
+      count after each scheduled backup creation.
+- ✅ **Delete-backup** endpoint + UI button per row.
+
+Deferred (not currently planned):
+- ~~Encrypted delta backup~~ — the typical Pica data size doesn't
+  justify the complexity. Full-snapshot backups stay small (KBs to
+  low-MBs) for the foreseeable future.
+
+Design notes carried over from M7:
+- Backups live in `./backups/` next to `./data/`. Single-disk
+  failure loses both — users wanting offsite redundancy should
+  copy `*.bak` files elsewhere via the Download button.
+- Restore semantics: full replace, not merge. Server restart
+  required after restore so all stores re-read from disk.
 
 ### Milestone 12 — Hardening
 A grab-bag of security and operational improvements that don't fit
@@ -234,4 +246,4 @@ under a single feature heading.
 
 ---
 
-_Last touched in 0.16.5._
+_Last touched in 0.18.0._

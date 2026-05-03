@@ -78,6 +78,7 @@ pica/
 │   │   ├── aes.js           # AES-256-GCM wrappers
 │   │   ├── passwords.js     # scrypt hash + verify
 │   │   ├── masterkey.js     # KDF + verifier persisted in config.json
+│   │   ├── backup-archive.js # pack/unpack encrypted backup blobs
 │   │   ├── prompt.js        # TTY passphrase prompt
 │   │   └── index.js         # facade re-exporting the rest
 │   ├── auth/                # auth + RBAC
@@ -94,7 +95,8 @@ pica/
 │   │   ├── period.js        # period boundary helpers (today/week/month)
 │   │   ├── user-prefs.js    # locale + colorMode (plaintext)
 │   │   ├── org-settings.js  # leave allowances, working time targets
-│   │   └── company-logo.js  # encrypted blob
+│   │   ├── company-logo.js  # encrypted blob
+│   │   └── backups.js       # full-snapshot encrypted backups
 │   └── routes/              # one module per resource — register*Routes(router, deps)
 │       ├── auth.js          # /api/login, /api/logout, /api/me
 │       ├── setup.js         # /api/setup (first-run)
@@ -104,7 +106,10 @@ pica/
 │       ├── corrections.js   # /api/corrections[/:id], /api/corrections/bank
 │       ├── reports.js       # /api/reports/*
 │       ├── settings.js      # /api/settings/* (org, working-time, branding)
+│       ├── backups.js       # /api/backups (list, create, download, delete, restore, status)
 │       └── pages.js         # GET / GET /punch / etc. — serves HTML with i18n meta injection
+│   ├── scheduler/           # background timers
+│   │   └── backup-scheduler.js # periodic check; makes a backup if due
 ├── public/                  # everything served as static assets
 │   ├── app.css              # global tokens + layout primitives
 │   ├── app.js               # shared utilities (postJson, showMessage, toast…)
@@ -152,7 +157,9 @@ pica/
 │   ├── test-period.mjs             # period boundary helpers
 │   ├── test-reports-team.mjs       # /api/reports/team-hours route
 │   ├── test-employees-summary.mjs  # /api/employees/:id/summary route
-│   └── test-error-codes.mjs        # static audit: every error response carries errorCode
+│   ├── test-error-codes.mjs        # static audit: every error response carries errorCode
+│   ├── test-backups.mjs            # backup archive format + storage
+│   └── test-backup-scheduler.mjs   # scheduler decisions + lifecycle
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -295,7 +302,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 16 suites, 427 passing as of 0.16.5.
+- Total: 18 suites, 484 passing as of 0.18.0.
 
 ---
 
@@ -356,4 +363,4 @@ because they only add half a punch pair.
 
 ---
 
-_Last touched in 0.16.5._
+_Last touched in 0.18.0._

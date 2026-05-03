@@ -34,6 +34,8 @@ import { registerCorrectionRoutes } from './src/routes/corrections.js';
 import { registerReportRoutes } from './src/routes/reports.js';
 import { approxDaysOff } from './src/storage/reports.js';
 import { registerSettingsRoutes } from './src/routes/settings.js';
+import { registerBackupRoutes } from './src/routes/backups.js';
+import { startBackupScheduler } from './src/scheduler/backup-scheduler.js';
 import { createEmployeesStore } from './src/storage/employees.js';
 import { createPunchesStore } from './src/storage/punches.js';
 import { createLeavesStore, LEAVE_TYPES_LIST } from './src/storage/leaves.js';
@@ -41,6 +43,7 @@ import { createCorrectionsStore } from './src/storage/corrections.js';
 import { createUserPrefsStore } from './src/storage/user-prefs.js';
 import { createOrgSettingsStore } from './src/storage/org-settings.js';
 import { createCompanyLogoStore } from './src/storage/company-logo.js';
+import { createBackupsStore } from './src/storage/backups.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -90,6 +93,19 @@ const correctionsStore = createCorrectionsStore(config.dataDir, masterKey);
 const userPrefsStore = createUserPrefsStore(config.dataDir);
 const orgSettingsStore = createOrgSettingsStore(config.dataDir);
 const companyLogoStore = createCompanyLogoStore(config.dataDir, masterKey);
+const backupsStore = createBackupsStore({
+  dataDir: config.dataDir,
+  backupsDir: config.backupDir,
+  configPath,
+  masterKey,
+});
+
+// Process-wide flags. After a restore, `restoreCompleted` flips true
+// and the request handler short-circuits all routes (except a small
+// allowlist) with 503. Cleared only by restarting the process — which
+// is the point: the in-memory stores need to be reconstructed.
+const serverState = { restoreCompleted: false };
+
 const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
 const rbac = createRBAC({ sessionKey, usersStore });
 const isProduction = process.env.NODE_ENV === 'production';
@@ -171,6 +187,12 @@ registerSettingsRoutes(router, {
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
 });
+registerBackupRoutes(router, {
+  backupsStore,
+  serverState,
+  requireRole: rbac.requireRole,
+  logger: log,
+});
 registerPageRoutes(router, {
   publicDir,
   usersStore,
@@ -178,9 +200,31 @@ registerPageRoutes(router, {
   authenticate: rbac.authenticate,
 });
 
+// Start the backup scheduler. Reads org-settings.backups every 5
+// minutes; if a backup is due, makes one and prunes to retention.
+// The handle returned has a stop() method we don't currently use
+// (the process doesn't have a clean-shutdown hook beyond SIGINT,
+// which terminates the timer naturally).
+startBackupScheduler({
+  backupsStore,
+  orgSettingsStore,
+  serverState,
+  logger: log,
+});
+
 // ----------------------------------------------------------------------------
 // Request handler
 // ----------------------------------------------------------------------------
+
+/**
+ * True for any path that's an API endpoint (not a page load and not
+ * a static asset). Used by the post-restore lockdown to differentiate
+ * "user trying to look at the settings page" from "anything that
+ * depends on store state".
+ */
+function isApiEndpoint(path) {
+  return path.startsWith('/api/');
+}
 
 async function handle(nodeReq, nodeRes) {
   const start = Date.now();
@@ -192,10 +236,31 @@ async function handle(nodeReq, nodeRes) {
   nodeReq.query = Object.fromEntries(parsedUrl.searchParams);
   nodeReq.cookies = parseCookies(nodeReq.headers.cookie);
 
+  // Post-restore lockdown. Once a restore completes, the in-memory
+  // stores are stale and we don't want to serve anything that depends
+  // on them. The allowlist below lets the user see the settings page
+  // (with its "restart Pica" banner) and call /api/backups/status to
+  // detect the state, but every other API call gets 503.
+  if (serverState.restoreCompleted && isApiEndpoint(nodeReq.path)) {
+    const allowed = nodeReq.path === '/api/backups/status'
+                 || nodeReq.path === '/api/logout';
+    if (!allowed) {
+      return nodeRes.serviceUnavailable(
+        'Restore is complete — please restart Pica to use the restored data.',
+        { errorCode: 'restore_pending_restart' },
+      );
+    }
+  }
+
   try {
-    // Parse body for methods that typically have one.
+    // Parse body for methods that typically have one. The restore
+    // endpoint accepts uploads up to backupMaxBytes (200 MB by
+    // default); everything else stays under maxBodyBytes (5 MB).
     if (['POST', 'PUT', 'PATCH'].includes(nodeReq.method)) {
-      nodeReq.body = await parseBody(nodeReq, { maxBytes: config.maxBodyBytes });
+      const cap = nodeReq.path === '/api/backups/restore'
+        ? config.backupMaxBytes
+        : config.maxBodyBytes;
+      nodeReq.body = await parseBody(nodeReq, { maxBytes: cap });
     } else {
       nodeReq.body = {};
     }

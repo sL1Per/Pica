@@ -14,6 +14,337 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.18.0] — 2026-05-03 — M11 Drop 2: restore, scheduler, retention
+
+Closes M11. Backups go from "create and download" (Drop 1) to a full
+recovery + automation story.
+
+### What's new
+
+**Restore from backup** — Settings → Backups → "Restore from a backup
+file" section:
+
+- File picker accepting `.bak` files
+- A "type RESTORE to enable" textbox — the button stays disabled until
+  the literal text matches (forced-friction confirmation)
+- On submit: server decrypts, validates every path, writes to a
+  staging directory, atomically swaps `data/` aside (kept as
+  `data.pre-restore-<timestamp>/`), and replaces it with the restored
+  contents. Pre-restore folder stays on disk for emergency rollback.
+- After a successful restore: the server enters **lockdown mode** —
+  all API calls return 503 with `errorCode: restore_pending_restart`,
+  except `/api/backups/status` and `/api/logout`. The user must
+  restart Pica to load the restored data into memory.
+
+**Delete backups** — per-row Delete button in the existing list, with
+a `window.confirm()` prompt. Frees disk space when manual backups pile
+up.
+
+**Scheduler + retention** — the M7 scheduler controls (enable / off /
+hourly / daily / weekly / retention) are now actually wired up:
+
+- A 5-minute interval timer wakes up and checks `org-settings.backups`
+- If a backup is due (no prior backup, or the most recent is older
+  than the schedule's interval), it makes one and prunes to the
+  retention count
+- Skipped while the post-restore lockdown is active
+- Decision logic is a pure function (`shouldMakeBackup`) so it's
+  trivially testable without wall-clock waits
+- "Due" is **time-since-last**, not "wall-clock at 3am every day".
+  A user wanting cron-precision scheduling can hit `POST /api/backups`
+  from cron instead.
+
+### New endpoints
+
+| Method | Path                          | Purpose                                |
+|--------|-------------------------------|----------------------------------------|
+| GET    | `/api/backups/status`         | report `restoreCompleted` flag         |
+| DELETE | `/api/backups/:id`            | permanently remove a backup file       |
+| POST   | `/api/backups/restore`        | restore (requires confirmation header) |
+
+The restore endpoint is the only one that accepts
+`Content-Type: application/octet-stream` raw bytes (up to
+`backupMaxBytes = 200 MB`, configurable). Every other endpoint stays
+under the global 5 MB cap. Plus the restore endpoint requires
+`X-Pica-Confirm-Restore: RESTORE` — a typed-confirmation gate
+mirroring the UI textbox.
+
+### Path-traversal protection
+
+Every entry in an uploaded backup is path-validated before any
+filesystem write:
+
+- Must start with `data/` or be exactly `config.json`
+- Must not contain `..` segments or backslashes
+- Must not be absolute
+
+If any path fails validation, the **entire restore is aborted** —
+nothing was written to disk yet (writes go to a staging directory
+first, then a single atomic rename swaps things in).
+
+### `config.json` is intentionally NOT restored
+
+Backups bundle `config.json` for completeness and future cross-install
+support, but Drop 2 only handles same-install restore. The decryption
+key check (HKDF over the running master key) IS the cross-install
+gate — a backup made on a different Pica install fails decryption and
+gets `errorCode: restore_wrong_key`. Restoring `config.json` would
+mean replacing the wrapped master key, which could lock the user out
+on next restart if the bundled config came from a different
+passphrase. Conservative-by-default; cross-install restore is its own
+flow if ever needed.
+
+### Files touched
+- `src/storage/backups.js` — added `delete()`, `restore()`,
+  `pruneToKeep()`, plus `validateRestorePath()` helper. ~140 new
+  lines.
+- `src/routes/backups.js` — added 3 new endpoints (status, delete,
+  restore). Restore maps decryption/validation failures to specific
+  errorCodes (`restore_wrong_key`, `restore_not_a_backup`,
+  `restore_unsafe_path`, `restore_confirmation_required`,
+  `restore_failed`).
+- **New:** `src/scheduler/backup-scheduler.js` — `startBackupScheduler()`,
+  `shouldMakeBackup()` pure decision function.
+- `src/http/responses.js` — added `serviceUnavailable` 503 helper.
+- `src/config.js` — added `backupMaxBytes` (default 200 MB) with
+  validation.
+- `server.js` — instantiates `serverState`, registers backups route
+  with it, starts the scheduler, adds the post-restore lockdown
+  short-circuit + per-path body cap override for the restore endpoint.
+- `public/settings.html` — backups section: restore form (file
+  picker + confirmation textbox + danger button), lockdown banner,
+  scheduler form re-enabled with a Save button.
+- `public/settings.js` — restore submit handler with confirmation
+  enable/disable gate, lockdown banner check on page load, schedule
+  save handler, per-row Delete with confirm. ~150 new lines.
+- `public/settings.css` — `.btn-link--danger`, restore form spacing,
+  lockdown banner styling.
+- `public/locales/en-US.js` + `pt-PT.js` — 17 new keys per locale
+  (restore UI + delete confirmation + schedule save messages),
+  6 new error codes (`restore_*`). Obsolete
+  `settings.backupsAutoComingSoon` removed.
+- **New:** `tests/test-backup-scheduler.mjs` (19 tests).
+- `tests/test-backups.mjs` — extended with 12 Drop 2 tests (delete,
+  pruneToKeep, restore round-trip, traversal rejection,
+  config.json-skip behavior, fresh-restore edge case).
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v19`.
+- `package.json` — minor bump to 0.18.0.
+- `docs/architecture.md` — repo layout updated for new files
+  + scheduler folder, test list updated, total bumped to 18 suites
+  / 484 tests.
+- `docs/roadmap.md` — M11 marked complete.
+
+### Tests
+- 18-suite regression: 484 passing, 0 failing (was 453; +31 new across
+  Drop 2 backups extensions and the new scheduler suite).
+- Live end-to-end smoke verified: schedule save round-trip, create,
+  delete, restore (without confirm → 400, with confirm → success),
+  503 lockdown engaged, allowlisted endpoints still 200, restart →
+  alice restored.
+
+### Honest disclosures
+
+- **No "verify backup before restore" two-step.** The UI shows a
+  confirmation textbox but doesn't decrypt the header to display
+  metadata before the user commits. Adding that would mean a
+  separate `POST /api/backups/verify` endpoint that decrypts but
+  doesn't write — easy follow-up. For now, if the user picks the
+  wrong file, they get a localized error AFTER hitting Restore (no
+  filesystem changes happen, but it's worse UX than "show me what
+  I'm about to do").
+- **No restore progress indicator.** The button just spins until
+  the response comes back. For typical backup sizes (KBs to MBs)
+  this is fine. A 100 MB restore over a slow link could appear
+  hung.
+- **The post-restore lockdown is process-wide and one-way.** Once
+  set, the only way to clear it is restarting Pica. There's no
+  "I changed my mind, let me undo" path. Recovery from a mistake
+  is: stop the server, manually rename `data.pre-restore-<ts>/` →
+  `data/`, restart. The pre-restore folder stays on disk for
+  exactly this scenario — but it never auto-cleans, so disk usage
+  grows by the size of `data/` per restore. Manual cleanup
+  required. (A future "Pre-restore snapshots" UI section could
+  list and delete these.)
+- **Scheduler granularity is 5 minutes.** A daily schedule won't
+  fire at exactly 24h00; it'll fire on the next 5-minute tick after
+  the 24h interval elapses. Fine for "make sure we have a daily
+  backup"; not fine for "exactly midnight every day". Use cron for
+  the latter.
+- **Catch-up on resume is "make one, not N".** If Pica was off for
+  3 days under daily scheduling, on resume it makes ONE backup,
+  not three. The list shows the gap; the user can manually create
+  more. Avoids surprise disk bursts.
+- **Delete is permanent + immediate.** No "trash" / "are you sure?"
+  except the JS `window.confirm()`. The file is gone. No
+  pre-delete copy.
+- **Schedule timer leaks if the process exits uncleanly.** We call
+  `setInterval(...).unref()` so the timer doesn't keep the event
+  loop alive, but we don't hook SIGTERM/SIGINT to call
+  `scheduler.stop()`. Node cleans up on exit anyway. Mentioned
+  for completeness — not actually a problem.
+- **`data.pre-restore-<ts>/` accumulates.** Every restore creates
+  a new one, none auto-clean. Counter-balanced by retention being
+  small (default 7), so the worst case is bounded — but worth
+  knowing if you do many restores.
+- **Restore is the only endpoint with a 200 MB body cap.** The
+  cap is per-path: `req.path === '/api/backups/restore'` triggers
+  the higher cap, everything else stays at 5 MB. Could be cleaner
+  as a per-route declaration on the router, but the path-based
+  override is one line and works.
+- **No "backup file is too old" warning.** Restore happily replaces
+  current data with a 6-month-old backup. Drop 1's metadata
+  (timestamp visible in the list) is the only signal; the restore
+  endpoint doesn't refuse based on age.
+- **Lockdown also blocks `/api/version` and other harmless reads.**
+  This is the conservative side of the cliff: rather than maintain
+  an evolving allowlist, we deny everything by default and added
+  status + logout as the bare minimum. Could be relaxed if it
+  matters.
+
+---
+
+## [0.17.0] — 2026-05-03 — M11 Drop 1: encrypted backups (create/list/download)
+
+First feature beyond M10. The Settings page has had a "Backups"
+section since M7 with disabled placeholder buttons; this release
+wires up everything except restore and scheduling. Restore is its
+own focused drop next.
+
+### What's new
+
+**Backups section on Settings → Backups** (employer only):
+
+- "Create backup now" button — produces a single encrypted file with
+  every byte under `data/` plus `config.json`, atomically written to
+  `backups/`
+- Existing-backups table — created date, ID, size, per-row Download
+  link
+- The auto-backup scheduler controls (enable / schedule / retention)
+  remain disabled with a "Scheduled backups and retention are not
+  yet wired up" notice. Drop 2.
+
+**Three new endpoints**, all employer-only:
+- `GET /api/backups` — list metadata for every `*.bak` in `backups/`
+- `POST /api/backups` — create a new encrypted snapshot
+- `GET /api/backups/:id/download` — stream a backup as
+  `application/octet-stream` with `Cache-Control: no-store`
+
+### Backup file format
+
+A single binary file with the layout:
+
+```
++------------------------------------------------+
+| 16  PICA_BACKUP_V1 (UTF-8 magic + version)     |
+| 16  HKDF salt (random per backup)              |
+| 12  AES-GCM IV                                 |
+|  N  Encrypted payload (chunked entries)        |
+| 16  GCM authentication tag                     |
++------------------------------------------------+
+```
+
+The encrypted payload is a length-prefixed concatenation of
+`{path, data}` entries — no compression, no streaming. Pica's
+typical data sizes don't justify either. Full implementation lives
+in `src/crypto/backup-archive.js` (~190 lines).
+
+Encryption: **per-backup key derived from the master key via HKDF-SHA256**
+with a random per-backup salt. Two backups made from the same
+master key produce different ciphertexts. AAD is the magic header,
+binding the ciphertext to its declared format version.
+
+### Filename convention
+
+`pica-backup-<timestamp>-<id8>.bak` where:
+- `<timestamp>` is `YYYY-MM-DDTHHMMSSZ` (UTC, second precision)
+- `<id8>` is the first 8 hex chars of `SHA-256(blob)`
+
+Both are filesystem-safe everywhere. The ID doubles as a tampering
+tell-tale — change a byte and the filename no longer matches the
+hash.
+
+### Files touched
+- **New:** `src/crypto/backup-archive.js` — pack/unpack, HKDF + AES-GCM
+- **New:** `src/storage/backups.js` — store: list/create/read
+- **New:** `src/routes/backups.js` — list/create/download endpoints
+- **New:** `tests/test-backups.mjs` — 24 tests, format + storage
+- `server.js` — instantiates `backupsStore`, registers
+  `registerBackupRoutes`
+- `public/settings.html` — backups section rebuilt: manual create
+  + list table + disabled auto-backup placeholders
+- `public/settings.js` — `loadBackupsList()`, `renderBackupsList()`,
+  `fmtSize()`, create-button handler. Imports `fmtDateTime` from
+  i18n.
+- `public/settings.css` — `.backups-table`, `.btn-link` styles
+- `public/locales/en-US.js` + `pt-PT.js` — 14 new keys per locale
+  (backups manual heading, list heading, table headers, download,
+  empty state, auto-backup heading + coming-soon text, error +
+  success messages). 4 obsolete scaffold keys dropped
+  (`backupsScaffoldNotice`, `runFull`, `runDelta`, `browseSnapshots`).
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v18`
+- `package.json` — minor bump to 0.17.0
+- `docs/architecture.md` — repo layout updated for new modules,
+  test list updated, total bumped to 17 suites / 453 tests
+- `docs/roadmap.md` — M11 split into Drop 1 (this release) and
+  Drop 2 (next), milestone table updated
+
+### Tests
+- 17-suite regression: 453 passing, 0 failing (was 427; +24 new
+  in `test-backups.mjs`, +1 in `test-error-codes.mjs` picking up
+  the new route module, +1 in `test-frontend-imports.mjs` picking
+  up `fmtDateTime` newly imported in settings.js).
+
+### Honest disclosures
+
+- **Drop 1 only — no restore yet.** Backups are produced, listed,
+  and downloadable, but there's no UI or endpoint to restore from
+  one. Restore is high-stakes (replaces the entire data directory,
+  requires server restart) and deserves its own focused session.
+- **No automatic backup retention.** Every "Create backup" click
+  adds a file to `backups/` until the user manually cleans up. The
+  M7 retention setting (still disabled in UI) will activate when
+  Drop 2 ships.
+- **No scheduler.** Manual backups only. The auto-backup form
+  fields persist their values to `org-settings.json` (existing M7
+  behavior) but no scheduler reads them.
+- **Backups include `config.json`** which contains the wrapped
+  master key (scrypt-protected). A leaked backup file plus a
+  brute-forceable passphrase = full data exposure. The wrapped
+  key uses the same scrypt KDF as the live config, so this is
+  acceptable risk in the same threat model — but it's worth being
+  explicit: backups are NOT a way to share data with someone who
+  doesn't know the Pica passphrase.
+- **Backup encryption key is derived from the master key.** No
+  separate "backup passphrase" UI step. Good UX (one passphrase to
+  remember), but it does mean every running Pica instance can
+  decrypt every backup ever made by that installation.
+- **`Content-Length` for downloads is the full encrypted size.**
+  We send the whole blob in one `res.end(buffer)` call rather than
+  streaming. Acceptable for the data sizes we expect (KBs to a few
+  MBs). If a Pica install ever produces 100+ MB backups, this will
+  buffer all of that in RAM during the download — manageable but
+  not ideal.
+- **Deltas are deferred indefinitely.** The roadmap originally
+  included delta backups; in practice typical data sizes don't
+  justify the complexity. Full snapshots stay small.
+- **No backup integrity check beyond GCM auth.** A user can verify
+  a backup is intact by attempting to download it (the server
+  reads from disk, which would error on filesystem corruption),
+  but there's no "verify all backups" admin tool. Not needed at
+  current scale.
+- **Per-row Download link uses a plain `<a download>`.** The
+  browser will save the file with the server-suggested filename.
+  No progress indicator, no chunking. Fine for the data sizes we
+  expect.
+- **Created backup's `entryCount` includes config.json.** A
+  freshly-set-up Pica with no employees produces a 2-entry backup
+  (config.json + users.json) — confusing if the user expected the
+  count to mean "employees" or "data files". The UI doesn't
+  display entryCount, only the size; the field is in the API
+  response for diagnostics.
+
+---
+
 ## [0.16.5] — 2026-05-02 — Server-side errorCode emission + new test suites
 
 Two debt-paying jobs in one release. Both are net-zero on user-visible

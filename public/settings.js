@@ -1,4 +1,4 @@
-import { t, applyTranslations } from '/i18n.js';
+import { t, applyTranslations, fmtDateTime } from '/i18n.js';
 import { showMessage, setBusy } from '/app.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
@@ -39,6 +39,17 @@ const backupsSection = $('backups');
 const backupEnabled   = $('backup-enabled');
 const backupSchedule  = $('backup-schedule');
 const backupRetention = $('backup-retention');
+const backupsMessageEl = $('backups-message');
+const backupsTableBody = $('backups-table')?.querySelector('tbody');
+const backupsEmptyEl   = $('backups-empty');
+const createBackupBtn  = $('create-backup-btn');
+
+// Drop 2: restore form, schedule save, lockdown banner.
+const restoreLockdownBanner = $('restore-lockdown-banner');
+const restoreFileInput      = $('restore-file');
+const restoreConfirmInput   = $('restore-confirm');
+const restoreBtn            = $('restore-btn');
+const saveScheduleBtn       = $('save-schedule-btn');
 
 // Working-time form (now lives inside the Organization section card —
 // no separate nav link or section wrapper anymore).
@@ -283,6 +294,16 @@ if (workingTimeForm) {
     employees = empData.employees;
     renderOrg(orgData.settings);
     renderCompany(orgData.settings.company, brandData.hasLogo);
+    renderBackupsForm(orgData.settings.backups);
+
+    // Drop 2: check whether the server is in post-restore lockdown.
+    // If so, the banner shows and controls are disabled; no point
+    // listing backups (the user needs to restart, period).
+    await checkRestoreStatus();
+
+    // Load the backups list (separate fetch — failure here shouldn't
+    // block the rest of the settings page from rendering).
+    loadBackupsList().catch(() => { /* error already shown by loader */ });
   }
 })();
 
@@ -406,4 +427,271 @@ companyForm.addEventListener('submit', async (e) => {
     showMessage(messageEl, err.message, 'error');
   }
   setBusy(btn, false);
+});
+
+// ---- Backups: load + render + create + download --------------------------
+
+function escapeHtmlBak(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+/** Format a byte count for display: "1.2 KB" / "3.4 MB". */
+function fmtSize(bytes) {
+  if (!Number.isFinite(bytes)) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function renderBackupsList(backups) {
+  if (!backupsTableBody) return;
+  backupsTableBody.innerHTML = '';
+  if (!backups || backups.length === 0) {
+    backupsEmptyEl.hidden = false;
+    return;
+  }
+  backupsEmptyEl.hidden = true;
+  for (const b of backups) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtmlBak(fmtDateTime(b.createdAt))}</td>
+      <td><code>${escapeHtmlBak(b.id)}</code></td>
+      <td class="right">${escapeHtmlBak(fmtSize(b.sizeBytes))}</td>
+      <td>
+        <a class="btn-link" href="/api/backups/${encodeURIComponent(b.id)}/download" download>${escapeHtmlBak(t('settings.backupsDownload'))}</a>
+        &middot;
+        <button type="button" class="btn-link btn-link--danger" data-action="delete" data-id="${escapeHtmlBak(b.id)}">${escapeHtmlBak(t('settings.backupsDelete'))}</button>
+      </td>
+    `;
+    backupsTableBody.appendChild(tr);
+  }
+}
+
+// Event-delegated Delete button. Single listener handles every row,
+// so we don't have to re-attach on every list re-render.
+backupsTableBody?.addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-action="delete"]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  if (!id) return;
+  if (!window.confirm(t('settings.backupsDeleteConfirm', { id }))) return;
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/api/backups/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    showMessage(backupsMessageEl, t('settings.backupsDeletedFmt', { id }), 'success');
+    await loadBackupsList();
+  } catch (err) {
+    btn.disabled = false;
+    showMessage(backupsMessageEl, err.message, 'error');
+  }
+});
+
+async function loadBackupsList() {
+  try {
+    const res = await fetch('/api/backups', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderBackupsList(data.backups);
+  } catch (err) {
+    showMessage(backupsMessageEl, t('settings.backupsLoadError'), 'error');
+    throw err;
+  }
+}
+
+createBackupBtn?.addEventListener('click', async () => {
+  setBusy(createBackupBtn, true);
+  try {
+    const res = await fetch('/api/backups', {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+    showMessage(
+      backupsMessageEl,
+      t('settings.backupsCreatedFmt', { id: data.backup.id, size: fmtSize(data.backup.sizeBytes) }),
+      'success',
+    );
+    await loadBackupsList();
+  } catch (err) {
+    showMessage(backupsMessageEl, err.message, 'error');
+  }
+  setBusy(createBackupBtn, false);
+});
+
+// ---- Drop 2: restore, lockdown banner, schedule save --------------------
+
+/**
+ * Read the file picker's selected file as a Buffer-like Uint8Array.
+ * Returns null if no file is selected.
+ */
+async function readSelectedBackupBytes() {
+  const file = restoreFileInput?.files?.[0];
+  if (!file) return null;
+  const buf = await file.arrayBuffer();
+  return new Uint8Array(buf);
+}
+
+/**
+ * Toggle the Restore button enabled state based on:
+ *   - a file is selected, AND
+ *   - the confirmation textbox contains the literal "RESTORE"
+ */
+function updateRestoreButtonEnabled() {
+  if (!restoreBtn) return;
+  const hasFile = !!restoreFileInput?.files?.[0];
+  const typed   = (restoreConfirmInput?.value ?? '').trim() === 'RESTORE';
+  restoreBtn.disabled = !(hasFile && typed);
+}
+
+restoreFileInput?.addEventListener('change', updateRestoreButtonEnabled);
+restoreConfirmInput?.addEventListener('input', updateRestoreButtonEnabled);
+
+restoreBtn?.addEventListener('click', async () => {
+  // Triple-check: button shouldn't be enabled, but defend anyway.
+  if (restoreBtn.disabled) return;
+  const bytes = await readSelectedBackupBytes();
+  if (!bytes) {
+    showMessage(backupsMessageEl, t('settings.restoreNoFile'), 'error');
+    return;
+  }
+
+  setBusy(restoreBtn, true);
+  try {
+    const res = await fetch('/api/backups/restore', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'X-Pica-Confirm-Restore': 'RESTORE',
+      },
+      body: bytes,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      // Translate the errorCode if we have a translation; fall back
+      // to the server's English message.
+      const fallback = data.error || `HTTP ${res.status}`;
+      const localized = data.errorCode
+        ? (t('errors.' + data.errorCode) === '[errors.' + data.errorCode + ']'
+            ? fallback
+            : t('errors.' + data.errorCode))
+        : fallback;
+      throw new Error(localized);
+    }
+
+    // Success path: server has flipped restoreCompleted to true. Show
+    // the lockdown banner and disable everything else.
+    showMessage(
+      backupsMessageEl,
+      t('settings.restoreSuccessFmt', { count: String(data.restoredEntries ?? '?') }),
+      'success',
+    );
+    showLockdownBanner();
+    disableAllBackupControls();
+  } catch (err) {
+    showMessage(backupsMessageEl, err.message, 'error');
+    setBusy(restoreBtn, false);
+  }
+  // Don't clear setBusy on success — we want the button to stay
+  // visually-busy until restart.
+});
+
+/**
+ * On page load, ask the server whether a restore is pending. If so,
+ * show the banner and disable backup controls so the user can't
+ * accidentally trigger more work.
+ */
+async function checkRestoreStatus() {
+  try {
+    const res = await fetch('/api/backups/status', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.restoreCompleted) {
+      showLockdownBanner();
+      disableAllBackupControls();
+    }
+  } catch { /* network blip — non-fatal, just skip */ }
+}
+
+function showLockdownBanner() {
+  if (restoreLockdownBanner) restoreLockdownBanner.hidden = false;
+}
+
+function disableAllBackupControls() {
+  // Disable everything in the backups section except the lockdown
+  // banner itself. The user can still see the page; they just can't
+  // do anything that would touch state until they restart.
+  for (const el of [
+    createBackupBtn,
+    restoreBtn,
+    restoreFileInput,
+    restoreConfirmInput,
+    saveScheduleBtn,
+    $('backup-enabled'),
+    $('backup-schedule'),
+    $('backup-retention'),
+  ]) {
+    if (el) el.disabled = true;
+  }
+  // Also disable the per-row Delete buttons.
+  if (backupsTableBody) {
+    for (const btn of backupsTableBody.querySelectorAll('button[data-action="delete"]')) {
+      btn.disabled = true;
+    }
+  }
+}
+
+// ---- Schedule + retention form ------------------------------------------
+
+/**
+ * Populate the schedule form fields from a settings object's
+ * `backups` sub-object. Called when org settings are loaded into the
+ * page.
+ */
+function renderBackupsForm(backups) {
+  const enabled = $('backup-enabled');
+  const schedule = $('backup-schedule');
+  const retention = $('backup-retention');
+  if (!enabled || !schedule || !retention) return;
+  enabled.checked = !!backups?.enabled;
+  schedule.value  = backups?.schedule ?? 'off';
+  retention.value = backups?.retention ?? 7;
+}
+
+saveScheduleBtn?.addEventListener('click', async () => {
+  const enabled = $('backup-enabled')?.checked ?? false;
+  const schedule = $('backup-schedule')?.value ?? 'off';
+  const retention = parseInt($('backup-retention')?.value ?? '7', 10);
+
+  setBusy(saveScheduleBtn, true);
+  try {
+    const res = await fetch('/api/settings/org', {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        backups: { enabled, schedule, retention },
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+    showMessage(backupsMessageEl, t('settings.backupsScheduleSaved'), 'success');
+  } catch (err) {
+    showMessage(backupsMessageEl, err.message, 'error');
+  }
+  setBusy(saveScheduleBtn, false);
 });

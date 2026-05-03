@@ -75,6 +75,10 @@ export function serverError(res, message = 'Internal Server Error', opts) {
   json(res, errorBody(message, opts), 500);
 }
 
+export function serviceUnavailable(res, message = 'Service Unavailable', opts) {
+  json(res, errorBody(message, opts), 503);
+}
+
 /**
  * Attach the helpers directly to a Node ServerResponse for Express-style ergonomics.
  * Called once per request by the server entry point.
@@ -90,5 +94,6 @@ export function enhance(res) {
   res.unauthorized = (m, opts)            => unauthorized(res, m, opts);
   res.badRequest   = (m, opts)            => badRequest(res, m, opts);
   res.serverError  = (m, opts)            => serverError(res, m, opts);
+  res.serviceUnavailable = (m, opts)      => serviceUnavailable(res, m, opts);
   return res;
 }

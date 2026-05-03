@@ -135,19 +135,70 @@
       </form>
     </section>
 
-    <!-- Backups section (employer only, scaffold) -->
+    <!-- Backups section (employer only) -->
     <section id="backups" class="card" hidden>
       <h2 data-i18n="settings.backupsHeading">Backups</h2>
-      <div class="notice" data-i18n="settings.backupsScaffoldNotice">Scaffold only — buttons and schedule wire up in Milestone 10.</div>
 
+      <!-- Post-restore lockdown banner (shown when /api/backups/status reports restoreCompleted=true) -->
+      <div id="restore-lockdown-banner" class="message message--error" hidden>
+        <strong data-i18n="settings.restorePendingTitle">Restore complete — restart Pica</strong>
+        <p data-i18n="settings.restorePendingBody">A backup was just restored. The server is now serving stale data and refusing other API calls. Stop the Pica process and start it again to load the restored data.</p>
+      </div>
+
+      <div id="backups-message" class="message"></div>
+
+      <h3 class="subtle" data-i18n="settings.backupsManualHeading">Create a backup</h3>
+      <p class="muted" data-i18n="settings.backupsManualHelp">Snapshots the entire data directory and config into a single encrypted file. Decryption requires the same passphrase used to start Pica.</p>
+      <div class="btn-row">
+        <button type="button" id="create-backup-btn" class="secondary" data-i18n="settings.createBackupNow">Create backup now</button>
+      </div>
+
+      <h3 class="subtle" data-i18n="settings.backupsListHeading">Existing backups</h3>
+      <div class="table-wrap">
+        <table class="report-table backups-table" id="backups-table">
+          <thead>
+            <tr>
+              <th data-i18n="settings.backupsCreated">Created</th>
+              <th data-i18n="settings.backupsId">ID</th>
+              <th class="right" data-i18n="settings.backupsSize">Size</th>
+              <th data-i18n="settings.backupsActions">Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p id="backups-empty" class="subtle center" hidden data-i18n="settings.backupsEmpty">No backups yet.</p>
+
+      <hr class="section-divider">
+
+      <h3 class="subtle" data-i18n="settings.restoreHeading">Restore from a backup file</h3>
+      <p class="muted" data-i18n="settings.restoreHelp">Replaces the entire data directory with the contents of the chosen backup. Your current data is moved aside (kept on disk for emergency rollback). Pica must be restarted after a successful restore.</p>
+      <p class="muted"><strong data-i18n="settings.restoreWarn">This is irreversible from the UI. Type RESTORE to confirm.</strong></p>
+
+      <form id="restore-form" autocomplete="off">
+        <label for="restore-file" data-i18n="settings.restoreChooseFile">Backup file</label>
+        <input type="file" id="restore-file" accept=".bak">
+
+        <label for="restore-confirm" data-i18n="settings.restoreTypeConfirm">Type RESTORE to enable the button</label>
+        <input type="text" id="restore-confirm" autocomplete="off" spellcheck="false">
+
+        <div class="btn-row">
+          <button type="button" id="restore-btn" class="secondary danger" disabled data-i18n="settings.restoreButton">Restore selected backup</button>
+        </div>
+      </form>
+
+      <hr class="section-divider">
+
+      <h3 class="subtle" data-i18n="settings.backupsAutoHeading">Automatic backups</h3>
+      <p class="muted" data-i18n="settings.backupsAutoHelp">Pica checks every 5 minutes whether a scheduled backup is due. Retention is applied after each scheduled backup; manual backups also count toward retention but won't trigger a prune on their own.</p>
       <form id="backup-form" autocomplete="off">
         <label class="checkbox">
-          <input type="checkbox" id="backup-enabled" disabled>
+          <input type="checkbox" id="backup-enabled">
           <span data-i18n="settings.backupEnabledLabel">Enable automatic backups</span>
         </label>
 
         <label for="backup-schedule" data-i18n="settings.backupSchedule">Schedule</label>
-        <select id="backup-schedule" disabled>
+        <select id="backup-schedule">
           <option value="off" data-i18n="settings.scheduleOff">Off</option>
           <option value="hourly" data-i18n="settings.scheduleHourly">Hourly</option>
           <option value="daily" data-i18n="settings.scheduleDaily">Daily</option>
@@ -155,12 +206,10 @@
         </select>
 
         <label for="backup-retention" data-i18n="settings.backupRetentionLong">Retention (keep last N snapshots)</label>
-        <input type="number" id="backup-retention" min="1" max="365" step="1" disabled>
+        <input type="number" id="backup-retention" min="1" max="365" step="1">
 
         <div class="btn-row">
-          <button type="button" class="secondary" disabled data-i18n="settings.runFull">Run full backup now</button>
-          <button type="button" class="secondary" disabled data-i18n="settings.runDelta">Run delta backup now</button>
-          <button type="button" class="secondary" disabled data-i18n="settings.browseSnapshots">Browse snapshots…</button>
+          <button type="button" id="save-schedule-btn" class="secondary" data-i18n="settings.saveSchedule">Save schedule</button>
         </div>
       </form>
     </section>

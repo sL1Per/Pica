@@ -10,8 +10,9 @@ const DEFAULTS = {
   port: 8080,
   dataDir: './data',
   backupDir: './backups',
-  maxBodyBytes: 5 * 1024 * 1024, // 5 MB — pictures are resized client-side
-  logLevel: 'info',              // debug | info | warn | error
+  maxBodyBytes: 5 * 1024 * 1024,        // 5 MB — pictures are resized client-side
+  backupMaxBytes: 200 * 1024 * 1024,    // 200 MB — restore upload ceiling
+  logLevel: 'info',                     // debug | info | warn | error
 };
 
 const VALID_LOG_LEVELS = new Set(['debug', 'info', 'warn', 'error']);
@@ -34,6 +35,9 @@ export function loadConfig(configPath) {
   }
   if (!Number.isInteger(merged.maxBodyBytes) || merged.maxBodyBytes < 1024) {
     throw new Error(`Invalid maxBodyBytes: ${merged.maxBodyBytes}`);
+  }
+  if (!Number.isInteger(merged.backupMaxBytes) || merged.backupMaxBytes < merged.maxBodyBytes) {
+    throw new Error(`Invalid backupMaxBytes: ${merged.backupMaxBytes} (must be ≥ maxBodyBytes)`);
   }
   if (!VALID_LOG_LEVELS.has(merged.logLevel)) {
     throw new Error(`Invalid logLevel: ${merged.logLevel}. Expected one of ${[...VALID_LOG_LEVELS].join(', ')}`);
