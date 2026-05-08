@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script>
     // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
-    // The persisted value is written by app.js after fetching /api/settings/me
-    // and updated by preferences.js when the user saves a new choice.
-    // Possible values: "light", "dark", "system" (or null on first visit).
     try {
       var m = localStorage.getItem('pica-color-mode');
       if (m === 'light' || m === 'dark') {
@@ -103,7 +100,7 @@
       </div>
       </section>
 
-      <p class="subtle center" style="margin-top: var(--gap-3);">
+      <p class="subtle center mt-3">
         <a href="/punches/today" id="all-today-link" hidden data-i18n="punch.seeAllToday">See everyone’s punches today →</a>
       </p>
 

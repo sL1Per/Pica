@@ -171,7 +171,55 @@ Traefik). Reasons:
   plain HTTP they'd be sent over the wire in the clear.
 - Without TLS, passwords and PII go over the wire as plaintext.
 
-A sample Caddy config will ship in `deploy/` (M12).
+A sample Caddy config will ship with the M12 deployment guide.
+
+### Security headers (added in M12 Drop 2, 0.20.0)
+
+Every response carries:
+
+- **`Content-Security-Policy`** — `default-src 'self'` baseline, with
+  `script-src 'self' 'sha256-…'` allowing only the one canonical
+  inline theme bootstrap, `frame-ancestors 'none'`, `object-src 'none'`,
+  and tight `connect-src`/`img-src`/`font-src`/`form-action`. The
+  hash is computed at server startup from the actual bootstrap, so
+  edits don't require manual hash updates. A test (`test-security-headers.mjs`)
+  verifies all HTML pages share a single byte-identical bootstrap
+  and contain no inline event handlers, `style=""` attributes, or
+  `<style>` elements.
+- **`X-Content-Type-Options: nosniff`** — block MIME sniffing.
+- **`X-Frame-Options: DENY`** — legacy-browser equivalent of
+  `frame-ancestors 'none'`.
+- **`Referrer-Policy: strict-origin-when-cross-origin`** — don't
+  leak full URLs to third parties.
+- **`Permissions-Policy`** — Pica needs `geolocation=(self)` (clock-in
+  records the punch location); everything else (`camera`,
+  `microphone`, `payment`, `usb`, `interest-cohort`) is denied.
+
+### HSTS — conditional and assumes a trusted proxy
+
+`Strict-Transport-Security` is only emitted when **both** are true:
+
+1. `NODE_ENV=production` is set on the Pica process
+2. The incoming request carries `X-Forwarded-Proto: https`
+
+This conservative gate prevents the HSTS pin from being applied over
+plain HTTP (which would lock clients into HTTPS even if the
+deployment hasn't actually got TLS).
+
+**The trust assumption is that the reverse proxy strips client-supplied
+`X-Forwarded-Proto`** before forwarding. Caddy does this by default.
+For nginx, the operator must use `proxy_set_header X-Forwarded-Proto $scheme;`
+to overwrite (not append to) any client-supplied value. The M12
+deployment guide will spell this out with sample configs.
+
+If your proxy doesn't strip the header, a malicious client could
+spoof `X-Forwarded-Proto: https` over plain HTTP and trigger an
+HSTS pin from a non-HTTPS deployment. Mitigation: don't deploy
+without HTTPS in the first place.
+
+`HSTS preload` is **not** included in the header. Submitting a domain
+to the browser preload list is a one-way commitment; it should be an
+explicit operator decision, not a Pica default.
 
 ---
 
@@ -239,12 +287,18 @@ Pica imports nothing).
 
 ## Known limitations and their reasoning
 
-### No password change yet
-As of 0.16.1, employees cannot change their initial password. The
-employer creates the account with a known initial password and
-shares it; the employee uses it forever (or until the employer
-deletes and recreates the account). Password change + employer-side
-reset are tracked under M12.
+### No forgot-password / self-recovery flow
+Pica has no email infrastructure, so there's no way for a user who
+has forgotten their password to reset it themselves. The recovery
+path is: employer uses the "Reset password" button on the employee
+summary page (M12 Drop 1, 0.19.0) to set a new temporary password,
+then hands it to the user out-of-band (in person, secure chat, etc.);
+user logs in, is forced through `/change-password`, picks a permanent
+password.
+
+If the *only* employer forgets their password, recovery requires
+manually editing `data/users.json` and restarting the server. Not
+elegant, but acceptable for the deployment scale Pica targets.
 
 ### No 2FA
 Out of scope for now. Could be added by integrating with TOTP
@@ -288,4 +342,4 @@ patch.
 
 ---
 
-_Last touched in 0.19.0._
+_Last touched in 0.20.0._

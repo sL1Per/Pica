@@ -27,7 +27,8 @@ app in a usable state.
 | M11       | Backups — Drop 1 (create/list/download) | ✅ 0.17.0     |
 | M11.2     | Backups — Drop 2 (restore/scheduler)    | ✅ 0.18.0     |
 | M12       | Hardening — Drop 1 (passwords)     | ✅ 0.19.0     |
-| M12.2     | Hardening — Drop 2+ (headers, audit, deploy, polish) | 📋 Planned    |
+| M12.2     | Hardening — Drop 2 (security headers, CSP) | ✅ 0.20.0     |
+| M12.3     | Hardening — Drop 3+ (audit, deploy, polish) | 📋 Planned    |
 | M13       | E2E browser tests                  | 📋 Planned    |
 
 The roadmap was renumbered after M9 closed: M10 was originally
@@ -222,15 +223,18 @@ drops; each is independently shippable.
 - ✅ Backend `errorCode` emission was already shipped in 0.16.5
       ahead of M12.
 
-**Drop 2 (⏳ next) — Security headers + CSP:**
-- [ ] **Static security headers** (`X-Content-Type-Options`,
+**Drop 2 (✅ shipped in 0.20.0) — Security headers + CSP:**
+- ✅ **Static security headers** (`X-Content-Type-Options`,
       `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`,
       conditional `Strict-Transport-Security`)
-- [ ] **CSP** with hash-based inline-script allowance for the theme
+- ✅ **CSP** with hash-based inline-script allowance for the theme
       bootstrap; `frame-ancestors 'none'`; tight `connect-src` and
       `img-src`
-- [ ] Move the two existing inline `style="..."` attributes to CSS
-      classes so we can ban inline styles entirely
+- ✅ The two existing inline `style="..."` attributes migrated to CSS
+      classes (`mt-3`, `mt-5`); CSP forbids inline styles entirely
+- ✅ Cross-file invariant test: every HTML page has exactly one
+      byte-identical inline bootstrap, no inline handlers, no
+      `style=""`, no `<style>` elements
 
 **Drop 3 (⏳ planned) — Audit log:**
 - [ ] **Encrypted NDJSON** at `data/audit/<yyyy>/<mm>.ndjson`
@@ -276,4 +280,4 @@ drops; each is independently shippable.
 
 ---
 
-_Last touched in 0.19.0._
+_Last touched in 0.20.0._

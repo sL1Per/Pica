@@ -14,6 +14,147 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.20.0] — 2026-05-08 — M12 Drop 2: security headers + CSP
+
+Pica was already careful about XSS — `textContent` everywhere we
+build DOM, no `innerHTML` with user data, no `eval`, no inline event
+handlers. This drop adds defense-in-depth headers so a future bug
+or a third-party-service compromise can't escalate.
+
+### What's new
+
+**Five security headers on every response:**
+
+| Header | Value | Purpose |
+|--------|-------|---------|
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'sha256-…'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` | Locks down where scripts/styles/images can come from |
+| `X-Content-Type-Options` | `nosniff` | No MIME sniffing |
+| `X-Frame-Options` | `DENY` | Belt-and-braces for `frame-ancestors` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Don't leak full URLs |
+| `Permissions-Policy` | `geolocation=(self), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()` | Allow geolocation (clock-in needs it), deny everything else |
+
+**`Strict-Transport-Security` conditionally** — only when running with
+`NODE_ENV=production` AND the request carries `X-Forwarded-Proto: https`
+(typical behind a TLS-terminating reverse proxy). Setting HSTS over
+plain HTTP would upgrade-pin clients to HTTPS even if the deployment
+doesn't have it; the conditional guard prevents that surprise.
+
+### CSP design
+
+The CSP forbids `'unsafe-inline'` for both scripts and styles. The
+single inline script in every Pica HTML page — the theme bootstrap
+that runs synchronously before CSS to prevent a flash of unstyled
+content — is allowed via a SHA-256 hash. The hash is **computed at
+server startup** by reading the canonical script from `index.html`,
+so future bootstrap edits don't require manual hash updates.
+
+### Cross-file invariants enforced by tests
+
+`tests/test-security-headers.mjs` now verifies, across every HTML file:
+
+- Exactly one inline `<script>` per page
+- All bootstrap scripts are byte-identical (so a single CSP hash
+  covers all 19 pages)
+- Zero inline event handlers (`onclick=`, `onsubmit=`, etc.)
+- Zero `style=""` attributes
+- Zero `<style>` elements
+
+Any future PR that violates these breaks tests *before* anyone runs
+the server and hits a CSP violation in the browser console.
+
+### Bootstrap normalization
+
+Five HTML files had a slightly longer bootstrap (extra explanatory
+comments in the script body) than the other 14. Normalized to a
+single canonical version so one CSP hash covers everything.
+
+### Inline styles migrated
+
+Two pages had `style="margin-top: var(--gap-3);"` / `--gap-5`
+attributes. Replaced with `.mt-3` / `.mt-5` utility classes added
+to `app.css`. CSP can now refuse `'unsafe-inline'` for `style-src`
+without breaking layout.
+
+### Files touched
+- **New:** `src/http/security-headers.js` — `computeBootstrapHash()`,
+  `createSecurityHeaders({ publicDir, isProduction })` returning
+  the per-request applier.
+- `server.js` — imports + constructs the applier at startup, calls
+  it at the top of every request handler before any route runs.
+- 15 of 19 HTML pages — bootstrap script normalized to the canonical
+  short form (3 lines of comment removed).
+- `public/punch.html` + `public/setup.html` — inline `style=""`
+  attributes replaced with class names.
+- `public/app.css` — added `.mt-3` and `.mt-5` utility classes.
+- **New:** `tests/test-security-headers.mjs` — 13 tests (9 unit + 4
+  cross-file invariants).
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v21`.
+- `package.json` — minor bump to 0.20.0.
+- `docs/architecture.md` — added security-headers.js to layout, new
+  test to test list, count to 511.
+- `docs/roadmap.md` — M12 Drop 2 marked ✅, Drop 3+ planned.
+
+### Tests
+- 19-suite regression: 511 passing, 0 failing (was 498; +13 new in
+  test-security-headers.mjs).
+- Live smoke verified: every page returns 200 with full headers,
+  bootstrap script in served HTML hashes to exactly the value
+  advertised in the CSP header on `/`, `/preferences`, `/login`.
+
+### Honest disclosures
+
+- **HSTS preload is NOT included.** The header sets `max-age` and
+  `includeSubDomains` but omits `preload`. Submitting a domain to
+  the browser preload list is a one-way commitment that's hard to
+  reverse — it should be an operator decision, made explicitly,
+  not hidden inside a release. If you want to preload, edit the
+  header.
+- **No `report-uri` / `report-to` directive.** CSP violations are
+  silent in this drop. Adding a reporting endpoint means storing
+  reports somewhere, deciding what to do with them, and dealing
+  with the inevitable noise from browser extensions. Worth doing
+  later, not now.
+- **`X-Forwarded-Proto` is trusted blindly.** A misconfigured
+  reverse proxy (or absence of one) means a malicious client could
+  spoof the header and trigger HSTS in dev, or never trigger it
+  in prod. Documented in `docs/security.md`. Operators should
+  ensure their proxy strips client-supplied `X-Forwarded-Proto`
+  before forwarding, which Caddy does by default and nginx does
+  with the right config (the Drop 4 deployment guide will cover
+  this).
+- **The CSP hash is computed from `index.html`, not all 19 pages.**
+  The cross-file invariant test guarantees they match — but if
+  someone disables that test and edits a different page's
+  bootstrap, the runtime CSP would block the page silently. The
+  test is the safety net.
+- **No `Cross-Origin-Embedder-Policy` / `Cross-Origin-Opener-Policy`
+  / `Cross-Origin-Resource-Policy` headers.** These enable
+  cross-origin isolation (required for `SharedArrayBuffer`, etc.)
+  and Pica doesn't need any of them. Adding them prematurely
+  would constrain future feature work without measurable benefit.
+- **The Permissions-Policy uses `interest-cohort=()` to opt out of
+  FLoC.** FLoC is essentially dead (Chrome moved to Topics API,
+  which doesn't honor the same opt-out). The directive is
+  harmless and self-documenting; included for completeness.
+- **`form-action 'self'` is set, but Pica doesn't use HTML form
+  submissions for state changes** — every form is intercepted by
+  JS and submitted via `fetch()`. The directive is therefore
+  belt-and-braces; if a regression turned a button into a real
+  form submission to a third-party origin, the directive would
+  block it.
+- **The `connect-src 'self'` will need updating if Pica ever
+  fetches from an external API.** Today it doesn't. If Drop 4's
+  deployment guide ever recommends a CDN for icons or fonts,
+  this directive needs widening. Followed by `font-src` if fonts
+  are loaded from elsewhere.
+- **CSP errors won't show up in unit tests.** Browsers enforce
+  CSP, Node doesn't. The cross-file invariants are the next-best
+  thing — they catch the patterns that *would* trip CSP. A real
+  E2E browser test (M13) is what would actually exercise the
+  enforcement; for now we manually verified key pages.
+
+---
+
 ## [0.19.0] — 2026-05-03 — M12 Drop 1: password change/reset
 
 The "Reset password" button on the employee summary page has been

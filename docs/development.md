@@ -440,4 +440,4 @@ losing them is how documentation rots.
 
 ---
 
-_Last touched in 0.19.0._
+_Last touched in 0.20.0._

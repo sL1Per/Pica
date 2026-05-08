@@ -19,6 +19,7 @@ import { parseBody, BodyTooLargeError, BadBodyError } from './src/http/body.js';
 import { parseCookies } from './src/http/cookies.js';
 import { enhance } from './src/http/responses.js';
 import { serveStatic } from './src/http/static.js';
+import { createSecurityHeaders } from './src/http/security-headers.js';
 import { initMasterKey } from './src/crypto/masterkey.js';
 import { deriveSessionKey } from './src/auth/sessions.js';
 import { createUsersStore } from './src/auth/users.js';
@@ -113,6 +114,12 @@ const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
 const passwordLimiter = createRateLimiter({ max: 5, windowSeconds: 3600 });
 const rbac = createRBAC({ sessionKey, usersStore });
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Pre-compute the CSP (and the static security headers it joins). The
+// CSP includes a SHA-256 of the canonical inline theme bootstrap; doing
+// this at startup means we never have to manually bump the hash when
+// editing the bootstrap.
+const applySecurityHeaders = createSecurityHeaders({ publicDir, isProduction });
 
 const router = createRouter();
 
@@ -235,6 +242,11 @@ function isApiEndpoint(path) {
 async function handle(nodeReq, nodeRes) {
   const start = Date.now();
   enhance(nodeRes);
+
+  // Apply security headers to EVERY response. Done here rather than
+  // per-route so we can't forget. Headers must be set before the body
+  // is sent — which is fine: routes haven't run yet at this point.
+  applySecurityHeaders(nodeReq, nodeRes);
 
   // Parse URL + query + cookies up front.
   const parsedUrl = new URL(nodeReq.url, `http://${nodeReq.headers.host || 'localhost'}`);

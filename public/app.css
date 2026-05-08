@@ -775,3 +775,9 @@ table.data-table,
 }
 .app-footer a { color: var(--text-subtle); }
 .app-footer a:hover { color: var(--accent); }
+
+/* Margin utilities — kept minimal, only the gaps we actually use.
+   Added in 0.20.0 to migrate inline style="" attributes off pages
+   so we can tighten CSP to forbid `style-src 'unsafe-inline'`. */
+.mt-3 { margin-top: var(--gap-3); }
+.mt-5 { margin-top: var(--gap-5); }

@@ -73,6 +73,7 @@ pica/
 │   │   ├── body.js          # JSON + multipart parsing
 │   │   ├── cookies.js       # parse + Set-Cookie helpers
 │   │   ├── responses.js     # res.json / .html / .redirect / .notFound …
+│   │   ├── security-headers.js # CSP + nosniff + XFO + Referrer + Permissions + HSTS
 │   │   └── static.js        # static-file handler with content-type sniffing
 │   ├── crypto/              # encryption + password primitives
 │   │   ├── aes.js           # AES-256-GCM wrappers
@@ -160,7 +161,8 @@ pica/
 │   ├── test-employees-summary.mjs  # /api/employees/:id/summary route
 │   ├── test-error-codes.mjs        # static audit: every error response carries errorCode
 │   ├── test-backups.mjs            # backup archive format + storage
-│   └── test-backup-scheduler.mjs   # scheduler decisions + lifecycle
+│   ├── test-backup-scheduler.mjs   # scheduler decisions + lifecycle
+│   └── test-security-headers.mjs   # CSP, headers, cross-file invariants
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -303,7 +305,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 18 suites, 498 passing as of 0.19.0.
+- Total: 19 suites, 511 passing as of 0.20.0.
 
 ---
 
@@ -364,4 +366,4 @@ because they only add half a punch pair.
 
 ---
 
-_Last touched in 0.19.0._
+_Last touched in 0.20.0._
