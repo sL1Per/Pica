@@ -22,8 +22,35 @@ export function createRBAC({ sessionKey, usersStore, cookieName = 'pica_session'
     if (!session) return null;
     const user = usersStore.findById(session.uid);
     if (!user) return null; // user was deleted — session is stale
+
+    // Reject sessions issued before the user's last password change.
+    // `passwordChangedAt` is only present on users who have ever
+    // changed their password (or had one reset by an employer);
+    // absence means "never changed" → no rejection.
+    //
+    // Comparison is in milliseconds (iat is ms since 0.19.0; pwChangedAt
+    // is an ISO date string). Sessions without iat (issued by older
+    // Pica builds) get iat=0 → any password change kills them.
+    if (user.passwordChangedAt) {
+      const pwChangedAtMs = Date.parse(user.passwordChangedAt);
+      if (Number.isFinite(pwChangedAtMs) && session.iat < pwChangedAtMs) {
+        return null; // session is older than the password change → invalidated
+      }
+    }
+
     return { session, user };
   }
+
+  // Paths that remain accessible to a user with mustChangePassword=true.
+  // Must include /api/me (so the frontend can detect the flag) and the
+  // change-password endpoint itself; logout is also allowed because
+  // expecting users to do a password change without being able to bail
+  // out is too restrictive.
+  const MUST_CHANGE_ALLOWLIST = new Set([
+    '/api/me',
+    '/api/me/password',
+    '/api/logout',
+  ]);
 
   function requireAuth(handler) {
     return async (req, res) => {
@@ -31,6 +58,17 @@ export function createRBAC({ sessionKey, usersStore, cookieName = 'pica_session'
       if (!auth) return res.unauthorized('Sign in required', { errorCode: 'unauthorized' });
       req.session = auth.session;
       req.user = auth.user;
+
+      // If the user has been flagged to change their password, block
+      // all API calls except the allowlist. Page loads route through
+      // pages.js which has its own redirect for this state.
+      if (auth.user.mustChangePassword && !MUST_CHANGE_ALLOWLIST.has(req.path)) {
+        return res.forbidden(
+          'You must change your password before continuing.',
+          { errorCode: 'must_change_password' },
+        );
+      }
+
       return handler(req, res);
     };
   }

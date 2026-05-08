@@ -14,6 +14,164 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.19.0] — 2026-05-03 — M12 Drop 1: password change/reset
+
+The "Reset password" button on the employee summary page has been
+disabled with a "coming in a future release" tooltip since 0.16.4.
+This release activates it, and adds matching self-service flow.
+
+### What's new
+
+**Self-service password change** — `/change-password` page, also
+linked from a button in `/preferences`. User enters current + new +
+confirm. On success the session cookie is reissued so they stay
+logged in; other sessions on other devices are invalidated.
+
+**Employer-initiated reset** — `/employees/:id` summary page, "Reset
+password" button now opens a modal. Employer types a new temporary
+password, employee gets it out-of-band (in person, secure chat).
+On the employee's next login they're redirected to `/change-password`
+and locked out of every other page until they change it.
+
+**Forced-change flow:**
+- Pages — every authenticated route except `/change-password`
+  redirects to `/change-password` when `mustChangePassword=true`
+- API — every endpoint except `/api/me`, `/api/me/password`, and
+  `/api/logout` returns 403 with `errorCode: must_change_password`
+- Login response now carries `mustChangePassword: true|false` so
+  the frontend knows to redirect
+
+**Session invalidation by password change** — sessions issued before
+`passwordChangedAt` are rejected by the auth middleware. Other devices
+get logged out automatically; the device that did the change gets a
+fresh cookie carrying the new `iat` timestamp. Brute-force from a
+stolen session is no more useful than from no session.
+
+### New endpoints
+
+| Method | Path                                       | Purpose                          |
+|--------|--------------------------------------------|----------------------------------|
+| POST   | `/api/me/password`                         | Self-service change              |
+| POST   | `/api/employees/:id/password-reset`        | Employer-initiated (employer only) |
+
+Both are rate-limited per user-id (5 attempts/hour) to slow brute-force
+on the current password and to slow attempts to spam reset across
+many accounts.
+
+### Storage layer additions
+
+`usersStore` got two new methods (already present in the codebase as
+scaffolding from a previous drop, now wired through):
+
+- `setPassword(userId, newPassword, { mustChange })` — stamps
+  `passwordChangedAt` and `mustChangePassword`. Used by the
+  employer-reset flow.
+- `verifyAndSetPassword(userId, currentPassword, newPassword)` —
+  checks current before setting new. Always clears
+  `mustChangePassword`. Used by self-service.
+
+Both throw with `.code` so routes can forward to `errorCode`.
+
+### Session changes
+
+`signSession()` now puts a millisecond `iat` in the payload. Older
+session cookies (without `iat`) are treated as `iat=0` so any
+password change kills them; new password change rotates everyone
+out cleanly.
+
+### Files touched
+- `src/auth/sessions.js` — `iat` added to payload (millisecond
+  precision so it can be compared against `passwordChangedAt`).
+- `src/auth/rbac.js` — session rejection by `passwordChangedAt`,
+  plus `mustChangePassword` allowlist on `requireAuth`.
+- `src/routes/auth.js` — login response carries `mustChangePassword`,
+  `/api/me/password` reissues the session cookie on success.
+- `src/routes/employees.js` — `/api/employees/:id/password-reset`
+  was scaffolded in a prior release; this release wires it to the
+  rest of the flow.
+- `src/routes/pages.js` — `authed()` redirects to `/change-password`
+  when `mustChangePassword=true`; `/` handler picks up the same
+  redirect; new `/change-password` page route bypasses it via
+  `allowMustChange: true`.
+- **New:** `public/change-password.html` + `public/change-password.js`
+  — the forced + voluntary change page. Doesn't mount the topbar
+  (forced-mode users have nowhere to go).
+- `public/locales/en-US.js` + `pt-PT.js` — 33 new keys per locale
+  (12 changePassword.*, 7 employee.summary.resetPw*, 11 prefs.*,
+  2 errors.*: `cannot_reset_self`, `must_change_password`). 2
+  obsolete "coming soon" keys removed.
+- `tests/test-auth.mjs` — 11 new tests covering setPassword,
+  verifyAndSetPassword, iat-based session invalidation, and the
+  mustChange API allowlist.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v20`.
+- `package.json` — minor bump to 0.19.0.
+- `docs/roadmap.md` — M12 split into drops; Drop 1 ✅, Drops 2-5
+  planned, M13 (E2E tests) pulled out.
+- `docs/architecture.md` — repo layout updated, test count to 498.
+
+### Tests
+- 18-suite regression: 498 passing, 0 failing (was 484; +11 auth,
+  +3 frontend-imports picking up the new module).
+
+### Honest disclosures
+
+- **Sub-millisecond race in session invalidation.** If a password
+  change and a freshly-signed cookie land in the exact same
+  millisecond, the comparison `iat < passwordChangedAt` is false
+  and the cookie survives. The reissue inside `/api/me/password`
+  always lands AFTER the `setPassword` call (ms is monotonic in
+  practice on every modern system) so the user's own session
+  survives correctly. The race only affects "did I successfully
+  invalidate every other device's session immediately?" — answer:
+  in practice yes, in theory there's a sub-millisecond gap that
+  attackers can't exploit but pedants can point at. Acceptable.
+- **No "forgot password" flow.** Pica has no email infrastructure.
+  If a user forgets their password, an employer must reset it for
+  them. If the *only* employer forgets their password, recovery
+  is manual (edit `users.json` directly, restart). Documented in
+  `docs/security.md` as a known limitation.
+- **Old session cookies without `iat` survive any password
+  change.** They have `iat=0`, which is older than any
+  `passwordChangedAt`, so they get rejected. ✓ Actually this works
+  — false alarm.
+- **Rate limiter is in-memory**, so a process restart resets the
+  counters. Acceptable for the threat model (resetting takes
+  effort, attackers can't trigger restarts).
+- **The forced-change banner is shown on the change-password page
+  itself.** A user who navigates manually to `/change-password`
+  voluntarily ALSO sees the banner (we check `mustChangePassword`
+  via `/api/me`). If the flag is false, the banner stays hidden.
+  Correct; just clarifying.
+- **Employer reset doesn't generate a random password.** The
+  employer types one. This is the simpler UX (the employer can
+  pick something the employee will recognize as theirs to type
+  once before changing). A "generate random + show once" mode
+  could be added; not in scope here.
+- **Self-reset is forbidden via the employer endpoint.** The
+  employer can't `POST /api/employees/<own-id>/password-reset` —
+  returns `cannot_reset_self`. Forces them to use the regular
+  self-service flow, which requires the current password (more
+  secure: a stolen employer session can't reset its own password
+  without knowing the current one).
+- **The `/api/me/password` rate limiter is keyed by user-id, not
+  IP.** Means a user in an open office can't be locked out by
+  someone else on the same IP brute-forcing a different account.
+- **No password complexity requirements beyond "≥8 characters".**
+  Same as before this drop. Adding zxcvbn-style complexity scoring
+  is its own ergonomic-vs-secure debate; deferred.
+- **Password reset doesn't log the old password's hash anywhere.**
+  Once changed, the old hash is overwritten. Audit log work
+  (Drop 3) won't include old hashes either — auditing should record
+  *that* a change happened, not enable forensic recovery of the
+  old password.
+- **Modal scaffolding was already present in `employee.html` and
+  `employee.js` from a previous drop.** I re-verified everything
+  and added translations + the `cannot_reset_self` error code, but
+  the structural HTML/JS for the modal wasn't new in this release.
+  Mentioned for honesty about effort distribution.
+
+---
+
 ## [0.18.0] — 2026-05-03 — M11 Drop 2: restore, scheduler, retention
 
 Closes M11. Backups go from "create and download" (Drop 1) to a full

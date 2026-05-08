@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-import { hashPassword } from '../crypto/passwords.js';
+import { hashPassword, verifyPassword } from '../crypto/passwords.js';
 
 /**
  * Users store. Backed by data/users.json.
@@ -129,6 +129,71 @@ export function createUsersStore(dataDir) {
       if (users.length === before) return false;
       saveAll({ users });
       return true;
+    },
+
+    /**
+     * Set a user's password. Used by:
+     *   - employer-initiated reset (caller passes mustChange=true)
+     *   - self-service change (caller passes mustChange=false)
+     *
+     * Validates the new password against the same rules as `create()`
+     * (≥8 chars). Throws if the user doesn't exist. Returns the updated
+     * user record without the password hash.
+     */
+    async setPassword(userId, newPassword, { mustChange = false } = {}) {
+      if (typeof newPassword !== 'string' || newPassword.length < 8) {
+        const e = new Error('Password must be at least 8 characters');
+        e.code = 'password_too_short';
+        throw e;
+      }
+      const data = loadAll();
+      const idx = data.users.findIndex((u) => u.id === userId);
+      if (idx === -1) {
+        const e = new Error('User not found');
+        e.code = 'not_found';
+        throw e;
+      }
+      const passwordHash = await hashPassword(newPassword);
+      const updated = {
+        ...data.users[idx],
+        passwordHash,
+        mustChangePassword: !!mustChange,
+        passwordChangedAt: new Date().toISOString(),
+      };
+      const users = [...data.users];
+      users[idx] = updated;
+      saveAll({ users });
+      const { passwordHash: _omit, ...safe } = updated;
+      return safe;
+    },
+
+    /**
+     * Verify the current password and, if it matches, set a new one.
+     * Used by self-service change. Always clears mustChangePassword
+     * because the user has demonstrated knowledge of their previous
+     * password (or the temp one set by their employer).
+     *
+     * Throws:
+     *   - { code: 'not_found' } if the user doesn't exist
+     *   - { code: 'invalid_credentials' } if the current password is wrong
+     *   - { code: 'password_too_short' } if the new one is too short
+     */
+    async verifyAndSetPassword(userId, currentPassword, newPassword) {
+      const user = this.findById(userId);
+      if (!user) {
+        const e = new Error('User not found');
+        e.code = 'not_found';
+        throw e;
+      }
+      const ok = await verifyPassword(currentPassword, user.passwordHash);
+      if (!ok) {
+        const e = new Error('Current password is incorrect');
+        e.code = 'invalid_credentials';
+        throw e;
+      }
+      // setPassword handles the new-password validation + persistence.
+      // mustChange=false: a successful self-service change clears the flag.
+      return this.setPassword(userId, newPassword, { mustChange: false });
     },
 
     /** Drop the in-memory cache — used in tests. */

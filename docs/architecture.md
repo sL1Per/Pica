@@ -140,7 +140,8 @@ pica/
 │   ├── correction-new.{html,js}
 │   ├── correction.{html,js}  # correction detail
 │   ├── settings.{html,js,css}
-│   └── preferences.{html,js,css}
+│   ├── preferences.{html,js,css}
+│   └── change-password.{html,js}    # forced + voluntary password change
 ├── tests/                   # node:test-style suites, no framework
 │   ├── test-crypto.mjs
 │   ├── test-auth.mjs
@@ -302,7 +303,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 18 suites, 484 passing as of 0.18.0.
+- Total: 18 suites, 498 passing as of 0.19.0.
 
 ---
 
@@ -363,4 +364,4 @@ because they only add half a punch pair.
 
 ---
 
-_Last touched in 0.18.0._
+_Last touched in 0.19.0._

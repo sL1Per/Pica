@@ -36,6 +36,12 @@
 
     <div id="message" class="message"></div>
 
+    <!-- Must-change banner (shown when mustChangePassword=true) -->
+    <section id="must-change-banner" class="card card--warning" hidden>
+      <h2 data-i18n="prefs.mustChangeTitle">Change your password</h2>
+      <p data-i18n="prefs.mustChangeBody">Your password was reset by an administrator. Please choose a new one before continuing to use Pica.</p>
+    </section>
+
     <section id="account" class="card">
       <p class="subtle" id="page-subtitle">These settings apply just to you.</p>
 
@@ -55,6 +61,28 @@
         </div>
 
         <button type="submit" class="block" id="save-btn">Save preferences</button>
+      </form>
+    </section>
+
+    <!-- Password change (everyone, self-service) -->
+    <section id="password-card" class="card">
+      <h2 data-i18n="prefs.passwordHeading">Password</h2>
+      <p class="subtle" data-i18n="prefs.passwordHelp">Change your password. Other devices stay signed in until their cookies expire.</p>
+
+      <div id="password-message" class="message"></div>
+
+      <form id="password-form" autocomplete="off">
+        <label for="current-password" data-i18n="prefs.currentPassword">Current password</label>
+        <input type="password" id="current-password" name="currentPassword" autocomplete="current-password" required>
+
+        <label for="new-password" data-i18n="prefs.newPassword">New password</label>
+        <input type="password" id="new-password" name="newPassword" autocomplete="new-password" minlength="8" required>
+        <p class="subtle" data-i18n="prefs.newPasswordHint">At least 8 characters.</p>
+
+        <label for="confirm-password" data-i18n="prefs.confirmPassword">Confirm new password</label>
+        <input type="password" id="confirm-password" name="confirmPassword" autocomplete="new-password" minlength="8" required>
+
+        <button type="submit" class="block" id="change-password-btn" data-i18n="prefs.changePasswordButton">Change password</button>
       </form>
     </section>
   </main>

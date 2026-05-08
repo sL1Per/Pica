@@ -230,17 +230,18 @@ try {
 
   const rbac = createRBAC({ sessionKey, usersStore: store });
 
-  function mockReq({ cookie } = {}) {
+  function mockReq({ cookie, path = '/api/me' } = {}) {
     return {
       cookies: cookie ? { pica_session: cookie } : {},
+      path,
     };
   }
 
   function mockRes() {
     return {
       _json: null, _status: null,
-      unauthorized(msg) { this._json = { error: msg }; this._status = 401; },
-      forbidden(msg)    { this._json = { error: msg }; this._status = 403; },
+      unauthorized(msg, opts) { this._json = { error: msg, ...(opts?.errorCode && { errorCode: opts.errorCode }) }; this._status = 401; },
+      forbidden(msg, opts)    { this._json = { error: msg, ...(opts?.errorCode && { errorCode: opts.errorCode }) }; this._status = 403; },
       json(data, status=200) { this._json = data; this._status = status; },
     };
   }
@@ -329,6 +330,131 @@ try {
     const res = mockRes();
     await handler(mockReq({ cookie }), res);
     assert.equal(res._status, 403);
+  });
+
+  // -- Password-reset tests (M12 Drop 1) -----------------------------------
+
+  await test('setPassword updates the password and stamps passwordChangedAt', async () => {
+    const created = await store.create({ username: 'cassie', password: 'cassiepass1', role: 'employee' });
+    const before = store.findById(created.id);
+    assert.equal(before.passwordChangedAt, undefined, 'fresh user has no passwordChangedAt');
+
+    await store.setPassword(created.id, 'newcassiepass', { mustChange: true });
+    const after = store.findById(created.id);
+    assert.ok(after.passwordChangedAt, 'passwordChangedAt is set after setPassword');
+    assert.equal(after.mustChangePassword, true);
+    // Old password should not verify; new should.
+    const { verifyPassword } = await import('../src/crypto/passwords.js');
+    assert.equal(await verifyPassword('cassiepass1', after.passwordHash), false);
+    assert.equal(await verifyPassword('newcassiepass', after.passwordHash), true);
+  });
+
+  await test('setPassword with mustChange=false clears the flag', async () => {
+    const created = await store.create({ username: 'dora', password: 'dorapass11', role: 'employee' });
+    await store.setPassword(created.id, 'dorapass22', { mustChange: true });
+    assert.equal(store.findById(created.id).mustChangePassword, true);
+    await store.setPassword(created.id, 'dorapass33', { mustChange: false });
+    assert.equal(store.findById(created.id).mustChangePassword, false);
+  });
+
+  await test('setPassword rejects passwords under 8 characters', async () => {
+    const created = await store.create({ username: 'ed', password: 'edpassword', role: 'employee' });
+    await assert.rejects(
+      () => store.setPassword(created.id, 'short'),
+      (err) => err.code === 'password_too_short',
+    );
+  });
+
+  await test('setPassword throws not_found for unknown user', async () => {
+    await assert.rejects(
+      () => store.setPassword('no-such-id', 'longenoughpass'),
+      (err) => err.code === 'not_found',
+    );
+  });
+
+  await test('verifyAndSetPassword rejects wrong current password', async () => {
+    const created = await store.create({ username: 'frank', password: 'frankpass1', role: 'employee' });
+    await assert.rejects(
+      () => store.verifyAndSetPassword(created.id, 'wrongcurrent', 'newpass1234'),
+      (err) => err.code === 'invalid_credentials',
+    );
+  });
+
+  await test('verifyAndSetPassword succeeds with correct current password and clears mustChange', async () => {
+    const created = await store.create({ username: 'gina', password: 'ginapass11', role: 'employee' });
+    // Simulate an admin reset to enable mustChange
+    await store.setPassword(created.id, 'temppass99', { mustChange: true });
+    assert.equal(store.findById(created.id).mustChangePassword, true);
+    // User then changes voluntarily
+    await store.verifyAndSetPassword(created.id, 'temppass99', 'ginabrandnew7');
+    assert.equal(store.findById(created.id).mustChangePassword, false, 'flag cleared after self-service change');
+  });
+
+  await test('requireAuth rejects sessions issued before passwordChangedAt', async () => {
+    const created = await store.create({ username: 'henrietta', password: 'henpass11', role: 'employee' });
+    // Cookie signed BEFORE password change
+    const oldCookie = signSession({ uid: created.id, role: created.role }, sessionKey);
+    // Wait a few ms to ensure the next timestamp is strictly later
+    await new Promise((r) => setTimeout(r, 20));
+    await store.setPassword(created.id, 'henpass22');
+
+    const handler = rbac.requireAuth(() => { throw new Error('should not run'); });
+    const res = mockRes();
+    await handler(mockReq({ cookie: oldCookie }), res);
+    assert.equal(res._status, 401, 'old session should be rejected after password change');
+  });
+
+  await test('requireAuth accepts sessions issued after passwordChangedAt', async () => {
+    const created = await store.create({ username: 'irene', password: 'irenepass1', role: 'employee' });
+    await store.setPassword(created.id, 'irenepass2');
+    // New cookie signed AFTER the password change
+    await new Promise((r) => setTimeout(r, 20));
+    const newCookie = signSession({ uid: created.id, role: created.role }, sessionKey);
+
+    let seen = null;
+    const handler = rbac.requireAuth((req, res) => { seen = req.user; res.json({ ok: true }); });
+    const res = mockRes();
+    await handler(mockReq({ cookie: newCookie }), res);
+    assert.equal(res._status, 200);
+    assert.equal(seen.username, 'irene');
+  });
+
+  await test('requireAuth blocks API calls when mustChangePassword=true', async () => {
+    const created = await store.create({ username: 'jane', password: 'janepass11', role: 'employee' });
+    await store.setPassword(created.id, 'janetemp99', { mustChange: true });
+    const cookie = signSession({ uid: created.id, role: created.role }, sessionKey);
+
+    const handler = rbac.requireAuth(() => { throw new Error('handler should not run'); });
+    const res = mockRes();
+    await handler(mockReq({ cookie, path: '/api/leaves' }), res);
+    assert.equal(res._status, 403);
+    assert.equal(res._json.errorCode, 'must_change_password');
+  });
+
+  await test('requireAuth allowlists /api/me even with mustChangePassword=true', async () => {
+    const created = await store.create({ username: 'kate', password: 'katepass11', role: 'employee' });
+    await store.setPassword(created.id, 'katetemp99', { mustChange: true });
+    const cookie = signSession({ uid: created.id, role: created.role }, sessionKey);
+
+    let ran = false;
+    const handler = rbac.requireAuth((req, res) => { ran = true; res.json({ ok: true }); });
+    const res = mockRes();
+    await handler(mockReq({ cookie, path: '/api/me' }), res);
+    assert.ok(ran, 'handler should run for /api/me');
+    assert.equal(res._status, 200);
+  });
+
+  await test('requireAuth allowlists /api/me/password and /api/logout', async () => {
+    const created = await store.create({ username: 'lou', password: 'loupass1234', role: 'employee' });
+    await store.setPassword(created.id, 'loutemp99', { mustChange: true });
+    const cookie = signSession({ uid: created.id, role: created.role }, sessionKey);
+    for (const path of ['/api/me/password', '/api/logout']) {
+      let ran = false;
+      const handler = rbac.requireAuth((req, res) => { ran = true; res.json({ ok: true }); });
+      const res = mockRes();
+      await handler(mockReq({ cookie, path }), res);
+      assert.ok(ran, `handler should run for ${path}`);
+    }
   });
 
 } finally {

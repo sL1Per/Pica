@@ -21,6 +21,7 @@ export function registerEmployeeRoutes(router, {
   leavesStore,
   correctionsStore,
   orgSettingsStore,
+  passwordLimiter,
   requireAuth,
   requireRole,
   requireOwnerOrEmployer,
@@ -315,12 +316,54 @@ export function registerEmployeeRoutes(router, {
   }));
 
   // --------------------------------------------------------------------------
-  // GET /api/me (enhanced) — overridden here so it includes profile.
-  // Note: the plain /api/me from auth.js is still registered; this one
-  // adds profile data for UI convenience.
+  // POST /api/employees/:id/password-reset — employer-initiated password reset.
+  //
+  // The employer types a new temporary password (out-of-band UX: they
+  // hand it to the employee via Slack/in-person/etc.). The user record's
+  // mustChangePassword flag is set to true; on the employee's next login,
+  // they're prompted to change it.
+  //
+  // Rate-limited per target user-id to slow brute-force scenarios where
+  // an attacker has an employer session and is trying to reset many
+  // accounts in sequence.
+  //
+  // Note: the employer cannot reset their own password through this
+  // endpoint — that's an awkward edge case (you shouldn't ever need to).
+  // Use the self-service /api/me/password instead.
   // --------------------------------------------------------------------------
-  // Intentionally NOT re-registering /api/me here — keep single source of truth.
-  // The client fetches /api/me, then /api/employees/<me.id> when needed.
+  router.post('/api/employees/:id/password-reset', requireRole('employer')(async (req, res) => {
+    const targetId = req.params.id;
+    if (targetId === req.user.id) {
+      return res.badRequest(
+        'Cannot reset your own password — use self-service change instead.',
+        { errorCode: 'cannot_reset_self' },
+      );
+    }
+
+    if (passwordLimiter && !passwordLimiter.allow(`reset:${targetId}`)) {
+      return res.json(
+        { error: 'Too many password resets for this user. Try again later.', errorCode: 'rate_limited' },
+        429,
+      );
+    }
+
+    const user = usersStore.findById(targetId);
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
+
+    const { newPassword } = req.body ?? {};
+    if (typeof newPassword !== 'string') {
+      return res.badRequest('newPassword is required', { errorCode: 'required' });
+    }
+
+    try {
+      await usersStore.setPassword(targetId, newPassword, { mustChange: true });
+    } catch (err) {
+      const errorCode = err.code || 'invalid_value';
+      return res.badRequest(err.message, { errorCode });
+    }
+
+    res.json({ ok: true });
+  }));
 
   // Unused imports suppressed:
   void requireAuth;

@@ -45,13 +45,35 @@
         </div>
       </div>
       <div class="summary-header__actions">
-        <button id="reset-pw-btn" type="button" class="secondary" disabled
-                title="Reset password coming in a future release"
-                data-i18n-attr="title:employee.summary.resetPwTooltip"
+        <button id="reset-pw-btn" type="button" class="secondary"
                 data-i18n="employee.summary.resetPw">Reset password</button>
         <a id="profile-link" href="#" class="btn-primary" data-i18n="employee.summary.viewProfile">Go to profile →</a>
       </div>
     </section>
+
+    <!-- Password-reset modal — hidden by default, shown by the Reset button. -->
+    <div id="reset-pw-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="reset-pw-title">
+      <div class="modal__backdrop" data-modal-close></div>
+      <div class="modal__panel">
+        <h2 id="reset-pw-title" data-i18n="employee.summary.resetPwModalTitle">Reset employee password</h2>
+        <p class="muted" data-i18n="employee.summary.resetPwModalHelp">Type a temporary password and share it with the employee out-of-band (in person, secure chat, etc.). They will be required to change it on their next login.</p>
+
+        <div id="reset-pw-message" class="message"></div>
+
+        <form id="reset-pw-form" autocomplete="off">
+          <label for="reset-pw-new" data-i18n="employee.summary.resetPwNewLabel">New temporary password</label>
+          <input type="password" id="reset-pw-new" autocomplete="new-password" minlength="8" required>
+
+          <label for="reset-pw-confirm" data-i18n="employee.summary.resetPwConfirmLabel">Confirm new password</label>
+          <input type="password" id="reset-pw-confirm" autocomplete="new-password" minlength="8" required>
+
+          <div class="btn-row">
+            <button type="button" class="secondary" data-modal-close data-i18n="employee.summary.resetPwCancel">Cancel</button>
+            <button type="submit" id="reset-pw-submit" data-i18n="employee.summary.resetPwSubmit">Reset password</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- Stats row: 3 quick-look numbers -->
     <div id="stats-grid" class="widget-grid summary-stats" hidden>

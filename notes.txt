@@ -1,6 +1,6 @@
 ## Pica ##
 # Bugs: 
-
+- Punches dont work if location is blocked or not available. Can we force the browser to ask again if its already blocked?
 
 # TODO:
 - Reports revamp:

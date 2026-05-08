@@ -64,16 +64,24 @@ export function registerPageRoutes(router, { publicDir, usersStore, userPrefsSto
     res.html(injectLocale(body, locale));
   }
 
-  function authed(req) {
+  function authed(req, { allowMustChange = false } = {}) {
     if (!usersStore.hasAny()) return { redirect: '/setup' };
     const ctx = authenticate(req);
     if (!ctx) return { redirect: '/login' };
+    // If the user has been flagged to change their password, the only
+    // page they can reach is /change-password itself. Pass
+    // allowMustChange=true from that route to skip the redirect.
+    if (ctx.user.mustChangePassword && !allowMustChange) {
+      return { redirect: '/change-password' };
+    }
     return { ctx };
   }
 
   router.get('/', async (req, res) => {
     if (!usersStore.hasAny()) return res.redirect('/setup');
-    if (!authenticate(req))   return res.redirect('/login');
+    const ctx = authenticate(req);
+    if (!ctx) return res.redirect('/login');
+    if (ctx.user.mustChangePassword) return res.redirect('/change-password');
     await sendHtml(res, 'index.html', req);
   });
 
@@ -184,6 +192,17 @@ export function registerPageRoutes(router, { publicDir, usersStore, userPrefsSto
     const a = authed(req);
     if (a.redirect) return res.redirect(a.redirect);
     await sendHtml(res, 'preferences.html', req);
+  });
+
+  // -- Change password (any authenticated user) ---------------------------
+  // Reachable in two scenarios:
+  //   1. User clicked "Change my password" on /preferences (voluntary)
+  //   2. User logged in with mustChangePassword=true (forced — every
+  //      other page redirects them here until they change)
+  router.get('/change-password', async (req, res) => {
+    const a = authed(req, { allowMustChange: true });
+    if (a.redirect) return res.redirect(a.redirect);
+    await sendHtml(res, 'change-password.html', req);
   });
 
   // -- Settings (employer only — employees use /preferences) --------------

@@ -26,7 +26,9 @@ app in a usable state.
 | M10       | Dashboard widgets                  | ✅ Done       |
 | M11       | Backups — Drop 1 (create/list/download) | ✅ 0.17.0     |
 | M11.2     | Backups — Drop 2 (restore/scheduler)    | ✅ 0.18.0     |
-| M12       | Hardening                          | 📋 Planned    |
+| M12       | Hardening — Drop 1 (passwords)     | ✅ 0.19.0     |
+| M12.2     | Hardening — Drop 2+ (headers, audit, deploy, polish) | 📋 Planned    |
+| M13       | E2E browser tests                  | 📋 Planned    |
 
 The roadmap was renumbered after M9 closed: M10 was originally
 "Backups" but the dashboard widget work earned its own milestone,
@@ -199,32 +201,60 @@ Design notes carried over from M7:
   required after restore so all stores re-read from disk.
 
 ### Milestone 12 — Hardening
-A grab-bag of security and operational improvements that don't fit
-under a single feature heading.
+A grab-bag of security and operational improvements. Splits into
+drops; each is independently shippable.
 
-- [ ] **Password change** (authenticated, in Preferences) — current
-      password + new password + confirm
-- [ ] **Force-change-on-first-login flag** — new accounts get
-      `mustChangePassword: true`; first authenticated request
-      redirects to a password-change screen
-- [ ] **Employer-side password reset** for any employee — generates
-      a new random password, shows it once on screen, sets the
-      force-change flag
-- [ ] **Backend `errorCode` emission** on all user-visible business
-      errors (frontend already plumbed in M9 — this is a server-side
-      sweep)
+**Drop 1 (✅ shipped in 0.19.0) — Password change/reset:**
+- ✅ **Self-service password change** at `/change-password`, reachable
+      from a button on `/preferences`. Reissues the session cookie
+      so the user stays logged in.
+- ✅ **Employer-initiated reset** via the "Reset password" button on
+      the employee summary page. Sets `mustChangePassword: true` on
+      the target user.
+- ✅ **Forced-change flow** — users with `mustChangePassword: true`
+      get redirected to `/change-password` from every other page,
+      and every API call except `/api/me`, `/api/me/password`, and
+      `/api/logout` returns 403 with `errorCode: must_change_password`.
+- ✅ **Session invalidation by password change** — sessions issued
+      before `passwordChangedAt` are rejected. Other devices are
+      logged out automatically; the device that did the change gets
+      a fresh cookie.
+- ✅ Backend `errorCode` emission was already shipped in 0.16.5
+      ahead of M12.
+
+**Drop 2 (⏳ next) — Security headers + CSP:**
+- [ ] **Static security headers** (`X-Content-Type-Options`,
+      `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`,
+      conditional `Strict-Transport-Security`)
+- [ ] **CSP** with hash-based inline-script allowance for the theme
+      bootstrap; `frame-ancestors 'none'`; tight `connect-src` and
+      `img-src`
+- [ ] Move the two existing inline `style="..."` attributes to CSS
+      classes so we can ban inline styles entirely
+
+**Drop 3 (⏳ planned) — Audit log:**
+- [ ] **Encrypted NDJSON** at `data/audit/<yyyy>/<mm>.ndjson`
+- [ ] Wrap sensitive operations (login, employee CRUD, leave/correction
+      decisions, settings updates, backups, restore, password change)
+- [ ] No viewer UI in this drop — on-disk only
+
+**Drop 4 (⏳ planned) — Deployment guide:**
+- [ ] `docs/deployment.md` walkthrough
+- [ ] Sample Caddy + nginx + systemd configs in `docs/deployment/`
+
+**Drop 5 (⏳ planned) — Smaller polish:**
 - [ ] **Input validation audit** on every route
-- [ ] **CSRF protection** on state-changing routes (token-based,
-      belt-and-suspenders to `SameSite=Lax`)
-- [ ] **Audit log** for sensitive actions (user/leave edits,
-      restores, backup runs)
-- [ ] **Security headers** (CSP, X-Frame-Options, Referrer-Policy)
-- [ ] **Sample Caddy / nginx TLS config** in `deploy/`
-- [ ] **Full E2E browser tests** — Playwright or similar; replaces
-      the static frontend-imports audit added in M10
-- [ ] **`Intl.NumberFormat` coverage** for any locale-dependent
-      number formatting (currently zero numbers in the app need it,
-      but bank balance and report totals would benefit)
+- [ ] **`Intl.NumberFormat` coverage** for locale-dependent number
+      formatting (hours, bank balance)
+
+**Pulled out into M13 (its own milestone):**
+- ~~CSRF tokens~~ — `SameSite=Lax` cookies already provide solid
+  CSRF protection. Adding double-submit tokens is real architectural
+  work and touches every fetch in the frontend. Deferred with a
+  note in `docs/security.md`.
+- ~~E2E browser tests~~ — pulled out into M13. Adding Playwright is
+  a significant architectural shift (first npm dependency, ~300 MB
+  on disk) and deserves its own milestone.
 
 ---
 
@@ -246,4 +276,4 @@ under a single feature heading.
 
 ---
 
-_Last touched in 0.18.0._
+_Last touched in 0.19.0._

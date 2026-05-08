@@ -10,7 +10,7 @@ import { serializeCookie } from '../http/cookies.js';
  * client IP from the socket; if you front the server with a reverse proxy
  * you'll want to revisit this (X-Forwarded-For) in a future milestone.
  */
-export function registerAuthRoutes(router, { usersStore, employeesStore, sessionKey, loginLimiter, requireAuth, cookieName = 'pica_session', isProduction = false }) {
+export function registerAuthRoutes(router, { usersStore, employeesStore, sessionKey, loginLimiter, passwordLimiter, requireAuth, cookieName = 'pica_session', isProduction = false }) {
 
   function clientIp(req) {
     return req.socket?.remoteAddress ?? 'unknown';
@@ -71,6 +71,7 @@ export function registerAuthRoutes(router, { usersStore, employeesStore, session
     res.json({
       ok: true,
       user: { id: user.id, username: user.username, role: user.role },
+      mustChangePassword: !!user.mustChangePassword,
     });
   });
 
@@ -92,11 +93,57 @@ export function registerAuthRoutes(router, { usersStore, employeesStore, session
         fullName = profile?.fullName ?? null;
       } catch { /* fall through with null */ }
     }
+    // Re-read the full record to surface mustChangePassword. The session
+    // cookie carries id+role only; this flag has to come from the store.
+    const fullUser = usersStore.findById(req.user.id);
     res.json({
       id: req.user.id,
       username: req.user.username,
       role: req.user.role,
       fullName,
+      mustChangePassword: !!fullUser?.mustChangePassword,
     });
+  }));
+
+  // --------------------------------------------------------------------------
+  // Self-service password change. Requires the current password (or the
+  // employer-supplied temporary password if mustChangePassword is set).
+  // Rate-limited per user-id to slow brute-force on the current password.
+  router.post('/api/me/password', requireAuth(async (req, res) => {
+    if (passwordLimiter && !passwordLimiter.allow(req.user.id)) {
+      return res.json(
+        { error: 'Too many password change attempts. Try again later.', errorCode: 'rate_limited' },
+        429,
+      );
+    }
+
+    const { currentPassword, newPassword } = req.body ?? {};
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+      return res.badRequest(
+        'currentPassword and newPassword are required',
+        { errorCode: 'required' },
+      );
+    }
+
+    try {
+      await usersStore.verifyAndSetPassword(req.user.id, currentPassword, newPassword);
+    } catch (err) {
+      // Map storage errors to errorCodes the frontend can localize.
+      const errorCode = err.code || 'invalid_value';
+      // 401 for wrong current password (auth failure semantics).
+      // 400 for everything else.
+      const status = errorCode === 'invalid_credentials' ? 401 : 400;
+      return res.json({ error: err.message, errorCode }, status);
+    }
+
+    // Reissue the session cookie. The auth middleware rejects sessions
+    // whose iat is older than passwordChangedAt — without a fresh
+    // cookie, the very next request would log the user out.
+    // Other sessions (different devices) are correctly invalidated by
+    // this same check; this one survives because its iat is current.
+    const fresh = signSession({ uid: req.user.id, role: req.user.role }, sessionKey);
+    setSessionCookie(res, fresh, SESSION_TTL_SECONDS);
+
+    res.json({ ok: true });
   }));
 }

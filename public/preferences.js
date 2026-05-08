@@ -1,6 +1,6 @@
 import { showMessage, setBusy } from '/app.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
-import { t } from '/i18n.js';
+import { t, translateError } from '/i18n.js';
 
 mountTopBar();
 mountFooter();
@@ -80,9 +80,75 @@ form.addEventListener('submit', async (e) => {
 
 let data = null;
 applyTranslations();
+
+// ---- Password change form -----------------------------------------------
+
+const passwordForm        = $('password-form');
+const passwordMessageEl   = $('password-message');
+const currentPasswordEl   = $('current-password');
+const newPasswordEl       = $('new-password');
+const confirmPasswordEl   = $('confirm-password');
+const changePasswordBtn   = $('change-password-btn');
+const mustChangeBanner    = $('must-change-banner');
+const passwordCard        = $('password-card');
+
+passwordForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const currentPassword = currentPasswordEl.value;
+  const newPassword     = newPasswordEl.value;
+  const confirm         = confirmPasswordEl.value;
+
+  if (newPassword !== confirm) {
+    showMessage(passwordMessageEl, t('prefs.passwordsDoNotMatch'), 'error');
+    return;
+  }
+  if (newPassword.length < 8) {
+    showMessage(passwordMessageEl, t('errors.password_too_short'), 'error');
+    return;
+  }
+
+  setBusy(changePasswordBtn, true);
+  try {
+    const res = await fetch('/api/me/password', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const respData = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const fallback = respData.error || `HTTP ${res.status}`;
+      throw new Error(translateError(respData.errorCode, fallback));
+    }
+    showMessage(passwordMessageEl, t('prefs.passwordChanged'), 'success');
+    // Clear the form so a stray refresh doesn't leak the new password.
+    passwordForm.reset();
+    // Hide the must-change banner — the flag has cleared on the backend.
+    if (mustChangeBanner) mustChangeBanner.hidden = true;
+  } catch (err) {
+    showMessage(passwordMessageEl, err.message, 'error');
+  }
+  setBusy(changePasswordBtn, false);
+});
+
 (async () => {
-  const res = await fetch('/api/settings/me', { credentials: 'same-origin' });
-  if (res.status === 401) { window.location.href = '/login'; return; }
-  data = await res.json();
+  const [prefsRes, meRes] = await Promise.all([
+    fetch('/api/settings/me', { credentials: 'same-origin' }),
+    fetch('/api/me', { credentials: 'same-origin' }),
+  ]);
+  if (prefsRes.status === 401 || meRes.status === 401) {
+    window.location.href = '/login';
+    return;
+  }
+  data = await prefsRes.json();
   render(data.prefs);
+
+  // Surface the must-change banner if the backend says the user must
+  // change their password. Also auto-scroll to the password card so
+  // the next interaction is obvious.
+  const me = await meRes.json();
+  if (me.mustChangePassword && mustChangeBanner && passwordCard) {
+    mustChangeBanner.hidden = false;
+    passwordCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 })();

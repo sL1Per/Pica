@@ -107,6 +107,10 @@ const backupsStore = createBackupsStore({
 const serverState = { restoreCompleted: false };
 
 const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
+// Password operations (self-service change + employer-initiated reset).
+// 5 per hour per key — tight enough to slow brute force on the current
+// password verification, loose enough not to annoy a legitimate user.
+const passwordLimiter = createRateLimiter({ max: 5, windowSeconds: 3600 });
 const rbac = createRBAC({ sessionKey, usersStore });
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -132,6 +136,7 @@ registerAuthRoutes(router, {
   employeesStore,
   sessionKey,
   loginLimiter,
+  passwordLimiter,
   requireAuth: rbac.requireAuth,
   isProduction,
 });
@@ -142,6 +147,7 @@ registerEmployeeRoutes(router, {
   leavesStore,
   correctionsStore,
   orgSettingsStore,
+  passwordLimiter,
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
   requireOwnerOrEmployer: rbac.requireOwnerOrEmployer,

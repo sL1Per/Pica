@@ -3,6 +3,11 @@
 import '/app.js';
 import { t, getLocale } from '/i18n.js';
 
+// Sentinel returned by loadBarData() when it has already triggered a
+// redirect (e.g. mustChangePassword → /preferences). mountTopBar() uses
+// this to avoid a fallback /login redirect that would race the first.
+const REDIRECTING = Symbol('redirecting');
+
 // Shared top navigation bar. Every authenticated page imports mountTopBar().
 //
 // The bar is injected as the first child of <body>. Pages do NOT need to
@@ -83,6 +88,19 @@ async function loadBarData() {
   if (meRes.status === 401) return null;
   const user = await meRes.json();
   const branding = brandRes.ok ? await brandRes.json() : { name: null, hasLogo: false };
+
+  // If the user's password was reset by an employer, push them to
+  // /preferences where the change-password form lives. Skip the
+  // redirect if we're already on /preferences (infinite-loop guard)
+  // or on the logout endpoint.
+  if (user.mustChangePassword
+      && window.location.pathname !== '/preferences'
+      && window.location.pathname !== '/logout') {
+    window.location.href = '/preferences';
+    // Return a sentinel that mountTopBar() recognizes as "redirect
+    // already in progress, don't override with /login".
+    return REDIRECTING;
+  }
 
   // Check if the user has uploaded their own profile picture. The /employees/:id
   // endpoint surfaces hasPicture on the profile payload (M6.1 fix).
@@ -302,6 +320,7 @@ function wireEvents({ header, sidebar, scrim }) {
  */
 export async function mountTopBar() {
   const data = await loadBarData();
+  if (data === REDIRECTING) return;  // a redirect is already pending
   if (!data) {
     window.location.href = '/login';
     return;

@@ -260,11 +260,88 @@ async function load() {
   }
 }
 
-// "Reset password" placeholder — disabled until M12. We attach a click
-// listener anyway so a future enabling just removes the disabled
-// attribute and this becomes the real handler.
-$('reset-pw-btn').addEventListener('click', () => {
-  showMessage(messageEl, t('employee.summary.resetPwUnavailable'), 'error');
+// "Reset password" — opens a modal where the employer types a
+// temporary password. POSTs to /api/employees/:id/password-reset and
+// surfaces success/error in the modal.
+const resetPwBtn      = $('reset-pw-btn');
+const resetPwModal    = $('reset-pw-modal');
+const resetPwForm     = $('reset-pw-form');
+const resetPwNew      = $('reset-pw-new');
+const resetPwConfirm  = $('reset-pw-confirm');
+const resetPwSubmit   = $('reset-pw-submit');
+const resetPwMessage  = $('reset-pw-message');
+
+function openResetModal() {
+  // Clear stale state when reopening.
+  resetPwForm?.reset();
+  if (resetPwMessage) {
+    resetPwMessage.textContent = '';
+    resetPwMessage.className = 'message';
+  }
+  if (resetPwModal) {
+    resetPwModal.hidden = false;
+    // Focus the first field for keyboard users.
+    resetPwNew?.focus();
+  }
+}
+
+function closeResetModal() {
+  if (resetPwModal) resetPwModal.hidden = true;
+}
+
+resetPwBtn?.addEventListener('click', openResetModal);
+
+// Wire any element with data-modal-close inside the modal to dismiss it.
+resetPwModal?.addEventListener('click', (e) => {
+  if (e.target.matches('[data-modal-close]')) closeResetModal();
+});
+
+// Close on Escape when the modal is open.
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && resetPwModal && !resetPwModal.hidden) {
+    closeResetModal();
+  }
+});
+
+resetPwForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const newPassword = resetPwNew?.value ?? '';
+  const confirm     = resetPwConfirm?.value ?? '';
+
+  if (newPassword !== confirm) {
+    showMessage(resetPwMessage, t('employee.summary.resetPwMismatch'), 'error');
+    return;
+  }
+  if (newPassword.length < 8) {
+    showMessage(resetPwMessage, t('errors.password_too_short'), 'error');
+    return;
+  }
+
+  setBusy(resetPwSubmit, true);
+  try {
+    const res = await fetch(`/api/employees/${encodeURIComponent(employeeId)}/password-reset`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newPassword }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const fallback = data.error || `HTTP ${res.status}`;
+      // Use the i18n translateError if we have it; otherwise fall back.
+      const localizedKey = `errors.${data.errorCode}`;
+      const localized = data.errorCode && t(localizedKey) !== `[${localizedKey}]`
+        ? t(localizedKey)
+        : fallback;
+      throw new Error(localized);
+    }
+    closeResetModal();
+    // Surface success on the page-level message bar.
+    showMessage(messageEl, t('employee.summary.resetPwSuccess'), 'success');
+  } catch (err) {
+    showMessage(resetPwMessage, err.message, 'error');
+  }
+  setBusy(resetPwSubmit, false);
 });
 
 load();

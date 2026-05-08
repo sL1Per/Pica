@@ -44,10 +44,14 @@ export function signSession({ uid, role }, sessionKey, ttlSeconds = SESSION_TTL_
   if (!uid || typeof uid !== 'string') throw new TypeError('uid is required');
   if (!role || typeof role !== 'string') throw new TypeError('role is required');
 
+  const nowSec = Math.floor(Date.now() / 1000);
   const payload = {
     uid,
     r: role,
-    exp: Math.floor(Date.now() / 1000) + ttlSeconds,
+    // iat as millisecond timestamp (not seconds) so it can be compared
+    // against passwordChangedAt (an ISO date string parsed back to ms).
+    iat: Date.now(),
+    exp: nowSec + ttlSeconds,
   };
   const encoded = base64urlEncode(Buffer.from(JSON.stringify(payload), 'utf8'));
   const sig = createHmac('sha256', sessionKey).update(encoded).digest();
@@ -95,7 +99,17 @@ export function verifySession(cookieValue, sessionKey) {
   const now = Math.floor(Date.now() / 1000);
   if (payload.exp < now) return null;
 
-  return { uid: payload.uid, role: payload.r, exp: payload.exp };
+  // `iat` was added in 0.19.0. Older session cookies won't have it; we
+  // treat absence as iat=0 so any passwordChangedAt check will reject
+  // them — sessions issued before this release are effectively rotated
+  // out the next time a user changes their password. Until then, they
+  // remain valid (which is fine — no password has changed).
+  return {
+    uid: payload.uid,
+    role: payload.r,
+    iat: typeof payload.iat === 'number' ? payload.iat : 0,
+    exp: payload.exp,
+  };
 }
 
 export { SESSION_TTL_SECONDS };
