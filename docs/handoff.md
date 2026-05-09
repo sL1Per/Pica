@@ -5,22 +5,44 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.3._
+_Last touched in 0.22.4._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.3 (released 2026-05-09)
-- **Test count:** 554 across 21 suites, all green
-- **Build artifact:** `pica-0.22.3-leave-submit-error.zip`
+- **Latest version:** 0.22.4 (released 2026-05-09)
+- **Test count:** 558 across 22 suites, all green
+- **Build artifact:** `pica-0.22.4-leaves-privacy.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.3)
+## What just shipped (0.22.4)
+
+Same-day patch on top of 0.22.3. Privacy tightening.
+
+**Employees no longer see other employees' leave details.**
+`GET /api/leaves/approved` previously returned full data (name,
+type, dates) for every approved leave to every authenticated
+user. Now: employers still see everything; employees see full
+data for their OWN leaves and only `id + start + end + unit +
+anonymized: true` for others. `employeeId`, `username`,
+`fullName`, `type`, `reason`, `notes` are all stripped
+server-side for non-self leaves seen by an employee.
+
+The team calendar still works for employees as a capacity
+planner — other people's leaves render as generic
+`.cal-bar--anonymized` blocks ("Unavailable" / "Indisponível"),
+non-clickable. The dashboard "on leave today" widget was
+already employer-only, so no change there.
+
+New test suite `tests/test-leaves-approved.mjs` (4 tests) locks
+in the privacy contract. Total now 22 suites / 558 tests.
+
+## What shipped in 0.22.3
 
 Same-day patch on top of 0.22.2. Single bugfix.
 
@@ -120,6 +142,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Profile-link bugfix (patch)              | ✅ 0.22.1 |
 | —     | Punch non-blocking geolocation (patch)   | ✅ 0.22.2 |
 | —     | Leave-submit error display (patch)       | ✅ 0.22.3 |
+| —     | Leaves privacy for employees (patch)     | ✅ 0.22.4 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 
@@ -278,7 +301,8 @@ If you're about to make a non-trivial change, run these checks first:
 for s in crypto auth employees punches leaves reports user-prefs \
          org-settings company-logo corrections i18n frontend-imports \
          period reports-team employees-summary error-codes backups \
-         backup-scheduler security-headers audit validators; do
+         backup-scheduler security-headers audit validators \
+         leaves-approved; do
   node tests/test-$s.mjs 2>&1 | tail -1 | sed "s/^/$s: /"
 done
 ```

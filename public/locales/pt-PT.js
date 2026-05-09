@@ -347,6 +347,7 @@ export default {
   'calendar.weekday.thu':  'Qui',
   'calendar.weekday.fri':  'Sex',
   'calendar.weekday.sat':  'Sáb',
+  'calendar.anonymized':   'Indisponível',
 
   // ============================================================
   // Reports

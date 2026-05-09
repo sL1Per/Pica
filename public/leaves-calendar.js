@@ -135,11 +135,30 @@ function renderMonth() {
 
 function renderBar(leave) {
   const a = document.createElement('a');
+
+  // Anonymized bar — another employee's leave seen by an employee.
+  // Server stripped identity + type; render a generic capacity block.
+  if (leave.anonymized) {
+    a.className = 'cal-bar cal-bar--anonymized';
+    a.href = '#';
+    a.addEventListener('click', (e) => e.preventDefault());
+    a.style.cursor = 'default';
+    const name = document.createElement('span');
+    name.className = 'cal-bar__name';
+    name.textContent = t('calendar.anonymized');
+    a.appendChild(name);
+    const range = leave.unit === 'days'
+      ? (leave.start === leave.end ? leave.start : `${leave.start} → ${leave.end}`)
+      : `${leave.start.slice(0,10)}`;
+    a.title = `${t('calendar.anonymized')} · ${range}`;
+    return a;
+  }
+
   a.className = `cal-bar cal-bar--${leave.type}`;
   if (leave.employeeId === me.id) a.classList.add('cal-bar--self');
 
   // Employers and owners can click through to the leave detail page.
-  // Other employees get a non-clickable view (no access on the detail page).
+  // (Anonymized bars never reach this branch.)
   const canOpen = me.role === 'employer' || leave.employeeId === me.id;
   if (canOpen) {
     a.href = `/leaves/${leave.id}`;

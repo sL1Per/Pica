@@ -52,21 +52,40 @@ export function registerLeaveRoutes(router, {
   // --------------------------------------------------------------------------
   // GET /api/leaves/approved — a team-visible view of approved leaves only.
   //
-  // Designed for the calendar: every authenticated user (employee or
-  // employer) can see who's on approved leave and when, so they can plan
-  // around each other. The `reason` and `notes` fields are stripped for
-  // everyone — pending and rejected leaves never appear at all.
+  // Privacy model (tightened in 0.22.4):
+  //   - Employer: full data for every approved leave (name, type, dates).
+  //   - Employee: full data for their OWN approved leaves; for everyone
+  //     else's leaves, only id + start + end + unit + a flag
+  //     `anonymized: true`. Identity (employeeId/username/fullName), the
+  //     leave `type`, and `reason`/`notes` are stripped.
+  //
+  // The anonymized payload preserves enough for the calendar to render
+  // "someone is unavailable on this day" capacity blocks without revealing
+  // who or why. `reason`/`notes` are null for everyone — pending and
+  // rejected leaves never appear at all.
   // --------------------------------------------------------------------------
   router.get('/api/leaves/approved', requireAuth((req, res) => {
     const users = usersByIdMap();
     const names = fullNameMap();
+    const isEmployer = req.user.role === 'employer';
     const leaves = leavesStore.list()
       .filter((l) => l.status === 'approved')
       .map((l) => {
-        const redacted = enrich(l, users, names);
-        redacted.reason = null;
-        redacted.notes = null;
-        return redacted;
+        if (isEmployer || l.employeeId === req.user.id) {
+          const full = enrich(l, users, names);
+          full.reason = null;
+          full.notes = null;
+          return full;
+        }
+        // Other employees' leaves: minimum needed to render a generic
+        // capacity block on the calendar. No identity, no type.
+        return {
+          id: l.id,
+          start: l.start,
+          end: l.end,
+          unit: l.unit,
+          anonymized: true,
+        };
       });
     res.json({ leaves });
   }));

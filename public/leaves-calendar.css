@@ -118,6 +118,7 @@
 .cal-bar--sick        { background: #fde6e6; border-left-color: #b33a3a; color: #6c1717; }
 .cal-bar--appointment { background: #f0e7fa; border-left-color: #7a4ec3; color: #3a1f6b; }
 .cal-bar--other       { background: #eee; border-left-color: #888; color: #333; }
+.cal-bar--anonymized  { background: repeating-linear-gradient(135deg, #eee, #eee 4px, #e3e3e3 4px, #e3e3e3 8px); border-left-color: #aaa; color: #555; font-style: italic; }
 
 .cal-bar--self {
   font-weight: 700;

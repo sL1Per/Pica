@@ -351,6 +351,7 @@ export default {
   'calendar.weekday.thu':  'Thu',
   'calendar.weekday.fri':  'Fri',
   'calendar.weekday.sat':  'Sat',
+  'calendar.anonymized':   'Unavailable',
 
   // ============================================================
   // Reports

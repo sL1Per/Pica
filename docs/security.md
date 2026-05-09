@@ -98,6 +98,23 @@ The middleware functions live in `src/auth/rbac.js`:
 | `requireRole('employer')(handler)`      | 403 unless the user has the role.                            |
 | `requireOwnerOrEmployer(getOwnerId)(handler)` | 403 unless `user.id === getOwnerId(req)` OR `user.role === 'employer'`. |
 
+### In-handler privacy filtering (0.22.4)
+
+Some endpoints surface partial data based on role rather than
+returning 403 outright. `GET /api/leaves/approved` is the canonical
+example: every authenticated user can call it (the team calendar
+needs capacity awareness), but employees see other people's leaves
+anonymized — only `id + start + end + unit + anonymized: true`,
+with `employeeId`, `username`, `fullName`, `type`, `reason`, and
+`notes` stripped server-side. Employers see full data.
+
+This is a "role-aware response shape" pattern rather than a hard
+RBAC gate. Use it when the resource has legitimate cross-role
+read value (capacity planning) but identity-level details should
+not leak. The `tests/test-leaves-approved.mjs` suite locks the
+contract: an employee's response object must not contain the
+sensitive fields.
+
 ---
 
 ## Encryption at rest
@@ -526,4 +543,4 @@ patch.
 
 ---
 
-_Last touched in 0.22.3._
+_Last touched in 0.22.4._

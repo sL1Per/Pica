@@ -14,6 +14,89 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.4] — 2026-05-09 — Privacy: employees no longer see other employees' leave details
+
+Patch release. Same-day as 0.22.3.
+
+### What's new
+
+**Approved-leave visibility is now role-aware.** `GET /api/leaves/approved`
+previously returned name, type, dates, and ids for every approved
+leave to every authenticated user — including employees viewing
+each other through the team calendar. From 0.22.4:
+
+- **Employers** still see full data (name, type, dates) for every
+  approved leave. Unchanged.
+- **Employees** see full data for their OWN approved leaves; for
+  everyone else's leaves, the response includes only `id`,
+  `start`, `end`, `unit`, and `anonymized: true`. The fields
+  `employeeId`, `username`, `fullName`, `type`, `reason`, and
+  `notes` are stripped server-side.
+
+The team calendar (`/leaves/calendar`) is still accessible to
+employees but renders other people's leaves as generic "someone is
+unavailable on this day" capacity blocks (new
+`.cal-bar--anonymized` style: greyish striped pattern, italicized
+label "Unavailable" / "Indisponível"). Employees can still plan
+around team capacity without learning who is on what kind of leave.
+
+The dashboard "on leave today" widget is unaffected: it was
+already employer-only (in `buildEmployerWidgets`, never built for
+employees). No new widget for employees.
+
+### Files touched
+
+- `src/routes/leaves.js` — `/api/leaves/approved` handler
+  branches on `req.user.role`; non-employer callers get
+  anonymized records for everyone but themselves.
+- `public/leaves-calendar.js` — `renderBar()` recognizes
+  `leave.anonymized` and renders a non-clickable generic block.
+- `public/leaves-calendar.css` — new `.cal-bar--anonymized` style.
+- `public/locales/en-US.js` and `pt-PT.js` — new
+  `calendar.anonymized` string ("Unavailable" / "Indisponível").
+- `tests/test-leaves-approved.mjs` — new route-level suite, 4
+  tests, brings the total to 22 suites / 558 tests.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v27`
+  (locale files are pre-cached).
+- `package.json` — version `0.22.4`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **No timing-attack defense.** An employee can still infer that
+  Bob is on leave on a given week by counting anonymized blocks
+  per day and correlating with Bob's silence on chat. The change
+  bounds *what the API hands out*, not what an observer can
+  reconstruct from social signals. Acceptable at the ≤50 employee
+  scale — Pica is not a privacy-anonymization tool, just an
+  internal time tracker tightening identity exposure.
+- **The leave `id` is still revealed.** The frontend needs *some*
+  stable per-leave key for calendar rendering. UUIDs are
+  unguessable so revealing them isn't a meaningful additional
+  leak vs. the start/end/unit. A future drop could substitute a
+  per-day capacity counter instead of per-leave ids if that
+  becomes a concern.
+- **Direct GETs of `/api/leaves/:id` are unchanged.** That route
+  uses `requireOwnerOrEmployer`, so an employee fetching another
+  employee's leave id directly still gets 403. But if an attacker
+  knows or guesses an id (which the calendar still surfaces),
+  they don't gain access — the per-record endpoint already
+  enforces the rule. No regression.
+- **`/api/leaves` (the personal list) was already correct.** Line
+  117 of `src/routes/leaves.js` already filtered by
+  `employeeId === req.user.id` for non-employers. No change there.
+- **`/api/leaves/balances`** is employer-only;
+  `/api/leaves/balances/:userId` already enforces self-or-employer.
+  No change.
+- **No backend audit-log entry.** Reads aren't audited (existing
+  rule, see `docs/security.md`). The privacy upgrade is enforced
+  by the route handler, not surfaced as an audit event.
+- **Service-worker caching note.** Same as 0.22.1–0.22.3 —
+  clients on the old `CACHE_VERSION` need the SW to reactivate
+  before they pick up the new locale strings. The backend change
+  takes effect immediately on server restart regardless.
+
+---
+
 ## [0.22.3] — 2026-05-09 — Bugfix: leave-submit error swallowed when allowance exceeded
 
 Patch release. Same-day as 0.22.2.
