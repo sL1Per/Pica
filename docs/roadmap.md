@@ -29,8 +29,9 @@ app in a usable state.
 | M12       | Hardening — Drop 1 (passwords)     | ✅ 0.19.0     |
 | M12.2     | Hardening — Drop 2 (security headers, CSP) | ✅ 0.20.0     |
 | M12.3     | Hardening — Drop 3 (audit log)            | ✅ 0.21.0     |
-| M12.4     | Hardening — Drop 4+ (deploy guide, polish) | 📋 Planned    |
+| M12.4     | Hardening — Drop 4 (input validation + numfmt) | ✅ 0.22.0  |
 | M13       | E2E browser tests                  | 📋 Planned    |
+| M14       | Deployment guide + TLS samples     | 📋 Planned    |
 
 The roadmap was renumbered after M9 closed: M10 was originally
 "Backups" but the dashboard widget work earned its own milestone,
@@ -247,14 +248,30 @@ drops; each is independently shippable.
 - ✅ No viewer UI in this drop — on-disk only. A future drop can add
       `/api/audit/recent` (employer-only) + a viewer page.
 
-**Drop 4 (⏳ planned) — Deployment guide:**
-- [ ] `docs/deployment.md` walkthrough
-- [ ] Sample Caddy + nginx + systemd configs in `docs/deployment/`
+**Drop 4 (✅ shipped in 0.22.0) — Input validation audit + numfmt polish:**
+- ✅ **Input validation audit** across every route. Notable findings:
+  - **Path-traversal vulnerability** in `PUT /api/employees/:id/picture`
+    discovered (was exploitable in 0.16.4–0.21.0); patched at the
+    storage layer (`src/storage/employees.js` rejects non-UUID ids
+    in path-computing helpers) and the route layer (new
+    `rejectIfBadId` helper at the top of all 8 `:id`-taking
+    employee handlers). See `docs/security.md` for the advisory.
+  - **Length caps** added to `leave.reason` and `leave.notes` (both
+    500 chars, matching the existing punch.comment convention).
+  - Other route-level inputs already had appropriate validation;
+    storage layers reject bad input. No further changes needed.
+- ✅ **`Intl.NumberFormat` coverage** — new `fmtNumber()` and
+      `fmtHours()` helpers in `public/i18n.js`. 11 hour-display
+      callsites across 5 frontend files migrated from
+      `Math.round * 10 / 10` / `toFixed(1)` to `fmtHours()`. Hours
+      now render as `8.5` in en-US and `8,5` in pt-PT.
+- ✅ New `src/util/validators.js` (`isUuid`) and new test suite
+      `tests/test-validators.mjs` (15 tests).
 
-**Drop 5 (⏳ planned) — Smaller polish:**
-- [ ] **Input validation audit** on every route
-- [ ] **`Intl.NumberFormat` coverage** for locale-dependent number
-      formatting (hours, bank balance)
+**Pulled out into M14 (its own milestone) — Deployment guide:**
+- Will ship as the very last milestone before any future work, so
+  it can reference the final security posture rather than describing
+  a moving target.
 
 **Pulled out into M13 (its own milestone):**
 - ~~CSRF tokens~~ — `SameSite=Lax` cookies already provide solid
@@ -285,4 +302,4 @@ drops; each is independently shippable.
 
 ---
 
-_Last touched in 0.21.0._
+_Last touched in 0.22.0._

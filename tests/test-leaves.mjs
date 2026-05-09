@@ -447,6 +447,56 @@ try {
 
   // --------------------------------------------------------------------------
 
+  console.log('\nLength caps on free-text fields');
+
+  await test('reason longer than 500 chars is truncated to 500 on create', () => {
+    const longReason = 'x'.repeat(2000);
+    const created = store.create({
+      employeeId: aliceId, type: 'vacation', unit: 'days',
+      start: '2027-01-01', end: '2027-01-02',
+      reason: longReason,
+    });
+    const reread = store.findById(created.id);
+    assert.equal(reread.reason.length, 500);
+    assert.equal(reread.reason, 'x'.repeat(500));
+  });
+
+  await test('reason exactly 500 chars is preserved verbatim', () => {
+    const reason500 = 'a'.repeat(500);
+    const created = store.create({
+      employeeId: aliceId, type: 'vacation', unit: 'days',
+      start: '2027-02-01', end: '2027-02-02',
+      reason: reason500,
+    });
+    const reread = store.findById(created.id);
+    assert.equal(reread.reason, reason500);
+  });
+
+  await test('short reason is preserved verbatim', () => {
+    const created = store.create({
+      employeeId: aliceId, type: 'vacation', unit: 'days',
+      start: '2027-03-01', end: '2027-03-02',
+      reason: 'family event',
+    });
+    const reread = store.findById(created.id);
+    assert.equal(reread.reason, 'family event');
+  });
+
+  await test('reject notes longer than 500 chars are truncated', () => {
+    const created = store.create({
+      employeeId: aliceId, type: 'vacation', unit: 'days',
+      start: '2027-04-01', end: '2027-04-02',
+    });
+    const longNotes = 'reject reason '.repeat(100); // ~1400 chars
+    store.reject(created.id, adminId, longNotes);
+    const reread = store.findById(created.id);
+    assert.equal(reread.notes.length, 500);
+    // Trim is applied before slice, so leading/trailing whitespace stripped first
+    assert.equal(reread.notes, longNotes.trim().slice(0, 500));
+  });
+
+  // --------------------------------------------------------------------------
+
   console.log('\nwouldExceedCap');
 
   const capDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-leaves-cap-'));

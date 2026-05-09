@@ -159,11 +159,11 @@ console.log('Employees / summary route');
 
 await test('rejects requests from non-employer users', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
   }));
   const res = await call(handler, {
-    user: { id: 'u1', role: 'employee' },
-    params: { id: 'u1' },
+    user: { id: '11111111-1111-4111-8111-111111111111', role: 'employee' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.statusCode, 403);
   assert.equal(res.body.errorCode, 'forbidden');
@@ -172,8 +172,8 @@ await test('rejects requests from non-employer users', async () => {
 await test('returns 404 for unknown employee id', async () => {
   const handler = buildHandler(buildStores({ users: [] }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'no-such-id' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '00000000-0000-4000-8000-000000000099' },
   });
   assert.equal(res.statusCode, 404);
   assert.equal(res.body.errorCode, 'not_found');
@@ -181,30 +181,30 @@ await test('returns 404 for unknown employee id', async () => {
 
 await test('returns the basic shape: id, username, role, profile, week, bank, upcomingLeaves, pending', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee', createdAt: '2026-01-01' }],
-    profiles: { u1: { fullName: 'Alice', position: 'Designer', hasPicture: false } },
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee', createdAt: '2026-01-01' }],
+    profiles: { '11111111-1111-4111-8111-111111111111': { fullName: 'Alice', position: 'Designer', hasPicture: false } },
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.statusCode, 200);
   for (const k of ['id', 'username', 'role', 'profile', 'week', 'bankHours', 'upcomingLeaves', 'pending']) {
     assert.ok(k in res.body, `missing field: ${k}`);
   }
-  assert.equal(res.body.id, 'u1');
+  assert.equal(res.body.id, '11111111-1111-4111-8111-111111111111');
   assert.equal(res.body.username, 'alice');
   assert.equal(res.body.role, 'employee');
 });
 
 await test('week object contains from, to, hours, scheduled', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
-    workingTime: { u1: { dailyHours: 8, weeklyHours: 40 } },
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
+    workingTime: { '11111111-1111-4111-8111-111111111111': { dailyHours: 8, weeklyHours: 40 } },
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   for (const k of ['from', 'to', 'hours', 'scheduled']) {
     assert.ok(k in res.body.week, `missing week.${k}`);
@@ -216,35 +216,35 @@ await test('week object contains from, to, hours, scheduled', async () => {
 
 await test('week.scheduled honors per-employee override', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
-    workingTime: { u1: { dailyHours: 6, weeklyHours: 30 } }, // part-time
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
+    workingTime: { '11111111-1111-4111-8111-111111111111': { dailyHours: 6, weeklyHours: 30 } }, // part-time
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.week.scheduled, 30);
 });
 
 await test('bankHours reads from correctionsStore.computeBank', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
-    bank: { u1: 4.5 },
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
+    bank: { '11111111-1111-4111-8111-111111111111': 4.5 },
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.bankHours, 4.5);
 });
 
 await test('bankHours defaults to 0 when no bank entry exists', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.bankHours, 0);
 });
@@ -253,15 +253,15 @@ await test('bankHours defaults to 0 when no bank entry exists', async () => {
 
 await test('upcomingLeaves: includes approved leaves starting in next 30 days', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     leaves: [
-      { id: 'L1', employeeId: 'u1', type: 'vacation', unit: 'days',
+      { id: 'L1', employeeId: '11111111-1111-4111-8111-111111111111', type: 'vacation', unit: 'days',
         status: 'approved', start: daysFromToday(7), end: daysFromToday(11) },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.upcomingLeaves.length, 1);
   assert.equal(res.body.upcomingLeaves[0].id, 'L1');
@@ -272,60 +272,60 @@ await test('upcomingLeaves: includes approved leaves starting in next 30 days', 
 
 await test('upcomingLeaves: includes leaves currently in progress (started yesterday)', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     leaves: [
-      { id: 'L1', employeeId: 'u1', type: 'sick', unit: 'days',
+      { id: 'L1', employeeId: '11111111-1111-4111-8111-111111111111', type: 'sick', unit: 'days',
         status: 'approved', start: daysFromToday(-1), end: daysFromToday(2) },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.upcomingLeaves.length, 1);
 });
 
 await test('upcomingLeaves: excludes leaves more than 30 days out', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     leaves: [
-      { id: 'L1', employeeId: 'u1', type: 'vacation', unit: 'days',
+      { id: 'L1', employeeId: '11111111-1111-4111-8111-111111111111', type: 'vacation', unit: 'days',
         status: 'approved', start: daysFromToday(45), end: daysFromToday(50) },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.upcomingLeaves.length, 0);
 });
 
 await test('upcomingLeaves: excludes already-finished leaves', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     leaves: [
-      { id: 'L1', employeeId: 'u1', type: 'vacation', unit: 'days',
+      { id: 'L1', employeeId: '11111111-1111-4111-8111-111111111111', type: 'vacation', unit: 'days',
         status: 'approved', start: daysFromToday(-30), end: daysFromToday(-20) },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.upcomingLeaves.length, 0);
 });
 
 await test('upcomingLeaves: excludes pending leaves (only approved show as upcoming)', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     leaves: [
-      { id: 'L1', employeeId: 'u1', type: 'vacation', unit: 'days',
+      { id: 'L1', employeeId: '11111111-1111-4111-8111-111111111111', type: 'vacation', unit: 'days',
         status: 'pending', start: daysFromToday(7), end: daysFromToday(11) },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.upcomingLeaves.length, 0);
   // But the same leave SHOULD appear in pending.leaves
@@ -335,36 +335,36 @@ await test('upcomingLeaves: excludes pending leaves (only approved show as upcom
 
 await test('upcomingLeaves: excludes rejected/cancelled leaves', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     leaves: [
-      { id: 'L1', employeeId: 'u1', type: 'vacation', unit: 'days',
+      { id: 'L1', employeeId: '11111111-1111-4111-8111-111111111111', type: 'vacation', unit: 'days',
         status: 'rejected',  start: daysFromToday(7),  end: daysFromToday(11) },
-      { id: 'L2', employeeId: 'u1', type: 'vacation', unit: 'days',
+      { id: 'L2', employeeId: '11111111-1111-4111-8111-111111111111', type: 'vacation', unit: 'days',
         status: 'cancelled', start: daysFromToday(14), end: daysFromToday(18) },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.upcomingLeaves.length, 0);
 });
 
 await test('upcomingLeaves: sorted by start date ascending', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     leaves: [
-      { id: 'B', employeeId: 'u1', type: 'vacation', unit: 'days',
+      { id: 'B', employeeId: '11111111-1111-4111-8111-111111111111', type: 'vacation', unit: 'days',
         status: 'approved', start: daysFromToday(20), end: daysFromToday(22) },
-      { id: 'A', employeeId: 'u1', type: 'sick', unit: 'days',
+      { id: 'A', employeeId: '11111111-1111-4111-8111-111111111111', type: 'sick', unit: 'days',
         status: 'approved', start: daysFromToday(5), end: daysFromToday(7) },
-      { id: 'C', employeeId: 'u1', type: 'appointment', unit: 'days',
+      { id: 'C', employeeId: '11111111-1111-4111-8111-111111111111', type: 'appointment', unit: 'days',
         status: 'approved', start: daysFromToday(15), end: daysFromToday(15) },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.deepEqual(res.body.upcomingLeaves.map((l) => l.id), ['A', 'C', 'B']);
 });
@@ -374,19 +374,19 @@ await test('upcomingLeaves: scoped to this employee only', async () => {
   // If our mock leaks other users' leaves, the endpoint would too.
   const handler = buildHandler(buildStores({
     users: [
-      { id: 'u1', username: 'alice', role: 'employee' },
-      { id: 'u2', username: 'bob',   role: 'employee' },
+      { id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' },
+      { id: '22222222-2222-4222-8222-222222222222', username: 'bob',   role: 'employee' },
     ],
     leaves: [
-      { id: 'A', employeeId: 'u1', type: 'vacation', unit: 'days',
+      { id: 'A', employeeId: '11111111-1111-4111-8111-111111111111', type: 'vacation', unit: 'days',
         status: 'approved', start: daysFromToday(7), end: daysFromToday(8) },
-      { id: 'B', employeeId: 'u2', type: 'vacation', unit: 'days',
+      { id: 'B', employeeId: '22222222-2222-4222-8222-222222222222', type: 'vacation', unit: 'days',
         status: 'approved', start: daysFromToday(7), end: daysFromToday(8) },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   // Should see alice's leave A, not bob's leave B
   assert.equal(res.body.upcomingLeaves.length, 1);
@@ -397,19 +397,19 @@ await test('upcomingLeaves: scoped to this employee only', async () => {
 
 await test('pending.corrections: includes only pending status', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     corrections: [
-      { id: 'C1', employeeId: 'u1', kind: 'both',
+      { id: 'C1', employeeId: '11111111-1111-4111-8111-111111111111', kind: 'both',
         status: 'pending',  start: daysFromToday(-1), end: daysFromToday(-1), hours: 8 },
-      { id: 'C2', employeeId: 'u1', kind: 'in',
+      { id: 'C2', employeeId: '11111111-1111-4111-8111-111111111111', kind: 'in',
         status: 'approved', start: daysFromToday(-2), end: daysFromToday(-2), hours: 4 },
-      { id: 'C3', employeeId: 'u1', kind: 'out',
+      { id: 'C3', employeeId: '11111111-1111-4111-8111-111111111111', kind: 'out',
         status: 'rejected', start: daysFromToday(-3), end: daysFromToday(-3), hours: 4 },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.pending.corrections.length, 1);
   assert.equal(res.body.pending.corrections[0].id, 'C1');
@@ -418,19 +418,19 @@ await test('pending.corrections: includes only pending status', async () => {
 await test('pending.corrections: scoped to this employee only', async () => {
   const handler = buildHandler(buildStores({
     users: [
-      { id: 'u1', username: 'alice', role: 'employee' },
-      { id: 'u2', username: 'bob',   role: 'employee' },
+      { id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' },
+      { id: '22222222-2222-4222-8222-222222222222', username: 'bob',   role: 'employee' },
     ],
     corrections: [
-      { id: 'A', employeeId: 'u1', kind: 'both', status: 'pending',
+      { id: 'A', employeeId: '11111111-1111-4111-8111-111111111111', kind: 'both', status: 'pending',
         start: daysFromToday(-1), end: daysFromToday(-1), hours: 8 },
-      { id: 'B', employeeId: 'u2', kind: 'both', status: 'pending',
+      { id: 'B', employeeId: '22222222-2222-4222-8222-222222222222', kind: 'both', status: 'pending',
         start: daysFromToday(-1), end: daysFromToday(-1), hours: 8 },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.pending.corrections.length, 1);
   assert.equal(res.body.pending.corrections[0].id, 'A');
@@ -438,16 +438,16 @@ await test('pending.corrections: scoped to this employee only', async () => {
 
 await test('pending.corrections: shape is { id, kind, start, end, hours }', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     corrections: [
-      { id: 'C1', employeeId: 'u1', kind: 'both', status: 'pending',
+      { id: 'C1', employeeId: '11111111-1111-4111-8111-111111111111', kind: 'both', status: 'pending',
         start: '2026-04-30T08:00:00Z', end: '2026-04-30T17:00:00Z',
         hours: 9, justification: 'forgot phone' /* NOT in response */ },
     ],
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   const c = res.body.pending.corrections[0];
   for (const k of ['id', 'kind', 'start', 'end', 'hours']) {
@@ -461,24 +461,24 @@ await test('pending.corrections: shape is { id, kind, start, end, hours }', asyn
 
 await test('profile is null when no profile or picture exists', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     // no profiles entry
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.profile, null);
 });
 
 await test('profile carries hasPicture even when profile fields are missing', async () => {
   const handler = buildHandler(buildStores({
-    users: [{ id: 'u1', username: 'alice', role: 'employee' }],
-    profiles: { u1: { hasPicture: true } }, // picture only, no fullName
+    users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
+    profiles: { '11111111-1111-4111-8111-111111111111': { hasPicture: true } }, // picture only, no fullName
   }));
   const res = await call(handler, {
-    user: { id: 'admin', role: 'employer' },
-    params: { id: 'u1' },
+    user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
+    params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.body.profile.hasPicture, true);
 });

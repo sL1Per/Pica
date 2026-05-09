@@ -1,4 +1,4 @@
-import { t, applyTranslations } from '/i18n.js';
+import { t, applyTranslations, fmtHours } from '/i18n.js';
 import { showMessage, setBusy } from '/app.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
@@ -66,7 +66,7 @@ function formatWhen(l) {
 }
 
 function formatDuration(l) {
-  if (l.unit === 'hours' && typeof l.hours === 'number') return `${l.hours.toFixed(1)} h`;
+  if (l.unit === 'hours' && typeof l.hours === 'number') return `${fmtHours(l.hours)} h`;
   const s = new Date(l.start), e = new Date(l.end);
   const days = Math.round((e - s) / 86_400_000) + 1;
   return `${days} day${days === 1 ? '' : 's'}`;
@@ -98,11 +98,11 @@ function renderHours(report) {
     hoursEmpty.hidden = true;
     for (const b of report.buckets) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${escapeHtml(b.key)}</td><td class="right">${b.hours.toFixed(1)}</td>`;
+      tr.innerHTML = `<td>${escapeHtml(b.key)}</td><td class="right">${fmtHours(b.hours)}</td>`;
       hoursTbody.appendChild(tr);
     }
   }
-  hoursTotal.textContent = report.totalHours.toFixed(1);
+  hoursTotal.textContent = fmtHours(report.totalHours);
   hoursRange.textContent = `${report.range.from} → ${report.range.to} · ${prettyGroupBy(report.groupBy)}`;
   hoursCsvLink.href = buildHoursUrl('.csv');
 }
@@ -112,7 +112,7 @@ function renderLeaves(report) {
   statPending.textContent   = report.byStatus.pending   ?? 0;
   statRejected.textContent  = report.byStatus.rejected  ?? 0;
   statCancelled.textContent = report.byStatus.cancelled ?? 0;
-  statDays.textContent      = report.approvedDaysOff.toFixed(1);
+  statDays.textContent      = fmtHours(report.approvedDaysOff);
 
   leavesTbody.innerHTML = '';
   if (report.leaves.length === 0) {
@@ -228,10 +228,10 @@ const teamError        = $('team-error');
 let teamPeriod = 'month';
 
 function fmtHoursCell(h) {
-  // 0 → "0", 9 → "9", 9.5 → "9.5". Matches the Timesheets column in the example.
+  // Locale-aware hours rendering — 0 → "0", 9 → "9", 9.5 → "9.5"
+  // (or "9,5" in pt-PT). Used by the team overview table.
   if (!Number.isFinite(h)) return '0';
-  if (Math.abs(h - Math.round(h)) < 0.05) return String(Math.round(h));
-  return String(Math.round(h * 10) / 10);
+  return fmtHours(h);
 }
 
 function renderTeamRows(data) {

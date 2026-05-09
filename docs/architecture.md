@@ -87,6 +87,8 @@ pica/
 │   │   ├── sessions.js      # signed cookies (HMAC-SHA256)
 │   │   ├── rbac.js          # authenticate(), requireAuth, requireRole
 │   │   └── rate-limit.js    # in-memory token bucket for /api/login
+│   ├── util/                # small reusable helpers
+│   │   └── validators.js    # isUuid (path-traversal defense)
 │   ├── storage/             # one module per resource, encryption-aware
 │   │   ├── employees.js     # encrypted profiles + pictures
 │   │   ├── punches.js       # NDJSON, encrypted comment + geo
@@ -164,7 +166,8 @@ pica/
 │   ├── test-backups.mjs            # backup archive format + storage
 │   ├── test-backup-scheduler.mjs   # scheduler decisions + lifecycle
 │   ├── test-security-headers.mjs   # CSP, headers, cross-file invariants
-│   └── test-audit.mjs              # audit log: append, read, encryption, listMonths
+│   ├── test-audit.mjs              # audit log: append, read, encryption, listMonths
+│   └── test-validators.mjs         # isUuid edge cases (path-traversal defense)
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -307,7 +310,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 20 suites, 528 passing as of 0.21.0.
+- Total: 21 suites, 554 passing as of 0.22.0.
 
 ---
 
@@ -368,4 +371,4 @@ because they only add half a punch pair.
 
 ---
 
-_Last touched in 0.21.0._
+_Last touched in 0.22.0._

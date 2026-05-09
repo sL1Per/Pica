@@ -8,7 +8,7 @@
  */
 
 import { mountTopBar, mountFooter } from '/topbar.js';
-import { t, fmtTime } from '/i18n.js';
+import { t, fmtTime, fmtHours } from '/i18n.js';
 
 // ---- Quick-nav cards (kept from earlier dashboard) -----------------------
 
@@ -66,7 +66,7 @@ function formatBankHours(hours) {
   const sign = hours > 0 ? '+' : (hours < 0 ? '−' : '');
   const abs = Math.abs(hours);
   // Up to one decimal place, no trailing .0
-  const str = (Math.round(abs * 10) / 10).toFixed(1).replace(/\.0$/, '');
+  const str = fmtHours(abs);
   return `${sign}${str}h`;
 }
 

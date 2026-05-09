@@ -246,6 +246,89 @@ await test('translateError returns fallback when code is empty', () => {
   assert.equal(te('', 'fallback'), 'fallback');
 });
 
+// ---- fmtNumber / fmtHours -------------------------------------------------
+//
+// i18n.js can't be imported in Node (it imports /locales/... via
+// browser-absolute paths). Re-implement the same logic here and verify
+// the locale-dependent behavior we promise users. This duplicates the
+// existing pattern from the rest of this suite.
+
+console.log('');
+console.log('Number formatting (re-implemented to match public/i18n.js)');
+
+function makeFmtNumber(locale) {
+  return (n, opts = {}) => {
+    if (typeof n !== 'number' || !Number.isFinite(n)) return String(n);
+    try {
+      return new Intl.NumberFormat(locale, {
+        minimumFractionDigits: opts.minimumFractionDigits,
+        maximumFractionDigits: opts.maximumFractionDigits,
+        useGrouping: opts.useGrouping ?? true,
+      }).format(n);
+    } catch {
+      return String(n);
+    }
+  };
+}
+
+function makeFmtHours(locale) {
+  const fmt = makeFmtNumber(locale);
+  return (n) => {
+    if (typeof n !== 'number' || !Number.isFinite(n)) return '';
+    const rounded = Math.round(n * 10) / 10;
+    if (Number.isInteger(rounded)) {
+      return fmt(rounded, { maximumFractionDigits: 0 });
+    }
+    return fmt(rounded, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  };
+}
+
+await test('fmtNumber: en-US uses period as decimal separator', () => {
+  const fmt = makeFmtNumber('en-US');
+  assert.equal(fmt(9.5, { maximumFractionDigits: 1 }), '9.5');
+  assert.equal(fmt(1234.567, { maximumFractionDigits: 2 }), '1,234.57');
+});
+
+await test('fmtNumber: pt-PT uses comma as decimal separator', () => {
+  const fmt = makeFmtNumber('pt-PT');
+  assert.equal(fmt(9.5, { maximumFractionDigits: 1 }), '9,5');
+  // pt-PT uses non-breaking space (U+00A0) as thousands separator.
+  // We don't pin the exact thousand-separator char (some Intl impls
+  // use U+202F), but verify it's not period.
+  const big = fmt(1234.567, { maximumFractionDigits: 2 });
+  assert.match(big, /1[^0-9]234,57/, `expected pt-PT comma-decimal, got: ${big}`);
+});
+
+await test('fmtNumber returns String(n) for NaN and Infinity', () => {
+  const fmt = makeFmtNumber('en-US');
+  assert.equal(fmt(NaN), 'NaN');
+  assert.equal(fmt(Infinity), 'Infinity');
+});
+
+await test('fmtHours: integer values render without decimals', () => {
+  assert.equal(makeFmtHours('en-US')(8), '8');
+  assert.equal(makeFmtHours('pt-PT')(8), '8');
+  assert.equal(makeFmtHours('en-US')(0), '0');
+});
+
+await test('fmtHours: fractional values render with one decimal', () => {
+  assert.equal(makeFmtHours('en-US')(8.5), '8.5');
+  assert.equal(makeFmtHours('pt-PT')(8.5), '8,5');
+  assert.equal(makeFmtHours('en-US')(8.49), '8.5');  // rounds
+  assert.equal(makeFmtHours('en-US')(8.04), '8');    // rounds to integer
+});
+
+await test('fmtHours: handles negative hours (overtime/undertime)', () => {
+  assert.equal(makeFmtHours('en-US')(-2.5), '-2.5');
+  assert.equal(makeFmtHours('pt-PT')(-2.5), '-2,5');
+});
+
+await test('fmtHours: returns empty string for non-finite values', () => {
+  assert.equal(makeFmtHours('en-US')(NaN), '');
+  assert.equal(makeFmtHours('en-US')(Infinity), '');
+  assert.equal(makeFmtHours('en-US')('not a number'), '');
+});
+
 console.log('');
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

@@ -13,10 +13,10 @@ export default {
   'app.suffix': 'Gestão de tempo',
 
   'nav.employees':   'Funcionários',
-  'nav.calendar':    'Mapa',
-  'nav.leaves':      'Ausências',
+  'nav.calendar':    'Calendário',
+  'nav.leaves':      'Férias',
   'nav.corrections': 'Correções',
-  'nav.punches':     'Ponto',
+  'nav.punches':     'Marcações',
   'nav.reports':     'Relatórios',
   'nav.settings':    'Definições',
 
@@ -216,7 +216,7 @@ export default {
   // Leaves
   // ============================================================
   'leaves.viewCalendar': 'Ver calendário',
-  'leaves.requestNew': '+ Pedir ausência',
+  'leaves.requestNew': '+ Pedir férias',
   'leaves.balanceHeading': 'Saldo',
   'leaves.year': 'Ano',
   'leaves.thType': 'Tipo',
@@ -236,10 +236,10 @@ export default {
   'leaves.noEntriesAll': 'Ainda sem férias. Clique em "+ Pedir férias" para adicionar.',
   'leaves.noEntriesFiltered': 'Sem férias {filter}.',
   'leaves.failedToLoad': 'Falha ao carregar férias.',
-  'leaves.title':            'Ausências',
+  'leaves.title':            'Férias',
   'leaves.subtitleOwn':      'Os seus pedidos e saldos.',
   'leaves.subtitleAll':      'Pedidos de férias de todos os funcionários.',
-  'leaves.newLeave':         'Pedir ausência',
+  'leaves.newLeave':         'Pedir férias',
   'leaves.balancesHeading':  'Os meus saldos',
   'leaves.pendingHeading':   'Pendente de decisão',
   'leaves.historyHeading':   'Histórico',
@@ -316,7 +316,7 @@ export default {
   'leaveNew.reason': 'Motivo (opcional)',
   'leaveNew.reasonPlaceholder': 'Breve explicação. Este campo é encriptado.',
   'leaveNew.failedToCreate': 'Falha ao submeter o pedido.',
-  'leaveNew.title':       'Pedir ausência',
+  'leaveNew.title':       'Pedir férias',
   'leaveNew.subtitle':    'Submeta um pedido para o seu empregador aprovar.',
   'leaveNew.type':        'Tipo',
   'leaveNew.startDate':   'Data de início',
@@ -330,10 +330,10 @@ export default {
   // Calendar
   // ============================================================
   'calendar.myLeaves': '← Os meus pedidos',
-  'calendar.approvedOnly': 'Apenas ausências aprovadas',
-  'calendar.requestNew': '+ Pedir ausência',
+  'calendar.approvedOnly': 'Apenas férias aprovadas',
+  'calendar.requestNew': '+ Pedir férias',
   'calendar.legendType': 'Tipo',
-  'calendar.title':        'Calendário de ausências',
+  'calendar.title':        'Calendário de férias',
   'calendar.subtitle':     'Férias aprovadas em toda a equipa.',
   'calendar.prev':         '← Anterior',
   'calendar.next':         'Seguinte →',

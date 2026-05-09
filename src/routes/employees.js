@@ -2,6 +2,7 @@ import { EMPLOYEE_EDITABLE, ALL_EDITABLE } from '../storage/employees.js';
 import { hoursReport } from '../storage/reports.js';
 import { computePeriod, ymdOf } from '../storage/period.js';
 import { auditContext } from '../storage/audit.js';
+import { isUuid } from '../util/validators.js';
 
 /**
  * Employee management endpoints.
@@ -29,6 +30,23 @@ export function registerEmployeeRoutes(router, {
   auditStore = null,
 }) {
   const MAX_PICTURE_BYTES = 2 * 1024 * 1024; // 2 MB — client should resize first
+
+  /**
+   * Reject early when `:id` in the URL isn't a UUID. The storage layer
+   * also enforces this (defense in depth), but doing it at the route
+   * gives us a clean 400 with errorCode rather than a 500 from a thrown
+   * storage call.
+   *
+   * Returns true if the response was sent (caller should `return`); false
+   * if the id is valid and the handler may proceed.
+   */
+  function rejectIfBadId(req, res) {
+    if (!isUuid(req.params.id)) {
+      res.badRequest('Invalid employee id', { errorCode: 'invalid_id' });
+      return true;
+    }
+    return false;
+  }
 
   // --------------------------------------------------------------------------
   // GET /api/employees — list all employees (employer only)
@@ -100,6 +118,7 @@ export function registerEmployeeRoutes(router, {
   // GET /api/employees/:id — read one profile (owner or employer)
   // --------------------------------------------------------------------------
   router.get('/api/employees/:id', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
+    if (rejectIfBadId(req, res)) return;
     const user = usersStore.findById(req.params.id);
     if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
     const profile = employeesStore.readProfile(user.id);
@@ -138,6 +157,7 @@ export function registerEmployeeRoutes(router, {
   // (which shows the same numbers from their own POV).
   // --------------------------------------------------------------------------
   router.get('/api/employees/:id/summary', requireRole('employer')((req, res) => {
+    if (rejectIfBadId(req, res)) return;
     const user = usersStore.findById(req.params.id);
     if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
 
@@ -248,6 +268,7 @@ export function registerEmployeeRoutes(router, {
   // Employees get EMPLOYEE_EDITABLE; employers get ALL_EDITABLE.
   // --------------------------------------------------------------------------
   router.put('/api/employees/:id', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
+    if (rejectIfBadId(req, res)) return;
     const user = usersStore.findById(req.params.id);
     if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
 
@@ -263,6 +284,7 @@ export function registerEmployeeRoutes(router, {
   // own app. TODO(M11): prevent deleting the last employer account.
   // --------------------------------------------------------------------------
   router.delete('/api/employees/:id', requireRole('employer')(async (req, res) => {
+    if (rejectIfBadId(req, res)) return;
     if (req.params.id === req.user.id) {
       return res.badRequest('You cannot delete your own account', { errorCode: 'cannot_delete_self' });
     }
@@ -286,6 +308,7 @@ export function registerEmployeeRoutes(router, {
   // GET /api/employees/:id/picture — stream decrypted JPEG (owner or employer).
   // --------------------------------------------------------------------------
   router.get('/api/employees/:id/picture', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
+    if (rejectIfBadId(req, res)) return;
     if (!employeesStore.hasPicture(req.params.id)) {
       return res.notFound('No picture', { errorCode: 'not_found' });
     }
@@ -306,6 +329,7 @@ export function registerEmployeeRoutes(router, {
   // rejects anything over 2 MB.
   // --------------------------------------------------------------------------
   router.put('/api/employees/:id/picture', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
+    if (rejectIfBadId(req, res)) return;
     const files = req.body?.files;
     if (!Array.isArray(files) || files.length === 0) {
       return res.badRequest('No picture uploaded', { errorCode: 'required' });
@@ -326,6 +350,7 @@ export function registerEmployeeRoutes(router, {
   // DELETE /api/employees/:id/picture — remove picture (owner or employer).
   // --------------------------------------------------------------------------
   router.delete('/api/employees/:id/picture', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
+    if (rejectIfBadId(req, res)) return;
     employeesStore.deletePicture(req.params.id);
     res.json({ ok: true });
   }));
@@ -347,6 +372,7 @@ export function registerEmployeeRoutes(router, {
   // Use the self-service /api/me/password instead.
   // --------------------------------------------------------------------------
   router.post('/api/employees/:id/password-reset', requireRole('employer')(async (req, res) => {
+    if (rejectIfBadId(req, res)) return;
     const targetId = req.params.id;
     if (targetId === req.user.id) {
       return res.badRequest(

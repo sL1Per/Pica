@@ -1,5 +1,5 @@
 import { postJson, showMessage, setBusy } from '/app.js';
-import { t, translateError, applyTranslations } from '/i18n.js';
+import { t, translateError, applyTranslations, fmtHours } from '/i18n.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
@@ -44,7 +44,7 @@ function formatWhen(l) {
 
 function formatDuration(l) {
   if (l.unit === 'hours' && typeof l.hours === 'number') {
-    return `${l.hours.toFixed(1)} hours`;
+    return `${fmtHours(l.hours)} hours`;
   }
   // days — inclusive
   const s = new Date(l.start);

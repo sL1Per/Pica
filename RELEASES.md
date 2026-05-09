@@ -14,6 +14,241 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.0] — 2026-05-09 — M12 Drop 4: input validation + number formatting
+
+Closes M12. The deployment guide originally planned for "Drop 4"
+has been pulled out into M14 (its own milestone, will ship last).
+
+This drop is a maintenance release, but it patches a **real
+path-traversal vulnerability** discovered during the audit, so
+the security implications outweigh the modest visible scope.
+See **Security advisory** below for the disclosure.
+
+### What's new
+
+**Locale-aware hour formatting.** Hours now render with the user's
+locale's decimal separator: `8.5` in en-US, `8,5` in pt-PT. Two new
+helpers in `public/i18n.js`:
+- `fmtNumber(n, opts)` — locale-aware number formatting via
+  `Intl.NumberFormat`. Falls back to `String(n)` on non-finite or
+  Intl-unavailable.
+- `fmtHours(n)` — specialized helper. Integer hours render as
+  integers (`8`), fractional values get one decimal (`8.5`).
+  Returns empty string on NaN/Infinity for clean UI behavior.
+
+11 hour-display call sites across 5 frontend files migrated from
+ad-hoc `Math.round(h * 10) / 10` and `.toFixed(1)` to `fmtHours()`:
+`employee.js`, `index.js`, `leave.js`, `leaves.js`, `reports.js`.
+
+**Length caps on free-text fields.** `leave.reason` and `leave.notes`
+(employer reject) now cap at 500 chars at the storage layer, matching
+the existing convention from `punch.comment`,
+`correction.justification`, and `correction.notes`. The 5 MB body
+cap at the HTTP layer is the upper bound; without storage caps,
+maximum-size submissions could bloat encrypted ledgers without
+forensic value.
+
+**New `src/util/validators.js`.** Currently exports `isUuid()` —
+strict RFC 4122 v4 UUID matching. Used as a defense-in-depth gate
+on `:id` URL parameters.
+
+**`rejectIfBadId(req, res)` route-layer helper** in
+`src/routes/employees.js`. Called at the top of all 8 `:id`-taking
+employee handlers; returns 400 with `errorCode: invalid_id`. Storage
+layer (`src/storage/employees.js`) re-validates ids in
+`profilePath()` and `picturePath()` as a safety net.
+
+### Security advisory — path traversal in employee picture upload
+
+**Affected versions:** Pica 0.16.4 through 0.21.0 inclusive.
+**Fixed in:** 0.22.0.
+**Severity:** Medium. Authenticated employer required.
+**CVE:** Not assigned (Pica is small enough not to participate in MITRE).
+
+**Description:**
+The `PUT /api/employees/:id/picture` endpoint computed disk paths
+via `path.join(empDir, id + '.picture')`. Because the URL router
+calls `decodeURIComponent` on captured `:id` segments, an
+authenticated user with the `employer` role could send a request
+with `id = '..%2F..%2F<name>'` and write attacker-controlled bytes
+to `<name>.json` and `<name>.picture` files outside the data
+directory.
+
+A live proof-of-concept against 0.21.0:
+```
+curl -X PUT -F 'picture=@evil.jpg' \
+  https://pica.example/api/employees/..%2F..%2Fmarker/picture
+```
+created `pica/marker.json` and `pica/marker.picture` (one level
+above `pica/data/employees/`, in the project root).
+
+**Impact:**
+- An employer could write controlled file content under any
+  directory reachable via `path.join` from `data/employees/`.
+- Use to fill disk (DoS) or stage payloads for other tools running
+  on the same host.
+
+**Limitations on impact:**
+- Read-side endpoints already required the file to exist at the
+  resolved path AND to be a Pica-encrypted blob with the right
+  AES-GCM AAD; they do not enable arbitrary-file reading.
+- The fixed `.json` / `.picture` suffix prevented overwriting
+  unrelated files (Pica's own data files have different shapes).
+- RBAC was always enforced; this was not a privilege-escalation
+  vulnerability.
+- Bog-standard non-employer users are not affected. The
+  `requireOwnerOrEmployer((req) => req.params.id)` gate was the
+  effective filter.
+
+**Discovery:** internal review during M12 Drop 4 work. Not known to
+have been exploited.
+
+**Fix in 0.22.0:**
+1. Route layer: `rejectIfBadId(req, res)` runs at the top of every
+   `:id`-taking handler in `src/routes/employees.js`. Returns 400
+   `invalid_id` for any `:id` that isn't a valid UUID v4.
+2. Storage layer: `src/storage/employees.js` `profilePath()` /
+   `picturePath()` throw on bad ids; `exists`/`hasPicture`/`remove`
+   /`deletePicture` silently return "doesn't exist" on bad ids
+   (graceful for queries, loud for writes).
+
+**Verification:** the same exploit `curl` against 0.22.0 returns
+400 `invalid_id` with no file written.
+
+**Operator action required:** none beyond upgrading. No data
+migration; no config change. Restart the server after upgrade.
+If your install was run in a multi-employer environment (more than
+one trusted user with the `employer` role) and you have reason to
+suspect malicious activity from one of them, audit your project
+directory for unexpected `.json` or `.picture` files outside
+`data/employees/`. Routine single-employer installs are not at
+practical risk.
+
+### Files touched
+- **New:** `src/util/validators.js` — `isUuid()`.
+- **New:** `tests/test-validators.mjs` — 15 tests covering accepted
+  inputs (`crypto.randomUUID()` output, well-formed v4 case-insensitive)
+  and the rejection envelope (path traversal characters, URL-encoded
+  forms, all-zero, v1, bad variant nibble, length, non-hex,
+  whitespace-padded).
+- `src/routes/employees.js` — `isUuid` import; `rejectIfBadId` helper
+  defined at the top of `registerEmployeeRoutes`; the helper is
+  invoked at the top of all 8 handlers that take `:id`.
+- `src/storage/employees.js` — `isUuid` import; `profilePath()` and
+  `picturePath()` throw on bad ids; `exists`, `hasPicture`, `remove`,
+  `deletePicture` silently no-op on bad ids.
+- `src/storage/leaves.js` — `reason` and reject `notes` capped at
+  500 chars before encryption.
+- `public/i18n.js` — `fmtNumber()` and `fmtHours()` exports.
+- `public/employee.js`, `public/index.js`, `public/leave.js`,
+  `public/leaves.js`, `public/reports.js` — `fmtHours` import added,
+  11 ad-hoc rounding sites migrated.
+- `tests/test-i18n.mjs` — 7 new tests for fmtNumber/fmtHours covering
+  en-US/pt-PT decimal separators, integer/fractional rendering,
+  negatives, NaN/Infinity, and big-number grouping.
+- `tests/test-leaves.mjs` — 4 new tests for the length caps:
+  truncation at 500, exact-500 verbatim, short verbatim, reject
+  notes truncation.
+- `tests/test-employees.mjs` — fake-id fixtures replaced with valid
+  UUIDs (now that storage validates).
+- `tests/test-employees-summary.mjs` — same fixture cleanup, plus
+  `workingTime`/`bank`/`profiles` map-key fixes.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v23`.
+- `package.json` — minor bump to 0.22.0.
+- `docs/architecture.md` — `src/util/validators.js` in layout,
+  `tests/test-validators.mjs` in test list, count to 554.
+- `docs/security.md` — new "Input validation" section with the
+  path-traversal advisory.
+- `docs/roadmap.md` — M12 Drop 4 ✅ (combining input validation +
+  numfmt under one drop). Deployment guide pulled out to M14
+  (its own milestone, ships last).
+
+### Tests
+- 21-suite regression: **554 passing, 0 failing** (was 528).
+  Increase of 26 = 7 (i18n) + 4 (leaves length caps) + 15
+  (validators).
+- Live exploit smoke: `..%2F..%2Fmarker` PUT to picture endpoint
+  returned `200 ok` and created files outside dataDir on 0.21.0.
+  Same request returns `400 invalid_id` and creates nothing on
+  0.22.0.
+- Frontend regression: 50 `test-frontend-imports` checks pass —
+  every page that imports `fmtHours` declares the import correctly,
+  no orphan `toFixed` calls remain in hour-display contexts.
+
+### Honest disclosures
+
+- **The advisory is honest about scope.** This was a real bug in a
+  shipped version. The right thing is to be loud about it in the
+  release notes, not bury it. Operators reading this who have run
+  ≤0.21.0 in a multi-employer environment with adversarial trust
+  assumptions should audit. Single-employer installs are not at
+  practical risk because the only person able to exploit was
+  themselves.
+- **No credit acknowledgement section** because no external party
+  reported this — found during internal audit. Listing it under
+  "discovered by ourselves" reads like a humblebrag, so it just
+  goes in the disclosure section.
+- **The fix is conservative.** UUID v4 validation rejects any
+  legacy id that wasn't generated by `crypto.randomUUID()`. Pica
+  has only ever used `crypto.randomUUID()`, so all real ids match.
+  If a future code path needed to accept other id formats, the
+  validator would need a more permissive option — not a problem
+  today.
+- **Other stores were audited and found OK.** `leaves`,
+  `corrections`, `punches`, `backups` use ids only as record keys
+  inside NDJSON files keyed by year/month — they never flow into
+  `path.join(dir, id + suffix)`. Bad ids return clean 404s from
+  `findById()`. No additional UUID validation needed.
+- **Length caps are 500 chars, possibly tight for some users.** A
+  real "explain why I'm taking medical leave" reason might want
+  more than 500 chars. The 500-char limit matches existing
+  conventions and is what UI elements were already designed
+  around. Operators who need longer reasons can patch the limit
+  in a fork; lifting it generally would require revisiting
+  storage-bloat trade-offs.
+- **`fmtHours` rounds at the half-tenth boundary** using
+  JavaScript's `Math.round(n * 10) / 10`. So `8.05` rounds to `8.1`
+  in some implementations and `8` in others (banker's rounding).
+  Forensically not significant — hour displays are user-facing
+  approximations; raw values are stored as-is in the underlying
+  records.
+- **Frontend imports of `fmtHours` are now imported per-page.**
+  No tree-shaking is possible without a build step; each page
+  pulls in the whole `i18n.js` module. Acceptable — `i18n.js` is
+  already on the critical path for every authed page.
+- **The empty-string return for non-finite hours** (NaN/Infinity)
+  means a UI cell may render as `"h"` or `" h"` instead of e.g.
+  `"NaN h"`. Visually ambiguous but matches the convention in the
+  rest of the app where missing data is "blank" rather than a
+  diagnostic message. A future drop could add explicit "—" or "no
+  data" handling at the UI level.
+- **Path-traversal tests don't include integration tests** that
+  actually run the server and try to exploit. The unit tests in
+  `test-validators.mjs` cover the validator; the live smoke during
+  development confirmed the route + storage chain. A future M13
+  E2E suite (Playwright) could add a regression test that hits the
+  endpoint with the exploit payload and asserts 400.
+- **The `00000000-...-000000000000` all-zero UUID is rejected.**
+  Strictly speaking this could be a valid v4 (vanishingly improbable
+  collision) but `crypto.randomUUID()` will never produce it, so
+  rejecting it tightens the validator without affecting real users.
+  If this ever causes a false negative (e.g. a backup contains an
+  all-zero id from some imported source), the validator can be
+  loosened.
+- **Number formatting now goes through `Intl.NumberFormat`.** This
+  uses the runtime's CLDR data, which can change minor formatting
+  details across browser versions (e.g. the thousands separator in
+  pt-PT may be U+00A0 or U+202F depending on the engine). The tests
+  in `test-i18n.mjs` use a tolerant regex (`1[^0-9]234,57`) rather
+  than pinning the exact character, on purpose.
+- **The audit log gained no new event types in this release.** A
+  better UX would be to record `password.self_change` failures
+  due to length-cap rejection, etc., but those are UI-correctable
+  user errors, not access-level events. M12 Drop 3 documented this
+  policy and it still applies.
+
+---
+
 ## [0.21.0] — 2026-05-08 — M12 Drop 3: audit log
 
 Sensitive operations are now recorded in an encrypted append-only

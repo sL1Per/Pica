@@ -9,7 +9,7 @@
  */
 
 import { mountTopBar, mountFooter } from '/topbar.js';
-import { t, applyTranslations, fmtDate } from '/i18n.js';
+import { t, applyTranslations, fmtDate, fmtHours } from '/i18n.js';
 import { showMessage } from '/app.js';
 
 mountTopBar();
@@ -60,7 +60,7 @@ function fmtBankHours(hours) {
   if (!Number.isFinite(hours) || hours === 0) return '0h';
   const sign = hours > 0 ? '+' : '−';
   const abs = Math.abs(hours);
-  const str = (Math.round(abs * 10) / 10).toFixed(1).replace(/\.0$/, '');
+  const str = fmtHours(abs);
   return `${sign}${str}h`;
 }
 
@@ -119,7 +119,7 @@ function renderHeader(data) {
 function renderStats(data) {
   // Week hours
   const wh = data.week?.hours ?? 0;
-  weekHoursEl.textContent = (Math.round(wh * 10) / 10).toString();
+  weekHoursEl.textContent = fmtHours(wh);
   if (data.week?.scheduled) {
     weekCaptionEl.textContent = t('employee.summary.weekTarget', {
       target: data.week.scheduled + 'h',
@@ -210,7 +210,7 @@ function renderPending(data) {
   if (corrs.length > 0) {
     const KIND_KEYS = { both: 'corrections.kindBoth', in: 'corrections.kindIn', out: 'corrections.kindOut' };
     pendingCorrectionsListEl.innerHTML = corrs.map((c) => {
-      const hrs = (Math.round((c.hours || 0) * 10) / 10);
+      const hrs = fmtHours(c.hours || 0);
       const kindLabel = t(KIND_KEYS[c.kind] || 'corrections.kindBoth');
       return `
         <li class="summary-list__item">

@@ -1,5 +1,5 @@
 import { showMessage } from '/app.js';
-import { t, applyTranslations } from '/i18n.js';
+import { t, applyTranslations, fmtHours } from '/i18n.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 
 mountTopBar();
@@ -47,7 +47,7 @@ function formatRange(leave) {
 
 function fmt(n) {
   // Keep whole numbers clean, half-days visible.
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+  return fmtHours(n);
 }
 
 // -- List rendering (unchanged from before) ---------------------------------

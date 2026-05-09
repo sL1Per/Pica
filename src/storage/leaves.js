@@ -238,7 +238,12 @@ export function createLeavesStore(dataDir, masterKey) {
       hours: unit === 'hours' && typeof hours === 'number' ? hours : null,
     };
     if (reason && typeof reason === 'string' && reason.trim() !== '') {
-      ev.enc = encryptField(JSON.stringify({ reason: reason.trim() }), masterKey, aadFor(id));
+      // Cap reason length at 500 chars. The 5 MB body limit at the HTTP
+      // layer is the upper bound, but storing 5 MB encrypted reasons
+      // bloats the leaves log without adding forensic value. Pica
+      // matches the 500-char convention used for punch comments.
+      const trimmed = reason.trim().slice(0, 500);
+      ev.enc = encryptField(JSON.stringify({ reason: trimmed }), masterKey, aadFor(id));
     }
     appendEvent(year, month, ev);
     return findById(id);
@@ -356,7 +361,10 @@ export function createLeavesStore(dataDir, masterKey) {
     const ts = new Date().toISOString();
     const ev = { id, ts, event, actorId };
     if (event === 'rejected' && extra.notes && typeof extra.notes === 'string') {
-      ev.enc = encryptField(JSON.stringify({ notes: extra.notes.trim() }), masterKey, aadFor(id));
+      // Cap notes at 500 chars. Same reasoning as the reason cap on
+      // create — bound storage growth, match punch comment convention.
+      const trimmed = extra.notes.trim().slice(0, 500);
+      ev.enc = encryptField(JSON.stringify({ notes: trimmed }), masterKey, aadFor(id));
     }
 
     // Append to the SAME partition the `created` event lives in. This is

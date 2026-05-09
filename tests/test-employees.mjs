@@ -38,8 +38,8 @@ const masterKey = randomBytes(32);
 
 try {
   const store = createEmployeesStore(tmpDir, masterKey);
-  const aliceId = 'alice-uuid-12345';
-  const bobId   = 'bob-uuid-67890';
+  const aliceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa1111';
+  const bobId   = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbb6789';
 
   // --------------------------------------------------------------------------
   console.log('Construction');
@@ -194,7 +194,7 @@ try {
   });
 
   await test('deletePicture on missing picture is a no-op', () => {
-    store.deletePicture('no-such-id'); // must not throw
+    store.deletePicture('00000000-0000-4000-8000-000000000099'); // must not throw
   });
 
   // --------------------------------------------------------------------------

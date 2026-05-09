@@ -178,6 +178,56 @@ export function fmtDateTime(input) {
   return `${fmtDate(d)} ${fmtTime(d)}`;
 }
 
+/**
+ * Locale-aware number formatting.
+ *
+ * Uses `Intl.NumberFormat` so e.g. `9.5` renders as `9.5` in en-US and
+ * `9,5` in pt-PT. Falls back to a plain `String(n)` if the runtime
+ * doesn't have Intl.NumberFormat (very old browsers).
+ *
+ * @param {number} n   the number to format
+ * @param {object} [opts]
+ * @param {number} [opts.minimumFractionDigits]
+ * @param {number} [opts.maximumFractionDigits]
+ * @param {boolean} [opts.useGrouping]   thousand-separators, default true
+ */
+export function fmtNumber(n, opts = {}) {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return String(n);
+  try {
+    return new Intl.NumberFormat(currentLocale, {
+      minimumFractionDigits: opts.minimumFractionDigits,
+      maximumFractionDigits: opts.maximumFractionDigits,
+      useGrouping: opts.useGrouping ?? true,
+    }).format(n);
+  } catch {
+    return String(n);
+  }
+}
+
+/**
+ * Format a number of hours for display.
+ *
+ * Convention used throughout Pica: integer hours render as integers
+ * ("8"), fractional hours render with one decimal ("8.5" / "8,5").
+ * This matches the manual `Number.isInteger(n) ? n : n.toFixed(1)`
+ * pattern that was scattered across the codebase before, but localized.
+ *
+ * Numbers are rounded to one decimal first so 8.249 → "8.2", 8.25 → "8.3"
+ * (banker's rounding from JavaScript's built-in `Math.round` semantics
+ * applied to `n * 10`).
+ */
+export function fmtHours(n) {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '';
+  const rounded = Math.round(n * 10) / 10;
+  if (Number.isInteger(rounded)) {
+    return fmtNumber(rounded, { maximumFractionDigits: 0 });
+  }
+  return fmtNumber(rounded, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
 /** Return the active locale (BCP-47 tag). */
 export function getLocale() { return currentLocale; }
 

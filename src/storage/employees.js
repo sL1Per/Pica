@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { encryptBlob, decryptBlob } from '../crypto/aes.js';
+import { isUuid } from '../util/validators.js';
 
 /**
  * Employee storage.
@@ -45,12 +46,31 @@ export function createEmployeesStore(dataDir, masterKey) {
   const empDir = path.join(dataDir, 'employees');
   fs.mkdirSync(empDir, { recursive: true });
 
-  function profilePath(id) { return path.join(empDir, `${id}.json`); }
-  function picturePath(id) { return path.join(empDir, `${id}.picture`); }
+  function profilePath(id) {
+    // Defense-in-depth against path traversal: reject any id that isn't
+    // a UUID. Routes also validate at the edge for clean errorCodes,
+    // but the storage layer can't trust callers. Without this guard,
+    // an id like '../foo' would resolve OUTSIDE empDir via path.join.
+    if (!isUuid(id)) {
+      const e = new Error('Invalid employee id');
+      e.code = 'invalid_id';
+      throw e;
+    }
+    return path.join(empDir, `${id}.json`);
+  }
+  function picturePath(id) {
+    if (!isUuid(id)) {
+      const e = new Error('Invalid employee id');
+      e.code = 'invalid_id';
+      throw e;
+    }
+    return path.join(empDir, `${id}.picture`);
+  }
 
   // --------------------------------------------------------------------------
 
   function exists(id) {
+    if (!isUuid(id)) return false;
     return fs.existsSync(profilePath(id));
   }
 
@@ -74,6 +94,7 @@ export function createEmployeesStore(dataDir, masterKey) {
   }
 
   function remove(id) {
+    if (!isUuid(id)) return;
     try { fs.unlinkSync(profilePath(id)); } catch {}
     try { fs.unlinkSync(picturePath(id)); } catch {}
   }
@@ -81,6 +102,7 @@ export function createEmployeesStore(dataDir, masterKey) {
   // --------------------------------------------------------------------------
 
   function hasPicture(id) {
+    if (!isUuid(id)) return false;
     return fs.existsSync(picturePath(id));
   }
 
@@ -97,6 +119,7 @@ export function createEmployeesStore(dataDir, masterKey) {
   }
 
   function deletePicture(id) {
+    if (!isUuid(id)) return;
     try { fs.unlinkSync(picturePath(id)); } catch {}
   }
 

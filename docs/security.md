@@ -321,6 +321,110 @@ console.log(store.readMonth(2026, 5));
 
 ---
 
+## Input validation (M12 Drop 5, 0.22.0)
+
+Routes that take a `:id` URL parameter for an employee record now
+reject anything that isn't a v4 UUID at two layers:
+
+1. **Route layer** — `rejectIfBadId(req, res)` runs at the top of
+   every `:id`-taking handler in `src/routes/employees.js`.
+   Returns 400 with `errorCode: invalid_id`.
+2. **Storage layer** — `src/storage/employees.js` re-validates ids
+   in `profilePath()` and `picturePath()`. Throws on bad ids in
+   write-side methods (caller bug = loud); silently returns
+   "doesn't exist" on bad ids in query-side methods (`exists`,
+   `hasPicture`, `remove`, `deletePicture`).
+
+The validator is in `src/util/validators.js`:
+
+```js
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export function isUuid(value) {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
+```
+
+It accepts only RFC 4122 v4 UUIDs (the format `crypto.randomUUID()`
+produces) and is strict about case-insensitive hex, the version
+nibble (must be `4`), and the variant nibble (must be `[89ab]`).
+All-zero UUIDs and v1/v3/v5 UUIDs are rejected.
+
+### Why two layers?
+
+Defense in depth. The route layer gives a clean errorCode users can
+localize. The storage layer is the safety net — even if a future
+route forgets to call `rejectIfBadId`, the storage refuses to touch
+disk paths derived from a malformed id.
+
+### Other stores
+
+`leaves`, `corrections`, `punches`, and `backups` use ids only as
+record keys (inside NDJSON files keyed by year/month) — they never
+flow through `path.join(dir, id)`. Bad ids return clean 404s from
+`findById()` lookups. No additional UUID validation is required.
+
+### Length caps on free-text fields
+
+Free-text user input is capped at **500 characters** at the storage
+layer:
+
+| Field | Where |
+|-------|-------|
+| `punch.comment` | `src/routes/punches.js` validComment() |
+| `correction.justification` | `src/storage/corrections.js` |
+| `correction.notes` (employer reject) | `src/storage/corrections.js` |
+| `leave.reason` | `src/storage/leaves.js` (added in 0.22.0) |
+| `leave.notes` (employer reject) | `src/storage/leaves.js` (added in 0.22.0) |
+
+The 5 MB body cap at the HTTP layer is the upper bound; without
+storage caps an attacker submitting maximum-size requests could
+bloat encrypted ledgers without forensic value. 500 chars matches
+the punch-comment convention that has been in place since M2.
+
+### Path-traversal advisory (CVE-style note)
+
+**Affected versions:** Pica 0.16.4 through 0.21.0 inclusive.
+**Fixed in:** 0.22.0.
+**Severity:** Medium. Exploitable only by authenticated employers.
+
+The `PUT /api/employees/:id/picture` endpoint computed disk paths
+via `path.join(empDir, id + '.picture')`. Because the URL router
+extracts `:id` via `decodeURIComponent`, an authenticated employer
+sending `id = '..%2F..%2F<name>'` could write `<name>.json` and
+`<name>.picture` files outside the data directory — anywhere
+reachable via path.join from `data/employees/`.
+
+What the attacker could do:
+- Write attacker-controlled bytes to `<name>.json` / `<name>.picture`
+  paths under the project directory.
+- Fill the parent directory (DoS via disk consumption).
+
+What the attacker could NOT do:
+- Read arbitrary files on disk. The read-side endpoints checked
+  existence via `fs.existsSync(picturePath(id))`; only files at
+  the specific resolved path with the right suffix would be
+  returned, and decryption with the masterKey would fail for
+  anything that wasn't a Pica-encrypted picture in the first place.
+- Overwrite Pica's own data files. The fixed suffix (`.json` or
+  `.picture`) and AES-GCM AAD (which binds ciphertexts to specific
+  ids) prevent collision with existing employee profiles.
+- Affect availability of the running server. The server doesn't
+  read the bogus files — they just sit on disk.
+
+Required attacker capability:
+- Valid `employer` role credentials. RBAC was always enforced;
+  this was not a privilege-escalation vulnerability.
+
+Discovery: an internal audit during M12 Drop 5 work. Not known to
+have been exploited.
+
+Mitigation in 0.22.0: the two-layer defense described above. A live
+proof-of-concept (`curl PUT /api/employees/..%2F..%2Fmarker/picture`)
+that wrote `pica-evil-marker.{json,picture}` to the project root in
+0.21.0 returns `400 invalid_id` in 0.22.0, with no file written.
+
+---
+
 ## Service Worker caching
 
 The Service Worker (`public/sw.js`) caches the shared shell
@@ -422,4 +526,4 @@ patch.
 
 ---
 
-_Last touched in 0.21.0._
+_Last touched in 0.22.0._
