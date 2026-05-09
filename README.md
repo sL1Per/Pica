@@ -86,12 +86,21 @@ For anything beyond running the app, the deeper docs live in
 | **[security.md](./docs/security.md)**         | Threat model, encryption, sessions, deployment expectations          |
 | **[development.md](./docs/development.md)**   | Conventions, how-to recipes (add a page, translation, route, test)   |
 | **[roadmap.md](./docs/roadmap.md)**           | Milestone status, what's done, what's next                           |
+| **[handoff.md](./docs/handoff.md)**           | Current state snapshot — read this when picking up the project       |
 
 The per-version changelog is [RELEASES.md](./RELEASES.md).
 
 Per-route API shapes and per-storage-module field schemas are in the
 file headers at the top of each `src/routes/*.js` and
 `src/storage/*.js` file — no separate API doc.
+
+### For AI-assisted development
+
+If you're working on Pica with an AI coding assistant (Claude Code,
+Cursor, etc.), read **[CLAUDE.md](./CLAUDE.md)** at the repo root
+first. It captures the conventions and invariants that aren't
+obvious from reading individual files. Then read
+[docs/handoff.md](./docs/handoff.md) for the current state.
 
 ---
 
