@@ -5,22 +5,46 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.2._
+_Last touched in 0.22.3._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.2 (released 2026-05-09)
+- **Latest version:** 0.22.3 (released 2026-05-09)
 - **Test count:** 554 across 21 suites, all green
-- **Build artifact:** `pica-0.22.2-punch-nonblocking-geo.zip`
+- **Build artifact:** `pica-0.22.3-leave-submit-error.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.2)
+## What just shipped (0.22.3)
+
+Same-day patch on top of 0.22.2. Single bugfix.
+
+**Leave-new submit now actually shows server errors.** The
+non-OK branch in `public/leave-new.js` was calling
+`result.translateError(data.errorCode, data.error)` — but
+`translateError` is imported from `/i18n.js` (not a method on
+`result`) and `data` was never defined (should be `result.data`).
+The expression threw `TypeError`, the async handler's rejection
+went unhandled, and the user saw the submit button stuck on
+"Submitting…" with no message. Most common trigger:
+`400 leave_cap_exceeded` when a user hit their annual allowance.
+
+Fixed by switching to the canonical pattern used in `punch.js`,
+`login.js`, and `correction-new.js`:
+`translateError(result.data.errorCode, result.data.error || t('leaveNew.couldNotSubmit'))`.
+Added the `leaveNew.couldNotSubmit` fallback in both locales.
+`CACHE_VERSION` bumped to `v26` (locale files are pre-cached).
+
+Localhost couldn't reproduce because the dev account had
+unused allowance — the bug fires only when the server returns
+any error, and the cap-exceeded path was the most user-visible.
+
+## What shipped in 0.22.2
 
 Same-day patch on top of 0.22.1. Single UX fix.
 
@@ -95,6 +119,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | M12.4 | Hardening — input validation + numfmt    | ✅ 0.22.0 |
 | —     | Profile-link bugfix (patch)              | ✅ 0.22.1 |
 | —     | Punch non-blocking geolocation (patch)   | ✅ 0.22.2 |
+| —     | Leave-submit error display (patch)       | ✅ 0.22.3 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

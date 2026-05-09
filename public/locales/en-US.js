@@ -329,6 +329,7 @@ export default {
   'leaveNew.commentHint': 'Optional context for your employer.',
   'leaveNew.submit':      'Submit request',
   'leaveNew.submitting':  'Submitting…',
+  'leaveNew.couldNotSubmit': 'Could not submit leave request',
 
   // ============================================================
   // Calendar

@@ -72,6 +72,7 @@ form.addEventListener('submit', async (e) => {
     window.location.href = `/leaves/${result.data.leave.id}`;
     return;
   }
-  showMessage(messageEl, result.translateError(data.errorCode, data.error) || 'Failed to submit', 'error');
+  const msg = translateError(result.data.errorCode, result.data.error || t('leaveNew.couldNotSubmit'));
+  showMessage(messageEl, msg, 'error');
   setBusy(submitBtn, false);
 });

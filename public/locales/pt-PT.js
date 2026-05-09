@@ -325,6 +325,7 @@ export default {
   'leaveNew.commentHint': 'Contexto opcional para o seu empregador.',
   'leaveNew.submit':      'Submeter pedido',
   'leaveNew.submitting':  'A submeter…',
+  'leaveNew.couldNotSubmit': 'Não foi possível submeter o pedido de férias',
 
   // ============================================================
   // Calendar

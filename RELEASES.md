@@ -14,6 +14,99 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.3] — 2026-05-09 — Bugfix: leave-submit error swallowed when allowance exceeded
+
+Patch release. Same-day as 0.22.2.
+
+### What's fixed
+
+**The leave-new submit handler now actually shows the server's
+error message.** When `POST /api/leaves` returned a non-OK
+response — most commonly `400 leave_cap_exceeded` after the user
+ran out of annual allowance — the frontend tried to call
+`result.translateError(data.errorCode, data.error)`. Two errors
+on one line:
+
+1. `translateError` is imported from `/i18n.js`, not a method on
+   the `postJson` result object.
+2. `data` was never defined in the handler's scope; it should
+   have been `result.data`.
+
+The expression threw `TypeError: result.translateError is not a
+function`, which bubbled out of the async `submit` handler. The
+default browser behaviour for an unhandled rejection in a form
+submit handler is to log to the console and do nothing visible.
+The user saw the submit button stuck on "Submitting…" with no
+error message — the punch payload was rejected, but the UI had
+no idea.
+
+The line now matches the canonical pattern used in
+`punch.js`, `login.js`, and `correction-new.js`:
+
+```js
+const msg = translateError(
+  result.data.errorCode,
+  result.data.error || t('leaveNew.couldNotSubmit'),
+);
+showMessage(messageEl, msg, 'error');
+```
+
+`errors.leave_cap_exceeded` was already in both locale
+dictionaries — the message "This leave would exceed your
+allowance." now actually reaches the user.
+
+### Why localhost couldn't reproduce it
+
+Pedro's dev account had plenty of unused allowance, so submits
+never hit `leave_cap_exceeded`. The bug only fires when the
+server returns an error of any kind. Anyone testing on a fresh
+install with a small allowance would have hit it; the production
+report came from a real user running into their cap.
+
+### Files touched
+
+- `public/leave-new.js` — fixed the `translateError` call site
+  and added a fallback string. The handler now also reaches its
+  `setBusy(submitBtn, false)` line, so the button unsticks.
+- `public/locales/en-US.js` — added `leaveNew.couldNotSubmit`
+  ("Could not submit leave request").
+- `public/locales/pt-PT.js` — added the parity entry
+  ("Não foi possível submeter o pedido de férias").
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v26`
+  because the locale files are pre-cached.
+- `package.json` — version `0.22.3`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **No regression test.** The bug was a single broken line in a
+  frontend handler that doesn't have a `node:test` equivalent —
+  testing the submit handler against real fetch/translateError
+  semantics would need M13 (Playwright). The `frontend-imports`
+  static suite catches missing imports but not call-shape errors
+  like calling `translateError` as a method on the wrong object.
+  This whole class of bug is exactly what M13 will start to catch.
+- **No audit of other call sites.** The canonical pattern is
+  unambiguous — `translateError(result.data.errorCode,
+  result.data.error || t('fallback'))` — and the other pages I
+  spot-checked (`punch.js`, `login.js`, `correction-new.js`) use
+  it correctly. A full sweep across every postJson caller in
+  `public/*.js` is plausible cleanup but out of scope here.
+- **No new errorCode coverage.** The existing
+  `errors.leave_cap_exceeded` and `errors.leave_overlaps` strings
+  in the dictionaries are what the user sees. If the backend
+  surfaces a new errorCode that has no `errors.<code>` entry,
+  `translateError` falls back to the second argument
+  (`result.data.error`, the English server message) — graceful
+  degradation, not localized.
+- **No backend change.** `src/routes/leaves.js` was already
+  emitting `errorCode: 'leave_cap_exceeded'` correctly. The
+  frontend was just discarding it.
+- **Service-worker caching note.** Same as 0.22.1 / 0.22.2 —
+  clients on the old `CACHE_VERSION` need the SW to reactivate
+  before they pick up the new locale files.
+
+---
+
 ## [0.22.2] — 2026-05-09 — Punch click no longer blocks on geolocation
 
 Patch release. Same-day as 0.22.1.
