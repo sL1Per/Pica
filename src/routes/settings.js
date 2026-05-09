@@ -16,6 +16,8 @@
  * who must not see the full org settings.
  */
 
+import { auditContext } from '../storage/audit.js';
+
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
 
 export function registerSettingsRoutes(router, {
@@ -24,6 +26,7 @@ export function registerSettingsRoutes(router, {
   companyLogoStore,
   requireAuth,
   requireRole,
+  auditStore = null,
 }) {
 
   // --- Per-user preferences ------------------------------------------------
@@ -61,6 +64,16 @@ export function registerSettingsRoutes(router, {
   router.put('/api/settings/org', requireRole('employer')((req, res) => {
     try {
       const settings = orgSettingsStore.update(req.body ?? {});
+      // Record which top-level keys were touched. We deliberately don't
+      // log the full payload — settings include company name, leave
+      // policy text, and other potentially long fields that would
+      // bloat the audit log without forensic benefit.
+      const changedKeys = Object.keys(req.body ?? {}).sort();
+      auditStore?.appendRecord({
+        ...auditContext(req),
+        event: 'settings.org_updated',
+        details: { changedKeys },
+      });
       res.json({ ok: true, settings });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });

@@ -1,3 +1,5 @@
+import { auditContext } from '../storage/audit.js';
+
 /**
  * Time-correction routes.
  *
@@ -31,6 +33,7 @@ export function registerCorrectionRoutes(router, {
   employeesStore,
   requireAuth,
   requireRole,
+  auditStore = null,
 }) {
 
   function fullNameMap() {
@@ -168,6 +171,16 @@ export function registerCorrectionRoutes(router, {
 
     try {
       const correction = correctionsStore.approve(req.params.id, req.user.id);
+      auditStore?.appendRecord({
+        ...auditContext(req),
+        event: 'correction.decision',
+        target: { correctionId: correction.id, employeeId: correction.employeeId },
+        details: {
+          decision: 'approved',
+          kind: correction.kind,
+          isJustified: correction.isJustified,
+        },
+      });
       res.json({ ok: true, correction: enrich(correction, usersByIdMap(), fullNameMap()) });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
@@ -183,6 +196,12 @@ export function registerCorrectionRoutes(router, {
     if (!existing) return res.notFound('Correction not found', { errorCode: 'not_found' });
     try {
       const correction = correctionsStore.reject(req.params.id, req.user.id, req.body?.notes);
+      auditStore?.appendRecord({
+        ...auditContext(req),
+        event: 'correction.decision',
+        target: { correctionId: correction.id, employeeId: correction.employeeId },
+        details: { decision: 'rejected', kind: correction.kind, hasNotes: !!req.body?.notes },
+      });
       res.json({ ok: true, correction: enrich(correction, usersByIdMap(), fullNameMap()) });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });

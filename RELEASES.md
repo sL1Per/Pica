@@ -14,6 +14,165 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.21.0] — 2026-05-08 — M12 Drop 3: audit log
+
+Sensitive operations are now recorded in an encrypted append-only
+log. The "what happened, when, by whom" forensics ledger that was
+mentioned in the threat model since day one finally exists.
+
+### What's new
+
+**Encrypted NDJSON audit log** at `data/audit/<yyyy>/<mm>.ndjson.enc`:
+- Per-line AES-256-GCM encryption (each record gets its own IV)
+- Base64-encoded, one record per line
+- Monthly rotation
+- AAD `pica-audit-v1` binds records to this format version
+
+**14 sensitive event types wired:**
+
+| Event | Source |
+|-------|--------|
+| `setup.completed` | First-run admin creation |
+| `auth.login_success` | Successful login (notes mustChangePassword=true if applicable) |
+| `auth.login_failure` | Failed login (target = attempted username; no actor) |
+| `auth.logout` | Logout (uses verifySession to read user info best-effort) |
+| `password.self_change` | Self-service change (success + wrong-current-password failure) |
+| `password.reset_by_employer` | Employer-initiated reset |
+| `employee.created` | New employee |
+| `employee.deleted` | Employee deletion |
+| `leave.decision` | Approve / reject / employer-cancel |
+| `correction.decision` | Approve / reject |
+| `settings.org_updated` | Org settings update (records changed keys, not values) |
+| `backup.created` | Manual backup creation |
+| `backup.deleted` | Backup deletion |
+| `backup.restore` | Restore (success + failure with errorCode) |
+
+### Record shape
+
+```json
+{
+  "ts": "2026-05-08T18:30:42.123Z",
+  "event": "leave.decision",
+  "actorId": "uuid-of-employer",
+  "actorUsername": "admin",
+  "actorRole": "employer",
+  "actorIp": "192.168.1.10",
+  "target": { "leaveId": "uuid", "employeeId": "uuid" },
+  "outcome": "success",
+  "details": { "decision": "approved", "type": "vacation", "start": "2026-06-01", "end": "2026-06-03" }
+}
+```
+
+### What's NOT logged
+
+- Reads. Logging every `GET /api/employees` would swamp the file.
+- Punch in/out. Punches are their own append-only log.
+- Self-cancellation of one's own pending leave. Routine user action.
+- 403 denials (RBAC, mustChangePassword block). Goes to regular log.
+- Self-service password changes that failed validation (too short, etc.).
+- Settings changes for branding/working-time overrides — not access-level.
+
+### Restore semantics
+
+Restore audits land in the **post-restore** audit log (a fresh entry
+in the restored install's log). The OLD audit log moves with the
+old `data/` to `data.pre-restore-<ts>/`. This means:
+- A future investigator on the restored install sees a record of
+  HOW the install was restored (who, when, from where, how many entries).
+- The pre-restore audit log is preserved on disk in the snapshot folder
+  and can still be read with the masterKey.
+
+### Failure semantics
+
+Audit writes are best-effort. A disk error during append doesn't
+fail the user-facing request — the audit module catches the error,
+returns false, and emits it via the regular logger at ERROR level.
+The alternative ("can't audit, so deny") is too brittle for a
+small-team self-hosted app.
+
+### Files touched
+- **New:** `src/storage/audit.js` — `createAuditStore({dataDir, masterKey, logger, now})`
+  with `appendRecord()`, `readMonth()`, `listMonths()`. Plus
+  `auditContext(req)` helper.
+- `server.js` — instantiates auditStore, threads it into 6 route registrations.
+- `src/routes/setup.js` — audits `setup.completed`.
+- `src/routes/auth.js` — audits 4 events. Added `verifySession` import for
+  the unauthenticated logout path.
+- `src/routes/employees.js` — audits 3 events.
+- `src/routes/leaves.js` — audits 1 event with 3 decision variants.
+- `src/routes/corrections.js` — audits 1 event with 2 decision variants.
+- `src/routes/settings.js` — audits `settings.org_updated`.
+- `src/routes/backups.js` — audits 3 events.
+- **New:** `tests/test-audit.mjs` — 17 tests covering append/read,
+  encryption properties (per-record IV, wrong-key rejection, tamper
+  detection), listMonths, error paths, constructor validation.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v22`.
+- `package.json` — minor bump to 0.21.0.
+- `docs/architecture.md` — audit.js + test in layout, count to 528.
+- `docs/security.md` — new "Audit log" section between Backups and SW.
+- `docs/roadmap.md` — M12 Drop 3 ✅, Drop 4+ planned.
+
+### Tests
+- 20-suite regression: 528 passing, 0 failing (was 511; +17 new in
+  test-audit.mjs).
+- Live end-to-end smoke decrypted 14 records covering all wired
+  event types; per-record IV verified (same plaintext → different
+  ciphertext); wrong-key fails loudly; single-line tampering throws
+  with the line number.
+
+### Honest disclosures
+
+- **No viewer UI.** Reading audit logs requires the masterKey and a
+  Node REPL. A future drop should add `/api/audit/recent` (employer-only)
+  + a viewer page. For now, `docs/security.md` documents the decrypt
+  recipe.
+- **`actorIp` is the socket address.** Behind a reverse proxy, this is
+  always `127.0.0.1`. We don't currently trust `X-Forwarded-For`
+  because that requires configurable trusted-proxy lists. If you need
+  real client IPs in the audit log, log them at the proxy.
+- **Audit failures are silent to the user.** A disk-full state means
+  the operation succeeds but no audit entry is written. Operators
+  monitoring logs will see ERROR messages from the regular logger.
+  Compliance regimes that require "no audit, no operation" semantics
+  would need a different design (probably write-then-act); Pica's
+  threat model doesn't go there.
+- **No log rotation by size, only by month.** A pathological abuser
+  triggering a million failed logins in May would balloon
+  `2026/05.ndjson.enc` without splitting. Acceptable for the
+  expected scale; adding size-based rotation is straightforward later.
+- **No retention/cleanup.** Audit logs grow forever. A future drop
+  could add a configurable retention (default: keep forever). Not
+  doing it now because deleting audit history defeats the point;
+  operators with disk pressure can manually archive old months.
+- **Settings update only logs changed top-level keys, not values.**
+  This was deliberate — settings can include long company text or
+  policy notes that don't belong in audit logs. The trade-off:
+  forensic value of "which knob was turned?" without "what did you
+  change it from?". Good enough for now.
+- **No before/after diffing for any event.** "Alice's role was
+  changed from employee to employer" would be valuable but Pica
+  doesn't actually have a role-change endpoint (employees are
+  delete-and-recreate). If/when role mutations exist, the audit
+  schema can be extended.
+- **Per-line encryption means slightly larger files than whole-file
+  encryption** (each line carries its own 12-byte IV + 16-byte tag,
+  ~28 bytes overhead per record). Worth it for append efficiency
+  and partial-corruption isolation.
+- **The audit log itself is a target.** An attacker with write access
+  to `data/audit/` can corrupt records (which `readMonth` will
+  detect and throw on) but cannot forge new records without the
+  masterKey. A sophisticated attacker with masterKey + write access
+  CAN forge entries; the integrity property is "either-undetectably-tampered
+  OR genuine-from-Pica", not "definitely-untampered". Stronger
+  guarantees (signed records, append-only filesystems, external WORM
+  storage) are out of scope.
+- **Login attempts that hit the rate limiter are NOT audited.** They
+  go to the regular logger but not the audit log — would be
+  high-volume noise during a sustained attack. If you're getting
+  rate-limited, the regular logs already tell you that.
+
+---
+
 ## [0.20.0] — 2026-05-08 — M12 Drop 2: security headers + CSP
 
 Pica was already careful about XSS — `textContent` everywhere we

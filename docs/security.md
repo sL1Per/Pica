@@ -241,6 +241,86 @@ out-of-band. There's no "key in the archive" backdoor.
 
 ---
 
+## Audit log (M12 Drop 3, 0.21.0)
+
+Sensitive operations are recorded in an append-only encrypted log at
+`data/audit/<yyyy>/<mm>.ndjson.enc`. Each line is one JSON record
+encrypted independently with AES-256-GCM and base64-encoded. Files
+rotate by calendar month.
+
+### What's logged
+
+- `setup.completed` — first-run admin creation
+- `auth.login_success` / `auth.login_failure` / `auth.logout`
+- `password.self_change` (success + invalid_credentials failure)
+- `password.reset_by_employer`
+- `employee.created` / `employee.deleted`
+- `leave.decision` (approve, reject, cancelled-by-employer for
+  someone else's leave)
+- `correction.decision` (approve, reject)
+- `settings.org_updated` (records which top-level keys were changed,
+  not the values)
+- `backup.created` / `backup.deleted`
+- `backup.restore` (success + failure with errorCode)
+
+### What's NOT logged
+
+- Reads (e.g. `GET /api/employees`). Audit value is low; volume would
+  swamp investigations.
+- Punch in/out. Punches are themselves an append-only domain log
+  (`data/punches/<yyyy>/<mm>.ndjson.enc`).
+- Self-cancellation of one's own pending leave. Routine user action.
+- 403/forbidden denials (path validation, RBAC). Logged via the regular
+  logger but not duplicated to audit; high volume from any port-scan.
+- Successful self-service password change attempts where the new password
+  fails validation (e.g. too short). UI-correctable user error, not
+  forensic.
+
+### Failure semantics
+
+Audit writes are **best-effort**: a disk-full or permission-error on
+audit append does NOT fail the user-facing request. The audit module
+catches all errors internally and emits them via the regular logger
+at ERROR level. Operators monitoring logs will see these. This is a
+deliberate trade-off — the alternative ("we couldn't audit, so we
+won't do the action") is too brittle for a small-team self-hosted app.
+
+### Recovering from corruption
+
+A line that fails decryption (tampering, partial write, bit flip)
+makes `readMonth()` throw with the line number. Subsequent lines are
+not read until the corrupt one is removed. To recover: copy the file
+aside, delete the offending line manually with a text editor, restart
+or re-read.
+
+### IP addresses behind a proxy
+
+The `actorIp` field comes from `req.socket.remoteAddress`, which
+behind a TLS-terminating reverse proxy will always be the proxy's
+loopback address (`127.0.0.1`). Pica does not currently trust
+`X-Forwarded-For` for audit purposes — adding that requires a
+configuration value listing trusted proxy IPs, which the current
+threat model doesn't justify. If you need real client IPs in the
+audit log, log them at the proxy level instead.
+
+### No viewer UI yet
+
+Audit logs are on-disk and on-master-key only. A future drop can add
+`/api/audit/recent` (employer-only) and a viewer page. For now, use
+the masterkey directly:
+
+```js
+import { initMasterKey } from './src/crypto/masterkey.js';
+import { createAuditStore } from './src/storage/audit.js';
+const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+process.env.PICA_PASSPHRASE = '...';
+const masterKey = await initMasterKey(config, 'config.json', null);
+const store = createAuditStore({ dataDir: 'data', masterKey });
+console.log(store.readMonth(2026, 5));
+```
+
+---
+
 ## Service Worker caching
 
 The Service Worker (`public/sw.js`) caches the shared shell
@@ -342,4 +422,4 @@ patch.
 
 ---
 
-_Last touched in 0.20.0._
+_Last touched in 0.21.0._

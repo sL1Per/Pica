@@ -1,6 +1,7 @@
-import { signSession, SESSION_TTL_SECONDS } from '../auth/sessions.js';
+import { signSession, verifySession, SESSION_TTL_SECONDS } from '../auth/sessions.js';
 import { verifyPassword } from '../crypto/passwords.js';
 import { serializeCookie } from '../http/cookies.js';
+import { auditContext } from '../storage/audit.js';
 
 /**
  * Routes for login, logout, and current-user lookup.
@@ -10,7 +11,17 @@ import { serializeCookie } from '../http/cookies.js';
  * client IP from the socket; if you front the server with a reverse proxy
  * you'll want to revisit this (X-Forwarded-For) in a future milestone.
  */
-export function registerAuthRoutes(router, { usersStore, employeesStore, sessionKey, loginLimiter, passwordLimiter, requireAuth, cookieName = 'pica_session', isProduction = false }) {
+export function registerAuthRoutes(router, {
+  usersStore,
+  employeesStore,
+  sessionKey,
+  loginLimiter,
+  passwordLimiter,
+  requireAuth,
+  cookieName = 'pica_session',
+  isProduction = false,
+  auditStore = null,
+}) {
 
   function clientIp(req) {
     return req.socket?.remoteAddress ?? 'unknown';
@@ -40,6 +51,8 @@ export function registerAuthRoutes(router, { usersStore, employeesStore, session
   router.post('/api/login', async (req, res) => {
     const ip = clientIp(req);
     if (!loginLimiter.allow(ip)) {
+      // Note: not auditing rate-limit hits — they would be high-volume
+      // and don't add much over the regular logger's INFO traces.
       return res.json({ error: 'Too many login attempts. Try again in a minute.', errorCode: 'rate_limited' }, 429);
     }
 
@@ -59,6 +72,18 @@ export function registerAuthRoutes(router, { usersStore, employeesStore, session
     }
 
     if (!ok) {
+      auditStore?.appendRecord({
+        event: 'auth.login_failure',
+        actorId: null,
+        actorUsername: null,
+        actorRole: null,
+        actorIp: ip,
+        // The username is recorded as a target so investigators can spot
+        // patterns ("100 failed logins for `admin`"). NOT stored as
+        // actorUsername because the actor was never authenticated.
+        target: { username },
+        outcome: 'failure',
+      });
       return res.json({ error: 'Invalid username or password', errorCode: 'invalid_credentials' }, 401);
     }
 
@@ -67,6 +92,15 @@ export function registerAuthRoutes(router, { usersStore, employeesStore, session
 
     const cookie = signSession({ uid: user.id, role: user.role }, sessionKey);
     setSessionCookie(res, cookie, SESSION_TTL_SECONDS);
+
+    auditStore?.appendRecord({
+      event: 'auth.login_success',
+      actorId: user.id,
+      actorUsername: user.username,
+      actorRole: user.role,
+      actorIp: ip,
+      details: user.mustChangePassword ? { mustChangePassword: true } : null,
+    });
 
     res.json({
       ok: true,
@@ -77,6 +111,19 @@ export function registerAuthRoutes(router, { usersStore, employeesStore, session
 
   // --------------------------------------------------------------------------
   router.post('/api/logout', async (req, res) => {
+    // Logout is reachable even with a stale/missing session, so we
+    // can't rely on req.user. Best-effort: peek at the cookie ourselves.
+    const ip = clientIp(req);
+    const raw = req.cookies?.[cookieName];
+    const session = raw ? verifySession(raw, sessionKey) : null;
+    const user = session ? usersStore.findById(session.uid) : null;
+    auditStore?.appendRecord({
+      event: 'auth.logout',
+      actorId: user?.id ?? null,
+      actorUsername: user?.username ?? null,
+      actorRole: user?.role ?? null,
+      actorIp: ip,
+    });
     clearSessionCookie(res);
     res.json({ ok: true });
   });
@@ -133,6 +180,16 @@ export function registerAuthRoutes(router, { usersStore, employeesStore, session
       // 401 for wrong current password (auth failure semantics).
       // 400 for everything else.
       const status = errorCode === 'invalid_credentials' ? 401 : 400;
+      // Only audit the wrong-password case (more interesting than e.g.
+      // password_too_short, which is a UI-correctable user error).
+      if (errorCode === 'invalid_credentials') {
+        auditStore?.appendRecord({
+          ...auditContext(req),
+          event: 'password.self_change',
+          outcome: 'failure',
+          details: { reason: errorCode },
+        });
+      }
       return res.json({ error: err.message, errorCode }, status);
     }
 
@@ -143,6 +200,12 @@ export function registerAuthRoutes(router, { usersStore, employeesStore, session
     // this same check; this one survives because its iat is current.
     const fresh = signSession({ uid: req.user.id, role: req.user.role }, sessionKey);
     setSessionCookie(res, fresh, SESSION_TTL_SECONDS);
+
+    auditStore?.appendRecord({
+      ...auditContext(req),
+      event: 'password.self_change',
+      outcome: 'success',
+    });
 
     res.json({ ok: true });
   }));

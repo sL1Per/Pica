@@ -1,3 +1,5 @@
+import { auditContext } from '../storage/audit.js';
+
 /**
  * Backup endpoints.
  *
@@ -27,6 +29,7 @@ export function registerBackupRoutes(router, {
   serverState,
   requireRole,
   logger,
+  auditStore = null,
 }) {
   router.get('/api/backups', requireRole('employer')((req, res) => {
     const backups = backupsStore.list();
@@ -42,6 +45,12 @@ export function registerBackupRoutes(router, {
       return res.serverError('Failed to create backup', { errorCode: 'internal_error' });
     }
     if (logger) logger.info(`backup created: ${entry.filename} (${entry.sizeBytes} bytes)`);
+    auditStore?.appendRecord({
+      ...auditContext(req),
+      event: 'backup.created',
+      target: { backupId: entry.id, filename: entry.filename },
+      details: { sizeBytes: entry.sizeBytes, source: 'manual' },
+    });
     res.json({ backup: entry }, 201);
   }));
 
@@ -70,6 +79,11 @@ export function registerBackupRoutes(router, {
     const ok = backupsStore.delete(id);
     if (!ok) return res.notFound('Backup not found', { errorCode: 'not_found' });
     if (logger) logger.info(`backup deleted: ${id}`);
+    auditStore?.appendRecord({
+      ...auditContext(req),
+      event: 'backup.deleted',
+      target: { backupId: id },
+    });
     res.noContent();
   }));
 
@@ -106,8 +120,29 @@ export function registerBackupRoutes(router, {
       else if (/bad magic/.test(err.message))        errorCode = 'restore_not_a_backup';
       else if (/too short/.test(err.message))        errorCode = 'restore_not_a_backup';
       else if (/refused to restore unsafe/.test(err.message)) errorCode = 'restore_unsafe_path';
+      auditStore?.appendRecord({
+        ...auditContext(req),
+        event: 'backup.restore',
+        outcome: 'failure',
+        details: { errorCode, blobSize: blob.length },
+      });
       return res.badRequest(err.message, { errorCode });
     }
+
+    // Audit the restore success BEFORE flipping the lockdown flag.
+    // Conceptually the restore is now durable on disk; the lockdown is
+    // about preventing the in-memory stores from serving stale data
+    // until restart. The audit append goes to the (now restored) data
+    // dir — a future investigator looking at the restored install will
+    // see the record of how this state came to be.
+    auditStore?.appendRecord({
+      ...auditContext(req),
+      event: 'backup.restore',
+      details: {
+        restoredEntries: result.restoredEntries,
+        preRestorePath: result.preRestorePath,
+      },
+    });
 
     // Flip the lockdown flag. Subsequent requests will be rejected
     // until the process restarts.

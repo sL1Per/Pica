@@ -45,6 +45,7 @@ import { createUserPrefsStore } from './src/storage/user-prefs.js';
 import { createOrgSettingsStore } from './src/storage/org-settings.js';
 import { createCompanyLogoStore } from './src/storage/company-logo.js';
 import { createBackupsStore } from './src/storage/backups.js';
+import { createAuditStore } from './src/storage/audit.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -100,6 +101,14 @@ const backupsStore = createBackupsStore({
   configPath,
   masterKey,
 });
+// Audit log: append-only, encrypted NDJSON. Records sensitive
+// actions (logins, password ops, employee CRUD, leave/correction
+// decisions, backups, restores). Wired into routes that need it.
+const auditStore = createAuditStore({
+  dataDir: config.dataDir,
+  masterKey,
+  logger: log,
+});
 
 // Process-wide flags. After a restore, `restoreCompleted` flips true
 // and the request handler short-circuits all routes (except a small
@@ -137,7 +146,7 @@ router.get('/api/version', (req, res) => {
   });
 });
 
-registerSetupRoutes(router, { usersStore, sessionKey, isProduction });
+registerSetupRoutes(router, { usersStore, sessionKey, isProduction, auditStore });
 registerAuthRoutes(router, {
   usersStore,
   employeesStore,
@@ -146,6 +155,7 @@ registerAuthRoutes(router, {
   passwordLimiter,
   requireAuth: rbac.requireAuth,
   isProduction,
+  auditStore,
 });
 registerEmployeeRoutes(router, {
   usersStore,
@@ -158,6 +168,7 @@ registerEmployeeRoutes(router, {
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
   requireOwnerOrEmployer: rbac.requireOwnerOrEmployer,
+  auditStore,
 });
 registerPunchRoutes(router, {
   punchesStore,
@@ -174,6 +185,7 @@ registerLeaveRoutes(router, {
   daysOf: approxDaysOff,
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
+  auditStore,
 });
 registerCorrectionRoutes(router, {
   correctionsStore,
@@ -182,6 +194,7 @@ registerCorrectionRoutes(router, {
   employeesStore,
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
+  auditStore,
 });
 registerReportRoutes(router, {
   punchesStore,
@@ -199,11 +212,13 @@ registerSettingsRoutes(router, {
   companyLogoStore,
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
+  auditStore,
 });
 registerBackupRoutes(router, {
   backupsStore,
   serverState,
   requireRole: rbac.requireRole,
+  auditStore,
   logger: log,
 });
 registerPageRoutes(router, {

@@ -1,5 +1,6 @@
 import { signSession, SESSION_TTL_SECONDS } from '../auth/sessions.js';
 import { serializeCookie } from '../http/cookies.js';
+import { auditContext } from '../storage/audit.js';
 
 /**
  * First-run setup endpoint.
@@ -9,7 +10,13 @@ import { serializeCookie } from '../http/cookies.js';
  * 403. This avoids the obvious privilege-escalation trap ("visit /setup
  * to make yourself an admin").
  */
-export function registerSetupRoutes(router, { usersStore, sessionKey, cookieName = 'pica_session', isProduction = false }) {
+export function registerSetupRoutes(router, {
+  usersStore,
+  sessionKey,
+  cookieName = 'pica_session',
+  isProduction = false,
+  auditStore = null,
+}) {
   router.post('/api/setup', async (req, res) => {
     if (usersStore.hasAny()) {
       return res.forbidden('Setup has already been completed', { errorCode: 'setup_already_done' });
@@ -31,6 +38,14 @@ export function registerSetupRoutes(router, { usersStore, sessionKey, cookieName
       secure: isProduction,
       path: '/',
     }));
+
+    // Setup is the install's birth. Use the just-created user as the actor.
+    auditStore?.appendRecord({
+      ...auditContext({ ...req, user }),
+      event: 'setup.completed',
+      target: { userId: user.id, username: user.username },
+      details: { role: 'employer' },
+    });
 
     res.json({ ok: true, user });
   });

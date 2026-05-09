@@ -97,7 +97,8 @@ pica/
 │   │   ├── user-prefs.js    # locale + colorMode (plaintext)
 │   │   ├── org-settings.js  # leave allowances, working time targets
 │   │   ├── company-logo.js  # encrypted blob
-│   │   └── backups.js       # full-snapshot encrypted backups
+│   │   ├── backups.js       # full-snapshot encrypted backups
+│   │   └── audit.js         # append-only encrypted NDJSON audit log
 │   └── routes/              # one module per resource — register*Routes(router, deps)
 │       ├── auth.js          # /api/login, /api/logout, /api/me
 │       ├── setup.js         # /api/setup (first-run)
@@ -162,7 +163,8 @@ pica/
 │   ├── test-error-codes.mjs        # static audit: every error response carries errorCode
 │   ├── test-backups.mjs            # backup archive format + storage
 │   ├── test-backup-scheduler.mjs   # scheduler decisions + lifecycle
-│   └── test-security-headers.mjs   # CSP, headers, cross-file invariants
+│   ├── test-security-headers.mjs   # CSP, headers, cross-file invariants
+│   └── test-audit.mjs              # audit log: append, read, encryption, listMonths
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -305,7 +307,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 19 suites, 511 passing as of 0.20.0.
+- Total: 20 suites, 528 passing as of 0.21.0.
 
 ---
 
@@ -366,4 +368,4 @@ because they only add half a punch pair.
 
 ---
 
-_Last touched in 0.20.0._
+_Last touched in 0.21.0._

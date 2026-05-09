@@ -1,6 +1,7 @@
 import { EMPLOYEE_EDITABLE, ALL_EDITABLE } from '../storage/employees.js';
 import { hoursReport } from '../storage/reports.js';
 import { computePeriod, ymdOf } from '../storage/period.js';
+import { auditContext } from '../storage/audit.js';
 
 /**
  * Employee management endpoints.
@@ -25,6 +26,7 @@ export function registerEmployeeRoutes(router, {
   requireAuth,
   requireRole,
   requireOwnerOrEmployer,
+  auditStore = null,
 }) {
   const MAX_PICTURE_BYTES = 2 * 1024 * 1024; // 2 MB — client should resize first
 
@@ -85,6 +87,12 @@ export function registerEmployeeRoutes(router, {
     }
 
     const profile = employeesStore.readProfile(user.id);
+    auditStore?.appendRecord({
+      ...auditContext(req),
+      event: 'employee.created',
+      target: { userId: user.id, username: user.username },
+      details: { role: user.role },
+    });
     res.json({ ok: true, employee: { ...user, profile } });
   }));
 
@@ -264,6 +272,13 @@ export function registerEmployeeRoutes(router, {
     employeesStore.remove(user.id);
     usersStore.deleteById(user.id);
 
+    auditStore?.appendRecord({
+      ...auditContext(req),
+      event: 'employee.deleted',
+      target: { userId: user.id, username: user.username },
+      details: { role: user.role },
+    });
+
     res.json({ ok: true });
   }));
 
@@ -361,6 +376,13 @@ export function registerEmployeeRoutes(router, {
       const errorCode = err.code || 'invalid_value';
       return res.badRequest(err.message, { errorCode });
     }
+
+    auditStore?.appendRecord({
+      ...auditContext(req),
+      event: 'password.reset_by_employer',
+      target: { userId: user.id, username: user.username },
+      details: { mustChange: true },
+    });
 
     res.json({ ok: true });
   }));

@@ -28,7 +28,8 @@ app in a usable state.
 | M11.2     | Backups — Drop 2 (restore/scheduler)    | ✅ 0.18.0     |
 | M12       | Hardening — Drop 1 (passwords)     | ✅ 0.19.0     |
 | M12.2     | Hardening — Drop 2 (security headers, CSP) | ✅ 0.20.0     |
-| M12.3     | Hardening — Drop 3+ (audit, deploy, polish) | 📋 Planned    |
+| M12.3     | Hardening — Drop 3 (audit log)            | ✅ 0.21.0     |
+| M12.4     | Hardening — Drop 4+ (deploy guide, polish) | 📋 Planned    |
 | M13       | E2E browser tests                  | 📋 Planned    |
 
 The roadmap was renumbered after M9 closed: M10 was originally
@@ -236,11 +237,15 @@ drops; each is independently shippable.
       byte-identical inline bootstrap, no inline handlers, no
       `style=""`, no `<style>` elements
 
-**Drop 3 (⏳ planned) — Audit log:**
-- [ ] **Encrypted NDJSON** at `data/audit/<yyyy>/<mm>.ndjson`
-- [ ] Wrap sensitive operations (login, employee CRUD, leave/correction
-      decisions, settings updates, backups, restore, password change)
-- [ ] No viewer UI in this drop — on-disk only
+**Drop 3 (✅ shipped in 0.21.0) — Audit log:**
+- ✅ **Encrypted NDJSON** at `data/audit/<yyyy>/<mm>.ndjson.enc` —
+      per-line AES-256-GCM, base64-encoded, monthly rotation
+- ✅ Wrapped sensitive operations: setup, login (success + failure),
+      logout, password self-change, employer-initiated reset, employee
+      created/deleted, leave decisions, correction decisions, settings
+      org_updated, backup created/deleted, backup restore (success + failure)
+- ✅ No viewer UI in this drop — on-disk only. A future drop can add
+      `/api/audit/recent` (employer-only) + a viewer page.
 
 **Drop 4 (⏳ planned) — Deployment guide:**
 - [ ] `docs/deployment.md` walkthrough
@@ -280,4 +285,4 @@ drops; each is independently shippable.
 
 ---
 
-_Last touched in 0.20.0._
+_Last touched in 0.21.0._

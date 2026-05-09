@@ -1,4 +1,5 @@
 import { LEAVE_TYPES_LIST, LEAVE_UNITS_LIST } from '../storage/leaves.js';
+import { auditContext } from '../storage/audit.js';
 
 /**
  * Leaves endpoints.
@@ -20,6 +21,7 @@ export function registerLeaveRoutes(router, {
   daysOf,
   requireAuth,
   requireRole,
+  auditStore = null,
 }) {
 
   /** Return a Map(userId → fullName|null) by scanning employee profiles. */
@@ -248,6 +250,12 @@ export function registerLeaveRoutes(router, {
 
     try {
       const leave = leavesStore.approve(req.params.id, req.user.id);
+      auditStore?.appendRecord({
+        ...auditContext(req),
+        event: 'leave.decision',
+        target: { leaveId: leave.id, employeeId: leave.employeeId },
+        details: { decision: 'approved', type: leave.type, start: leave.start, end: leave.end },
+      });
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
@@ -261,6 +269,12 @@ export function registerLeaveRoutes(router, {
     const notes = req.body?.notes;
     try {
       const leave = leavesStore.reject(req.params.id, req.user.id, notes);
+      auditStore?.appendRecord({
+        ...auditContext(req),
+        event: 'leave.decision',
+        target: { leaveId: leave.id, employeeId: leave.employeeId },
+        details: { decision: 'rejected', type: leave.type, hasNotes: !!notes },
+      });
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
@@ -283,6 +297,17 @@ export function registerLeaveRoutes(router, {
 
     try {
       const leave = leavesStore.cancel(req.params.id, req.user.id);
+      // Only audit when an employer cancels someone else's leave —
+      // self-cancellation of one's own pending leave is a routine
+      // user action, not an access-level event.
+      if (isEmployer && existing.employeeId !== req.user.id) {
+        auditStore?.appendRecord({
+          ...auditContext(req),
+          event: 'leave.decision',
+          target: { leaveId: leave.id, employeeId: leave.employeeId },
+          details: { decision: 'cancelled_by_employer', type: leave.type, priorStatus: existing.status },
+        });
+      }
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
