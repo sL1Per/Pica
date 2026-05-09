@@ -14,6 +14,69 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.1] — 2026-05-09 — Bugfix: "View my profile" sent employees home
+
+Patch release. Same-day as 0.22.0. No new features.
+
+### What's fixed
+
+**Employees can now reach their own profile from the topbar menu.**
+The "View my profile" item in the avatar menu (and the `/profile`
+redirect) used to point at `/employees/<id>`, which serves the
+employer-only summary page. The summary endpoint
+(`GET /api/employees/:id/summary`) is gated by `requireRole('employer')`,
+so the page-level fetch returned 403 and `public/employee.js` bounced
+the browser back to `/`. Net effect: an employee clicking their own
+"View my profile" landed on the home dashboard, not their profile.
+
+The fix routes both entry points to `/employees/<id>/profile` — the
+profile editor at `public/employee-profile.html`, whose API
+(`GET /api/employees/:id`) uses `requireOwnerOrEmployer` and so
+accepts owner self-reads. Employers retain access; employees stop
+bouncing.
+
+### Files touched
+
+- `public/topbar.js` — menu link `/employees/${user.id}` →
+  `/employees/${user.id}/profile`. (Pre-cached SW asset; see below.)
+- `src/routes/pages.js` — `GET /profile` redirect target updated.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v24`
+  because `topbar.js` is in the pre-cache list. Without the bump,
+  installed clients would keep serving the old bundled menu link
+  from cache.
+- `package.json` — version `0.22.1`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **No tests added.** The bug was a routing wiring mistake. There
+  is no existing test that mounts `topbar.js` against a fake
+  session and follows the menu link, and adding one would mean
+  re-implementing topbar's DOM construction in Node (per the
+  frontend-tests-don't-import-frontend rule). The fix is verifiable
+  by inspection: `topbar.js:210` and `pages.js:118` now name the
+  same path that `public/employee.js:114` already used for the
+  summary page's "Go to profile" button. If a future Playwright
+  suite (M13) lands, this should become a one-line nav assertion.
+- **No change to the summary page itself.** Employer-only
+  `/employees/:id` (the dashboard-style summary) keeps its current
+  RBAC and UX. The bug was only in *which* link took users there.
+- **The bug was reachable in 0.16.4–0.22.0.** That's the entire
+  window since the profile editor was split out from the summary
+  page (introduced as `/employees/:id/profile`). All employees on
+  affected versions saw the bounce-to-home; the fix is a one-line
+  redirect retarget per location.
+- **No security implications.** Both old and new targets enforce
+  authentication and ownership at the API layer; the bug was
+  purely a UX dead-end. No data was exposed, leaked, or written
+  in error.
+- **Service-worker caching note.** Clients on 0.22.0 will pick up
+  the new menu link only after the SW reactivates with the new
+  `CACHE_VERSION`. The standard SW lifecycle (close all tabs, or
+  reload twice) applies. Operators worried about a slow rollout
+  can advise users to do a hard reload once.
+
+---
+
 ## [0.22.0] — 2026-05-09 — M12 Drop 4: input validation + number formatting
 
 Closes M12. The deployment guide originally planned for "Drop 4"

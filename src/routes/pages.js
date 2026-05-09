@@ -115,7 +115,7 @@ export function registerPageRoutes(router, { publicDir, usersStore, userPrefsSto
   router.get('/profile', async (req, res) => {
     const a = authed(req);
     if (a.redirect) return res.redirect(a.redirect);
-    res.redirect(`/employees/${a.ctx.user.id}`);
+    res.redirect(`/employees/${a.ctx.user.id}/profile`);
   });
 
   // -- Punches ------------------------------------------------------------

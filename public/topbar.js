@@ -207,7 +207,7 @@ function buildBar({ user, branding, hasOwnPicture }) {
           <div class="appshell__menu-name">${escapeHtml(user.fullName || user.username)}</div>
           <div class="appshell__menu-role">${escapeHtml(user.role)}</div>
         </div>
-        <a class="appshell__menu-item" role="menuitem" href="/employees/${user.id}">${escapeHtml(t('menu.profile'))}</a>
+        <a class="appshell__menu-item" role="menuitem" href="/employees/${user.id}/profile">${escapeHtml(t('menu.profile'))}</a>
         <a class="appshell__menu-item" role="menuitem" href="/preferences">${escapeHtml(t('menu.preferences'))}</a>
         <button class="appshell__menu-item appshell__menu-item--danger" role="menuitem" type="button" data-action="logout">${escapeHtml(t('menu.signOut'))}</button>
       </div>
