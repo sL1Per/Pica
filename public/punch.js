@@ -199,7 +199,8 @@ function paintStatus({ open, lastPunch }) {
 // -------- Geolocation -------------------------------------------------------
 
 /**
- * Get a geolocation fix.
+ * Get a geolocation fix — thorough variant, used by the Retry button and
+ * the page-load map preview where the user is not blocked on the result.
  *
  * Strategy:
  *   1. Try a fast low-accuracy reading (Wi-Fi/IP triangulation, ~15s timeout).
@@ -209,6 +210,10 @@ function paintStatus({ open, lastPunch }) {
  *   3. If both fail and we have a remembered last fix, return null without
  *      clearing the map — the caller decides whether to keep showing the
  *      stale map or hide it.
+ *
+ * For the Clock-in/out click path use getGeoFast() instead — the long
+ * 35s worst-case wait here is unacceptable when the user is staring at
+ * a "Working…" button.
  *
  * Returns {lat, lng, accuracy} on success, null on failure.
  */
@@ -261,6 +266,54 @@ function getGeo() {
       success,
       tryHighAccuracy,
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 300_000 },
+    );
+  });
+}
+
+/**
+ * Fast geolocation for the punch-click path. Single low-accuracy attempt
+ * with a 3s hard budget — if the platform can't deliver a fix in that
+ * window, the punch goes through without geo. The Retry button and the
+ * background map preview keep using the thorough getGeo() above.
+ *
+ * The browser will NOT re-prompt for permission once the user has
+ * blocked the site — that's a security boundary, not a Pica decision.
+ * If permission is denied this function resolves null in a few ms with
+ * lastGeoSkipReason='denied'; the punch still happens.
+ *
+ * Returns {lat, lng, accuracy} on success, null on any failure or timeout.
+ */
+function getGeoFast() {
+  return new Promise((resolve) => {
+    if (!('geolocation' in navigator)) {
+      lastGeoSkipReason = 'unsupported';
+      return resolve(null);
+    }
+    let settled = false;
+    const settle = (val, reason) => {
+      if (settled) return;
+      settled = true;
+      lastGeoSkipReason = val ? null : (reason || 'unavailable');
+      resolve(val);
+    };
+    const timer = setTimeout(() => settle(null, 'timeout'), 3000);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        clearTimeout(timer);
+        settle({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        });
+      },
+      (err) => {
+        clearTimeout(timer);
+        const reason = err.code === err.PERMISSION_DENIED ? 'denied'
+                     : err.code === err.TIMEOUT ? 'timeout'
+                     : 'unavailable';
+        settle(null, reason);
+      },
+      { enableHighAccuracy: false, timeout: 3000, maximumAge: 300_000 },
     );
   });
 }
@@ -429,11 +482,24 @@ async function doPunch(direction) {
   const btn = direction === 'in' ? inBtn : outBtn;
   setBusy(btn, true, t('punch.working'));
 
-  const geo = await getGeo();
-  if (geo) {
-    lastFix = { ...geo, ts: new Date().toISOString() };
-    saveCachedFix(lastFix);
-    renderMap(lastFix);
+  // Geolocation is best-effort on the click path — the punch happens
+  // whether or not we get a fix. Order of preference:
+  //   1. Reuse the in-session lastFix if we have one (instant).
+  //   2. Otherwise try getGeoFast() with a 3s budget (unless this
+  //      session has already failed once — don't lag every click).
+  //   3. Fall through to a no-geo punch with a skipReason.
+  let geo = null;
+  if (lastFix) {
+    geo = { lat: lastFix.lat, lng: lastFix.lng, accuracy: lastFix.accuracy };
+  } else if (!geoFailedThisSession()) {
+    geo = await getGeoFast();
+    if (geo) {
+      lastFix = { ...geo, ts: new Date().toISOString() };
+      saveCachedFix(lastFix);
+      renderMap(lastFix);
+    } else {
+      markGeoFailed();
+    }
   }
 
   // Build the request payload. clientId + clientTs always present:

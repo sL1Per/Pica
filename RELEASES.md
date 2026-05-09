@@ -14,6 +14,97 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.2] — 2026-05-09 — Punch click no longer blocks on geolocation
+
+Patch release. Same-day as 0.22.1.
+
+### What's fixed
+
+**Clock-in/out is now non-blocking on geolocation.** The previous
+implementation called the thorough `getGeo()` on every click, which
+on a desktop without a usable location source (no GPS, no Wi-Fi
+triangulation) burned its full budget — 15 s low-accuracy timeout
+plus a 20 s high-accuracy fallback — before resolving null and
+letting the punch proceed. From the user's perspective the button
+sat at "Working…" for up to 35 seconds and the punch felt broken,
+even though it would have eventually succeeded.
+
+The click path now:
+
+1. Reuses the in-session `lastFix` when one exists (the page-load
+   bootstrap, the Retry button, or a previous successful punch
+   already populated it). No new geolocation call. Instant.
+2. Otherwise calls a new `getGeoFast()` with a **3-second hard
+   budget** and a single low-accuracy attempt. The browser's own
+   `maximumAge: 300_000` lets it return a recently-cached fix
+   without firing the platform backend at all.
+3. Otherwise punches with `geoSkipReason` set and no `geo`. The
+   server already accepts this — backend behaviour is unchanged.
+4. If a session has already failed once (`geoFailedThisSession()`
+   sentinel), the click skips step 2 entirely. Subsequent clicks
+   are instant. The user can still click "Retry location" to clear
+   the sentinel and try again with the thorough timeout.
+
+The thorough `getGeo()` (35 s, two-attempt) stays for the page-load
+map preview and the explicit Retry button — both contexts where the
+user is not blocked on the result.
+
+### About the "force browser to re-prompt" question
+
+Browsers do not allow programmatic re-prompting once a user has
+blocked geolocation for a site — this is a platform security
+boundary, not a Pica decision. Once denied, the only path to
+re-enable is for the user to open the browser's site-permissions UI
+manually (typically the lock/info icon in the address bar). Pica
+correctly detects the denied state via the standard error callback
+and tags the punch with `geoSkipReason: 'denied'`; surfacing
+browser-specific re-enable instructions could be added later.
+
+### Files touched
+
+- `public/punch.js` — added `getGeoFast()`; rewired `doPunch()` to
+  prefer cached / fast / no-geo. Existing `getGeo()` and Retry button
+  unchanged.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v25`
+  because `punch.js` is pre-cached.
+- `package.json` — version `0.22.2`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **No tests added.** Geolocation-on-click is browser-mediated and
+  not exercised by any current `node:test` suite. The change is a
+  scoped frontend rewire; verification is by hand on a desktop where
+  geolocation legitimately fails (the original repro — open the
+  punch page over plain HTTP / on a desktop with no location
+  source). Tests-as-coverage would need M13 (Playwright).
+- **No browser-permissions UI hint.** When a user has permanently
+  blocked location, we do not yet surface a "click here to re-enable"
+  prompt with browser-specific instructions. The "Retry location"
+  button is still the entry point; it will simply re-fire and report
+  "Location permission denied" if blocked. A future drop could detect
+  the `denied` state via `navigator.permissions.query({name:'geolocation'})`
+  and show a clearer message — out of scope here.
+- **Reused `lastFix` ages with the session.** A user who clocks in
+  at 09:00 and clocks out at 17:00 from a different physical
+  location will have both punches stamped with the 09:00 fix unless
+  the user re-triggers Retry. Acceptable at the ≤50 employee scale —
+  the location field is an approximate where-stamp, not a precise
+  audit. If location-per-punch becomes important, drop the session-
+  cache reuse and accept the 3 s budget on every click instead.
+- **3 s budget can miss a slow-but-eventually-good fix.** A device
+  on a slow Wi-Fi triangulation step might return a fix at 4 s. The
+  click path discards it; the next page navigation's bootstrap
+  `getGeo()` will pick it up. Acceptable trade-off — the user's
+  primary signal is "punch happened fast", not "punch had geo".
+- **No backend change.** `geo` and `geoSkipReason` were already
+  optional (validated in `src/routes/punches.js`). The fix is purely
+  client-side.
+- **Service-worker caching note.** Same as 0.22.1 — clients on the
+  old `CACHE_VERSION` need the SW to reactivate (close all tabs or
+  reload twice) before they see the new `punch.js`.
+
+---
+
 ## [0.22.1] — 2026-05-09 — Bugfix: "View my profile" sent employees home
 
 Patch release. Same-day as 0.22.0. No new features.

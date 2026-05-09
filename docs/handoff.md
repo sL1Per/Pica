@@ -5,22 +5,44 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.1._
+_Last touched in 0.22.2._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.1 (released 2026-05-09)
+- **Latest version:** 0.22.2 (released 2026-05-09)
 - **Test count:** 554 across 21 suites, all green
-- **Build artifact:** `pica-0.22.1-profile-link-fix.zip`
+- **Build artifact:** `pica-0.22.2-punch-nonblocking-geo.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.1)
+## What just shipped (0.22.2)
+
+Same-day patch on top of 0.22.1. Single UX fix.
+
+**Clock-in/out no longer blocks on geolocation.** The click path
+previously called the thorough `getGeo()` (15 s + 20 s two-attempt
+budget) on every punch. On a desktop without a usable location
+source the button sat at "Working…" for up to 35 seconds before the
+punch went through, and users assumed it was broken.
+
+The click path now reuses the in-session `lastFix` when present, or
+calls a new `getGeoFast()` with a 3-second hard budget, or punches
+with `geoSkipReason` set. The server already accepted no-geo
+punches — backend unchanged. The thorough `getGeo()` stays for the
+page-load map preview and the explicit Retry button.
+
+About re-prompting a blocked permission: browsers don't allow it
+programmatically — that's a platform security boundary. Once the
+user has blocked location for the site, only manual site-permissions
+changes can re-enable it. Pica detects the denied state and stamps
+`geoSkipReason: 'denied'` on the punch; the punch still goes through.
+
+## What shipped in 0.22.1
 
 Same-day patch on top of 0.22.0. Single bugfix, no new features.
 
@@ -72,6 +94,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | M12.3 | Hardening — audit log                    | ✅ 0.21.0 |
 | M12.4 | Hardening — input validation + numfmt    | ✅ 0.22.0 |
 | —     | Profile-link bugfix (patch)              | ✅ 0.22.1 |
+| —     | Punch non-blocking geolocation (patch)   | ✅ 0.22.2 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 
