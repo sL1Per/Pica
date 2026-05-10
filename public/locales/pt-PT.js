@@ -246,6 +246,7 @@ export default {
   'leaves.noPending':        'Sem pedidos pendentes.',
   'leaves.noHistory':        'Ainda sem histórico.',
   'leaves.couldNotLoad':     'Não foi possível carregar as férias.',
+  'leaves.carryTooltip':     'Transitado do ano anterior — expira em {date}',
 
   'leaves.type.vacation':    'Férias',
   'leaves.type.sick':        'Doença',
@@ -588,7 +589,9 @@ export default {
   'settings.orgSubtitle': 'Política de toda a empresa. Apenas empregadores.',
   'settings.allowanceHeading': 'Limites de férias predefinidos (dias/ano)',
   'settings.allowanceHint': 'Aplica-se a todos os funcionários, salvo substituição abaixo.',
-  'settings.carryForwardLabel': 'Dias não usados transitam para o ano seguinte',
+  'settings.carryForwardLabel': 'Dias de férias não usados transitam para o ano seguinte',
+  'settings.carryExpiresLabel': 'Data de expiração das férias transitadas (MM-DD)',
+  'settings.carryExpiresHint': 'As férias transitadas caducam após esta data (mês-dia) de cada ano (ex.: 03-31 = 31 de Março). Aplicado automaticamente todos os anos.',
   'settings.overridesSubtitle': 'Defina limites personalizados para funcionários específicos. Em branco usa a predefinição.',
   'settings.loadingEmployees': 'A carregar funcionários…',
   'settings.leavePolicyHeading': 'Política de férias',

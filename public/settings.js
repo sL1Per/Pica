@@ -31,6 +31,7 @@ const defSick     = $('def-sick');
 const defAppoint  = $('def-appointment');
 const defOther    = $('def-other');
 const carryFwd    = $('carry-forward');
+const carryExpiresInput = $('carry-expires-at');
 const concurrent  = $('concurrent-allowed');
 const overridesWrap = $('overrides-table-wrap');
 
@@ -70,6 +71,7 @@ function renderOrg(settings) {
   defAppoint.value  = al.appointment ?? 0;
   defOther.value    = al.other ?? 0;
   carryFwd.checked  = !!settings.leaves.carryForward;
+  carryExpiresInput.value = settings.leaves.carryForwardExpiresAt ?? '03-31';
   concurrent.checked = !!settings.leaves.concurrentAllowed;
 
   renderOverridesTable(settings.leaves.perEmployeeOverrides ?? {});
@@ -197,6 +199,7 @@ if (orgForm) {
         },
         perEmployeeOverrides: overrides,
         carryForward: carryFwd.checked,
+        carryForwardExpiresAt: carryExpiresInput.value.trim() || '03-31',
         concurrentAllowed: concurrent.checked,
       },
     };

@@ -101,9 +101,18 @@ function renderEmployeeBalance(balances) {
     // allowance===0 means "no cap" — display "—" instead of zeros that would
     // misread as "you have nothing".
     const unlimited = b.allowance === 0;
+    // Show carry-in alongside the base allowance when active (vacation only).
+    // Format: "22 + 5" with a tooltip naming the expiry date.
+    let allowanceCell = unlimited ? '—' : fmt(b.allowance);
+    if (!unlimited && b.carryIn > 0) {
+      const tip = b.carryExpiresAt
+        ? t('leaves.carryTooltip', { date: b.carryExpiresAt })
+        : '';
+      allowanceCell = `${fmt(b.allowance)} <span class="balance-cell--carry" title="${escapeHtml(tip)}">+${fmt(b.carryIn)}</span>`;
+    }
     tr.innerHTML = `
       <td><span class="type-tag">${escapeHtml(t('leaves.type.' + b.type))}</span></td>
-      <td class="right">${unlimited ? '—' : fmt(b.allowance)}</td>
+      <td class="right">${allowanceCell}</td>
       <td class="right balance-cell--pending">${b.pending > 0 ? fmt(b.pending) : '—'}</td>
       <td class="right">${fmt(b.booked)}</td>
       <td class="right balance-cell--remaining">${unlimited ? '—' : fmt(b.remaining)}</td>
@@ -142,9 +151,10 @@ function renderEmployerMatrix({ rows }) {
       const over = !unlimited && b.remaining < 0;
       const cls = over ? ' balance-matrix__cell--over' : '';
       const pending = b.pending > 0 ? `<span class="balance-matrix__pending">+${fmt(b.pending)}</span>` : '';
+      const cap = b.effectiveAllowance ?? b.allowance;
       const main = unlimited
         ? `<strong>${fmt(b.booked)}</strong> <span class="muted">/ —</span>`
-        : `<strong>${fmt(b.remaining)}</strong> <span class="muted">/ ${fmt(b.allowance)}</span>`;
+        : `<strong>${fmt(b.remaining)}</strong> <span class="muted">/ ${fmt(cap)}</span>`;
       html += `
         <td class="right balance-matrix__cell${cls}">
           <span class="balance-matrix__main">${main}</span>

@@ -5,22 +5,49 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.4._
+_Last touched in 0.22.5._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.4 (released 2026-05-09)
-- **Test count:** 558 across 22 suites, all green
-- **Build artifact:** `pica-0.22.4-leaves-privacy.zip`
+- **Latest version:** 0.22.5 (released 2026-05-10)
+- **Test count:** 572 across 23 suites, all green
+- **Build artifact:** `pica-0.22.5-vacation-carry-forward.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.4)
+## What just shipped (0.22.5)
+
+Vacation carry-forward landed for real. The `carryForward` toggle
+in org-settings has stored a boolean since M7 but no logic ever
+consumed it ("Carry-forward is deferred" — comment now deleted).
+
+`computeBalances()` now adds unused approved year-N-1 vacation as
+a `carryIn` field on the year-N row, capped at the base allowance.
+A new `leaves.carryForwardExpiresAt` setting (MM-DD, default
+`03-31`) drops the carry to zero each year on the configured
+date. Pending year-N-1 leaves are ignored — they reduce N-1's
+booked total only when approved, so carry recomputes naturally.
+
+`effectiveAllowance` (= allowance + carryIn) is the new cap used
+by `wouldExceedCap`. `remaining` semantics changed accordingly:
+`effectiveAllowance - pending - booked` (was `allowance - …`).
+
+UI: settings page has a new MM-DD input next to the carry-forward
+checkbox. Leaves balance table shows "+5" green badge next to
+base allowance when carry-in > 0, with a tooltip naming the
+expiry date. Employer balance matrix denominator is now
+effective allowance.
+
+New test suite `tests/test-leaves-carry.mjs` (11 tests) plus 3
+new tests in `tests/test-org-settings.mjs` for the validator.
+Total: 23 suites, 572 tests. CACHE_VERSION → v28.
+
+## What shipped in 0.22.4
 
 Same-day patch on top of 0.22.3. Privacy tightening.
 
@@ -143,6 +170,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Punch non-blocking geolocation (patch)   | ✅ 0.22.2 |
 | —     | Leave-submit error display (patch)       | ✅ 0.22.3 |
 | —     | Leaves privacy for employees (patch)     | ✅ 0.22.4 |
+| —     | Vacation carry-forward + MM-DD expiry    | ✅ 0.22.5 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 
@@ -302,7 +330,7 @@ for s in crypto auth employees punches leaves reports user-prefs \
          org-settings company-logo corrections i18n frontend-imports \
          period reports-team employees-summary error-codes backups \
          backup-scheduler security-headers audit validators \
-         leaves-approved; do
+         leaves-approved leaves-carry; do
   node tests/test-$s.mjs 2>&1 | tail -1 | sed "s/^/$s: /"
 done
 ```

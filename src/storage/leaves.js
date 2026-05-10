@@ -284,23 +284,35 @@ export function createLeavesStore(dataDir, masterKey) {
   /**
    * Compute per-type balances for one employee, one year.
    *
-   *   allowance  — configured days from org settings
-   *                (perEmployeeOverrides beats defaultAllowances)
-   *   pending    — sum of `approxDaysOff` over leaves with status='pending'
-   *   booked     — sum of `approxDaysOff` over leaves with status='approved'
-   *   remaining  — allowance - pending - booked (can be negative)
+   *   allowance          — base allowance from org settings
+   *                        (perEmployeeOverrides beats defaultAllowances)
+   *   carryIn            — vacation only: unused approved days from year-1,
+   *                        capped at base allowance, dropped to 0 once the
+   *                        configured `carryForwardExpiresAt` passes in
+   *                        the current calendar year. 0 for other types
+   *                        and 0 for `allowance === 0` (unlimited) types.
+   *   effectiveAllowance — allowance + carryIn. The cap-exceeded check
+   *                        and the cap-display in the UI use this.
+   *   pending            — sum of `daysOf(leave)` over status='pending'
+   *   booked             — sum of `daysOf(leave)` over status='approved'
+   *   remaining          — effectiveAllowance - pending - booked (can be
+   *                        negative; the leave-cap check uses this).
+   *   carryExpiresAt     — `YYYY-MM-DD` of the next expiry, or null when
+   *                        carryIn === 0 (either no carry, expired, or
+   *                        carryForward is disabled).
    *
    * `year` filters leaves by the year of their `start` field.
    * Rejected and cancelled leaves are excluded.
    *
-   * Carry-forward is deferred — the `allowance` returned is the raw
-   * configured value, no previous-year adjustment applied.
+   * `now` (optional) — anchor date for the expiry check. Defaults to
+   * `new Date()`; tests inject a frozen value.
    */
-  function computeBalances({ userId, year, orgSettings, leaveTypes, daysOf }) {
+  function computeBalances({ userId, year, orgSettings, leaveTypes, daysOf, now }) {
     if (!userId) throw new Error('userId is required');
     if (!Number.isInteger(year)) throw new Error('year must be an integer');
     if (typeof daysOf !== 'function') throw new Error('daysOf helper is required');
     const types = leaveTypes ?? LEAVE_TYPES;
+    const anchor = now instanceof Date ? now : new Date();
 
     // 1. Resolve allowance per type.
     const defaults = orgSettings?.leaves?.defaultAllowances ?? {};
@@ -323,9 +335,45 @@ export function createLeavesStore(dataDir, masterKey) {
       if (leave.status === 'approved') byType[leave.type].booked  += days;
     }
 
-    // 3. Shape output.
+    // 3. Carry-forward (vacation only). Only approved year-N-1 leaves
+    //    count as "used"; pending requests in N-1 are ignored. The carry
+    //    is capped at the base allowance — we don't surface "negative"
+    //    or "over-allowance" carry. Once the current year's expiry
+    //    `MM-DD` passes, carry drops to 0.
+    const carryByType = {};
+    for (const t of types) carryByType[t] = 0;
+    let carryExpiresIso = null;
+
+    const carryEnabled = orgSettings?.leaves?.carryForward !== false;
+    const expiresMd = orgSettings?.leaves?.carryForwardExpiresAt || '03-31';
+    if (carryEnabled && types.includes('vacation')) {
+      const baseAllowance = allowanceFor('vacation');
+      if (baseAllowance > 0) {
+        // Sum vacation `booked` from year - 1.
+        let prevBooked = 0;
+        for (const leave of list({ employeeId: userId })) {
+          if (leave.status !== 'approved') continue;
+          if (leave.type !== 'vacation') continue;
+          const ly = Number(leave.start.slice(0, 4));
+          if (ly !== year - 1) continue;
+          prevBooked += daysOf(leave);
+        }
+        const unused = Math.max(0, baseAllowance - prevBooked);
+        // Carry is active up to and including the expiry date in the
+        // current `year` (end-of-day local). After that, drops to 0.
+        const expiry = new Date(`${year}-${expiresMd}T23:59:59.999`);
+        if (anchor.getTime() <= expiry.getTime()) {
+          carryByType.vacation = unused;
+          if (unused > 0) carryExpiresIso = `${year}-${expiresMd}`;
+        }
+      }
+    }
+
+    // 4. Shape output.
     return types.map((t) => {
       const allowance = allowanceFor(t);
+      const carryIn = carryByType[t] || 0;
+      const effective = allowance > 0 ? allowance + carryIn : 0;
       const { pending, booked } = byType[t];
       // Round to 0.5 to keep half-day math clean — accumulator can drift
       // slightly with lots of 8-hour-window conversions.
@@ -333,9 +381,12 @@ export function createLeavesStore(dataDir, masterKey) {
       return {
         type: t,
         allowance: round(allowance),
+        carryIn:   round(carryIn),
+        effectiveAllowance: round(effective),
         pending:   round(pending),
         booked:    round(booked),
-        remaining: round(allowance - pending - booked),
+        remaining: round(effective - pending - booked),
+        carryExpiresAt: t === 'vacation' && carryIn > 0 ? carryExpiresIso : null,
       };
     });
   }
@@ -393,14 +444,14 @@ export function createLeavesStore(dataDir, masterKey) {
    * The caller decides what to do on `exceeds: true` — typically respond
    * with a 4xx and a message including these numbers.
    */
-  function wouldExceedCap({ userId, type, additionalDays, year, orgSettings, daysOf }) {
+  function wouldExceedCap({ userId, type, additionalDays, year, orgSettings, daysOf, now }) {
     if (typeof additionalDays !== 'number' || !Number.isFinite(additionalDays)) {
       throw new Error('additionalDays must be a finite number');
     }
     const balances = computeBalances({
       userId, year, orgSettings,
       leaveTypes: [type],
-      daysOf,
+      daysOf, now,
     });
     const b = balances[0];
     if (!b) {
@@ -411,10 +462,13 @@ export function createLeavesStore(dataDir, masterKey) {
       // Unlimited.
       return { exceeds: false, allowance: 0, currentBooked: b.booked, wouldBe: b.booked + additionalDays, type };
     }
+    // Cap is the EFFECTIVE allowance (base + active carry-forward). Until
+    // the configured expiry date passes, vacation carry-in expands the cap.
+    const cap = b.effectiveAllowance ?? b.allowance;
     const wouldBe = b.booked + additionalDays;
     return {
-      exceeds: wouldBe > b.allowance,
-      allowance: b.allowance,
+      exceeds: wouldBe > cap,
+      allowance: cap,
       currentBooked: b.booked,
       wouldBe,
       type,

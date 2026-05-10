@@ -247,6 +247,7 @@ export default {
   'leaves.noPending':        'No pending requests.',
   'leaves.noHistory':        'No history yet.',
   'leaves.couldNotLoad':     'Could not load leaves.',
+  'leaves.carryTooltip':     'Carried over from last year — expires {date}',
 
   // Leave types.
   'leaves.type.vacation':    'Vacation',
@@ -592,7 +593,9 @@ export default {
   'settings.orgSubtitle': 'Company-wide policy. Employer only.',
   'settings.allowanceHeading': 'Default leave allowances (days/year)',
   'settings.allowanceHint': 'Applies to every employee unless overridden below.',
-  'settings.carryForwardLabel': 'Unused allowance carries over to next year',
+  'settings.carryForwardLabel': 'Unused vacation carries over to next year',
+  'settings.carryExpiresLabel': 'Carry-over expiry (MM-DD)',
+  'settings.carryExpiresHint': 'Carried-over vacation drops to zero after this month-day each year (e.g., 03-31 = 31 March). Applied automatically every year.',
   'settings.overridesSubtitle': 'Set custom caps for specific people. Blank means "use default".',
   'settings.loadingEmployees': 'Loading employees…',
   'settings.leavePolicyHeading': 'Leave policy',

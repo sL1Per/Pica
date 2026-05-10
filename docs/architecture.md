@@ -168,7 +168,8 @@ pica/
 │   ├── test-security-headers.mjs   # CSP, headers, cross-file invariants
 │   ├── test-audit.mjs              # audit log: append, read, encryption, listMonths
 │   ├── test-validators.mjs         # isUuid edge cases (path-traversal defense)
-│   └── test-leaves-approved.mjs    # /api/leaves/approved privacy model
+│   ├── test-leaves-approved.mjs    # /api/leaves/approved privacy model
+│   └── test-leaves-carry.mjs       # vacation carry-forward + MM-DD expiry
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -311,7 +312,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 22 suites, 558 passing as of 0.22.4.
+- Total: 23 suites, 572 passing as of 0.22.5.
 
 ---
 
@@ -372,4 +373,4 @@ because they only add half a punch pair.
 
 ---
 
-_Last touched in 0.22.4._
+_Last touched in 0.22.5._

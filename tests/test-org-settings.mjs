@@ -179,6 +179,24 @@ try {
     assert.equal(s.leaves.carryForward, true);
   });
 
+  await test('carryForwardExpiresAt accepts valid MM-DD', () => {
+    const s = store.update({ leaves: { carryForwardExpiresAt: '06-30' } });
+    assert.equal(s.leaves.carryForwardExpiresAt, '06-30');
+  });
+
+  await test('carryForwardExpiresAt rejects bad shapes', () => {
+    assert.throws(() => store.update({ leaves: { carryForwardExpiresAt: '6-30' } }), /MM-DD/);
+    assert.throws(() => store.update({ leaves: { carryForwardExpiresAt: '13-01' } }), /month/);
+    assert.throws(() => store.update({ leaves: { carryForwardExpiresAt: '02-30' } }), /day/);
+    assert.throws(() => store.update({ leaves: { carryForwardExpiresAt: '02-29' } }), /day/, '02-29 rejected — non-leap-year reference');
+    assert.throws(() => store.update({ leaves: { carryForwardExpiresAt: '04-31' } }), /day/, 'April only has 30');
+  });
+
+  await test('carryForwardExpiresAt defaults to 03-31', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-org-cx-')));
+    assert.equal(fresh.get().leaves.carryForwardExpiresAt, '03-31');
+  });
+
   // ---------------------------------------------------------------------------
   console.log('\nBackups section');
   // ---------------------------------------------------------------------------

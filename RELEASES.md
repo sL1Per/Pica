@@ -14,6 +14,147 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.5] — 2026-05-10 — Vacation carry-forward with annual MM-DD expiry
+
+Implements the carry-forward feature that has been a stub in
+`org-settings.json` since M7. Unused approved vacation from year
+N-1 now rolls into year N's available balance, and an operator-
+configurable expiry date drops it back to zero each year.
+
+### What's new
+
+**`leaves.carryForwardExpiresAt` setting (MM-DD, applied annually).**
+Default `'03-31'` (typical Portuguese-EU convention). The operator
+sets it once in Settings → Organization; it applies to every year
+without manual updates. Validation rejects malformed strings,
+months outside 01–12, and days that don't exist in the configured
+month using a non-leap-year reference (so `02-29` is rejected to
+ensure the expiry triggers every year).
+
+**`computeBalances()` actually carries vacation now.** Previously
+the `carryForward` toggle stored a value but no logic consumed it
+(see the "Carry-forward is deferred" comment that just got
+deleted). The new logic:
+
+1. For year N being queried, sum **approved** vacation days for
+   the user in year N-1. Pending year-N-1 leaves are ignored —
+   they reduce N-1's booked total only when they get approved,
+   so the carry naturally re-computes.
+2. `unused = max(0, baseAllowance - prevBooked)` — never
+   negative, capped at the base.
+3. Compare `now` to `${year}-${MM-DD}` (end of day). Before the
+   cutoff, carry counts; on or after midnight the day after, it
+   drops to 0.
+4. Result fields per balance row:
+   - `allowance` — base (unchanged meaning)
+   - `carryIn` — vacation only; 0 for other types and unlimited (allowance=0) types
+   - `effectiveAllowance` — `allowance + carryIn`
+   - `remaining` — `effectiveAllowance - pending - booked` (semantics changed; was `allowance - pending - booked`)
+   - `carryExpiresAt` — `YYYY-MM-DD` of the next expiry, or `null`
+
+**`wouldExceedCap()` uses effective allowance.** The leave-create
+flow already calls this at request time and again at approve time;
+both paths now correctly accept bookings up to `effectiveAllowance`
+when carry-in is active.
+
+**UI surfaces.** Settings page gets a text input next to the
+existing carry-forward checkbox (`MM-DD` pattern, default
+`03-31`). Leaves balance table shows carry as a green
+"+5" badge next to the base allowance with a tooltip naming the
+expiry date. The employer balance matrix shows
+`remaining / effectiveAllowance` so the cap visible to managers
+matches the cap actually enforced.
+
+### Files touched
+
+- `src/storage/org-settings.js` — new field in defaults + merge +
+  `cleanCarryExpiresAt` validator; rejects `02-29` and other
+  impossible-every-year dates.
+- `src/storage/leaves.js` — extended `computeBalances` (new
+  optional `now` arg, carry computation, new return fields);
+  `wouldExceedCap` now uses `effectiveAllowance` and accepts
+  `now` for testability.
+- `public/settings.html` + `public/settings.js` — new MM-DD input
+  wired into `renderOrg` and the save patch.
+- `public/leaves.js` — balance table renders carry-in badge and
+  the employer matrix uses effective allowance.
+- `public/leaves.css` — new `.balance-cell--carry` style.
+- `public/locales/en-US.js` and `pt-PT.js` — three new strings:
+  `settings.carryExpiresLabel`, `settings.carryExpiresHint`,
+  `leaves.carryTooltip`. Existing `settings.carryForwardLabel`
+  retitled to "Unused vacation carries over to next year" (was
+  "Unused allowance…") to reflect the vacation-only scope.
+- `tests/test-leaves-carry.mjs` — new suite, 11 tests covering
+  basic accumulation, pending-N-1 ignored, MM-DD expiry timing,
+  type scope (vacation only), unlimited bypass, the
+  `carryForward: false` switch, `remaining` math, and
+  `wouldExceedCap` integration.
+- `tests/test-org-settings.mjs` — 3 new tests for the
+  `carryForwardExpiresAt` validator.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v28`
+  (locale files are pre-cached).
+- `package.json` — version `0.22.5`, releaseDate `2026-05-10`.
+
+Test totals: 23 suites, 572 tests (was 22 / 558). Existing
+suites unchanged; the new fields don't disturb any earlier
+expectation because they default to 0 / null when no
+previous-year data exists.
+
+### What this does NOT do (Honest Disclosures)
+
+- **Pro-rated allowances are not modeled.** A new hire whose
+  contract started halfway through year N-1 has the same base
+  allowance applied retroactively when computing what they
+  could have used. If their actual entitlement was prorated,
+  carry-in over-counts. This is a labour-policy gap, not a
+  Pica concern — operators using prorated entitlements should
+  set `perEmployeeOverrides[userId].vacation` to the prorated
+  number and accept that historical computation is approximate.
+- **Allowance changes mid-year are not retroactive.** Carry-in
+  is computed against the *current* `defaultAllowances.vacation`
+  (or override) — not the value that was in effect during year
+  N-1. If an employer raises everyone's allowance from 22 to 25
+  in December, the next-year carry uses 25 as the prev-year
+  base. This is the simpler choice and matches how many
+  payroll systems behave; it's not necessarily what every legal
+  framework expects. Documented here so operators know to
+  re-confirm balances after any allowance change.
+- **No grace period or partial expiry.** Carry-in is binary:
+  active up to and including the configured `MM-DD`, zero
+  thereafter. Operators wanting "carry expires 50% on March 31
+  and the rest on June 30" need to revisit the design.
+- **`02-29` is rejected by the validator** so the expiry
+  triggers every year. Operators who want late-February expiry
+  should pick `02-28`. February 29 of leap years would let the
+  expiry not fire in 75% of years.
+- **Past years now show carry=0 retroactively.** Querying year
+  2024's balance in 2026 returns `carryIn: 0` because the
+  expiry at `2024-03-31` has long passed. The historical
+  reality (Jan–March 2024 had carry from 2023) is lost in the
+  current view. A future drop could surface "carry-while-it-was-
+  active" as a separate field for historical accuracy. Not in
+  scope here.
+- **No audit log entry for the setting change.**
+  `settings.org_updated` already logs which top-level keys
+  changed; the value of the new MM-DD is not captured. Matches
+  existing behaviour for `defaultAllowances` etc.
+- **No backend route changes.** The privacy contract for
+  `/api/leaves/balances` and `/api/leaves/balances/:userId`
+  carries forward — employer sees all rows, employee sees only
+  their own. The new fields are exposed identically.
+- **Service-worker caching note.** Same pattern as 0.22.1–0.22.4
+  — clients on the old `CACHE_VERSION` need the SW to
+  reactivate before they pick up the new locale strings and
+  settings markup. The backend changes apply immediately on
+  server restart.
+- **The roadmap's "annual carry-forward" checkmark on M7 is
+  now actually true.** Previously the toggle was stored but
+  unused; now it does what the M7 entry advertised. The 0.22.5
+  release notes are the canonical record of when the feature
+  actually shipped.
+
+---
+
 ## [0.22.4] — 2026-05-09 — Privacy: employees no longer see other employees' leave details
 
 Patch release. Same-day as 0.22.3.

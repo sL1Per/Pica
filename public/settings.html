@@ -94,8 +94,13 @@
 
         <label class="checkbox">
           <input type="checkbox" id="carry-forward">
-          <span data-i18n="settings.carryForwardLabel">Unused allowance carries over to next year</span>
+          <span data-i18n="settings.carryForwardLabel">Unused vacation carries over to next year</span>
         </label>
+        <div class="form-row">
+          <label for="carry-expires-at" data-i18n="settings.carryExpiresLabel">Carry-over expiry (MM-DD)</label>
+          <input type="text" id="carry-expires-at" pattern="\d{2}-\d{2}" maxlength="5" placeholder="03-31" inputmode="numeric">
+        </div>
+        <p class="subtle" data-i18n="settings.carryExpiresHint">Carried-over vacation drops to zero after this month-day each year (e.g., 03-31 = 31 March). Applied automatically every year.</p>
 
         <h3 data-i18n="settings.overridesHeading">Per-employee overrides</h3>
         <p class="subtle" data-i18n="settings.overridesSubtitle">Set custom caps for specific people. Blank means "use default".</p>

@@ -39,8 +39,14 @@ export const DEFAULT_ORG_SETTINGS = Object.freeze({
     // (a) — per-employee overrides. Shape: { [userId]: { vacation: n, ... } }
     // Empty by default; employers fill in as needed.
     perEmployeeOverrides: {},
-    // Unused balance rolls into next year's budget if true.
+    // Unused vacation balance rolls into next year's budget if true.
+    // Only `vacation` carries; sick/appointment/other reset every Jan 1.
     carryForward: true,
+    // Date each year on which carried-over vacation expires. Format: "MM-DD".
+    // E.g., "03-31" means carry-over from year N-1 is available in year N
+    // until end-of-day 31 March, then drops to 0. Applied automatically every
+    // year — operator does not need to update annually.
+    carryForwardExpiresAt: '03-31',
     // Advisory flag used by M8 warning banner during approval.
     concurrentAllowed: true,
   },
@@ -123,6 +129,10 @@ export function createOrgSettingsStore(dataDir) {
       if (typeof stored.leaves.carryForward === 'boolean') {
         defaults.leaves.carryForward = stored.leaves.carryForward;
       }
+      if (typeof stored.leaves.carryForwardExpiresAt === 'string'
+          && /^\d{2}-\d{2}$/.test(stored.leaves.carryForwardExpiresAt)) {
+        defaults.leaves.carryForwardExpiresAt = stored.leaves.carryForwardExpiresAt;
+      }
       if (typeof stored.leaves.concurrentAllowed === 'boolean') {
         defaults.leaves.concurrentAllowed = stored.leaves.concurrentAllowed;
       }
@@ -179,10 +189,33 @@ export function createOrgSettingsStore(dataDir) {
     if ('carryForward' in patch) {
       out.carryForward = !!patch.carryForward;
     }
+    if ('carryForwardExpiresAt' in patch) {
+      out.carryForwardExpiresAt = cleanCarryExpiresAt(patch.carryForwardExpiresAt);
+    }
     if ('concurrentAllowed' in patch) {
       out.concurrentAllowed = !!patch.concurrentAllowed;
     }
     return out;
+  }
+
+  // "MM-DD" — month 01-12, day valid for the given month assuming a
+  // non-leap year (so "02-29" is rejected; "02-28" is the latest February
+  // value an operator should pick if they want every-year semantics).
+  function cleanCarryExpiresAt(value) {
+    if (typeof value !== 'string' || !/^\d{2}-\d{2}$/.test(value)) {
+      throw new Error('leaves.carryForwardExpiresAt must be in MM-DD format');
+    }
+    const [m, d] = value.split('-').map(Number);
+    if (m < 1 || m > 12) {
+      throw new Error('leaves.carryForwardExpiresAt month must be 01-12');
+    }
+    // Days-per-month using a non-leap year (2025) as the reference. This
+    // ensures the expiry triggers every year even outside leap years.
+    const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+    if (d < 1 || d > daysInMonth) {
+      throw new Error(`leaves.carryForwardExpiresAt day must be 01-${String(daysInMonth).padStart(2, '0')} for month ${String(m).padStart(2, '0')}`);
+    }
+    return value;
   }
 
   function cleanBackupsPatch(patch) {

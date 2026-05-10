@@ -102,6 +102,7 @@
 .balance-table .balance-cell--pending { color: var(--warning); font-weight: 500; }
 .balance-table .balance-cell--remaining { font-weight: 700; }
 .balance-table .balance-row--over .balance-cell--remaining { color: var(--danger); }
+.balance-table .balance-cell--carry { color: var(--success, #2e7d32); font-weight: 600; margin-left: 0.25rem; cursor: help; }
 
 /* Employer matrix — horizontally scrollable when wide. */
 .balance-matrix__wrap {
