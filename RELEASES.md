@@ -14,6 +14,129 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.9] — 2026-05-10 — Approximate addresses on punches (replacing raw lat/lng)
+
+### What's new
+
+**Punches now display an approximate address instead of raw
+coordinates** wherever a `geo` field is rendered:
+
+- Punch page → today's list ("Acme Office, Rua de Santa Catarina,
+  Porto" instead of "41.1496, -8.6109")
+- Punch page → map preview meta line under the OSM tile
+- Today's punches page (`/punches/today`, employer view)
+
+Coordinates remain visible **as the immediate fallback**: the
+list renders coords first, then swaps to the address when the
+reverse-geocode response arrives. If the request fails, times
+out, gets rate-limited, or the device is offline, coordinates
+stay — no error UI.
+
+### How it works
+
+`public/geocode.js` is a new browser-side helper that:
+
+1. Rounds `(lat, lng)` to 4 decimal places (~11m precision) for
+   the cache key — multiple punches at the same building share
+   one cached label.
+2. Reads from `localStorage` first (`pica-geocode:LAT,LNG`) with
+   a 30-day TTL. Cache hit → instant return.
+3. On miss, queues a fetch behind a 1.1-second throttle (a hair
+   over Nominatim's stated 1 req/sec policy ceiling). Concurrent
+   calls for the same key dedupe to a single in-flight promise.
+4. Calls `https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&addressdetails=1&lat=…&lon=…`
+   with `Accept-Language: <document.lang>` so labels come back
+   in the user's locale when Nominatim has it.
+5. Formats the response into a short label: landmark + street +
+   locality, falling back to the first two chunks of
+   `display_name`. Returns `null` on any failure; callers keep
+   their coordinate fallback rendered.
+
+CSP: `connect-src 'self'` was extended to allow
+`https://nominatim.openstreetmap.org`. No other connect targets
+are added; the Referer header on the request identifies the Pica
+deployment to OSM, which is what their usage policy expects.
+
+### Files touched
+
+- `public/geocode.js` — new, ~125 lines, zero deps.
+- `public/punch.js` — imports `reverseGeocode`; today's-list
+  rendering and map-meta line both kick off async geocoding.
+- `public/punches-today.js` — same wiring on the employer view.
+- `src/http/security-headers.js` — `connect-src` extended with
+  the Nominatim host plus a comment naming the trade-off.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v32`
+  because `punch.js` is in the pre-cache list.
+- `package.json` — version `0.22.9`.
+
+No new tests; no test-suite count change. The frontend-imports
+suite picked up the new `geocode.js` import sites and stayed
+green at 54 checks.
+
+### What this does NOT do (Honest Disclosures)
+
+- **Privacy regression: each unique punch location reveals
+  itself to a third party.** Coordinates leave the operator's
+  browser and reach `nominatim.openstreetmap.org` (community
+  OSM infrastructure) at least once per location, ever. The
+  30-day localStorage cache means no repeat traffic for the
+  same building, but the first punch at any new place sends a
+  request. Operators who consider employee location data
+  sensitive should either:
+  (a) self-host a Nominatim instance and patch
+      `NOMINATIM_BASE` in `public/geocode.js`, or
+  (b) revert the feature by setting `geoSpan.textContent` to
+      coords only and removing the `reverseGeocode` call site.
+  A future drop could surface this as an org-settings toggle,
+  but the feature was requested as the simplest "show address
+  on punches" implementation; gating it adds scope.
+- **No User-Agent identifying Pica.** Browsers don't allow
+  setting `User-Agent` on `fetch`, so the request carries the
+  browser's stock UA. Nominatim's policy says stock UAs from
+  HTTP libraries can be blocked; in practice browsers tend to
+  pass. If your deployment hits sustained blocks, the fallback
+  is coordinates and operators see no breakage — just no
+  upgrade to addresses. Self-hosted Nominatim is the proper
+  fix.
+- **Rate limit is single-instance per browser.** Two tabs open
+  on the same machine could each fire ~1 req/sec, doubling the
+  rate. Also the localStorage cache is per-origin per browser,
+  so the cache doesn't share across users on the same site.
+  Acceptable at the ≤50 employee scale; a server-side cache
+  would fix both at the cost of putting Pica's server on the
+  outbound-call hook (and complicating offline restore).
+- **No backend involvement.** Geocoding is a pure-frontend
+  feature. The encrypted `geo` payload on disk is unchanged;
+  punches still store `{lat, lng, accuracy}` and never the
+  resolved address. Decrypting old backups produces the same
+  records as before. No data migration.
+- **Address rendering is best-effort, not authoritative.**
+  The label is a UX nicety; the punch's location-of-record
+  remains the encrypted lat/lng. Two punches at the same
+  building can render different labels if Nominatim updates its
+  database between them, and a deliberately-misnamed building
+  in OSM would mislead. Operators should not rely on the label
+  for compliance-grade location auditing.
+- **No address shows on the offline-replay path or in CSV
+  exports.** Reports CSV export still includes lat/lng; the
+  reports HTML view doesn't render `geo` per-punch yet, so
+  there's nothing to upgrade there. Adding addresses to CSV
+  would either require server-side geocoding (out of scope) or
+  pre-resolving every cell client-side before export (slow and
+  rate-limit-bound).
+- **The pre-existing CSP hole on `img-src` and OSM tiles is
+  unchanged.** The map tile request to `tile.openstreetmap.org`
+  is technically blocked by `img-src 'self' data: blob:`. The
+  tile may or may not render in your browser depending on how
+  strictly the CSP is enforced. Fixing this is its own issue,
+  flagged for follow-up.
+- **Service-worker caching note.** Same as 0.22.1–0.22.8 —
+  clients on the old `CACHE_VERSION` need the SW to reactivate
+  before they pick up the new `geocode.js` and updated punch
+  pages.
+
+---
+
 ## [0.22.8] — 2026-05-10 — Time bank removed; "missing hours" replaces it
 
 The "time bank" feature (approved unjustified corrections

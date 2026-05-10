@@ -1,5 +1,6 @@
 import { showMessage } from '/app.js';
 import { t, applyTranslations } from '/i18n.js';
+import { reverseGeocode } from '/geocode.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
@@ -80,17 +81,33 @@ function renderGroup(name, username, punches) {
 
     const parts = [];
     if (p.comment) parts.push(escapeHtml(p.comment));
-    if (p.geo) parts.push(`<span class="punch-list__geo">${p.geo.lat.toFixed(4)}, ${p.geo.lng.toFixed(4)}</span>`);
-    if (parts.length) {
-      const meta = document.createElement('div');
+    let geoSpan = null;
+    if (p.geo) {
+      geoSpan = document.createElement('span');
+      geoSpan.className = 'punch-list__geo';
+      geoSpan.textContent = `${p.geo.lat.toFixed(4)}, ${p.geo.lng.toFixed(4)}`;
+    }
+    let meta = null;
+    if (parts.length || geoSpan) {
+      meta = document.createElement('div');
       meta.className = 'punch-list__meta';
-      meta.innerHTML = parts.join(' · ');
+      if (parts.length) meta.innerHTML = parts.join(' · ');
+      if (geoSpan) {
+        if (parts.length) meta.appendChild(document.createTextNode(' · '));
+        meta.appendChild(geoSpan);
+      }
       body.appendChild(meta);
     }
 
     li.appendChild(badge);
     li.appendChild(body);
     ul.appendChild(li);
+
+    if (geoSpan) {
+      reverseGeocode(p.geo.lat, p.geo.lng).then((label) => {
+        if (label) geoSpan.textContent = label;
+      });
+    }
   }
   section.appendChild(ul);
   return section;

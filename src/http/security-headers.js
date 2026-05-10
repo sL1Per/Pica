@@ -77,7 +77,10 @@ export function createSecurityHeaders({ publicDir, isProduction }) {
     `script-src 'self' ${scriptHash}`,
     "style-src 'self'",
     "img-src 'self' data: blob:",
-    "connect-src 'self'",
+    // Nominatim is allowed for browser-side reverse geocoding of punch
+    // coordinates (0.22.9). See public/geocode.js for the trade-off:
+    // each unique location reveals where the punch happened to OSM.
+    "connect-src 'self' https://nominatim.openstreetmap.org",
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

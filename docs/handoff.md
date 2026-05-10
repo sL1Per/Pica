@@ -5,22 +5,48 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.8._
+_Last touched in 0.22.9._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.8 (released 2026-05-10)
+- **Latest version:** 0.22.9 (released 2026-05-10)
 - **Test count:** 575 across 23 suites, all green
-- **Build artifact:** `pica-0.22.8-time-bank-removed.zip`
+- **Build artifact:** `pica-0.22.9-punch-addresses.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.8)
+## What just shipped (0.22.9)
+
+Punches now render an approximate **address** instead of raw
+lat/lng wherever a geo block is shown — the today list on
+`/punch`, the meta line under the OSM map preview, and the
+employer's `/punches/today` view.
+
+New browser-side helper `public/geocode.js` calls OSM Nominatim
+(`https://nominatim.openstreetmap.org/reverse`) with a 30-day
+localStorage cache and a 1.1 sec throttle. Coordinates are
+rendered immediately as the fallback; the address swaps in when
+the response arrives. On error / offline / rate-limit the coords
+just stay — no error UI.
+
+CSP `connect-src` extended to allow Nominatim. No backend
+changes; the encrypted `geo` payload on disk is unchanged.
+
+**Privacy trade-off**: each unique punch location reveals itself
+to OSM (cached aggressively so each rounded location costs one
+request, ever). Documented in RELEASES.md with mitigation paths
+(self-host Nominatim, or revert by removing the `reverseGeocode`
+call sites). Future drop could expose this as an org-settings
+toggle.
+
+CACHE_VERSION → v32 (punch.js is pre-cached).
+
+## What shipped in 0.22.8
 
 The "time bank" feature is gone. Approved unjustified corrections
 no longer accumulate as "uncredited hours owed". The signal that
@@ -256,6 +282,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Mandatory profile fields                 | ✅ 0.22.6 |
 | —     | Calendar mobile day-details panel        | ✅ 0.22.7 |
 | —     | Time bank removed; missing-hours added   | ✅ 0.22.8 |
+| —     | Punches show approximate address         | ✅ 0.22.9 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

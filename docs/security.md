@@ -461,6 +461,32 @@ runs entirely in `localStorage` + retried POSTs.
 
 ---
 
+## Third-party connections
+
+Pica's CSP `connect-src` allows two outbound destinations from the
+browser:
+
+- `'self'` — the Pica origin itself (every API call, every page).
+- `https://nominatim.openstreetmap.org` — public OSM reverse-geocoding,
+  added in 0.22.9 to render approximate addresses on punch lists.
+
+The Nominatim connection is a deliberate privacy trade-off: each
+unique punch coordinate is sent to community OSM infrastructure
+once per location (cached in the browser's localStorage for 30
+days). The encrypted lat/lng on disk is unchanged; the third
+party never sees identities, only points. Operators who consider
+employee location data sensitive should self-host a Nominatim
+instance and patch the URL in `public/geocode.js`, or remove the
+`reverseGeocode` call sites and ship coordinates only.
+
+The map tile preview on the punch page also references
+`https://tile.openstreetmap.org`. That target is currently
+covered only by `img-src 'self' data: blob:` — strict browsers
+may refuse to render the tile. This is a pre-existing issue; the
+fix lives outside 0.22.9.
+
+---
+
 ## Supply chain
 
 **Zero npm dependencies.** Every line of code that runs comes from
@@ -543,4 +569,4 @@ patch.
 
 ---
 
-_Last touched in 0.22.8._
+_Last touched in 0.22.9._

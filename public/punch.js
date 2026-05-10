@@ -1,5 +1,6 @@
 import { postJson, showMessage, setBusy } from '/app.js';
 import { t, tn, translateError, applyTranslations, fmtTime as i18nFmtTime } from '/i18n.js';
+import { reverseGeocode } from '/geocode.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
@@ -344,8 +345,14 @@ function renderMap({ lat, lng, accuracy }) {
   // Cache-bust per fix so a new punch refreshes the tile reliably.
   mapTile.src = `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
   const acc = accuracy ? ` (±${Math.round(accuracy)} m)` : '';
-  mapMeta.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}${acc}`;
+  // Show coords immediately, then upgrade to address when reverse
+  // geocoding completes. The accuracy suffix stays attached either way.
+  const coordStr = `${lat.toFixed(5)}, ${lng.toFixed(5)}${acc}`;
+  mapMeta.textContent = coordStr;
   mapCard.hidden = false;
+  reverseGeocode(lat, lng).then((label) => {
+    if (label) mapMeta.textContent = `${label}${acc}`;
+  });
 }
 
 function hideMap() {
@@ -404,15 +411,32 @@ function renderList(punches) {
     meta.className = 'punch-list__meta';
     const parts = [];
     if (p.comment) parts.push(escapeHtml(p.comment));
+    let geoSpan = null;
     if (p.geo) {
-      parts.push(`<span class="punch-list__geo">${p.geo.lat.toFixed(4)}, ${p.geo.lng.toFixed(4)}</span>`);
+      // Render coords as the immediate fallback. The reverse-geocode
+      // request runs async; when it resolves with a label we swap the
+      // text content. Failure / offline / rate-limit just leaves the
+      // coords visible.
+      geoSpan = document.createElement('span');
+      geoSpan.className = 'punch-list__geo';
+      geoSpan.textContent = `${p.geo.lat.toFixed(4)}, ${p.geo.lng.toFixed(4)}`;
     }
     meta.innerHTML = parts.join(' · ');
-    if (parts.length > 0) body.appendChild(meta);
+    if (geoSpan) {
+      if (parts.length > 0) meta.appendChild(document.createTextNode(' · '));
+      meta.appendChild(geoSpan);
+    }
+    if (parts.length > 0 || geoSpan) body.appendChild(meta);
 
     li.appendChild(badge);
     li.appendChild(body);
     listEl.appendChild(li);
+
+    if (geoSpan) {
+      reverseGeocode(p.geo.lat, p.geo.lng).then((label) => {
+        if (label) geoSpan.textContent = label;
+      });
+    }
   }
 }
 
