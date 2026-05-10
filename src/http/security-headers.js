@@ -76,7 +76,10 @@ export function createSecurityHeaders({ publicDir, isProduction }) {
     "default-src 'self'",
     `script-src 'self' ${scriptHash}`,
     "style-src 'self'",
-    "img-src 'self' data: blob:",
+    // OSM tiles are loaded directly into the punch-page map preview.
+    // Without this allowance the map renders broken in strict browsers.
+    // (Discovered as a pre-existing issue in 0.22.10 testing.)
+    "img-src 'self' data: blob: https://tile.openstreetmap.org",
     // Nominatim is allowed for browser-side reverse geocoding of punch
     // coordinates (0.22.9). See public/geocode.js for the trade-off:
     // each unique location reveals where the punch happened to OSM.

@@ -16,7 +16,7 @@
 - infinite approved / rejected / etc view, need a way to show only last 10.
 - add profile picture every time the name appears in the UI except on headings.
 - [DONE] make profile fields mandatory (2)
-- instead of showing coordinates, try to show an approximate address.
+- [DONE] instead of showing coordinates, try to show an approximate address.
 
 ### Add
 

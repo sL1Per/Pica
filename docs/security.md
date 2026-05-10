@@ -463,27 +463,31 @@ runs entirely in `localStorage` + retried POSTs.
 
 ## Third-party connections
 
-Pica's CSP `connect-src` allows two outbound destinations from the
-browser:
+Pica's CSP allows two outbound destinations from the browser:
 
-- `'self'` — the Pica origin itself (every API call, every page).
-- `https://nominatim.openstreetmap.org` — public OSM reverse-geocoding,
-  added in 0.22.9 to render approximate addresses on punch lists.
+- `connect-src 'self' https://nominatim.openstreetmap.org` —
+  reverse geocoding to render approximate addresses on punch
+  lists (0.22.9).
+- `img-src 'self' data: blob: https://tile.openstreetmap.org` —
+  the static OSM map tile rendered under the punch page's
+  "Location" card (0.22.10 unblocked this; the tile host had
+  been silently blocked since the M12.2 CSP shipped).
 
-The Nominatim connection is a deliberate privacy trade-off: each
-unique punch coordinate is sent to community OSM infrastructure
-once per location (cached in the browser's localStorage for 30
-days). The encrypted lat/lng on disk is unchanged; the third
-party never sees identities, only points. Operators who consider
-employee location data sensitive should self-host a Nominatim
-instance and patch the URL in `public/geocode.js`, or remove the
-`reverseGeocode` call sites and ship coordinates only.
+Both are deliberate privacy trade-offs: each unique punch
+location reveals coordinates to community OSM infrastructure —
+once per 30-day cache window for Nominatim, and on every map
+render for the tile fetch. The encrypted lat/lng on disk is
+unchanged; OSM never sees employee identities, only points.
 
-The map tile preview on the punch page also references
-`https://tile.openstreetmap.org`. That target is currently
-covered only by `img-src 'self' data: blob:` — strict browsers
-may refuse to render the tile. This is a pre-existing issue; the
-fix lives outside 0.22.9.
+Operators who consider employee location data sensitive should
+either:
+
+- self-host a Nominatim instance and a tile server, then patch
+  `public/geocode.js` and `public/punch.js`'s `mapTile.src`, or
+- disable the address rendering by removing the `reverseGeocode`
+  call sites and accept coordinates-only display, or
+- hide the map preview entirely by setting `mapCard.hidden = true`
+  permanently and skipping `renderMap()`.
 
 ---
 
@@ -569,4 +573,4 @@ patch.
 
 ---
 
-_Last touched in 0.22.9._
+_Last touched in 0.22.10._

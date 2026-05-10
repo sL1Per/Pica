@@ -14,6 +14,61 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.10] — 2026-05-10 — Bugfix: punch-page map tile blocked by CSP
+
+Patch release. Same-day as 0.22.9.
+
+### What's fixed
+
+**The OSM map preview on `/punch` renders again.** When the
+M12.2 security headers shipped (0.20.0, 2026-05-09), the CSP set
+`img-src 'self' data: blob:` — which blocks the `https://tile.openstreetmap.org`
+URL the punch page uses for the map tile. The tile silently
+failed to load in strict browsers and the user saw a broken
+image where the map should be. The 0.22.9 release notes flagged
+this as a pre-existing issue; 0.22.10 fixes it.
+
+`img-src` is now `'self' data: blob: https://tile.openstreetmap.org`.
+The map tile renders again. No other img-src origins were
+added; the tile host is the only third-party image asset Pica
+loads.
+
+### Files touched
+
+- `src/http/security-headers.js` — `img-src` directive extended.
+  No other CSP directive changed; `connect-src` retains the
+  Nominatim allowance from 0.22.9.
+- `package.json` — version `0.22.10`.
+
+No frontend files changed; no `CACHE_VERSION` bump is required.
+The CSP header arrives fresh on every HTTP response and the
+service worker doesn't intercept HTML pages.
+
+### What this does NOT do (Honest Disclosures)
+
+- **No regression test added.** The existing
+  `test-security-headers.mjs` suite verifies the CSP shape but
+  does not assert the specific `img-src` content; adding such an
+  assertion would lock in a string the operator might
+  legitimately want to extend (custom logo CDN etc.). The fix is
+  verifiable by inspection. If a similar host-blocking
+  regression happens again, the symptom (broken map tile) is
+  visible to anyone opening the punch page on a real browser.
+- **The third-party connection is a small additional privacy
+  trade-off.** Each tile fetch reveals the rough geographic area
+  to OSM (the tile coordinate is computed from the punch
+  coordinate). This was the de-facto behaviour before strict
+  browsers started honoring the CSP — the map was always trying
+  to load from OSM. Documented in `docs/security.md`
+  "Third-party connections".
+- **Self-hosted OSM tile servers are not auto-discovered.**
+  Operators who want to point at a different tile host (their
+  own server, or a public alternative like CartoDB) must edit
+  `public/punch.js`'s `mapTile.src` URL. No config setting is
+  exposed for this; if it becomes a real need, follow-up.
+
+---
+
 ## [0.22.9] — 2026-05-10 — Approximate addresses on punches (replacing raw lat/lng)
 
 ### What's new

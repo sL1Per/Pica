@@ -5,22 +5,35 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.9._
+_Last touched in 0.22.10._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.9 (released 2026-05-10)
+- **Latest version:** 0.22.10 (released 2026-05-10)
 - **Test count:** 575 across 23 suites, all green
-- **Build artifact:** `pica-0.22.9-punch-addresses.zip`
+- **Build artifact:** `pica-0.22.10-csp-tile-fix.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.9)
+## What just shipped (0.22.10)
+
+Bugfix following the 0.22.9 punch-address feature: the OSM map
+preview on `/punch` was rendering broken in strict browsers
+because the CSP `img-src` directive (`'self' data: blob:`)
+blocks `https://tile.openstreetmap.org`. This was a pre-existing
+issue from M12.2 (0.20.0) that 0.22.9 disclosures flagged.
+
+Fix: `img-src` extended to allow the OSM tile host. No other
+CSP directive changed; `connect-src` keeps its Nominatim
+allowance from 0.22.9. No frontend files changed; no
+`CACHE_VERSION` bump (CSP arrives fresh on every HTTP response).
+
+## What shipped in 0.22.9
 
 Punches now render an approximate **address** instead of raw
 lat/lng wherever a geo block is shown — the today list on
@@ -283,6 +296,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Calendar mobile day-details panel        | ✅ 0.22.7 |
 | —     | Time bank removed; missing-hours added   | ✅ 0.22.8 |
 | —     | Punches show approximate address         | ✅ 0.22.9 |
+| —     | CSP fix: OSM map tile renders again      | ✅ 0.22.10 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 
