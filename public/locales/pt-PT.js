@@ -349,6 +349,7 @@ export default {
   'calendar.weekday.fri':  'Sex',
   'calendar.weekday.sat':  'Sáb',
   'calendar.anonymized':   'Indisponível',
+  'calendar.detailsClose': 'Fechar detalhes',
 
   // ============================================================
   // Reports

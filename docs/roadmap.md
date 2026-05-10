@@ -302,4 +302,4 @@ drops; each is independently shippable.
 
 ---
 
-_Last touched in 0.22.6._
+_Last touched in 0.22.7._

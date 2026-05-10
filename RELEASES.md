@@ -14,6 +14,123 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.7] — 2026-05-10 — Calendar gets a tap-to-expand day-details panel
+
+### What's new
+
+**The team calendar is now readable on mobile.** Previously, the
+≤600px breakpoint hid `cal-bar__name` to fit, leaving phone users
+with colored stripes they could only identify via the legend at
+the bottom of the page. The user could see *that* someone was on
+leave but not *who*, *what type*, or *over what range*.
+
+A new details panel lives between the grid and the legend. Tap
+any day cell with leaves on it and the panel opens, showing each
+leave on that day as a row with name, type, range, and a link
+through to the leave detail page (when the viewer is owner or
+employer). Tap the same day again to close, tap a different day
+to switch, tap the × button to dismiss. Month navigation
+(prev/next/today) closes the panel.
+
+The panel works on every viewport, but it's the primary read
+surface on mobile where bars collapse to colored pills with no
+text. On mobile the panel auto-scrolls into view after opening.
+
+### Anonymized rows respected
+
+When an employee views the calendar, other employees' leaves
+arrive from `/api/leaves/approved` with `anonymized: true`,
+`type` stripped, names stripped (per the 0.22.4 privacy model).
+The details panel renders these as italic "Unavailable" rows
+with the date range only, non-clickable. Self leaves and any
+leaves an employer can see render fully, with a link to the
+leave detail page.
+
+### How taps are routed
+
+The grid uses delegated click handling on `.cal-grid`. Bars on
+desktop keep their direct `<a href="/leaves/:id">` navigation;
+the cell handler bails when the click landed on a `.cal-bar`.
+On mobile the bars carry `pointer-events: none` (CSS), so every
+tap inside a cell falls through to the cell handler — even if
+the user's finger lands on a colored pill. This keeps the mobile
+behaviour single-purpose: tap = open details.
+
+The currently expanded day gets a `.cal-day--selected` outline so
+it's obvious which day the panel is describing. Re-rendering the
+month (after navigation) clears `selectedDateStr` and closes the
+panel — the panel is always coherent with what's displayed.
+
+### Files touched
+
+- `public/leaves-calendar.html` — new `<section id="cal-details">`
+  between the grid and the legend, with title heading, close
+  button, and an empty `<ul>` populated by JS.
+- `public/leaves-calendar.js` — new `openDetailsForDate()`,
+  `closeDetails()`, `paintSelectedHighlight()`, `renderDetailRow()`,
+  and `formatRange()` helpers; delegated click handler on
+  `.cal-grid`; `selectedDateStr` state; `data-date` attribute on
+  every cell. Imports `fmtDate` from `/i18n.js` for locale-aware
+  date formatting in the panel header and per-row meta.
+- `public/leaves-calendar.css` — new `.cal-details*` styles, new
+  `.cal-day--selected` outline highlight; mobile bars get
+  `pointer-events: none` and cells get `cursor: pointer` +
+  `-webkit-tap-highlight-color`.
+- `public/locales/en-US.js` and `pt-PT.js` — new
+  `calendar.detailsClose` aria-label string.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v30`
+  (locale files are pre-cached).
+- `package.json` — version `0.22.7`.
+
+No backend changes. No new test files; the existing `i18n` and
+`frontend-imports` suites pick up the new strings and the
+`fmtDate` import. Total: 23 suites, 580 tests (unchanged count;
+`frontend-imports` ticked from 53 → 54 to reflect the new import
+check, but the suite stays at the same total visible to the
+counter).
+
+### What this does NOT do (Honest Disclosures)
+
+- **No keyboard navigation for the panel.** Arrow-key navigation
+  between days, escape-to-close, focus management on tap — none
+  of that is wired up. The panel works fine via mouse and touch,
+  but a keyboard-only user has to tab through the grid to reach
+  a day, then tab to the close button. A future drop could add
+  proper roving tabindex and Escape handling. Not blocking for
+  the mobile-readability fix, which was the actual ask.
+- **The mobile cell visual is unchanged.** Bars still render
+  inside cells as tiny colored stripes (with `pointer-events:
+  none`). I considered swapping them for a row of dots or count
+  pills but chose to keep the existing visual — it's consistent
+  with desktop and operators are used to it. If multiple leaves
+  stack in a small cell the result still looks dense; the
+  details panel is the read surface, not the cell itself.
+- **No swipe-to-navigate between months on mobile.** Prev/next
+  buttons are the only way. Adding a swipe gesture would mean
+  pulling in (or hand-rolling) a touch-tracker; out of scope.
+- **No deep link to a specific date.** The URL doesn't change
+  when a day is selected, and reloading the page closes the
+  panel. Could be added with a URL hash (`/leaves/calendar#2026-06-15`)
+  but introduces edge cases (cross-month, invalid dates) that
+  weren't worth handling for this drop.
+- **The `aria-live="polite"` announcement on the panel is
+  best-effort.** Most screen readers will read the new content
+  on tap, but the timing depends on the SR's settings. Verified
+  by inspection only; no SR testing was done.
+- **Empty days don't show "no leaves" feedback.** Tapping a day
+  cell with no leaves silently closes the panel rather than
+  saying "No leaves on this day." Decided that the absence of a
+  visible bar in the cell already signals "nothing to see here"
+  and an empty card would just add clutter. Reasonable people
+  could differ.
+- **Service-worker caching note.** Same as 0.22.1–0.22.6 —
+  clients on the old `CACHE_VERSION` need the SW to reactivate
+  before they pick up the new HTML/CSS/JS and locale strings.
+  The HTML and CSS changes are not pre-cached so they'll arrive
+  fresh; only the locale bump forces the cache-version rev.
+
+---
+
 ## [0.22.6] — 2026-05-10 — Profile fields are now mandatory (except comments)
 
 ### What's new

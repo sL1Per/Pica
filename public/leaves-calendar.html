@@ -49,6 +49,18 @@
       <!-- 7 weekday headers + 42 day cells injected by JS -->
     </div>
 
+    <!-- Tap-to-expand day-details panel. Hidden until a day is selected.
+         On mobile this is the primary read surface; on desktop it
+         supplements the in-cell bars. -->
+    <section id="cal-details" class="cal-details" hidden aria-live="polite">
+      <header class="cal-details__head">
+        <h3 id="cal-details-title" class="cal-details__title">…</h3>
+        <button id="cal-details-close" type="button" class="cal-details__close"
+                aria-label="Close" data-i18n-attr="aria-label:calendar.detailsClose">×</button>
+      </header>
+      <ul id="cal-details-list" class="cal-details__list"></ul>
+    </section>
+
     <section class="legend">
       <strong data-i18n="calendar.legendType">Type</strong>
       <span class="legend__chip legend__chip--vacation" data-i18n="leaves.type.vacation">Vacation</span>

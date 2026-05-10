@@ -1,5 +1,5 @@
 import { showMessage } from '/app.js';
-import { t, applyTranslations, getLocale } from '/i18n.js';
+import { t, applyTranslations, getLocale, fmtDate } from '/i18n.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
@@ -13,6 +13,14 @@ const prevBtn    = $('prev-month');
 const nextBtn    = $('next-month');
 const todayBtn   = $('today-btn');
 const messageEl  = $('message');
+const detailsEl       = $('cal-details');
+const detailsTitleEl  = $('cal-details-title');
+const detailsListEl   = $('cal-details-list');
+const detailsCloseBtn = $('cal-details-close');
+
+// Currently selected day in the details panel ("YYYY-MM-DD" string),
+// or null when the panel is closed.
+let selectedDateStr = null;
 
 // Locale-aware month name via Intl. Falls back to the en-US fixed list
 // if Intl errors out for any reason.
@@ -111,8 +119,11 @@ function renderMonth() {
 
     const cell = document.createElement('div');
     cell.className = 'cal-day';
+    const dateStr = ymd(date);
+    cell.dataset.date = dateStr;
     if (date.getMonth() !== month) cell.classList.add('cal-day--other-month');
     if (sameDay(date, today))      cell.classList.add('cal-day--today');
+    if (dateStr === selectedDateStr) cell.classList.add('cal-day--selected');
 
     const num = document.createElement('div');
     num.className = 'cal-day__num';
@@ -131,6 +142,97 @@ function renderMonth() {
 
     grid.appendChild(cell);
   }
+}
+
+// -- Details panel -----------------------------------------------------------
+
+function openDetailsForDate(dateStr) {
+  // Re-derive the leaves for the selected day so the panel reflects the
+  // current dataset (re-renders after month changes pull from allLeaves).
+  const date = parseYmd(dateStr);
+  const dayLeaves = leavesForDay(date);
+
+  // Tapping a day with no leaves: just close the panel rather than
+  // showing an empty card. Keeps the surface minimal.
+  if (dayLeaves.length === 0) {
+    closeDetails();
+    return;
+  }
+
+  selectedDateStr = dateStr;
+  detailsTitleEl.textContent = fmtDate(date);
+
+  detailsListEl.innerHTML = '';
+  for (const leave of dayLeaves) {
+    detailsListEl.appendChild(renderDetailRow(leave));
+  }
+  detailsEl.hidden = false;
+
+  // Repaint to update the .cal-day--selected highlight.
+  paintSelectedHighlight();
+
+  // Bring the panel into view on mobile (it sits below the grid; the
+  // user has just tapped the grid so the viewport may not include it).
+  if (window.matchMedia('(max-width: 600px)').matches) {
+    detailsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function closeDetails() {
+  selectedDateStr = null;
+  detailsEl.hidden = true;
+  paintSelectedHighlight();
+}
+
+function paintSelectedHighlight() {
+  for (const cell of grid.querySelectorAll('.cal-day')) {
+    cell.classList.toggle('cal-day--selected', cell.dataset.date === selectedDateStr);
+  }
+}
+
+function renderDetailRow(leave) {
+  // Anonymized: non-link, type stripped server-side.
+  if (leave.anonymized) {
+    const li = document.createElement('li');
+    li.className = 'cal-details__row cal-details__row--anonymized';
+    const name = document.createElement('span');
+    name.className = 'cal-details__row-name';
+    name.textContent = t('calendar.anonymized');
+    li.appendChild(name);
+    const meta = document.createElement('span');
+    meta.className = 'cal-details__row-meta';
+    meta.textContent = formatRange(leave);
+    li.appendChild(meta);
+    return li;
+  }
+
+  const isSelf = leave.employeeId === me.id;
+  const canOpen = me.role === 'employer' || isSelf;
+  const li = document.createElement(canOpen ? 'a' : 'li');
+  li.className = `cal-details__row cal-details__row--${leave.type}`;
+  if (isSelf) li.classList.add('cal-details__row--self');
+  if (canOpen) li.href = `/leaves/${leave.id}`;
+
+  const name = document.createElement('span');
+  name.className = 'cal-details__row-name';
+  name.textContent = leave.fullName || leave.username || '—';
+  li.appendChild(name);
+
+  const type = document.createElement('span');
+  type.className = 'cal-details__row-meta';
+  type.textContent = `${t('leaves.type.' + leave.type)} · ${formatRange(leave)}`;
+  li.appendChild(type);
+  return li;
+}
+
+function formatRange(leave) {
+  if (leave.unit === 'days') {
+    return leave.start === leave.end
+      ? fmtDate(parseYmd(leave.start))
+      : `${fmtDate(parseYmd(leave.start))} → ${fmtDate(parseYmd(leave.end))}`;
+  }
+  // Hours-mode is always intraday; just show the date.
+  return fmtDate(parseYmd(leave.start.slice(0, 10)));
 }
 
 function renderBar(leave) {
@@ -185,16 +287,38 @@ function renderBar(leave) {
 
 prevBtn.addEventListener('click', () => {
   cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
+  closeDetails();
   renderMonth();
 });
 nextBtn.addEventListener('click', () => {
   cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  closeDetails();
   renderMonth();
 });
 todayBtn.addEventListener('click', () => {
   cursor = new Date();
+  closeDetails();
   renderMonth();
 });
+
+// Delegated click handler on the grid: tapping a day cell opens the
+// details panel for that day. Bars on mobile have pointer-events: none
+// (CSS), so the cell handler always wins. On desktop, bars keep their
+// own click → /leaves/:id navigation; we only react when the click did
+// NOT land on a bar.
+grid.addEventListener('click', (e) => {
+  if (e.target.closest('.cal-bar')) return;
+  const cell = e.target.closest('.cal-day');
+  if (!cell || !cell.dataset.date) return;
+  // Toggle: tapping the already-selected day closes the panel.
+  if (cell.dataset.date === selectedDateStr) {
+    closeDetails();
+  } else {
+    openDetailsForDate(cell.dataset.date);
+  }
+});
+
+detailsCloseBtn.addEventListener('click', closeDetails);
 
 // -- Bootstrap --------------------------------------------------------------
 

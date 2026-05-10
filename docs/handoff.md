@@ -5,22 +5,49 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.6._
+_Last touched in 0.22.7._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.6 (released 2026-05-10)
+- **Latest version:** 0.22.7 (released 2026-05-10)
 - **Test count:** 580 across 23 suites, all green
-- **Build artifact:** `pica-0.22.6-mandatory-profile-fields.zip`
+- **Build artifact:** `pica-0.22.7-calendar-mobile-details.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.6)
+## What just shipped (0.22.7)
+
+Mobile readability fix for the team calendar. The ≤600px
+breakpoint had been hiding `cal-bar__name` to fit, leaving phone
+users with colored stripes only identifiable via the bottom
+legend. Symptom: "cannot read details" on mobile.
+
+New details panel sits between the grid and legend. Tap any day
+cell with leaves on it; the panel opens and lists each leave on
+that day with name, type, range, and a link through to the leave
+detail page (when the viewer is owner or employer). Tap the
+selected day again to close, or tap × button. Month navigation
+closes the panel. Anonymized rows (employee viewing other
+employees' leaves) render as italic "Unavailable" rows with
+range only, non-clickable.
+
+Tap routing: delegated handler on `.cal-grid`. Desktop bars keep
+their `<a>` navigation; the cell handler bails when the click
+landed on a `.cal-bar`. On mobile, bars carry
+`pointer-events: none` so every tap reaches the cell — single-
+purpose mobile interaction. Selected day gets a
+`.cal-day--selected` outline.
+
+CACHE_VERSION → v30 (locale files added a new aria-label string).
+No backend changes; no new test files. `frontend-imports` picked
+up the new `fmtDate` import (counter unchanged externally).
+
+## What shipped in 0.22.6
 
 Profile fields are now mandatory except `comments`. The list:
 `fullName`, `dateOfBirth`, `position`, `address`, `contactEmail`,
@@ -196,6 +223,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Leaves privacy for employees (patch)     | ✅ 0.22.4 |
 | —     | Vacation carry-forward + MM-DD expiry    | ✅ 0.22.5 |
 | —     | Mandatory profile fields                 | ✅ 0.22.6 |
+| —     | Calendar mobile day-details panel        | ✅ 0.22.7 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

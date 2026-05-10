@@ -353,6 +353,7 @@ export default {
   'calendar.weekday.fri':  'Fri',
   'calendar.weekday.sat':  'Sat',
   'calendar.anonymized':   'Unavailable',
+  'calendar.detailsClose': 'Close details',
 
   // ============================================================
   // Reports
