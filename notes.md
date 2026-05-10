@@ -9,13 +9,14 @@
 ### Change
 
 - [DONE] employee should not see other employee leaves (1)
-- remove time bank, not needed, improve report to show who is missing hours and how many (3)
+- [DONE] remove time bank, not needed, improve report to show who is missing hours and how many (3)
 - [DONE] improve calendar in mobile phone, cannot read details
 - Reports revamp
 - [DONE] leave that move to next year need to expire at some point. Add a option in the organization settings to set the date when the vacations that moved from previous year expire. This should also reflect on the amount each employee has. (2)
 - infinite approved / rejected / etc view, need a way to show only last 10.
 - add profile picture every time the name appears in the UI except on headings.
 - [DONE] make profile fields mandatory (2)
+- instead of showing coordinates, try to show an approximate address.
 
 ### Add
 

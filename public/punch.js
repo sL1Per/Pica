@@ -556,34 +556,6 @@ retryGeoBtn.addEventListener('click', async () => {
   }
 });
 
-// -------- Bank balance display ----------------------------------------------
-// Fetches /api/corrections/bank and shows the bank-line if non-zero.
-// Called on page load. Refresh after a successful punch is overkill (bank
-// only changes when corrections are approved) — that happens elsewhere.
-
-async function refreshBank() {
-  // Employer doesn't see "their" bank prominently — they see employee banks
-  // on the corrections detail page. Skip rendering the line for them.
-  if (!me || me.role === 'employer') return;
-  try {
-    const r = await fetch('/api/corrections/bank', { credentials: 'same-origin' });
-    if (!r.ok) return;
-    const { hours } = await r.json();
-    const line = document.getElementById('bank-line');
-    const value = document.getElementById('bank-line__value');
-    if (!line || !value) return;
-    if (hours > 0) {
-      const total = Math.round(hours * 60);
-      const hh = Math.floor(total / 60);
-      const mm = total % 60;
-      value.textContent = mm === 0 ? `${hh}h` : (hh === 0 ? `${mm}m` : `${hh}h ${mm}m`);
-      line.hidden = false;
-    } else {
-      line.hidden = true;
-    }
-  } catch { /* non-fatal */ }
-}
-
 // -------- Bootstrap ---------------------------------------------------------
 
 (async () => {
@@ -603,7 +575,6 @@ async function refreshBank() {
   } catch { /* non-fatal — punch page works without the target */ }
 
   await refresh();
-  refreshBank();
 
   // Map preview at page load. Strategy:
   //   1. If we have a cached fix from this session → render it immediately,

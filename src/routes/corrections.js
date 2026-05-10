@@ -4,8 +4,6 @@ import { auditContext } from '../storage/audit.js';
  * Time-correction routes.
  *
  *   GET  /api/corrections                     — list (employee: own; employer: all)
- *   GET  /api/corrections/bank                — current user's bank balance
- *   GET  /api/corrections/bank/:userId        — employer only
  *   GET  /api/corrections/:id                 — single, owner or employer
  *   POST /api/corrections                     — create, employee
  *   POST /api/corrections/:id/approve         — employer; materializes punches
@@ -20,10 +18,12 @@ import { auditContext } from '../storage/audit.js';
  *      double-materialization on re-approve.
  *   3. Persist the approved status.
  *
- * Bank semantics:
- *   - Approved + justified  → counted as worked time; bank unchanged.
- *   - Approved + unjustified → counted as worked time AND added to bank
- *     as "uncredited hours owed back to the company" (computed in storage).
+ * Approved corrections always count as worked time (the materialized
+ * punches show up in `hoursReport` like any other clock event). The
+ * "time bank" concept that used to track approved-unjustified hours
+ * separately was removed in 0.22.8 — the metric was unused in practice
+ * and is being replaced by a "missing hours" view based directly on
+ * scheduled-vs-worked deltas.
  */
 
 export function registerCorrectionRoutes(router, {
@@ -59,20 +59,6 @@ export function registerCorrectionRoutes(router, {
       fullName: names.get(correction.employeeId) ?? null,
     };
   }
-
-  // --------------------------------------------------------------------------
-  // Bank lookups (registered first to win route-matching against /:id)
-  // --------------------------------------------------------------------------
-
-  router.get('/api/corrections/bank', requireAuth((req, res) => {
-    const hours = correctionsStore.computeBank({ userId: req.user.id });
-    res.json({ userId: req.user.id, hours });
-  }));
-
-  router.get('/api/corrections/bank/:userId', requireRole('employer')((req, res) => {
-    const hours = correctionsStore.computeBank({ userId: req.params.userId });
-    res.json({ userId: req.params.userId, hours });
-  }));
 
   // --------------------------------------------------------------------------
   // List + read

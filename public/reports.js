@@ -252,11 +252,15 @@ function renderTeamRows(data) {
     const avatar = r.hasPicture
       ? `<img class="team-avatar" src="/api/employees/${encodeURIComponent(r.id)}/picture" alt="">`
       : `<span class="team-avatar team-avatar--placeholder" aria-hidden="true">${escapeHtml(name.charAt(0).toUpperCase())}</span>`;
+    const missingCell = (r.missing ?? 0) > 0
+      ? `<span class="team-missing team-missing--has">${escapeHtml(fmtHoursCell(r.missing))}</span>`
+      : `<span class="team-missing">—</span>`;
     tr.innerHTML = `
       <td class="team-period">${escapeHtml(periodCell)}</td>
       <td class="team-staff">${avatar}<span class="team-staff__name">${escapeHtml(name)}</span></td>
       <td class="right">${escapeHtml(fmtHoursCell(r.scheduled))}</td>
       <td class="right">${escapeHtml(fmtHoursCell(r.worked))}</td>
+      <td class="right">${missingCell}</td>
     `;
     teamTbody.appendChild(tr);
   }

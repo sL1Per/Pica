@@ -142,7 +142,7 @@ when stored as a string field.
 | Leaves NDJSON — `reason` + free-form notes            | Yes        | Can reveal health / personal info.                     |
 | Leaves NDJSON — dates, type, status, employeeId       | No         | Needed for calendar and reports.                       |
 | Corrections NDJSON — `justification`                  | Yes        | Can reveal personal context.                           |
-| Corrections NDJSON — start, end, hours, status, kind  | No         | Needed for bank computation and reports.               |
+| Corrections NDJSON — start, end, hours, status, kind  | No         | Needed for missing-hours computation and reports.      |
 | `users.json` (usernames, password hashes, roles)      | No         | Hashes are already one-way; plaintext so the server can authenticate before deriving the master key. |
 | `user-prefs.json` (locale, colorMode)                 | No         | Used on every page render before auth completes; not sensitive. |
 | `org-settings.json`                                   | No         | Org-wide policy, not personal data.                    |
@@ -543,4 +543,4 @@ patch.
 
 ---
 
-_Last touched in 0.22.7._
+_Last touched in 0.22.8._

@@ -73,7 +73,6 @@ const requireOwnerOrEmployer = () => (handler) => handler;
  *   profiles: { [id]: { fullName, position, hasPicture } }
  *   leaves:  [{id, employeeId, type, status, start, end, unit}]
  *   corrections: [{id, employeeId, kind, status, start, end, hours}]
- *   bank: { [userId]: hours }
  *   workingTime: { [userId]: { dailyHours, weeklyHours } }
  */
 function buildStores({
@@ -81,7 +80,6 @@ function buildStores({
   profiles = {},
   leaves = [],
   corrections = [],
-  bank = {},
   workingTime = {},
 } = {}) {
   return {
@@ -116,7 +114,6 @@ function buildStores({
         if (status)     out = out.filter((c) => c.status === status);
         return out;
       },
-      computeBank: ({ userId }) => bank[userId] ?? 0,
     },
   };
 }
@@ -179,7 +176,7 @@ await test('returns 404 for unknown employee id', async () => {
   assert.equal(res.body.errorCode, 'not_found');
 });
 
-await test('returns the basic shape: id, username, role, profile, week, bank, upcomingLeaves, pending', async () => {
+await test('returns the basic shape: id, username, role, profile, week, month, upcomingLeaves, pending', async () => {
   const handler = buildHandler(buildStores({
     users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee', createdAt: '2026-01-01' }],
     profiles: { '11111111-1111-4111-8111-111111111111': { fullName: 'Alice', position: 'Designer', hasPicture: false } },
@@ -189,15 +186,16 @@ await test('returns the basic shape: id, username, role, profile, week, bank, up
     params: { id: '11111111-1111-4111-8111-111111111111' },
   });
   assert.equal(res.statusCode, 200);
-  for (const k of ['id', 'username', 'role', 'profile', 'week', 'bankHours', 'upcomingLeaves', 'pending']) {
+  for (const k of ['id', 'username', 'role', 'profile', 'week', 'month', 'upcomingLeaves', 'pending']) {
     assert.ok(k in res.body, `missing field: ${k}`);
   }
+  assert.ok(!('bankHours' in res.body), 'bankHours removed in 0.22.8');
   assert.equal(res.body.id, '11111111-1111-4111-8111-111111111111');
   assert.equal(res.body.username, 'alice');
   assert.equal(res.body.role, 'employee');
 });
 
-await test('week object contains from, to, hours, scheduled', async () => {
+await test('week object contains from, to, hours, scheduled, missing', async () => {
   const handler = buildHandler(buildStores({
     users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
     workingTime: { '11111111-1111-4111-8111-111111111111': { dailyHours: 8, weeklyHours: 40 } },
@@ -206,7 +204,7 @@ await test('week object contains from, to, hours, scheduled', async () => {
     user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
     params: { id: '11111111-1111-4111-8111-111111111111' },
   });
-  for (const k of ['from', 'to', 'hours', 'scheduled']) {
+  for (const k of ['from', 'to', 'hours', 'scheduled', 'missing']) {
     assert.ok(k in res.body.week, `missing week.${k}`);
   }
   assert.match(res.body.week.from, /^\d{4}-\d{2}-\d{2}$/);
@@ -226,27 +224,35 @@ await test('week.scheduled honors per-employee override', async () => {
   assert.equal(res.body.week.scheduled, 30);
 });
 
-await test('bankHours reads from correctionsStore.computeBank', async () => {
+await test('month object contains from, to, hours, scheduled, missing', async () => {
   const handler = buildHandler(buildStores({
     users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
-    bank: { '11111111-1111-4111-8111-111111111111': 4.5 },
+    workingTime: { '11111111-1111-4111-8111-111111111111': { dailyHours: 8, weeklyHours: 40 } },
   }));
   const res = await call(handler, {
     user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
     params: { id: '11111111-1111-4111-8111-111111111111' },
   });
-  assert.equal(res.body.bankHours, 4.5);
+  for (const k of ['from', 'to', 'hours', 'scheduled', 'missing']) {
+    assert.ok(k in res.body.month, `missing month.${k}`);
+  }
+  // Month scheduled = dailyHours × weekdays in the month — varies by month
+  // but should always be at least one weekday × 8h.
+  assert.ok(res.body.month.scheduled >= 8);
 });
 
-await test('bankHours defaults to 0 when no bank entry exists', async () => {
+await test('missing equals scheduled when no hours worked', async () => {
   const handler = buildHandler(buildStores({
     users: [{ id: '11111111-1111-4111-8111-111111111111', username: 'alice', role: 'employee' }],
+    workingTime: { '11111111-1111-4111-8111-111111111111': { dailyHours: 8, weeklyHours: 40 } },
   }));
   const res = await call(handler, {
     user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', role: 'employer' },
     params: { id: '11111111-1111-4111-8111-111111111111' },
   });
-  assert.equal(res.body.bankHours, 0);
+  // Mock punchesStore returns empty → hoursReport throws → caught → 0 worked.
+  assert.equal(res.body.week.missing, res.body.week.scheduled);
+  assert.equal(res.body.month.missing, res.body.month.scheduled);
 });
 
 // ---- Upcoming leaves -----------------------------------------------------

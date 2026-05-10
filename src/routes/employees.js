@@ -149,13 +149,22 @@ export function registerEmployeeRoutes(router, {
   // Aggregates everything the employer-facing summary page needs in a
   // single response:
   //   - profile (same shape as GET /api/employees/:id)
-  //   - weekHours: hours worked in the current ISO week (Mon-Sun containing today)
-  //   - weekScheduled: scheduled hours for the same window (from working-time settings)
-  //   - bankHours: current time-bank balance
+  //   - week: { from, to, hours, scheduled, missing } for the current ISO
+  //     week (Mon-Sun containing today). `missing` is max(0, scheduled-hours).
+  //   - month: { from, to, hours, scheduled, missing } for the current
+  //     calendar month, same shape.
   //   - upcomingLeaves[]: approved leaves whose date range either starts in
   //     the next 30 days or is currently in progress
   //   - pending: { leaves: [...], corrections: [...] } — items still
   //     awaiting employer decision
+  //
+  // `missing` is a raw scheduled-vs-worked delta. It does NOT subtract
+  // approved leave hours from the scheduled target — operators should
+  // cross-check the upcomingLeaves block when interpreting it.
+  //
+  // The earlier `bankHours` field was removed in 0.22.8 along with the
+  // time-bank feature; `missing` replaces it as the "is this person
+  // behind on hours" signal.
   //
   // Employer-only — the summary is the employer's lens on someone else's
   // activity. Employees viewing themselves should look at the dashboard
@@ -173,34 +182,37 @@ export function registerEmployeeRoutes(router, {
       ? { ...profile, hasPicture }
       : (hasPicture ? { hasPicture } : null);
 
-    // ISO week boundaries (Monday → Sunday) containing today.
+    // ISO week + calendar month windows.
     const now = new Date();
-    const week = computePeriod('week', now);
-    const weekFrom = week.from;
-    const weekTo   = week.to;
+    const weekP  = computePeriod('week',  now);
+    const monthP = computePeriod('month', now);
 
-    // Worked hours this week. Defensive try/catch so a bad punches file
+    // Worked hours per period. Defensive try/catch so a bad punches file
     // doesn't 500 the whole summary.
-    let weekHours = 0;
-    try {
-      weekHours = hoursReport(punchesStore, user.id, weekFrom, weekTo, 'day').totalHours;
-    } catch {
-      weekHours = 0;
+    function workedIn(from, to) {
+      try {
+        return hoursReport(punchesStore, user.id, from, to, 'day').totalHours;
+      } catch {
+        return 0;
+      }
     }
+    const weekHours  = workedIn(weekP.from,  weekP.to);
+    const monthHours = workedIn(monthP.from, monthP.to);
 
-    // Scheduled hours for this user (with per-employee override).
+    // Scheduled hours for this user (with per-employee override). For the
+    // month view, scheduled = dailyHours × weekdays in the month (matching
+    // the team-hours convention).
     const wt = orgSettingsStore?.resolveWorkingTimeFor
       ? orgSettingsStore.resolveWorkingTimeFor(user.id)
       : { dailyHours: 8, weeklyHours: 40 };
-    const weekScheduled = wt.weeklyHours;
+    const round1 = (n) => Math.round(n * 10) / 10;
+    const weekScheduled  = wt.weeklyHours;
+    const monthScheduled = round1(wt.dailyHours * (monthP.weekdays ?? 0));
 
-    // Bank balance.
-    let bankHours = 0;
-    try {
-      bankHours = correctionsStore.computeBank({ userId: user.id });
-    } catch {
-      bankHours = 0;
-    }
+    // Missing hours = positive shortfall vs scheduled. NOT adjusted for
+    // approved leaves — operators should cross-check upcomingLeaves.
+    const weekMissing  = round1(Math.max(0, weekScheduled  - weekHours));
+    const monthMissing = round1(Math.max(0, monthScheduled - monthHours));
 
     // Upcoming leaves: approved, this user only, whose [start, end] window
     // intersects [today, today+30d]. Includes leaves currently in progress.
@@ -257,8 +269,8 @@ export function registerEmployeeRoutes(router, {
       role: user.role,
       createdAt: user.createdAt,
       profile: profileWithPic,
-      week: { from: weekFrom, to: weekTo, hours: weekHours, scheduled: weekScheduled },
-      bankHours,
+      week:  { from: weekP.from,  to: weekP.to,  hours: weekHours,  scheduled: weekScheduled,  missing: weekMissing },
+      month: { from: monthP.from, to: monthP.to, hours: monthHours, scheduled: monthScheduled, missing: monthMissing },
       upcomingLeaves,
       pending: {
         leaves: pendingLeaves,

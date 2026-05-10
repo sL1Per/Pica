@@ -231,6 +231,10 @@ export function registerReportRoutes(router, {
         hasPicture,
         scheduled,
         worked,
+        // Raw scheduled-vs-worked shortfall. NOT adjusted for approved
+        // leaves — see employees.js summary endpoint comment for the
+        // same caveat.
+        missing: round1(Math.max(0, scheduled - worked)),
       };
     });
 

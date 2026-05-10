@@ -319,100 +319,6 @@ try {
 
   // --------------------------------------------------------------------------
 
-  console.log('\ncomputeBank');
-
-  await test('bank is 0 when no approved corrections', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-b1-'));
-    try {
-      const s = createCorrectionsStore(dir, masterKey);
-      assert.equal(s.computeBank({ userId: 'alice' }), 0);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  await test('bank includes approved unjustified corrections only', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-b2-'));
-    try {
-      const s = createCorrectionsStore(dir, masterKey);
-      // Three corrections of 2h each: justified, unjustified, unjustified.
-      const c1 = s.create({ employeeId: 'alice', start: '2026-04-20T09:00:00Z', end: '2026-04-20T11:00:00Z', justification: 'ok' });
-      const c2 = s.create({ employeeId: 'alice', start: '2026-04-21T09:00:00Z', end: '2026-04-21T11:00:00Z' });
-      const c3 = s.create({ employeeId: 'alice', start: '2026-04-22T09:00:00Z', end: '2026-04-22T11:00:00Z' });
-      s.approve(c1.id, 'admin');
-      s.approve(c2.id, 'admin');
-      s.approve(c3.id, 'admin');
-      // Expected bank: 0 + 2 + 2 = 4.
-      assert.equal(s.computeBank({ userId: 'alice' }), 4);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  await test('bank ignores pending and rejected', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-b3-'));
-    try {
-      const s = createCorrectionsStore(dir, masterKey);
-      s.create({ employeeId: 'alice', start: '2026-04-20T09:00:00Z', end: '2026-04-20T11:00:00Z' }); // pending — ignored
-      const c2 = s.create({ employeeId: 'alice', start: '2026-04-21T09:00:00Z', end: '2026-04-21T11:00:00Z' });
-      s.reject(c2.id, 'admin');
-      assert.equal(s.computeBank({ userId: 'alice' }), 0);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  await test('bank ignores cancelled approved corrections', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-b4-'));
-    try {
-      const s = createCorrectionsStore(dir, masterKey);
-      const c = s.create({ employeeId: 'alice', start: '2026-04-20T09:00:00Z', end: '2026-04-20T11:00:00Z' });
-      s.approve(c.id, 'admin');
-      assert.equal(s.computeBank({ userId: 'alice' }), 2);
-      s.cancel(c.id, 'admin');
-      assert.equal(s.computeBank({ userId: 'alice' }), 0);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  await test('bank scopes by userId — bob does not see alice', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-b5-'));
-    try {
-      const s = createCorrectionsStore(dir, masterKey);
-      const c1 = s.create({ employeeId: 'alice', start: '2026-04-20T09:00:00Z', end: '2026-04-20T11:00:00Z' });
-      s.approve(c1.id, 'admin');
-      assert.equal(s.computeBank({ userId: 'alice' }), 2);
-      assert.equal(s.computeBank({ userId: 'bob' }), 0);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  await test('bank handles fractional hours correctly', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-b6-'));
-    try {
-      const s = createCorrectionsStore(dir, masterKey);
-      const c = s.create({ employeeId: 'alice', start: '2026-04-20T09:00:00Z', end: '2026-04-20T09:30:00Z' });
-      s.approve(c.id, 'admin');
-      assert.equal(s.computeBank({ userId: 'alice' }), 0.5);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  await test('bank requires userId', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-b7-'));
-    try {
-      const s = createCorrectionsStore(dir, masterKey);
-      assert.throws(() => s.computeBank({}), /userId/);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  // --------------------------------------------------------------------------
-
   console.log('\nkind = in / out');
 
   await test('kind=in requires only start', () => {
@@ -484,40 +390,7 @@ try {
     }
   });
 
-  await test('kind=in and kind=out do NOT contribute to bank', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k6-'));
-    try {
-      const s = createCorrectionsStore(dir, masterKey);
-      // Both 'in' and 'out' corrections, both unjustified, both approved.
-      const c1 = s.create({ employeeId: 'alice', kind: 'in',  start: '2026-04-27T09:00:00Z' });
-      const c2 = s.create({ employeeId: 'alice', kind: 'out', end:   '2026-04-27T17:00:00Z' });
-      s.approve(c1.id, 'admin');
-      s.approve(c2.id, 'admin');
-      assert.equal(s.computeBank({ userId: 'alice' }), 0);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  await test('mixed kinds: only the both-kind contributes to bank', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k7-'));
-    try {
-      const s = createCorrectionsStore(dir, masterKey);
-      const c1 = s.create({ employeeId: 'alice', kind: 'in',  start: '2026-04-27T09:00:00Z' });
-      const c2 = s.create({
-        employeeId: 'alice', kind: 'both',
-        start: '2026-04-28T09:00:00Z', end: '2026-04-28T11:00:00Z',
-      });
-      s.approve(c1.id, 'admin');
-      s.approve(c2.id, 'admin');
-      // Only the 2-hour 'both' counts.
-      assert.equal(s.computeBank({ userId: 'alice' }), 2);
-    } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  await test('old corrections (no kind field) default to both on read', () => {
+await test('old corrections (no kind field) default to both on read', () => {
     // Simulate an old-format correction by writing the raw NDJSON line.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-cor-k8-'));
     try {

@@ -19,15 +19,14 @@ import { encryptField, decryptField } from '../crypto/aes.js';
  *   4. Owner cancels (only while pending) or employer cancels (any status
  *      → cancelled).
  *
- * Bank semantics:
- *   - Approved correction WITH justification → counts as worked time.
- *   - Approved correction WITHOUT justification → counts as worked time
- *     PLUS its duration is added to the employee's bank as "uncredited
- *     hours owed back to the company". Employer can later request
- *     compensation in the form of extra unpaid work.
- *   - Bank balance is computed (sum of approved unjustified durations) —
- *     no separate field on the user, single source of truth in the
- *     event stream.
+ * Approved corrections always count as worked time — the in/out punches
+ * are materialized at approval time and reports read those punches like
+ * any other clock event. The earlier "time bank" concept (approved
+ * unjustified corrections accumulating as uncredited hours owed) was
+ * removed in 0.22.8 along with the `/api/corrections/bank` endpoints.
+ * `isJustified` is still emitted as a derived field on each record for
+ * any UI that wants to distinguish "filed with explanation" from
+ * "filed silently"; it has no functional consequence anymore.
  *
  * File layout: data/corrections/<yyyy>/<mm>.ndjson — partitioned by the
  * month the correction was CREATED (not the month it covers). This mirrors
@@ -309,30 +308,6 @@ export function createCorrectionsStore(dataDir, masterKey) {
   function reject(id, actorId, notes)  { return transition(id, actorId, 'rejected', { notes }); }
   function cancel(id, actorId)         { return transition(id, actorId, 'cancelled'); }
 
-  /**
-   * Bank balance = total hours from approved kind='both' corrections that
-   * have NO justification. Single-side corrections (kind='in' or 'out')
-   * have no duration knowable in isolation — they're paperwork fixes for
-   * a forgotten clock-in or clock-out — so they never contribute to the
-   * bank regardless of justification.
-   *
-   * Returns hours as a number (floating, fine for hour-resolution math).
-   */
-  function computeBank({ userId, asOf }) {
-    if (!userId) throw new Error('userId is required');
-    const cutoff = asOf ? new Date(asOf).getTime() : null;
-    let total = 0;
-    for (const state of readAll().values()) {
-      if (state.employeeId !== userId) continue;
-      if (state.status !== 'approved') continue;
-      if (state.kind !== 'both') continue;
-      if (state.isJustified) continue;
-      if (cutoff != null && new Date(state.decidedAt).getTime() > cutoff) continue;
-      total += state.hours;
-    }
-    return Math.round(total * 100) / 100;
-  }
-
   return {
     create,
     findById,
@@ -340,7 +315,6 @@ export function createCorrectionsStore(dataDir, masterKey) {
     approve,
     reject,
     cancel,
-    computeBank,
     paths: { rootDir, monthFile },
     listPartitions,
   };

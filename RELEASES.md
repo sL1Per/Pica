@@ -14,6 +14,178 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.8] — 2026-05-10 — Time bank removed; "missing hours" replaces it
+
+The "time bank" feature (approved unjustified corrections
+accumulating as uncredited hours owed back to the employer) is
+gone. The signal it tried to provide — "this employee is behind
+on hours" — is now computed directly from punches as
+`missing = max(0, scheduled - worked)` per period. The manual
+correction workflow is unchanged: an employee who forgets to
+clock can still file a correction with or without a
+justification, and approval still materializes the in/out punches
+the same way.
+
+### What was removed
+
+**Backend:**
+- `correctionsStore.computeBank({ userId, asOf })` — gone.
+- `GET /api/corrections/bank` — gone (404 from the router from
+  this release on).
+- `GET /api/corrections/bank/:userId` — gone.
+- The `bankHours` field on the `GET /api/employees/:id/summary`
+  response — gone.
+- File-header comment blocks describing "Bank semantics" in
+  `src/storage/corrections.js` and `src/routes/corrections.js`
+  rewritten to match the new model.
+- 9 bank-specific tests in `test-corrections.mjs` deleted; 2
+  bank-related assertions in `test-employees-summary.mjs`
+  replaced with missing-hours assertions.
+
+**Frontend:**
+- `public/punch.js` `refreshBank()` and the `#bank-line` DOM
+  block on `punch.html` — gone. The "register manual time"
+  link below the today list stays.
+- `public/index.js` `renderBankSummaryEmployee()` and the
+  `bank` widget from `buildEmployeeWidgets()` — gone. Employee
+  dashboard now has 2 widgets (pending + today) instead of 3.
+- `public/employee.js` + `employee.html` — bank widget on the
+  per-employee summary page is replaced by **two** new widgets:
+  "Missing this week" and "Missing this month" (per the user's
+  preference).
+- `public/correction.js` + `correction.html` — the "Bank impact"
+  field on the correction-detail page is gone.
+- `public/corrections.js` + `corrections.html` + `corrections.css`
+  — the standalone time-bank card and the per-row "+Xh to bank"
+  chip are gone, along with their CSS.
+- `public/correction-new.js` + `correction-new.html` — the
+  live "this will go to your time bank" warning callout is
+  gone (the form no longer cares about justification for any
+  bookkeeping reason).
+- 19 bank-related i18n keys deleted from each locale file
+  (`en-US.js`, `pt-PT.js`). Two confirm-dialog strings rephrased
+  to drop bank language. One dashboard-card description trimmed.
+
+### What's new
+
+**Missing-hours signal** computed inline by every consumer that
+needs it. Definition: `missing = max(0, scheduled - worked)` for
+the relevant period. **Not** adjusted for approved leaves — an
+employee on vacation will show as "missing" hours; the operator
+is expected to cross-check the upcoming-leaves block.
+
+- `GET /api/employees/:id/summary` now returns:
+  - `week:  { from, to, hours, scheduled, missing }`
+  - `month: { from, to, hours, scheduled, missing }` (new — was
+    not in the response before)
+  - The week/month period boundaries come from the existing
+    `computePeriod(...)` helper. Month scheduled is
+    `dailyHours × weekdays`, matching the team-hours convention.
+- `GET /api/reports/team-hours` rows now include `missing` for
+  each employee.
+- Per-employee summary page shows two new widgets ("Missing this
+  week" / "Missing this month") replacing the old bank widget.
+  Caption shows `worked/scheduled` for context.
+- Reports → Team overview gets a new "Missing" column. Cells
+  with shortfall render in danger-red and bold; zero-shortfall
+  cells render as a muted "—" so the eye finds the rows that
+  matter.
+- 5 new i18n keys per locale: `employee.summary.missingWeekTitle`,
+  `missingMonthTitle`, `missingZero`, `missingExplain`,
+  `reports.teamMissing`.
+- 3 new tests: 1 in `test-employees-summary.mjs` (missing
+  equals scheduled when no hours worked, plus the existing
+  shape/week-shape tests now include `missing` in their
+  must-have-keys lists), 2 in `test-reports-team.mjs` (missing
+  exposed as a number, missing is 0 when worked ≥ scheduled).
+
+### Files touched
+
+- `src/storage/corrections.js`, `src/routes/corrections.js`,
+  `src/routes/employees.js`, `src/routes/reports.js`
+- `public/punch.js`, `public/punch.html`, `public/punch.css`
+- `public/index.js`
+- `public/employee.js`, `public/employee.html`
+- `public/correction.js`, `public/correction.html`
+- `public/corrections.js`, `public/corrections.html`,
+  `public/corrections.css`
+- `public/correction-new.js`, `public/correction-new.html`
+- `public/reports.js`, `public/reports.html`, `public/reports.css`
+- `public/locales/en-US.js`, `public/locales/pt-PT.js`
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v31`
+- `package.json` — version `0.22.8`
+- `tests/test-corrections.mjs`, `tests/test-employees-summary.mjs`,
+  `tests/test-reports-team.mjs`
+- `docs/architecture.md` — "Time bank" section rewritten as
+  "Missing-hours signal"
+- `docs/security.md` — comment in encryption table updated
+
+Test totals: 23 suites, 575 tests (was 582; net -7 from
+removing 9 bank-specific corrections tests, plus +2 in
+reports-team, plus shape changes in employees-summary that net to
+0). Existing reports DST flake unrelated; remains.
+
+### What this does NOT do (Honest Disclosures)
+
+- **Manual corrections themselves are unchanged.** Create,
+  approve, reject, cancel, materialize-as-punches — all the
+  workflow stays. An approved correction still puts in/out
+  punches in the punch ledger, and `hoursReport` reads those
+  punches like any other clock event. The user's request was
+  explicit: "make sure you keep the manual corrections in case
+  someone forgets to register in time, dont change any of that."
+- **The `isJustified` derived field stays on each correction
+  record** for any UI that wants to show whether a correction
+  carried a reason. It has no functional consequence anymore —
+  the bank was the only consumer. Tests still exercise it.
+- **Justification text remains optional.** This is a deliberate
+  carry-over: someone forgetting to clock is the canonical use
+  case, and forcing a justification would just train people to
+  type "forgot" every time. The approval-confirmation dialog
+  for unjustified corrections still exists, just rephrased to
+  drop the bank wording.
+- **Missing hours does NOT subtract approved leaves.** Vacations
+  show as missing hours. Documented inline in the
+  `src/routes/employees.js` summary endpoint header and in the
+  team-hours route. Adding leave-aware adjustment is plausible
+  follow-up work; the user explicitly said this signal is about
+  punches, not leaves. Operators are expected to cross-check the
+  upcoming-leaves block alongside.
+- **The dashboard "on leave today" widget didn't exist for
+  employees** (it was always employer-only via
+  `buildEmployerWidgets`). Removing the bank widget from
+  employee dashboard takes that view from 3 widgets to 2 — the
+  layout still works, but the visual rhythm is slightly
+  different. Acceptable; future drops can add a third widget if
+  one becomes load-bearing.
+- **No data migration.** Historical corrections data on disk is
+  unchanged; the encrypted NDJSON files keep their event
+  streams. Anyone who decrypts a backup created before 0.22.8
+  will see records that look identical to what 0.22.8 emits;
+  the difference is purely in what the running system COMPUTES
+  from those records.
+- **The roadmap's M8d "Time bank" checkmark stays where it is.**
+  The roadmap is a historical record of what shipped per
+  milestone; we don't rewrite history. The 0.22.8 release entry
+  is the canonical record of when the feature was retired.
+- **The `correction.confirmApproveBothUnjust` translation
+  string was rephrased** but the dialog still fires when an
+  employer approves an unjustified `kind=both` correction. The
+  old wording said the hours would go to the employee's time
+  bank as compensation owed; the new wording just notes the
+  hours will be added to the employee's worked-hours record.
+  Operators using the existing reverse-approval flow get
+  similarly rephrased copy.
+- **Service-worker caching note.** Same as 0.22.1–0.22.7 —
+  clients on the old `CACHE_VERSION` need the SW to reactivate
+  before they pick up the new locale strings, the new HTML
+  templates, and the deleted bank-related assets. Deleted bank
+  endpoints would otherwise show as 404 in old clients still
+  trying to fetch them; the rollover is the same as for any
+  other release.
+
+---
+
 ## [0.22.7] — 2026-05-10 — Calendar gets a tap-to-expand day-details panel
 
 ### What's new

@@ -107,7 +107,7 @@ pica/
 │       ├── employees.js     # /api/employees + /api/employees/:id (+ picture)
 │       ├── punches.js       # /api/punches/* (clock-in, clock-out, today)
 │       ├── leaves.js        # /api/leaves[/:id], /api/leaves/approved
-│       ├── corrections.js   # /api/corrections[/:id], /api/corrections/bank
+│       ├── corrections.js   # /api/corrections[/:id]
 │       ├── reports.js       # /api/reports/*
 │       ├── settings.js      # /api/settings/* (org, working-time, branding)
 │       ├── backups.js       # /api/backups (list, create, download, delete, restore, status)
@@ -312,7 +312,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 23 suites, 580 passing as of 0.22.6.
+- Total: 23 suites, 575 passing as of 0.22.8.
 
 ---
 
@@ -350,13 +350,16 @@ queue drains via the same API endpoints. Idempotency comes from the
 `clientId` field on each event — the server treats a repeated
 `clientId` as a no-op.
 
-### Time bank
-Approved corrections without a justification accumulate as the
-employee's "time bank" (hours owed back to the employer). Computed
-on the fly by `corrections.bank(userId)` — sums the `hours` of
-every approved `kind=both` correction whose justification is empty.
-Single-side corrections (`kind=in` / `kind=out`) never contribute
-because they only add half a punch pair.
+### Missing-hours signal (replaces the old time bank)
+The "time bank" feature (approved unjustified corrections accumulating
+as uncredited hours owed) was removed in 0.22.8. Approved corrections
+still materialize as in/out punch records the same way; reports just
+read those punches like any other clock event. The new "missing hours"
+signal is computed on the fly by every consumer that needs it
+(employee summary endpoint, team-hours report) as
+`max(0, scheduled - worked)` for the relevant period. It is **not**
+adjusted for approved leaves — operators should cross-check the
+upcoming-leaves block when interpreting the number.
 
 ---
 
@@ -373,4 +376,4 @@ because they only add half a punch pair.
 
 ---
 
-_Last touched in 0.22.7._
+_Last touched in 0.22.8._

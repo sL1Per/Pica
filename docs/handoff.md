@@ -5,22 +5,53 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.7._
+_Last touched in 0.22.8._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.7 (released 2026-05-10)
-- **Test count:** 580 across 23 suites, all green
-- **Build artifact:** `pica-0.22.7-calendar-mobile-details.zip`
+- **Latest version:** 0.22.8 (released 2026-05-10)
+- **Test count:** 575 across 23 suites, all green
+- **Build artifact:** `pica-0.22.8-time-bank-removed.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.7)
+## What just shipped (0.22.8)
+
+The "time bank" feature is gone. Approved unjustified corrections
+no longer accumulate as "uncredited hours owed". The signal that
+metric tried to provide is now a "missing hours" number computed
+directly from punches: `max(0, scheduled - worked)`.
+
+Manual corrections themselves are unchanged — file with or
+without justification, approve still materializes the in/out
+punches the same way. What's removed: `computeBank`,
+`/api/corrections/bank` and `/api/corrections/bank/:userId`,
+`bankHours` on the summary endpoint, the bank widget on dashboard
+and per-employee summary, the bank card on `/corrections`, the
+"+Xh to bank" chip per row, the live bank-warning callout on the
+new-correction form, plus 19 i18n keys per locale.
+
+What's added: a `missing` field on every team-hours row, week +
+month `missing` on the per-employee summary, two new widgets
+("Missing this week" / "Missing this month") replacing the bank
+widget on the per-employee summary, a "Missing" column on the
+reports team table (red+bold when non-zero, muted "—" when
+clean).
+
+Important: missing-hours is **not** adjusted for approved leaves.
+A vacation week shows as "missing"; the operator is expected to
+cross-check the upcoming-leaves block.
+
+Tests: -9 bank tests in test-corrections.mjs, +2 missing tests in
+test-reports-team.mjs, refactored employees-summary tests around
+the new shape. Total 575 tests across 23 suites. CACHE_VERSION → v31.
+
+## What shipped in 0.22.7
 
 Mobile readability fix for the team calendar. The ≤600px
 breakpoint had been hiding `cal-bar__name` to fit, leaving phone
@@ -224,6 +255,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Vacation carry-forward + MM-DD expiry    | ✅ 0.22.5 |
 | —     | Mandatory profile fields                 | ✅ 0.22.6 |
 | —     | Calendar mobile day-details panel        | ✅ 0.22.7 |
+| —     | Time bank removed; missing-hours added   | ✅ 0.22.8 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

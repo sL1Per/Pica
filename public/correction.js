@@ -76,18 +76,6 @@ function render() {
 
   $('f-justification').textContent = correction.justification || t('correction.fieldJustificationNone');
 
-  // Bank impact text adapts to kind.
-  const bankImpactEl = $('f-bank-impact');
-  if (correction.kind !== 'both') {
-    bankImpactEl.textContent = t('correction.bankImpactNoneSingleSide');
-  } else if (correction.isJustified) {
-    bankImpactEl.textContent = t('correction.bankImpactNoneJustified');
-  } else if (correction.status === 'approved') {
-    bankImpactEl.textContent = t('correction.bankImpactAdded', { hours: fmtHours(correction.hours) });
-  } else {
-    bankImpactEl.textContent = t('correction.bankImpactWouldAdd', { hours: fmtHours(correction.hours) });
-  }
-
   $('f-created').textContent = fmtDateTime(correction.createdAt);
 
   if (correction.decidedAt) {
@@ -150,7 +138,7 @@ function renderActions() {
     actionsEl.hidden = false;
   } else if (correction.status === 'approved' && isEmployer) {
     // Employer can reverse an approval. This does NOT remove the materialized
-    // punches (they stay in the audit log) — bank reverses though.
+    // punches (they stay in the audit log).
     const undo = document.createElement('button');
     undo.className = 'btn-ghost';
     undo.textContent = t('correction.actionReverse');

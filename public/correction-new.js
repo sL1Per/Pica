@@ -15,14 +15,6 @@ const endLabel     = $('end-label');
 const startEl      = $('start');
 const endEl        = $('end');
 const justEl       = $('justification');
-const bankWarning  = $('bank-warning');
-
-// Inline escapeHtml for the bank-warning rebuild — keep zero-dep.
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]));
-}
 const messageEl    = $('message');
 
 // -------- Defaults ----------------------------------------------------------
@@ -73,57 +65,12 @@ function updateForKind() {
       endEl.required = true;
       break;
   }
-  refreshWarning();
-}
-
-// -------- Live duration display + bank warning -----------------------------
-
-function fmtHours(h) {
-  const total = Math.round(h * 60);
-  const hh = Math.floor(total / 60);
-  const mm = total % 60;
-  if (hh === 0) return `${mm} min`;
-  if (mm === 0) return `${hh}h`;
-  return `${hh}h ${mm}m`;
-}
-
-function refreshWarning() {
-  const kind = selectedKind();
-  // Bank warning only matters for 'both' — single-side corrections never
-  // contribute to the bank, regardless of justification.
-  if (kind !== 'both') {
-    bankWarning.hidden = true;
-    return;
-  }
-  // Hide also when the user has typed a justification.
-  if (justEl.value.trim().length > 0) {
-    bankWarning.hidden = true;
-    return;
-  }
-  // Show with the current computed duration.
-  const s = startEl.value && new Date(startEl.value).getTime();
-  const e = endEl.value && new Date(endEl.value).getTime();
-  let hoursStr;
-  if (!s || !e || !Number.isFinite(s) || !Number.isFinite(e) || e <= s) {
-    hoursStr = t('correctionNew.bankWarningHours');
-  } else {
-    hoursStr = fmtHours((e - s) / 3_600_000);
-  }
-  // Render the warning using the translation template, putting the hours
-  // value in a <strong> by splitting around the {hours} marker.
-  const tmpl = t('correctionNew.bankWarning', { hours: '__HOURS__' });
-  const [before, after] = tmpl.split('__HOURS__');
-  bankWarning.innerHTML = `${escapeHtml(before)}<strong id="bank-warn-hours">${escapeHtml(hoursStr)}</strong>${escapeHtml(after || '')}`;
-  bankWarning.hidden = false;
 }
 
 // Wire events.
 form.querySelectorAll('input[name="kind"]').forEach((r) => {
   r.addEventListener('change', updateForKind);
 });
-startEl.addEventListener('input', refreshWarning);
-endEl.addEventListener('input', refreshWarning);
-justEl.addEventListener('input', refreshWarning);
 
 // Initial paint.
 updateForKind();

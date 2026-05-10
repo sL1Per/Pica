@@ -2,8 +2,8 @@
  * Employee summary page (employer view).
  *
  * One round-trip via /api/employees/:id/summary returns everything we
- * need: profile, week hours, bank balance, upcoming leaves, pending
- * approvals. We render in a single pass — no per-section loading
+ * need: profile, week + month hours and missing-hours, upcoming leaves,
+ * pending approvals. We render in a single pass — no per-section loading
  * spinners because the underlying request is server-aggregated and
  * fast.
  */
@@ -31,12 +31,14 @@ const positionLine   = $('position-line');
 const profileLink    = $('profile-link');
 const messageEl      = $('message');
 
-const statsGrid      = $('stats-grid');
-const weekHoursEl    = $('week-hours');
-const weekCaptionEl  = $('week-caption');
-const bankBignumEl   = $('bank-bignum');
-const bankCaptionEl  = $('bank-caption');
-const pendingBody    = $('pending-body');
+const statsGrid          = $('stats-grid');
+const weekHoursEl        = $('week-hours');
+const weekCaptionEl      = $('week-caption');
+const missWeekBignumEl   = $('missing-week-bignum');
+const missWeekCaptionEl  = $('missing-week-caption');
+const missMonthBignumEl  = $('missing-month-bignum');
+const missMonthCaptionEl = $('missing-month-caption');
+const pendingBody        = $('pending-body');
 
 const upcomingSection  = $('upcoming-section');
 const upcomingListEl   = $('upcoming-list');
@@ -54,14 +56,6 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
-}
-
-function fmtBankHours(hours) {
-  if (!Number.isFinite(hours) || hours === 0) return '0h';
-  const sign = hours > 0 ? '+' : '−';
-  const abs = Math.abs(hours);
-  const str = fmtHours(abs);
-  return `${sign}${str}h`;
 }
 
 function fmtRange(startStr, endStr, unit) {
@@ -128,14 +122,29 @@ function renderStats(data) {
     weekCaptionEl.textContent = '';
   }
 
-  // Bank
-  const bh = data.bankHours ?? 0;
-  bankBignumEl.innerHTML = bh === 0
+  // Missing this week — raw scheduled-vs-worked shortfall.
+  const mw = data.week?.missing ?? 0;
+  missWeekBignumEl.innerHTML = mw === 0
     ? `0<span class="widget__bignum-suffix">h</span>`
-    : `${escapeHtml(fmtBankHours(bh))}`;
-  bankCaptionEl.textContent = bh === 0
-    ? t('employee.summary.bankZero')
-    : t('employee.summary.bankExplain');
+    : `${escapeHtml(fmtHours(mw))}<span class="widget__bignum-suffix">h</span>`;
+  missWeekCaptionEl.textContent = mw === 0
+    ? t('employee.summary.missingZero')
+    : t('employee.summary.missingExplain', {
+        worked:    fmtHours(data.week?.hours ?? 0),
+        scheduled: fmtHours(data.week?.scheduled ?? 0),
+      });
+
+  // Missing this month — same logic against month totals.
+  const mm = data.month?.missing ?? 0;
+  missMonthBignumEl.innerHTML = mm === 0
+    ? `0<span class="widget__bignum-suffix">h</span>`
+    : `${escapeHtml(fmtHours(mm))}<span class="widget__bignum-suffix">h</span>`;
+  missMonthCaptionEl.textContent = mm === 0
+    ? t('employee.summary.missingZero')
+    : t('employee.summary.missingExplain', {
+        worked:    fmtHours(data.month?.hours ?? 0),
+        scheduled: fmtHours(data.month?.scheduled ?? 0),
+      });
 
   // Pending counts (employer-actionable)
   const pendingLeaves = data.pending?.leaves?.length ?? 0;

@@ -20,38 +20,6 @@
   color: var(--text-muted);
 }
 
-/* ----- Bank card ------------------------------------------------------- */
-
-.bank-card {
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-lg);
-  padding: var(--gap-4);
-  margin-bottom: var(--gap-4);
-}
-.bank-card__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--gap-3);
-}
-.bank-card__label {
-  font-weight: 700;
-  color: var(--accent);
-  font-size: var(--text-md);
-}
-.bank-card__value {
-  font-weight: 700;
-  color: var(--accent);
-  font-size: var(--text-xl);
-  font-variant-numeric: tabular-nums;
-}
-.bank-card__hint {
-  margin: var(--gap-2) 0 0 0;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
 /* ----- Correction list rows -------------------------------------------- */
 
 .correction-list {
@@ -126,7 +94,7 @@
 .status-tag--rejected { background: var(--danger-soft);  color: var(--danger); }
 .status-tag--cancelled{ background: var(--surface-2);    color: var(--text-subtle); }
 
-/* ----- Chips (justified / bank impact) --------------------------------- */
+/* ----- Chips (justified / kind) ---------------------------------------- */
 
 .chip {
   display: inline-block;
@@ -139,9 +107,8 @@
 }
 .chip--ok    { background: var(--success-soft); color: var(--success); }
 .chip--warn  { background: var(--danger-soft);  color: var(--danger); }
-.chip--bank  { background: var(--accent-soft);  color: var(--accent); }
 
-/* ----- Callout (bank-warning hint on new form) ------------------------- */
+/* ----- Callout (info hint on new form) --------------------------------- */
 
 .callout {
   margin-top: var(--gap-3);

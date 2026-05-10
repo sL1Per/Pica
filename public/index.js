@@ -60,16 +60,6 @@ function humanDuration(ms) {
   return `${m}m`;
 }
 
-/** Plain HHh from a fractional-hours number. Used for the bank balance. */
-function formatBankHours(hours) {
-  if (!Number.isFinite(hours)) return '0h';
-  const sign = hours > 0 ? '+' : (hours < 0 ? '−' : '');
-  const abs = Math.abs(hours);
-  // Up to one decimal place, no trailing .0
-  const str = fmtHours(abs);
-  return `${sign}${str}h`;
-}
-
 /** From an ISO timestamp, return the local HH:MM via the i18n fmtTime helper. */
 function timeOnly(iso) { return fmtTime(iso); }
 
@@ -369,24 +359,6 @@ function renderTodayHoursEmployee(widgetEl, todayPunches, workingTime) {
   `);
 }
 
-function renderBankSummaryEmployee(widgetEl, bank) {
-  const hours = bank?.hours ?? 0;
-  if (hours === 0) {
-    setWidgetBody(widgetEl, `
-      <div class="widget__bignum widget__bignum--muted">0<span class="widget__bignum-suffix">h</span></div>
-      <div class="widget__caption">${escapeHtml(t('widgets.bankZero'))}</div>
-    `);
-    return;
-  }
-  setWidgetBody(widgetEl, `
-    <div class="widget__bignum">${escapeHtml(formatBankHours(hours))}</div>
-    <div class="widget__caption">${escapeHtml(t('widgets.bankExplain'))}</div>
-    <div style="margin-top: var(--gap-3)">
-      <a href="/corrections" class="widget__action">${escapeHtml(t('widgets.bankViewDetails'))}</a>
-    </div>
-  `);
-}
-
 // ---- Orchestration -----------------------------------------------------
 
 /** Build the widget shells in order, return references for the loaders. */
@@ -407,13 +379,9 @@ function buildEmployeeWidgets(grid) {
   const pending = buildWidget({ titleKey: 'widgets.myPending' });
   const today   = buildWidget({ titleKey: 'widgets.todayHours',
                                 action: { href: '/punch', labelKey: 'widgets.viewAll' } });
-  const bank    = buildWidget({ titleKey: 'widgets.bankSummary',
-                                action: { href: '/corrections', labelKey: 'widgets.viewAll' },
-                                wide: true });
   grid.appendChild(pending);
   grid.appendChild(today);
-  grid.appendChild(bank);
-  return { pending, today, bank };
+  return { pending, today };
 }
 
 async function loadEmployerWidgets(widgets) {
@@ -468,11 +436,10 @@ async function loadEmployerWidgets(widgets) {
 async function loadEmployeeWidgets(widgets) {
   Object.values(widgets).forEach(widgetLoading);
 
-  const [leaves, corrections, today, bank, wt] = await Promise.allSettled([
+  const [leaves, corrections, today, wt] = await Promise.allSettled([
     fetchJson('/api/leaves'),
     fetchJson('/api/corrections?status=pending'),
     fetchJson('/api/punches/today'),
-    fetchJson('/api/corrections/bank'),
     fetchJson('/api/settings/working-time'),
   ]);
 
@@ -490,12 +457,6 @@ async function loadEmployeeWidgets(widgets) {
       wt.status === 'fulfilled' ? wt.value.workingTime : null);
   } else {
     widgetError(widgets.today, () => loadEmployeeWidgets(widgets));
-  }
-
-  if (bank.status === 'fulfilled') {
-    renderBankSummaryEmployee(widgets.bank, bank.value);
-  } else {
-    widgetError(widgets.bank, () => loadEmployeeWidgets(widgets));
   }
 }
 

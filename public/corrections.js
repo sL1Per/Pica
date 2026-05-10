@@ -12,8 +12,6 @@ const pendingList  = $('pending-list');
 const historyList  = $('history-list');
 const subtitleEl   = $('page-subtitle');
 const headingEl    = $('list-heading');
-const bankCard     = $('bank-card');
-const bankHoursEl  = $('bank-hours');
 
 let me = null;
 
@@ -68,10 +66,6 @@ function renderRow(c) {
   const justChip = c.isJustified
     ? `<span class="chip chip--ok">${escapeHtml(t('corrections.justified'))}</span>`
     : `<span class="chip chip--warn">${escapeHtml(t('corrections.noJustification'))}</span>`;
-  // Bank chip only on approved both-kind without justification.
-  const bankChip = (c.status === 'approved' && c.kind === 'both' && !c.isJustified)
-    ? `<span class="chip chip--bank">${escapeHtml(t('corrections.bankChip', { hours: fmtHours(c.hours) }))}</span>`
-    : '';
   // Kind chip for visual differentiation in lists.
   const kindChipMap = { both: t('corrections.kindBoth'), in: t('corrections.kindIn'), out: t('corrections.kindOut') };
   const kindChip = `<span class="chip chip--kind">${kindChipMap[c.kind] ?? c.kind}</span>`;
@@ -85,7 +79,6 @@ function renderRow(c) {
           <span class="status-tag status-tag--${c.status}">${escapeHtml(t('status.' + c.status))}</span>
           ${kindChip}
           ${justChip}
-          ${bankChip}
         </div>
       </div>
       <div class="correction-row__hours">${hoursLabel}</div>
@@ -125,19 +118,6 @@ function render(corrections) {
   }
 }
 
-async function loadBank() {
-  // Bank only makes sense for the employee viewing their own. For employers
-  // the per-user bank shows up on the correction detail page.
-  if (me.role === 'employer') return;
-  try {
-    const res = await fetch('/api/corrections/bank', { credentials: 'same-origin' });
-    if (!res.ok) return;
-    const { hours } = await res.json();
-    bankHoursEl.textContent = fmtHours(hours);
-    bankCard.hidden = false;
-  } catch { /* non-fatal */ }
-}
-
 async function load() {
   try {
     const res = await fetch('/api/corrections', { credentials: 'same-origin' });
@@ -159,5 +139,5 @@ async function load() {
     subtitleEl.textContent = t('corrections.subtitleAll');
     headingEl.textContent = t('corrections.pendingHeading.employer');
   }
-  await Promise.all([load(), loadBank()]);
+  await load();
 })();

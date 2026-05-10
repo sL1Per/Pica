@@ -214,6 +214,11 @@
   text-overflow: ellipsis;
 }
 
+/* Missing-hours cell. The "—" stays muted; an actual shortfall is
+   rendered with the danger color so the eye finds the row quickly. */
+.team-table .team-missing { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.team-table .team-missing--has { color: var(--danger); font-weight: 600; }
+
 .team-avatar {
   width: 28px;
   height: 28px;
