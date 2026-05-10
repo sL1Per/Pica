@@ -49,25 +49,25 @@
 
       <h2 data-i18n="employeeNew.profile">Profile</h2>
       <label for="fullName" data-i18n="employeeNew.fullName">Full name</label>
-      <input type="text" id="fullName" name="fullName">
+      <input type="text" id="fullName" name="fullName" required>
 
       <label for="dateOfBirth" data-i18n="employeeNew.dob">Date of birth</label>
       <div class="dob-row">
-        <input type="date" id="dateOfBirth" name="dateOfBirth">
+        <input type="date" id="dateOfBirth" name="dateOfBirth" required>
         <span id="age-display" class="dob-age muted" hidden></span>
       </div>
 
       <label for="position" data-i18n="employeeNew.position">Position</label>
-      <input type="text" id="position" name="position" data-i18n-attr="placeholder:employeeNew.positionPh" placeholder="e.g. Backend Developer">
+      <input type="text" id="position" name="position" required data-i18n-attr="placeholder:employeeNew.positionPh" placeholder="e.g. Backend Developer">
 
       <label for="contactEmail" data-i18n="employeeNew.contactEmail">Contact email</label>
-      <input type="email" id="contactEmail" name="contactEmail">
+      <input type="email" id="contactEmail" name="contactEmail" required>
 
       <label for="contactPhone" data-i18n="employeeNew.contactPhone">Contact phone</label>
-      <input type="text" id="contactPhone" name="contactPhone">
+      <input type="text" id="contactPhone" name="contactPhone" required>
 
       <label for="address" data-i18n="employeeNew.address">Address</label>
-      <input type="text" id="address" name="address">
+      <input type="text" id="address" name="address" required>
 
       <label for="comments" data-i18n="employeeNew.comments">Comments</label>
       <textarea id="comments" name="comments" rows="3"></textarea>

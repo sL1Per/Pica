@@ -53,7 +53,13 @@ function applyPermissions(isEmployer, isSelf) {
   const readonlyForEmployee = ['position', 'comments'];
   if (!isEmployer) {
     for (const name of readonlyForEmployee) {
-      $(name).readOnly = true;
+      const el = $(name);
+      el.readOnly = true;
+      // Drop `required` for readonly fields on the employee view —
+      // an empty `position` from before mandatory-fields shipped
+      // would otherwise block the employee from saving anything,
+      // and they can't edit it anyway.
+      el.required = false;
       const hint = $(`${name}-hint`);
       if (hint) hint.hidden = false;
     }
@@ -202,7 +208,8 @@ form.addEventListener('submit', async (e) => {
     titleEl.textContent = data.profile?.fullName || target.username;
     showMessage(message, 'Saved', 'success');
   } else {
-    showMessage(message, data.error || 'Save failed', 'error');
+    const msg = translateError(data.errorCode, data.error || 'Save failed');
+    showMessage(message, msg, 'error');
   }
   setBusy(saveBtn, false);
 });

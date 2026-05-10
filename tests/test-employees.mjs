@@ -154,6 +154,81 @@ try {
   });
 
   // --------------------------------------------------------------------------
+  console.log('\nMandatory fields (0.22.6)');
+  // --------------------------------------------------------------------------
+
+  await test('create() throws when a mandatory field is missing', () => {
+    const fresh = createEmployeesStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-mand-')), masterKey);
+    const id = '99999999-9999-4999-8999-999999999999';
+    let caught;
+    try {
+      fresh.create(id, {
+        fullName: 'X',
+        // dateOfBirth missing
+        position: 'Y',
+        address: 'Z',
+        contactEmail: 'a@b.c',
+        contactPhone: '+1',
+      });
+    } catch (e) { caught = e; }
+    assert.ok(caught, 'create must throw');
+    assert.equal(caught.code, 'missing_required_field');
+    assert.equal(caught.field, 'dateOfBirth');
+  });
+
+  await test('create() throws when a mandatory field is empty string', () => {
+    const fresh = createEmployeesStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-mand2-')), masterKey);
+    const id = '99999999-9999-4999-8999-999999999998';
+    assert.throws(() => fresh.create(id, {
+      fullName: '   ', // whitespace-only
+      dateOfBirth: '1990-01-01',
+      position: 'Y',
+      address: 'Z',
+      contactEmail: 'a@b.c',
+      contactPhone: '+1',
+    }), /Missing required field: fullName/);
+  });
+
+  await test('create() accepts when comments is missing (only optional)', () => {
+    const fresh = createEmployeesStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-mand3-')), masterKey);
+    const id = '99999999-9999-4999-8999-999999999997';
+    const p = fresh.create(id, {
+      fullName: 'X',
+      dateOfBirth: '1990-01-01',
+      position: 'Y',
+      address: 'Z',
+      contactEmail: 'a@b.c',
+      contactPhone: '+1',
+      // no comments
+    });
+    assert.equal(p.fullName, 'X');
+  });
+
+  await test('update() throws when a mandatory field is set to empty', () => {
+    let caught;
+    try {
+      store.update(aliceId, { contactEmail: '' });
+    } catch (e) { caught = e; }
+    assert.ok(caught);
+    assert.equal(caught.code, 'missing_required_field');
+    assert.equal(caught.field, 'contactEmail');
+  });
+
+  await test('update() does NOT throw when a mandatory field is omitted from patch', () => {
+    // Existing profile may have empty fields from before this rule shipped.
+    // Updating an unrelated field (comments — optional, no rename of fullName
+    // so we don't disturb assertions later in this same store) must succeed.
+    const p = store.update(aliceId, { comments: 'still works' });
+    assert.equal(p.comments, 'still works');
+  });
+
+  await test('update() allows clearing comments (only optional field)', () => {
+    const p = store.update(aliceId, { comments: '' });
+    // comments=='' isn't blocked. Stored as empty string (or null after readback).
+    assert.ok(p.fullName); // sanity — profile still intact
+  });
+
+  // --------------------------------------------------------------------------
   console.log('\nPictures');
   // --------------------------------------------------------------------------
 

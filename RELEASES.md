@@ -14,6 +14,119 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.6] — 2026-05-10 — Profile fields are now mandatory (except comments)
+
+### What's new
+
+**Every profile field except `comments` is now required.** The
+list (`MANDATORY_FIELDS` in `src/storage/employees.js`):
+
+- `fullName`
+- `dateOfBirth`
+- `position`
+- `address`
+- `contactEmail`
+- `contactPhone`
+
+`comments` remains optional (it's an employer-only free-text
+field used for HR notes).
+
+### Where it's enforced
+
+- **Frontend** — `required` attribute on the inputs in both
+  `public/employee-new.html` and `public/employee-profile.html`.
+  Native HTML5 validation catches the most common case before any
+  network request.
+- **Backend on `create` (POST `/api/employees`)** — every
+  mandatory field must be present and non-empty. Missing or
+  whitespace-only values are rejected with `400 missing_required_field`.
+- **Backend on `update` (PUT `/api/employees/:id`)** — only
+  validates fields that are *included* in the patch. A patch that
+  sets `contactEmail = ''` is rejected; a patch that simply
+  doesn't mention `dateOfBirth` is fine. This is the migration-
+  friendly variant: pre-existing profiles with empty fields don't
+  block unrelated updates.
+
+The error carries `errorCode: 'missing_required_field'` and a
+message naming the missing field. The frontend translates the
+code via the new `errors.missing_required_field` i18n key
+("Please fill in all required fields." / "Por favor preencha
+todos os campos obrigatórios.").
+
+### Files touched
+
+- `src/storage/employees.js` — new `MANDATORY_FIELDS` export,
+  `isEmptyValue()` helper, `makeMissingFieldError()`, and
+  validation in both `create()` and `update()`.
+- `src/routes/employees.js` — `POST /api/employees` and
+  `PUT /api/employees/:id` map `err.code === 'missing_required_field'`
+  to a clean 400. Other error paths unchanged.
+- `public/employee-new.html` — `required` on the six mandatory
+  inputs. `comments` left optional.
+- `public/employee-profile.html` — same.
+- `public/employee-profile.js` — `applyPermissions()` now also
+  drops `required` from the readonly fields when an employee is
+  viewing their own profile (otherwise an empty pre-existing
+  `position` from before this rule shipped would block save).
+  Save handler switched to `translateError(...)` so the new
+  errorCode renders.
+- `public/employee-new.js` — same translateError switch.
+- `public/locales/en-US.js` and `pt-PT.js` — new
+  `errors.missing_required_field` string.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v29`
+  (locale files are pre-cached).
+- `package.json` — version `0.22.6`.
+- `tests/test-employees.mjs` — 6 new tests in a new
+  "Mandatory fields (0.22.6)" section. Total: 34 passing in this
+  suite.
+
+Test totals: 23 suites, 580 tests (was 572).
+
+### What this does NOT do (Honest Disclosures)
+
+- **Existing profiles with empty mandatory fields are NOT
+  retroactively migrated.** `update()` only rejects when the
+  patch *sets* a mandatory field to empty. A profile that
+  predates this release with an empty `dateOfBirth` stays empty
+  until someone explicitly fills it in. Pragmatic — the
+  alternative would block every save until everyone updates
+  every field, which is a worse UX than the inconsistency.
+  Operators who want a hard sweep can run a one-time scan; not
+  in scope here.
+- **`update()` on a non-existent id still creates a partial
+  profile.** This is the existing contract used in tests
+  (`update on non-existent id creates the profile`). In the
+  current routing, only `POST /api/employees` reaches
+  `create()`, and that path *does* enforce all-mandatory.
+  `PUT /api/employees/:id` only fires after the user exists, and
+  the profile typically already exists too. The non-existent-id
+  case is a storage-layer leniency that production routes don't
+  exercise. Tightening it would require migrating fixtures and
+  is deferred.
+- **Field-format validation is not added.** `contactEmail` only
+  needs to be non-empty — we don't validate it parses as an
+  email. The HTML5 `type="email"` input enforces a basic shape
+  client-side; the server doesn't. Same for `contactPhone` —
+  any non-empty string passes. Tightening would need to handle
+  international phone formats, plus-prefixes, etc.
+- **No errorCode-with-field-name interpolation.** The translated
+  message is the generic "Please fill in all required fields."
+  The server-side English message includes the offending field
+  name, so anyone reading the API directly or the network tab
+  can see it; translated UI users get the generic message and
+  rely on the HTML5 `required` highlight to find the missing
+  field. Acceptable trade-off; future drop could thread the
+  field name through `translateError(code, fallback, params)`.
+- **No audit log entry.** Employee profile edits aren't audited
+  (existing rule — only sensitive operations like
+  `employee.created`, `password.reset_by_employer`, etc. are).
+  Required-field validation doesn't change that.
+- **Service-worker caching note.** Same as 0.22.1–0.22.5 —
+  clients on the old `CACHE_VERSION` need the SW to reactivate
+  before they pick up the new HTML attributes and locale strings.
+
+---
+
 ## [0.22.5] — 2026-05-10 — Vacation carry-forward with annual MM-DD expiry
 
 Implements the carry-forward feature that has been a stub in

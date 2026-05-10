@@ -5,22 +5,46 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.5._
+_Last touched in 0.22.6._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.5 (released 2026-05-10)
-- **Test count:** 572 across 23 suites, all green
-- **Build artifact:** `pica-0.22.5-vacation-carry-forward.zip`
+- **Latest version:** 0.22.6 (released 2026-05-10)
+- **Test count:** 580 across 23 suites, all green
+- **Build artifact:** `pica-0.22.6-mandatory-profile-fields.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.5)
+## What just shipped (0.22.6)
+
+Profile fields are now mandatory except `comments`. The list:
+`fullName`, `dateOfBirth`, `position`, `address`, `contactEmail`,
+`contactPhone`. `comments` stays optional.
+
+Enforced both client-side (HTML5 `required` on the inputs in
+`employee-new.html` and `employee-profile.html`) and server-side
+(new `MANDATORY_FIELDS` export + validators in
+`src/storage/employees.js`). On `create`, all required fields
+must be present. On `update`, only fields *included in the patch*
+are validated — pre-existing empty profiles don't block unrelated
+saves (migration-friendly).
+
+Error shape: `400 missing_required_field` with the field name in
+the message; new i18n key `errors.missing_required_field` ("Please
+fill in all required fields."). `applyPermissions()` in
+`employee-profile.js` now also drops `required` from readonly
+fields when the viewer is an employee (otherwise empty pre-
+existing `position` would block save).
+
+6 new tests in `test-employees.mjs` ("Mandatory fields (0.22.6)"
+section). Total: 23 suites, 580 tests. CACHE_VERSION → v29.
+
+## What shipped in 0.22.5
 
 Vacation carry-forward landed for real. The `carryForward` toggle
 in org-settings has stored a boolean since M7 but no logic ever
@@ -171,6 +195,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Leave-submit error display (patch)       | ✅ 0.22.3 |
 | —     | Leaves privacy for employees (patch)     | ✅ 0.22.4 |
 | —     | Vacation carry-forward + MM-DD expiry    | ✅ 0.22.5 |
+| —     | Mandatory profile fields                 | ✅ 0.22.6 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

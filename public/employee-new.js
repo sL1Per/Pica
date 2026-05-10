@@ -49,6 +49,7 @@ form.addEventListener('submit', async (e) => {
     window.location.href = `/employees/${result.data.employee.id}`;
     return;
   }
-  showMessage(message, result.data.error || 'Failed to create', 'error');
+  const msg = translateError(result.data.errorCode, result.data.error || 'Failed to create');
+  showMessage(message, msg, 'error');
   setBusy(submit, false);
 });

@@ -29,6 +29,27 @@ export const EMPLOYER_ONLY = Object.freeze(['position', 'comments']);
 // Everything an employer can touch.
 export const ALL_EDITABLE = Object.freeze([...EMPLOYEE_EDITABLE, ...EMPLOYER_ONLY]);
 
+// Fields that must be present and non-empty. `comments` is the only
+// optional profile field. Enforced on `create` (all required) and on
+// `update` (any mandatory field included in the patch must be
+// non-empty — silent no-op if the patch doesn't touch it, so existing
+// records with empty fields aren't a migration blocker).
+export const MANDATORY_FIELDS = Object.freeze([
+  'fullName', 'dateOfBirth', 'position',
+  'address', 'contactEmail', 'contactPhone',
+]);
+
+function isEmptyValue(v) {
+  return v == null || (typeof v === 'string' && v.trim() === '');
+}
+
+function makeMissingFieldError(field) {
+  const err = new Error(`Missing required field: ${field}`);
+  err.code = 'missing_required_field';
+  err.field = field;
+  return err;
+}
+
 function aadFor(id) {
   return `employee:${id}`;
 }
@@ -133,6 +154,11 @@ export function createEmployeesStore(dataDir, masterKey) {
     if (exists(id)) throw new Error('Profile already exists');
     const now = new Date().toISOString();
     const cleaned = pickFields(fields, ALL_EDITABLE);
+    // All mandatory fields must be present at creation. Comments is the
+    // only optional field; everything else gates new-employee onboarding.
+    for (const field of MANDATORY_FIELDS) {
+      if (isEmptyValue(cleaned[field])) throw makeMissingFieldError(field);
+    }
     writeProfile(id, { ...cleaned, createdAt: now, updatedAt: now });
     return readProfile(id);
   }
@@ -144,6 +170,14 @@ export function createEmployeesStore(dataDir, masterKey) {
    */
   function update(id, changes, allowed = ALL_EDITABLE) {
     const cleaned = pickFields(changes, allowed);
+    // For mandatory fields included in this patch, reject empty values.
+    // Mandatory fields NOT in the patch are left alone — pre-existing
+    // empty values from before this rule shipped don't block updates.
+    for (const field of MANDATORY_FIELDS) {
+      if (field in cleaned && isEmptyValue(cleaned[field])) {
+        throw makeMissingFieldError(field);
+      }
+    }
     const current = readProfile(id);
     const now = new Date().toISOString();
     const merged = {

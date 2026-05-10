@@ -735,6 +735,7 @@ export default {
   // ============================================================
   'errors.internal_error': 'Ocorreu um erro inesperado. Por favor tente novamente.',
   'errors.profile_create_failed': 'Não foi possível criar o perfil do funcionário.',
+  'errors.missing_required_field': 'Por favor preencha todos os campos obrigatórios.',
   'errors.rate_limited': 'Demasiadas tentativas. Aguarde um momento e tente novamente.',
   'errors.setup_already_done': 'A configuração inicial já foi concluída.',
   'errors.restore_confirmation_required': 'Falta o cabeçalho de confirmação do restauro. Escreva RESTORE para confirmar.',

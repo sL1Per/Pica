@@ -312,7 +312,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 23 suites, 572 passing as of 0.22.5.
+- Total: 23 suites, 580 passing as of 0.22.6.
 
 ---
 
@@ -373,4 +373,4 @@ because they only add half a punch pair.
 
 ---
 
-_Last touched in 0.22.5._
+_Last touched in 0.22.6._

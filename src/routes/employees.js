@@ -101,6 +101,11 @@ export function registerEmployeeRoutes(router, {
     } catch (err) {
       // Rollback the user so we don't leave an orphan account.
       usersStore.deleteById(user.id);
+      // Missing-required-field is a user-correctable input bug; surface
+      // it as 400 with the offending field so the UI can highlight.
+      if (err.code === 'missing_required_field') {
+        return res.badRequest(err.message, { errorCode: 'missing_required_field' });
+      }
       return res.json({ error: `Failed to create profile: ${err.message}`, errorCode: 'profile_create_failed' }, 500);
     }
 
@@ -273,7 +278,15 @@ export function registerEmployeeRoutes(router, {
     if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
 
     const allowed = req.user.role === 'employer' ? ALL_EDITABLE : EMPLOYEE_EDITABLE;
-    const profile = employeesStore.update(user.id, req.body ?? {}, allowed);
+    let profile;
+    try {
+      profile = employeesStore.update(user.id, req.body ?? {}, allowed);
+    } catch (err) {
+      if (err.code === 'missing_required_field') {
+        return res.badRequest(err.message, { errorCode: 'missing_required_field' });
+      }
+      throw err;
+    }
     res.json({ ok: true, profile });
   }));
 
