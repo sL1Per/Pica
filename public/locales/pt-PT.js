@@ -191,6 +191,15 @@ export default {
   'punch.todayWorked':   'Hoje',
   'punch.weekWorked':    'Esta semana',
   'punch.todayBreak':    'pausa {dur}',
+  'punch.durLessThanMinute': 'menos de um minuto',
+  'punch.durMinutes': {
+    one:   '1 minuto',
+    other: '{count} minutos',
+  },
+  'punch.durHours': {
+    one:   '1 hora',
+    other: '{count} horas',
+  },
 
   'punch.queueWaiting': {
     one: '{count} marcação a aguardar sincronização',

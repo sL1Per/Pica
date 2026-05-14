@@ -14,6 +14,103 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.13] — 2026-05-15 — Break time on the dashboard widget + i18n for duration words
+
+### What's new
+
+**The "Today's hours" widget on the dashboard now shows the
+employee's total break time** as a small caption line under the
+big-number worked-hours figure, when there's break time to
+show. Single-uninterrupted-session days look unchanged.
+
+Layout (employee dashboard, when `brk > 0`):
+
+```
+8h 00m              ← .widget__bignum (unchanged)
+Daily target: 8h    ← existing target / clocked-in caption
+pausa 1h 0m         ← NEW (when break > 0); uses punch.todayBreak
+```
+
+**`formatDuration()` on the `/punch` page is now translated.**
+Before this release, the punch-page header rendered strings
+like `5 hours`, `1 hour`, `30 minutes`, `1 minute`, `less than
+a minute` straight from JavaScript without going through i18n,
+so the pt-PT locale leaked English. Three new translation
+groups cover this:
+
+- `punch.durLessThanMinute` (string)
+- `punch.durMinutes` (plural: one / other) — "1 minute" /
+  "{count} minutes" ↔ "1 minuto" / "{count} minutos"
+- `punch.durHours` (plural: one / other) — "1 hour" /
+  "{count} hours" ↔ "1 hora" / "{count} horas"
+
+`Intl.PluralRules` picks the form per locale; both en-US and
+pt-PT use `one` for 1 and `other` for everything else, which
+matches the existing `punch.queueWaiting`/`punch.queueSynced`
+pattern.
+
+### How it works
+
+`breakMsFromGroup(g)` in `public/index.js` mirrors the helpers
+in `punch.js` and `punches-today.js`, but works against the
+`{ pairs, openInPunch }` shape that `groupPunchesByEmployee()`
+already builds: sum the gap between consecutive pairs' out/in,
+plus the gap from the last closed pair's out to the
+currently-open in if there is one.
+
+`formatDuration()` in `public/punch.js` keeps the same branch
+shape but now calls `t('punch.durLessThanMinute')`,
+`tn('punch.durMinutes', n)`, and `tn('punch.durHours', n)`
+instead of the hardcoded English strings. The compact `${h}h
+${m}m` branch when both h and m are nonzero stays as-is —
+those are number+unit-letter tokens, identical across locales,
+already shared with the employer view's `humanDuration()`.
+
+### Files touched
+
+- `public/index.js` — `breakMsFromGroup(g)` helper;
+  `renderTodayHoursEmployee` appends a `widget__caption` line
+  with the break when `> 0`.
+- `public/punch.js` — `formatDuration` switched to `t` / `tn`
+  for the long-form duration phrases. `tn` was already imported
+  at the top of the file.
+- `public/locales/en-US.js`, `public/locales/pt-PT.js` — three
+  new keys (`punch.durLessThanMinute`, `punch.durMinutes` plural,
+  `punch.durHours` plural). pt-PT translations: "menos de um
+  minuto", "1 minuto" / "{count} minutos", "1 hora" / "{count}
+  horas".
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v34`
+  (`index.js`, `punch.js`, and both locale files are pre-cached).
+- `package.json` — version `0.22.13`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **The dashboard widget for employers (`widgets.workingToday`)
+  does not show per-row break time.** The widget already
+  renders one line per employee with their total today hours;
+  adding break per row would crowd the layout. If an employer
+  wants per-employee break, the dedicated `/punches/today` page
+  shows it. Out of scope.
+- **`humanDuration()` on the employer pages is still raw
+  English-shape tokens (`8h 0m`).** Those `h` and `m` suffixes
+  are short and conventionally untranslated in Portuguese
+  timekeeping UIs (Pica's pt-PT locale uses the same letters
+  elsewhere). If full translation is wanted later, that's a
+  bigger rework — change the suffix in every place
+  `${h}h ${m}m` appears across the codebase.
+- **No new tests.** `breakMsFromGroup` is the same algorithm as
+  `totalBreakMs` (already covered by
+  `tests/test-punch-totals.mjs`); the `formatDuration` change
+  is purely textual. `tests/test-i18n.mjs` was extended in
+  spirit by the new pluralized keys but no new assertion was
+  added — the existing plural-shape parity check catches any
+  category mismatch automatically.
+- **Stored punches in `data/` are not affected.** This is a
+  display-only change. Existing audit log entries, exports, and
+  CSV reports keep their wire formats.
+
+---
+
 ## [0.22.12] — 2026-05-15 — Break time on the employer's "today" view
 
 ### What's new

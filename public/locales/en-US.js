@@ -191,6 +191,15 @@ export default {
   'punch.todayWorked':   'Today',
   'punch.weekWorked':    'This week',
   'punch.todayBreak':    'break {dur}',
+  'punch.durLessThanMinute': 'less than a minute',
+  'punch.durMinutes': {
+    one:   '1 minute',
+    other: '{count} minutes',
+  },
+  'punch.durHours': {
+    one:   '1 hour',
+    other: '{count} hours',
+  },
 
   // Plural — queue badge.
   'punch.queueWaiting': {

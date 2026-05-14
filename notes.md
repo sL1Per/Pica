@@ -27,7 +27,7 @@
 - Add an feature / option to block day or days from being able to book vacations (employer is exception) (5)
 - Add email notifications
 - [**DONE**] On punches, on the same day, show break time. For example, clock in at 9am clock out at 12PM and then clock in at 1PM and clock out at 6PM, i want to see in the UI total work time was 8h and break of 1h (4)
-- Add employee name also to filters for the leaves (on opt of the state)
+- Add employee names also to filters for the leaves (on opt of the state). this is for the employer only view.
 - Add ability to upload files for justifications
 - Add profile picture every time the name appears in the UI except on headings.
 

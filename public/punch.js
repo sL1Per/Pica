@@ -497,11 +497,11 @@ function totalBreakMs(punches) {
 
 function formatDuration(ms) {
   const totalMins = Math.floor(ms / 60_000);
-  if (totalMins < 1) return 'less than a minute';
-  if (totalMins < 60) return totalMins === 1 ? '1 minute' : `${totalMins} minutes`;
+  if (totalMins < 1) return t('punch.durLessThanMinute');
+  if (totalMins < 60) return tn('punch.durMinutes', totalMins);
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
-  if (m === 0) return h === 1 ? '1 hour' : `${h} hours`;
+  if (m === 0) return tn('punch.durHours', h);
   return `${h}h ${m}m`;
 }
 

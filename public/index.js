@@ -119,6 +119,25 @@ function workedMsFromPairs(pairs) {
   return total;
 }
 
+/**
+ * Sum of break time between same-day sessions, in ms.
+ * A break is the gap between consecutive (out → next in) — including
+ * the gap from the last closed pair's out to a currently-open in.
+ * Mirrors the helper on /punch and /punches/today.
+ */
+function breakMsFromGroup(g) {
+  let total = 0;
+  for (let i = 1; i < g.pairs.length; i++) {
+    total += new Date(g.pairs[i].in.ts).getTime()
+           - new Date(g.pairs[i - 1].out.ts).getTime();
+  }
+  if (g.openInPunch && g.pairs.length > 0) {
+    const lastOut = g.pairs[g.pairs.length - 1].out.ts;
+    total += new Date(g.openInPunch.ts).getTime() - new Date(lastOut).getTime();
+  }
+  return Math.max(0, total);
+}
+
 /** Currently-working duration: from the open in-punch to now. */
 function openDurationMs(openInPunch) {
   if (!openInPunch) return 0;
@@ -353,9 +372,15 @@ function renderTodayHoursEmployee(widgetEl, todayPunches, workingTime) {
     captionHtml = `<div class="widget__caption">${escapeHtml(t('widgets.todayTarget', { target }))}</div>`;
   }
 
+  const brkMs = breakMsFromGroup(g);
+  const breakHtml = brkMs > 0
+    ? `<div class="widget__caption">${escapeHtml(t('punch.todayBreak', { dur: humanDuration(brkMs) }))}</div>`
+    : '';
+
   setWidgetBody(widgetEl, `
     <div class="widget__bignum">${wholeHrs}<span class="widget__bignum-suffix">h ${minStr}m</span></div>
     ${captionHtml}
+    ${breakHtml}
   `);
 }
 

@@ -5,24 +5,50 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.12._
+_Last touched in 0.22.13._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.12 (released 2026-05-15)
+- **Latest version:** 0.22.13 (released 2026-05-15)
 - **Test count:** 581 across 24 suites, all green (1 pre-existing
   TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
   count, unchanged by this release — see notes.md)
-- **Build artifact:** `pica-0.22.12-employer-break.zip`
+- **Build artifact:** `pica-0.22.13-widget-break-i18n.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.12)
+## What just shipped (0.22.13)
+
+Two display tweaks for break time:
+
+1. **Home-page widget for employees** now shows a break-time
+   caption under the big-number worked-hours when there's
+   break > 0. Uses the existing `punch.todayBreak` key so it
+   reads "break 1h 0m" in en-US and "pausa 1h 0m" in pt-PT
+   without new locale strings.
+2. **`formatDuration()` on `/punch` is now localized.** The
+   "5 hours / 1 hour / 30 minutes / less than a minute" strings
+   were hardcoded English; they now go through `t` / `tn`. New
+   keys: `punch.durLessThanMinute`, `punch.durMinutes` plural,
+   `punch.durHours` plural. pt-PT: "menos de um minuto", "{n}
+   minutos", "{n} horas".
+
+New helper `breakMsFromGroup(g)` in `public/index.js` mirrors
+the helpers in `punch.js` / `punches-today.js` but works
+against the `{ pairs, openInPunch }` shape that
+`groupPunchesByEmployee()` produces. CACHE_VERSION → v34
+(index.js, punch.js, and both locales pre-cached).
+
+The employer "Working today" widget on the home page does NOT
+show per-employee break — out of scope. Employers see per-row
+break on `/punches/today` instead.
+
+## What shipped in 0.22.12
 
 Follow-up to 0.22.11. The employer's `/punches/today` page now
 shows per-employee break time next to the worked-hours total
@@ -346,6 +372,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | CSP fix: OSM map tile renders again      | ✅ 0.22.10 |
 | —     | Same-day break time on the punch page    | ✅ 0.22.11 |
 | —     | Break time on the employer's today view  | ✅ 0.22.12 |
+| —     | Break on home widget + i18n duration words | ✅ 0.22.13 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 
