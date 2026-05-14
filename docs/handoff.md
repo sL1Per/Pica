@@ -5,24 +5,42 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.13._
+_Last touched in 0.22.14._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.13 (released 2026-05-15)
+- **Latest version:** 0.22.14 (released 2026-05-15)
 - **Test count:** 581 across 24 suites, all green (1 pre-existing
   TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
   count, unchanged by this release — see notes.md)
-- **Build artifact:** `pica-0.22.13-widget-break-i18n.zip`
+- **Build artifact:** `pica-0.22.14-employer-widget-break.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.13)
+## What just shipped (0.22.14)
+
+Follow-up to 0.22.13. The employer's home-page widget
+"Working today" now appends `· pausa Xh Ym` (pt-PT) /
+`· break Xh Ym` (en-US) to each employee's row detail when
+they have same-day break time. Applies to both the "Currently
+working" section (e.g. `since 13:00 · pausa 1h 0m`) and the
+"Done for the day" section (e.g.
+`09:00–12:00, 13:00–18:00 · pausa 1h 0m`).
+
+Implementation: reuses `breakMsFromGroup(g)` added in 0.22.13.
+No new locale strings (reuses `punch.todayBreak`).
+CACHE_VERSION → v35 (index.js pre-cached).
+
+This reverses the 0.22.13 Honest Disclosure that left the
+employer widget without break — operator wanted parity with
+the employee widget.
+
+## What shipped in 0.22.13
 
 Two display tweaks for break time:
 
@@ -373,6 +391,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Same-day break time on the punch page    | ✅ 0.22.11 |
 | —     | Break time on the employer's today view  | ✅ 0.22.12 |
 | —     | Break on home widget + i18n duration words | ✅ 0.22.13 |
+| —     | Break on employer "Working today" widget | ✅ 0.22.14 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

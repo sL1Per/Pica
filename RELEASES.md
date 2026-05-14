@@ -14,6 +14,57 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.14] — 2026-05-15 — Break time on the employer's "Working today" widget
+
+### What's new
+
+**The employer's home-page widget `widgets.workingToday` now
+surfaces break time** per employee, appended to each row's
+detail line when there's a break > 0:
+
+- Currently working: `since 13:00 · pausa 1h 0m`
+- Done for the day: `09:00–12:00, 13:00–18:00 · pausa 1h 0m`
+
+Single-uninterrupted-session rows are unchanged. Total
+worked-hours on the row aside is untouched. No layout change,
+no new translation keys (reuses `punch.todayBreak` from
+0.22.11).
+
+This reverses the Honest Disclosure in 0.22.13 that left the
+employer home widget without break — the user wanted parity
+with the employee home widget.
+
+### Files touched
+
+- `public/index.js` — `renderWorkingTodayEmployer` calls
+  `breakMsFromGroup(g)` (added in 0.22.13) and appends a
+  `· {todayBreak}` segment to each row's detail when the
+  helper returns a positive value. Both the "currently
+  working" and "done for the day" sections get the same
+  treatment.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v35`
+  (index.js is pre-cached).
+- `package.json` — version `0.22.14`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **The aside (right-side total) does not split into
+  worked + break.** It still shows the worked total only; the
+  break sits in the detail line under the name. This keeps the
+  visual hierarchy stable and matches the `/punches/today`
+  page's "worked · pausa Xh" pattern.
+- **No new tests.** Same algorithm as 0.22.13's
+  `breakMsFromGroup`, already covered indirectly by the test
+  suite for `totalBreakMs` (`tests/test-punch-totals.mjs`,
+  6 cases). The "currently working" path adds the last
+  closed-pair-out → open-in gap, which the helper already
+  handles correctly and matches what `/punch` does for the
+  same shape (open trailing session).
+- **No backend change.** Display-only, derived from data the
+  widget already fetches.
+
+---
+
 ## [0.22.13] — 2026-05-15 — Break time on the dashboard widget + i18n for duration words
 
 ### What's new

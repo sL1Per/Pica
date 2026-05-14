@@ -234,11 +234,14 @@ function renderWorkingTodayEmployer(widgetEl, punches, employeesById) {
     for (const g of working) {
       const inT = timeOnly(g.openInPunch.ts);
       const dur = humanDuration(openDurationMs(g.openInPunch) + workedMsFromPairs(g.pairs));
+      let detail = t('widgets.sinceTime', { time: inT });
+      const brk = breakMsFromGroup(g);
+      if (brk > 0) detail += ` · ${t('punch.todayBreak', { dur: humanDuration(brk) })}`;
       html += `
         <li class="widget__row">
           <div class="widget__row-main">
             <div class="widget__row-name">${escapeHtml(g.fullName || g.username || '—')}</div>
-            <div class="widget__row-detail">${escapeHtml(t('widgets.sinceTime', { time: inT }))}</div>
+            <div class="widget__row-detail">${escapeHtml(detail)}</div>
           </div>
           <div class="widget__row-aside">${escapeHtml(dur)}</div>
         </li>
@@ -254,11 +257,14 @@ function renderWorkingTodayEmployer(widgetEl, punches, employeesById) {
       const pairsText = g.pairs
         .map((p) => `${timeOnly(p.in.ts)}–${timeOnly(p.out.ts)}`)
         .join(', ');
+      let detail = pairsText;
+      const brk = breakMsFromGroup(g);
+      if (brk > 0) detail += ` · ${t('punch.todayBreak', { dur: humanDuration(brk) })}`;
       html += `
         <li class="widget__row">
           <div class="widget__row-main">
             <div class="widget__row-name">${escapeHtml(g.fullName || g.username || '—')}</div>
-            <div class="widget__row-detail">${escapeHtml(pairsText)}</div>
+            <div class="widget__row-detail">${escapeHtml(detail)}</div>
           </div>
           <div class="widget__row-aside">${escapeHtml(dur)}</div>
         </li>
