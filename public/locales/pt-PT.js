@@ -190,6 +190,7 @@ export default {
   'punch.summary':       'Resumo',
   'punch.todayWorked':   'Hoje',
   'punch.weekWorked':    'Esta semana',
+  'punch.todayBreak':    'pausa {dur}',
 
   'punch.queueWaiting': {
     one: '{count} marcação a aguardar sincronização',

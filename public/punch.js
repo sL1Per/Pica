@@ -365,7 +365,7 @@ let dailyHoursTarget = null;  // null until /api/settings/working-time lands
 
 function renderList(punches) {
   // Update the today-total label next to the section heading.
-  // Format: "5h 23m / 8h" if target known, else just "5h 23m".
+  // Format: "5h 23m / 8h · break 1h" (break segment only when > 0).
   const totalEl = document.getElementById('today-total');
   if (totalEl) {
     if (punches.length === 0) {
@@ -374,12 +374,15 @@ function renderList(punches) {
       totalEl.hidden = false;
       const worked = totalWorkedMs(punches);
       const workedStr = formatDuration(worked);
+      let line = workedStr;
       if (dailyHoursTarget != null && dailyHoursTarget > 0) {
-        const targetStr = `${dailyHoursTarget}h`;
-        totalEl.textContent = `${workedStr} / ${targetStr}`;
-      } else {
-        totalEl.textContent = workedStr;
+        line += ` / ${dailyHoursTarget}h`;
       }
+      const brk = totalBreakMs(punches);
+      if (brk > 0) {
+        line += ` · ${t('punch.todayBreak', { dur: formatDuration(brk) })}`;
+      }
+      totalEl.textContent = line;
     }
   }
 
@@ -468,6 +471,27 @@ function totalWorkedMs(punches) {
   }
   // Open session — count up to now.
   if (openIn != null) total += Date.now() - openIn;
+  return total;
+}
+
+/**
+ * Sum the break time between closed sessions on the same day.
+ * A break is the gap from an "out" punch to the next "in" punch.
+ * An open trailing session (no closing out yet) is not a break.
+ * Returns a milliseconds total; use formatDuration() to render.
+ */
+function totalBreakMs(punches) {
+  const sorted = [...punches].sort((a, b) => a.ts.localeCompare(b.ts));
+  let total = 0;
+  let lastOut = null;
+  for (const p of sorted) {
+    if (p.type === 'in' && lastOut != null) {
+      total += new Date(p.ts).getTime() - lastOut;
+      lastOut = null;
+    } else if (p.type === 'out') {
+      lastOut = new Date(p.ts).getTime();
+    }
+  }
   return total;
 }
 

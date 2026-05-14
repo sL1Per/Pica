@@ -5,22 +5,48 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.10._
+_Last touched in 0.22.11._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.10 (released 2026-05-10)
-- **Test count:** 575 across 23 suites, all green
-- **Build artifact:** `pica-0.22.10-csp-tile-fix.zip`
+- **Latest version:** 0.22.11 (released 2026-05-14)
+- **Test count:** 581 across 24 suites, all green (1 pre-existing
+  TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
+  count, unchanged by this release — see notes.md)
+- **Build artifact:** `pica-0.22.11-punch-break.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.10)
+## What just shipped (0.22.11)
+
+The `/punch` page now shows total break time alongside total
+worked time when there are two or more sessions on the same
+day. Example: in 09:00, out 12:00, in 13:00, out 18:00 →
+`8 hours / 8h · break 1 hour`. Single uninterrupted sessions
+look exactly as before (`8 hours / 8h`).
+
+New `totalBreakMs(punches)` helper in `public/punch.js` mirrors
+the existing `totalWorkedMs()` pairing logic — sums out→next-in
+gaps. New translation key `punch.todayBreak` in both locales.
+CACHE_VERSION → v33 (punch.js + locales pre-cached).
+
+New test suite `tests/test-punch-totals.mjs` covers the user's
+9/12/13/18 case, single sessions, three sessions with two
+breaks, server-newest-first input, open trailing session, and
+empty list — 6 cases. Tests follow the test-i18n.mjs pattern of
+re-implementing the function inline (Node can't import absolute
+browser paths).
+
+The employer's `/punches/today` view and the hours report don't
+surface break — out of scope for this drop, see RELEASES.md
+Honest Disclosures.
+
+## What shipped in 0.22.10
 
 Bugfix following the 0.22.9 punch-address feature: the OSM map
 preview on `/punch` was rendering broken in strict browsers
@@ -297,6 +323,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Time bank removed; missing-hours added   | ✅ 0.22.8 |
 | —     | Punches show approximate address         | ✅ 0.22.9 |
 | —     | CSP fix: OSM map tile renders again      | ✅ 0.22.10 |
+| —     | Same-day break time on the punch page    | ✅ 0.22.11 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

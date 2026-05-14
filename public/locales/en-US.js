@@ -190,6 +190,7 @@ export default {
   'punch.summary':       'Summary',
   'punch.todayWorked':   'Today',
   'punch.weekWorked':    'This week',
+  'punch.todayBreak':    'break {dur}',
 
   // Plural — queue badge.
   'punch.queueWaiting': {

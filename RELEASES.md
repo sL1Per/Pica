@@ -14,6 +14,93 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.11] — 2026-05-14 — Break time on the punch page
+
+### What's new
+
+**The punch page now shows total break time alongside total
+worked time** when the employee has more than one session on the
+same day. A "break" is the gap between an `out` punch and the
+next `in` punch within today's list.
+
+The today-total label in the "Today" section header now reads,
+for the user's example case (in 09:00, out 12:00, in 13:00, out
+18:00):
+
+    8 hours / 8h · break 1 hour
+
+The break segment only appears when break time is > 0; users
+with a single uninterrupted session see the existing
+`8 hours / 8h` exactly as before. Targets and the trailing
+"open session counts up to now" behaviour are unchanged.
+
+### How it works
+
+A new `totalBreakMs(punches)` helper in `public/punch.js` mirrors
+the existing `totalWorkedMs()` pairing logic, but instead of
+summing in→out pair durations it sums out→next-in gaps. The
+calculation is identical for the user's "morning + afternoon"
+case (it does not assume any particular shift shape — three
+sessions register two break gaps; an open trailing session
+contributes zero break).
+
+The translation key `punch.todayBreak` ("break {dur}" / "pausa
+{dur}") was added to both locales. Existing keys and the
+`fmtNumber`/`fmtHours` chain are untouched.
+
+### Files touched
+
+- `public/punch.js` — `totalBreakMs()` helper; `renderList()`
+  appends the break segment to the today-total label when the
+  helper returns a positive value.
+- `public/locales/en-US.js`, `public/locales/pt-PT.js` —
+  `punch.todayBreak` key.
+- `public/sw.js` — `CACHE_VERSION` bumped to `pica-cache-v33`
+  (pre-cached `punch.js` and `locales/*.js` both changed).
+- `tests/test-punch-totals.mjs` — new suite (6 cases): the
+  user's 9/12/13/18 example, single uninterrupted session, three
+  sessions with two breaks, server-newest-first input ordering,
+  open trailing session, and empty list. Follows the established
+  pattern (`test-i18n.mjs` style) of re-implementing frontend
+  functions inline because `public/*.js` uses absolute imports
+  Node's resolver rejects.
+- `package.json` — version `0.22.11`, releaseDate `2026-05-14`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **Today's punches page (`/punches/today`, the employer's
+  cross-employee view) does NOT show per-employee break time.**
+  Only the per-user `/punch` page. The employer view groups by
+  employee but only renders the punch list, not aggregated
+  totals; expanding it would also need a column for break and is
+  out of scope for this drop.
+- **Reports do not surface break time.** The hours report still
+  emits worked hours only. Break is computable from the punch
+  log if an operator wants it; baking it into the CSV would add
+  a column with mostly-zero values for full-shift employees and
+  no clear acceptance criterion (does a 5-minute walk between
+  buildings count? Pica can't know). Deferred until someone
+  actually asks for it.
+- **No backend change.** All math runs in the browser from the
+  punches `/api/punches/today` already returns. No new API, no
+  new storage. As a consequence: if a punch is queued offline
+  and not yet replayed, it does not contribute to either worked
+  or break time on the current page until the queue drains —
+  same as before this change.
+- **Negative or zero-length "breaks" are dropped silently.** If
+  the punch log has anomalies (e.g. two `out` in a row with no
+  intervening `in`, or an `in` chronologically before its
+  preceding `out`), the helper treats the gap as 0 and moves on.
+  This avoids surfacing negative numbers in the UI when data is
+  inconsistent; the underlying log is unchanged.
+- **The label uses a small dot separator (` · `) rather than a
+  new line.** On very narrow mobile widths the today-total may
+  wrap; the section header already handles wrapping (`align-items:
+  baseline`) so this is fine but not gorgeous. If it becomes an
+  issue, we can split into two stacked lines later.
+
+---
+
 ## [0.22.10] — 2026-05-10 — Bugfix: punch-page map tile blocked by CSP
 
 Patch release. Same-day as 0.22.9.
