@@ -14,6 +14,88 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.12] — 2026-05-15 — Break time on the employer's "today" view
+
+### What's new
+
+**The employer's `/punches/today` page now shows per-employee
+break time** next to the worked-hours total in each employee's
+group header, matching what 0.22.11 added on the per-user
+`/punch` page. When an employee has more than one session
+today, the header reads, for example:
+
+    Alice Example                    8h 0m · pausa 1h 0m
+
+The break segment only appears when break time is > 0; an
+employee with a single uninterrupted session sees the existing
+`8h 0m` exactly as before. Sort order, group expansion, and
+punch list rendering are unchanged.
+
+The label uses the same `punch.todayBreak` translation key
+introduced in 0.22.11 (en-US: "break {dur}"; pt-PT: "pausa
+{dur}"), so the page is fully translated in both locales
+without adding new keys.
+
+### How it works
+
+A new `breakMs(punches)` helper in `public/punches-today.js`
+mirrors the helper added to `public/punch.js` in 0.22.11 — sums
+out→next-in gaps. The two files keep their own copies on
+purpose: each page is a self-contained ES module loaded
+directly by the browser, and Pica has no shared frontend bundle
+to import from. If a third surface needs the same math later
+we'll factor a `/punch-totals.js` helper module, but two
+copies is below the threshold where that pays off.
+
+The compact `humanDuration()` already used on the page (`8h 0m`
+/ `30m`) is reused for the break value, so the two segments
+share one format on this page. The `/punch` page keeps its
+existing chattier `formatDuration()` ("5 hours" / "1 hour") —
+matching the page's larger header style rather than the
+employer view's denser per-employee row.
+
+### Files touched
+
+- `public/punches-today.js` — `breakMs()` helper; `renderGroup`
+  appends the break segment to the hours label when the helper
+  returns a positive value. `humanDuration()` is unchanged.
+- `package.json` — version `0.22.12`, releaseDate `2026-05-15`.
+
+No `CACHE_VERSION` bump: `punches-today.js` is NOT in the
+service worker's `PRECACHE_URLS` list (see `public/sw.js`).
+The runtime network-first handler will refresh it on the next
+navigation.
+
+No locale files changed — the `punch.todayBreak` key from
+0.22.11 covers both pages.
+
+No new tests: the logic is byte-identical to the
+`totalBreakMs()` already covered by `tests/test-punch-totals.mjs`
+(6 cases). Adding a duplicate suite for the same algorithm
+would only verify that copy-paste worked.
+
+### What this does NOT do (Honest Disclosures)
+
+- **Cross-employee total break is not summed.** The page has no
+  "team total" line; if it did, summing breaks across employees
+  would be misleading (one person's break is not the other's
+  break). Out of scope.
+- **Hours reports still don't surface break time.** Same as the
+  0.22.11 disclosure — break is computable from the punch log
+  if an operator wants it; baking it into the CSV adds a
+  mostly-zero column for full-shift employees. Deferred until
+  someone actually asks.
+- **The two copies of the break helper will drift if one is
+  changed without the other.** The risk is low — the algorithm
+  is six lines and the test suite covers the shape. If/when a
+  third caller appears, factor to a shared module.
+- **The break value reflects only punches the server returned.**
+  Offline punches that haven't yet drained from the per-user
+  queue do not contribute to either worked or break time —
+  same constraint as 0.22.11 and every prior page on this data.
+
+---
+
 ## [0.22.11] — 2026-05-14 — Break time on the punch page
 
 ### What's new

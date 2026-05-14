@@ -5,24 +5,46 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.11._
+_Last touched in 0.22.12._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.11 (released 2026-05-14)
+- **Latest version:** 0.22.12 (released 2026-05-15)
 - **Test count:** 581 across 24 suites, all green (1 pre-existing
   TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
   count, unchanged by this release — see notes.md)
-- **Build artifact:** `pica-0.22.11-punch-break.zip`
+- **Build artifact:** `pica-0.22.12-employer-break.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.11)
+## What just shipped (0.22.12)
+
+Follow-up to 0.22.11. The employer's `/punches/today` page now
+shows per-employee break time next to the worked-hours total
+in each group header. Same `punch.todayBreak` translation key
+from 0.22.11 (en-US "break {dur}" / pt-PT "pausa {dur}") — no
+new locale strings.
+
+Implementation: `breakMs(punches)` helper in
+`public/punches-today.js` mirroring the one in `public/punch.js`.
+The compact `humanDuration()` already used on this page is
+reused for the break segment, so worked + break share one
+format on the employer view ("8h 0m · pausa 1h 0m").
+
+No CACHE_VERSION bump: `punches-today.js` is not in the SW
+pre-cache list (runtime network-first handles it). No new
+tests: the algorithm is byte-identical to the helper covered
+by `tests/test-punch-totals.mjs` (0.22.11).
+
+Hours reports still don't surface break — same scope decision
+as 0.22.11.
+
+## What shipped in 0.22.11
 
 The `/punch` page now shows total break time alongside total
 worked time when there are two or more sessions on the same
@@ -42,9 +64,8 @@ empty list — 6 cases. Tests follow the test-i18n.mjs pattern of
 re-implementing the function inline (Node can't import absolute
 browser paths).
 
-The employer's `/punches/today` view and the hours report don't
-surface break — out of scope for this drop, see RELEASES.md
-Honest Disclosures.
+The employer's `/punches/today` view did not surface break in
+0.22.11 — that gap was closed in 0.22.12.
 
 ## What shipped in 0.22.10
 
@@ -324,6 +345,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Punches show approximate address         | ✅ 0.22.9 |
 | —     | CSP fix: OSM map tile renders again      | ✅ 0.22.10 |
 | —     | Same-day break time on the punch page    | ✅ 0.22.11 |
+| —     | Break time on the employer's today view  | ✅ 0.22.12 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

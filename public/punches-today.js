@@ -39,6 +39,25 @@ function workedMs(punches) {
   return Math.max(0, total);
 }
 
+/**
+ * Sum the break time between closed sessions in the same day.
+ * A break is the gap from an "out" punch to the next "in" punch.
+ * Mirror of the helper on the /punch page (see public/punch.js).
+ */
+function breakMs(punches) {
+  let total = 0;
+  let lastOut = null;
+  for (const p of punches) {
+    if (p.type === 'in' && lastOut != null) {
+      total += new Date(p.ts).getTime() - lastOut;
+      lastOut = null;
+    } else if (p.type === 'out') {
+      lastOut = new Date(p.ts).getTime();
+    }
+  }
+  return Math.max(0, total);
+}
+
 function humanDuration(ms) {
   const mins = Math.round(ms / 60000);
   const h = Math.floor(mins / 60);
@@ -57,7 +76,10 @@ function renderGroup(name, username, punches) {
   nameEl.textContent = name || username;
   const hoursEl = document.createElement('span');
   hoursEl.className = 'group__hours';
-  hoursEl.textContent = humanDuration(workedMs(punches));
+  let line = humanDuration(workedMs(punches));
+  const brk = breakMs(punches);
+  if (brk > 0) line += ` · ${t('punch.todayBreak', { dur: humanDuration(brk) })}`;
+  hoursEl.textContent = line;
   header.appendChild(nameEl);
   header.appendChild(hoursEl);
   section.appendChild(header);
