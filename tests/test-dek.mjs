@@ -33,5 +33,18 @@ await test('rejects non-32-byte inputs', () => {
   assert.throws(() => wrapDek(randomBytes(32), randomBytes(16), 'passphrase'));
 });
 
+await test('ciphertext tampering is detected', () => {
+  const kek = randomBytes(32);
+  const w = wrapDek(randomBytes(32), kek, 'passphrase');
+  const blob = Buffer.from(w, 'base64');
+  blob[12] ^= 0x01; // flip a bit in the first ciphertext byte
+  assert.throws(() => unwrapDek(blob.toString('base64'), kek, 'passphrase'));
+});
+
+await test('unwrapDek rejects a non-32-byte kek', () => {
+  const w = wrapDek(randomBytes(32), randomBytes(32), 'passphrase');
+  assert.throws(() => unwrapDek(w, randomBytes(16), 'passphrase'));
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
