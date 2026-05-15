@@ -111,10 +111,12 @@ const auditStore = createAuditStore({
   logger: log,
 });
 
-// Process-wide flags. After a restore, `restoreCompleted` flips true
-// and the request handler short-circuits all routes (except a small
-// allowlist) with 503. Cleared only by restarting the process — which
-// is the point: the in-memory stores need to be reconstructed.
+// Process-wide lockdown flags.
+//   restoreCompleted: flips true after a restore; cleared ONLY by a process
+//     restart (the in-memory stores are stale until then).
+//   passphraseResetRequired: true when the server unlocked via the recovery
+//     code; the /api/security/passphrase handler clears it in-process once a
+//     new passphrase is set, so normal operation resumes without a restart.
 const serverState = { restoreCompleted: false, passphraseResetRequired: mustResetPassphrase };
 
 const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
@@ -286,6 +288,10 @@ async function handle(nodeReq, nodeRes) {
     }
   }
 
+  // Recovery-code unlock lockdown: the master key is live but the passphrase
+  // slot is no longer trusted. Force the operator to set a new passphrase
+  // before anything else runs. Allowlist below is the minimum the reset page
+  // needs; cleared in-process by /api/security/passphrase on success.
   if (serverState.passphraseResetRequired && isApiEndpoint(nodeReq.path)) {
     const allowed = nodeReq.path === '/api/security/passphrase'
                  || nodeReq.path === '/api/logout'
