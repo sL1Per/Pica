@@ -73,8 +73,9 @@ const configPath = path.join(__dirname, 'config.json');
 // ----------------------------------------------------------------------------
 
 let masterKey;
+let mustResetPassphrase = false;
 try {
-  masterKey = await initMasterKey(config, configPath, log);
+  ({ masterKey, mustResetPassphrase } = await initMasterKey(config, configPath, log));
 } catch (err) {
   log.error(err.message);
   process.exit(1);
@@ -114,7 +115,7 @@ const auditStore = createAuditStore({
 // and the request handler short-circuits all routes (except a small
 // allowlist) with 503. Cleared only by restarting the process — which
 // is the point: the in-memory stores need to be reconstructed.
-const serverState = { restoreCompleted: false };
+const serverState = { restoreCompleted: false, passphraseResetRequired: mustResetPassphrase };
 
 const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
 // Password operations (self-service change + employer-initiated reset).
@@ -281,6 +282,18 @@ async function handle(nodeReq, nodeRes) {
       return nodeRes.serviceUnavailable(
         'Restore is complete — please restart Pica to use the restored data.',
         { errorCode: 'restore_pending_restart' },
+      );
+    }
+  }
+
+  if (serverState.passphraseResetRequired && isApiEndpoint(nodeReq.path)) {
+    const allowed = nodeReq.path === '/api/security/passphrase'
+                 || nodeReq.path === '/api/logout'
+                 || nodeReq.path === '/api/me';
+    if (!allowed) {
+      return nodeRes.serviceUnavailable(
+        'Unlocked via recovery code — set a new passphrase to continue.',
+        { errorCode: 'passphrase_reset_required' },
       );
     }
   }
