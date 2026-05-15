@@ -46,5 +46,26 @@ await test('unwrapDek rejects a non-32-byte kek', () => {
   assert.throws(() => unwrapDek(w, randomBytes(16), 'passphrase'));
 });
 
+const { generateRecoveryCode, normalizeRecoveryCode } = await import('../src/crypto/dek.js');
+
+await test('generated code is 8 groups of 4 Crockford chars', () => {
+  const code = generateRecoveryCode();
+  assert.match(code, /^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){7}$/);
+});
+
+await test('generated codes are unique', () => {
+  assert.notEqual(generateRecoveryCode(), generateRecoveryCode());
+});
+
+await test('normalize folds case, dashes, and Crockford ambiguities', () => {
+  assert.equal(normalizeRecoveryCode('abcd-efgh'), 'ABCDEFGH');
+  assert.equal(normalizeRecoveryCode('o0 i1 l1'), '001111');
+  assert.equal(normalizeRecoveryCode(' xxxx-xxxx '), 'XXXXXXXX');
+});
+
+await test('a generated code normalizes to a 32-char secret', () => {
+  assert.equal(normalizeRecoveryCode(generateRecoveryCode()).length, 32);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

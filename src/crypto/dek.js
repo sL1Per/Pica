@@ -41,3 +41,33 @@ export function unwrapDek(wrappedB64, kek, slot) {
   d.setAAD(aadFor(slot));
   return Buffer.concat([d.update(ct), d.final()]);
 }
+
+// Crockford base32 — excludes I L O U to avoid transcription ambiguity.
+const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+function toCrockford(bytes) {
+  let bits = 0, value = 0, out = '';
+  for (const b of bytes) {
+    value = ((value << 8) | b) >>> 0;
+    bits += 8;
+    while (bits >= 5) {
+      out += CROCKFORD[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) out += CROCKFORD[(value << (5 - bits)) & 31];
+  return out;
+}
+
+/** 160-bit recovery code, grouped XXXX-…-XXXX (8 groups of 4). */
+export function generateRecoveryCode() {
+  return toCrockford(randomBytes(20)).match(/.{1,4}/g).join('-');
+}
+
+/** Canonical form fed to scrypt: uppercase, no separators, Crockford-folded. */
+export function normalizeRecoveryCode(input) {
+  return String(input)
+    .toUpperCase()
+    .replace(/[\s-]/g, '')
+    .replace(/[ILO]/g, (c) => (c === 'O' ? '0' : '1'));
+}
