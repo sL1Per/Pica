@@ -748,6 +748,7 @@ export default {
   // ============================================================
   'errors.internal_error': 'Something went wrong on our end. Please try again.',
   'errors.profile_create_failed': 'Could not create the employee profile.',
+  'errors.profile_required': 'Complete the required profile fields before uploading a picture.',
   'errors.missing_required_field': 'Please fill in all required fields.',
   'errors.rate_limited': 'Too many attempts. Please wait a moment and try again.',
   'errors.setup_already_done': 'Setup has already been completed.',

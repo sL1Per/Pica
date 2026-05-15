@@ -363,11 +363,25 @@ export function registerEmployeeRoutes(router, {
     if (file.data.length > MAX_PICTURE_BYTES) {
       return res.badRequest(`Picture exceeds ${MAX_PICTURE_BYTES} bytes`, { errorCode: 'invalid_value' });
     }
+    // A picture only makes sense once the profile exists: it's shown
+    // next to profile data in the list/summary views, and an orphan
+    // <id>.picture with no <id>.json never surfaces there. We used to
+    // auto-create an empty profile here, but profile fields became
+    // mandatory (0.22.6) so create({}) now throws missing_required_field
+    // → an unhandled 500. Instead, ask the user to fill the profile
+    // first, with a translated, actionable message.
     if (!employeesStore.exists(req.params.id)) {
-      // Create an empty profile first, so the picture has something to attach to.
-      employeesStore.create(req.params.id, {});
+      return res.badRequest(
+        'Complete the required profile fields before uploading a picture.',
+        { errorCode: 'profile_required' },
+      );
     }
-    employeesStore.writePicture(req.params.id, file.data);
+    // Defense-in-depth: never let a storage throw become a 500 here.
+    try {
+      employeesStore.writePicture(req.params.id, file.data);
+    } catch (err) {
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
+    }
     res.json({ ok: true });
   }));
 

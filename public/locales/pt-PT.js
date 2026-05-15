@@ -747,6 +747,7 @@ export default {
   // ============================================================
   'errors.internal_error': 'Ocorreu um erro inesperado. Por favor tente novamente.',
   'errors.profile_create_failed': 'Não foi possível criar o perfil do funcionário.',
+  'errors.profile_required': 'Preencha os campos obrigatórios do perfil antes de carregar uma foto.',
   'errors.missing_required_field': 'Por favor preencha todos os campos obrigatórios.',
   'errors.rate_limited': 'Demasiadas tentativas. Aguarde um momento e tente novamente.',
   'errors.setup_already_done': 'A configuração inicial já foi concluída.',

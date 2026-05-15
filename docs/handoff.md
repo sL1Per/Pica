@@ -5,24 +5,42 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.15._
+_Last touched in 0.22.16._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.15 (released 2026-05-15)
-- **Test count:** 605 across 25 suites, all green (1 pre-existing
+- **Latest version:** 0.22.16 (released 2026-05-15)
+- **Test count:** 611 across 26 suites, all green (1 pre-existing
   TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
   count, unchanged by this release — see notes.md)
-- **Build artifact:** `pica-0.22.15-blocked-days.zip`
+- **Build artifact:** `pica-0.22.16-picture-upload-fix.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.15)
+## What just shipped (0.22.16)
+
+Bugfix. `PUT /api/employees/:id/picture` returned a 500
+(`missing_required_field: fullName`) when the employee had no
+profile yet: the route auto-created an empty profile, and
+`create({})` throws since profile fields became mandatory
+(0.22.6). Now: no profile → **HTTP 400 `profile_required`**
+with a translated, actionable message; `writePicture` wrapped
+so the endpoint can never 500; frontend runs the upload error
+through `translateError`. New route-level suite
+`test-employee-picture-route.mjs` (5 cases). CACHE_VERSION →
+v37 (locale files pre-cached).
+
+Design note: a picture is only ever shown beside profile data,
+so requiring the profile first is intended — the fix turns the
+crash into a clear message, it does not make pictures
+standalone.
+
+## What shipped in 0.22.15
 
 **Blocked days** — employers define date ranges on which
 employees cannot book leave (company events, all-hands, peak
@@ -421,6 +439,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Break on home widget + i18n duration words | ✅ 0.22.13 |
 | —     | Break on employer "Working today" widget | ✅ 0.22.14 |
 | —     | Blocked days (employer no-leave dates)   | ✅ 0.22.15 |
+| —     | Fix: picture upload 500 → 400 + message  | ✅ 0.22.16 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

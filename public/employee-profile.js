@@ -155,7 +155,7 @@ pictureIn.addEventListener('change', async () => {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || `Upload failed (${res.status})`);
+      throw new Error(translateError(data.errorCode, data.error || `Upload failed (${res.status})`));
     }
     renderAvatar(target, true);
     showMessage(message, 'Picture updated', 'success');

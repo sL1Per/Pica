@@ -30,6 +30,7 @@
 - Add employee names also to filters for the leaves (on opt of the state). this is for the employer only view.
 - Add ability to upload files for justifications
 - Add profile picture every time the name appears in the UI except on headings.
+- Add an option to reset the masterkey
 
 ### Translations
 

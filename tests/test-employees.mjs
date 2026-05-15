@@ -272,6 +272,21 @@ try {
     store.deletePicture('00000000-0000-4000-8000-000000000099'); // must not throw
   });
 
+  // Storage invariant: pictures are a standalone encrypted file keyed
+  // by id; writePicture/hasPicture/readPicture are profile-independent.
+  // This is exactly WHY the route (not the store) must enforce the
+  // "profile required before picture" policy — see
+  // test-employee-picture-route.mjs and the 0.22.16 fix.
+  await test('picture works for an id with NO profile', () => {
+    const orphanId = '9c9c9c9c-9c9c-4c9c-8c9c-9c9c9c9c9c9c';
+    assert.equal(store.exists(orphanId), false);
+    store.writePicture(orphanId, fakeJpeg);          // must not throw
+    assert.equal(store.hasPicture(orphanId), true);
+    assert.deepEqual(store.readPicture(orphanId), fakeJpeg);
+    assert.equal(store.exists(orphanId), false);     // still no profile JSON
+    store.deletePicture(orphanId);
+  });
+
   // --------------------------------------------------------------------------
   console.log('\nAAD binding — ciphertext swap prevention');
   // --------------------------------------------------------------------------

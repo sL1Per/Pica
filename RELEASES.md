@@ -14,6 +14,76 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.16] — 2026-05-15 — Bugfix: picture upload 500 when no profile exists
+
+### What was wrong
+
+`PUT /api/employees/:id/picture` returned **HTTP 500
+(`missing_required_field: fullName`)** whenever the target
+employee had no profile JSON yet. The route auto-created an
+empty profile (`employeesStore.create(id, {})`) "so the picture
+had something to attach to" — but once profile fields became
+mandatory in 0.22.6, `create({})` throws, and nothing caught
+it. Every picture upload for a freshly-created user (account
+exists, profile not yet filled) crashed with an opaque 500.
+
+### What's fixed
+
+The route no longer tries to create a profile. Instead:
+
+- **No profile yet → HTTP 400** with `errorCode:
+  profile_required` and a clear, translated message: "Complete
+  the required profile fields before uploading a picture."
+  (en-US / pt-PT). This is the correct product behavior — a
+  picture only shows next to profile data in the list and
+  summary views; an orphan `<id>.picture` with no `<id>.json`
+  never surfaces there anyway.
+- **`writePicture` is wrapped in try/catch** → a storage throw
+  maps to a 400, so this endpoint can never 500 again.
+- **Frontend** (`employee-profile.js`) now runs the upload
+  failure through `translateError(errorCode, fallback)` — the
+  same path the profile-save handler already used — so the
+  message is localized instead of showing the raw English
+  server string.
+
+### Files touched
+
+- `src/routes/employees.js` — replace `create({})` with a
+  `!exists → 400 profile_required` guard; wrap `writePicture`.
+- `public/employee-profile.js` — picture-upload error path uses
+  `translateError`.
+- `public/locales/en-US.js`, `pt-PT.js` — new
+  `errors.profile_required` key.
+- `public/sw.js` — `CACHE_VERSION` → `pica-cache-v37` (locale
+  files are pre-cached).
+- `tests/test-employee-picture-route.mjs` — new route-level
+  suite (5 cases): no-profile→400, profile→200, writePicture
+  throw→400 (never 500), no-file→400, bad-id→400.
+- `tests/test-employees.mjs` — added a storage-level assertion
+  that pictures are profile-independent (documents WHY the
+  route, not the store, owns the policy).
+- `package.json` — version `0.22.16`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **It does not let you upload a picture before the profile
+  exists.** That was considered (make the picture truly
+  standalone) but rejected: the picture is only ever rendered
+  beside profile data, so a picture without a profile is dead
+  weight the user can't see. Requiring the profile first is the
+  intended workflow; the fix just makes that requirement a
+  clear message instead of a crash.
+- **It does not backfill or repair profiles** with empty
+  mandatory fields created before 0.22.6. Those still load and
+  accept picture uploads (the profile JSON exists, so the guard
+  passes); only the *no-profile-at-all* case is gated. Updating
+  such a profile still requires filling the mandatory fields,
+  unchanged from 0.22.6.
+- **No new audit event.** Picture upload was not audited before
+  and still isn't; this is a pure bug/UX fix, no behavior added.
+
+---
+
 ## [0.22.15] — 2026-05-15 — Blocked days (employer-defined no-leave dates)
 
 ### What's new
