@@ -54,6 +54,7 @@ await test('generated code is 8 groups of 4 Crockford chars', () => {
 });
 
 await test('generated codes are unique', () => {
+  // sanity check only; collision probability ≈ 2^-160
   assert.notEqual(generateRecoveryCode(), generateRecoveryCode());
 });
 
@@ -65,6 +66,12 @@ await test('normalize folds case, dashes, and Crockford ambiguities', () => {
 
 await test('a generated code normalizes to a 32-char secret', () => {
   assert.equal(normalizeRecoveryCode(generateRecoveryCode()).length, 32);
+});
+
+await test('normalizeRecoveryCode is idempotent', () => {
+  const once = normalizeRecoveryCode('o-l-i-u-ABCD-efgh');
+  assert.equal(normalizeRecoveryCode(once), once);
+  assert.match(once, /^[0-9A-HJKMNP-TV-Z]+$/); // U folded → alphabet-clean
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

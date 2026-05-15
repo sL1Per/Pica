@@ -46,6 +46,10 @@ export function unwrapDek(wrappedB64, kek, slot) {
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
 function toCrockford(bytes) {
+  // Private: only called with randomBytes(20). 160 bits = 32×5 with no
+  // remainder, so the trailing partial-symbol branch never fires here;
+  // the guard makes a future misuse fail loudly instead of silently.
+  if (bytes.length !== 20) throw new RangeError('toCrockford expects exactly 20 bytes');
   let bits = 0, value = 0, out = '';
   for (const b of bytes) {
     value = ((value << 8) | b) >>> 0;
@@ -64,10 +68,10 @@ export function generateRecoveryCode() {
   return toCrockford(randomBytes(20)).match(/.{1,4}/g).join('-');
 }
 
-/** Canonical form fed to scrypt: uppercase, no separators, Crockford-folded. */
+/** Canonical form fed to scrypt: uppercase, no separators, Crockford-folded (I/L→1, O→0, U→V). */
 export function normalizeRecoveryCode(input) {
   return String(input)
     .toUpperCase()
     .replace(/[\s-]/g, '')
-    .replace(/[ILO]/g, (c) => (c === 'O' ? '0' : '1'));
+    .replace(/[ILOU]/g, (c) => (c === 'O' ? '0' : c === 'U' ? 'V' : '1'));
 }
