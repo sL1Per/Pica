@@ -94,5 +94,25 @@ await test('happy path re-wraps the DEK under the new passphrase', async () => {
   fs.rmSync(f.dir, { recursive: true, force: true });
 });
 
+await test('missing currentPassphrase → 400 required', async () => {
+  const f = await fixture();
+  const res = await call(f.router, 'POST', '/api/security/passphrase',
+    { user: { id: 'm', role: 'employer' }, body: { newPassphrase: 'new-pass-123' } });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.errorCode, 'required');
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
+await test('corrupt config is NOT masked as wrong passphrase (propagates)', async () => {
+  const f = await fixture();
+  const cfg = JSON.parse(fs.readFileSync(f.configPath, 'utf8'));
+  cfg.security.wraps.passphrase.wrapped = 'AAAA'; // truncated → structural error
+  fs.writeFileSync(f.configPath, JSON.stringify(cfg));
+  await assert.rejects(() => call(f.router, 'POST', '/api/security/passphrase',
+    { user: { id: 'm', role: 'employer' },
+      body: { currentPassphrase: 'current-pass', newPassphrase: 'brand-new-pass' } }));
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

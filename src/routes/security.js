@@ -6,6 +6,17 @@ import { deriveKek, newKdf, getSlot, setSlot, writeConfigAtomic } from '../crypt
 
 const MIN_PASSPHRASE = 8;
 
+// A wrong passphrase manifests ONLY as an AES-GCM authentication failure.
+// Structural errors (corrupt slot, malformed kdf, truncated wrapped value)
+// must propagate as a 500, not be masked as a 400 "wrong passphrase".
+// Mirrors the same-named guard in src/crypto/masterkey.js by design.
+function isAuthFailure(err) {
+  return /authenticate|bad decrypt/i.test((err && err.message) || '');
+}
+
+// Read the config fresh from disk on every call: another security op
+// (recovery-code add, rotate) may have rewritten the security block since
+// startup, and writeConfigAtomic's rename makes a torn read impossible.
 function readConfig(configPath) {
   return JSON.parse(fs.readFileSync(configPath, 'utf8'));
 }
@@ -21,7 +32,10 @@ export function registerSecurityRoutes(router, deps) {
     try {
       const kek = await deriveKek(passphrase, slot.kdf);
       return unwrapDek(slot.wrapped, kek, 'passphrase');
-    } catch { return null; }
+    } catch (err) {
+      if (isAuthFailure(err)) return null; // wrong passphrase
+      throw err; // structural corruption — surface as 500, don't mask
+    }
   }
 
   router.post('/api/security/passphrase', employer(async (req, res) => {
@@ -29,6 +43,9 @@ export function registerSecurityRoutes(router, deps) {
     if (typeof newPassphrase !== 'string' || newPassphrase.length < MIN_PASSPHRASE) {
       return res.badRequest(`Passphrase must be at least ${MIN_PASSPHRASE} characters`,
         { errorCode: 'passphrase_too_short' });
+    }
+    if (typeof currentPassphrase !== 'string' || currentPassphrase.length === 0) {
+      return res.badRequest('Current passphrase is required', { errorCode: 'required' });
     }
     const config = readConfig(configPath);
     const dek = await dekFromPassphrase(config.security, currentPassphrase);
@@ -41,7 +58,9 @@ export function registerSecurityRoutes(router, deps) {
     setSlot(config.security, 'passphrase', kdf, wrapDek(dek, kek, 'passphrase'));
     writeConfigAtomic(configPath, config);
 
-    // Clearing the recovery-reset lock (this endpoint is allowed during it).
+    // If the operator reached here via a recovery-code unlock (server in the
+    // passphrase-reset lockdown), setting a proper passphrase satisfies that
+    // obligation — clear the lock so normal operation resumes without a restart.
     if (serverState) serverState.passphraseResetRequired = false;
 
     auditStore?.appendRecord({
