@@ -1,4 +1,5 @@
 import { LEAVE_TYPES_LIST, LEAVE_UNITS_LIST } from '../storage/leaves.js';
+import { findBlockingRange } from '../storage/org-settings.js';
 import { auditContext } from '../storage/audit.js';
 
 /**
@@ -87,7 +88,11 @@ export function registerLeaveRoutes(router, {
           anonymized: true,
         };
       });
-    res.json({ leaves });
+    // Blocked ranges are company policy, not personal data — every
+    // authenticated user gets the full list so the calendar can mark
+    // them. (Only the employer can WRITE them, via PUT /api/settings/org.)
+    const blockedRanges = orgSettingsStore.get().leaves.blockedRanges ?? [];
+    res.json({ leaves, blockedRanges });
   }));
 
   // --------------------------------------------------------------------------
@@ -157,6 +162,28 @@ export function registerLeaveRoutes(router, {
     }
     if (!LEAVE_UNITS_LIST.includes(unit)) {
       return res.badRequest(`unit must be one of: ${LEAVE_UNITS_LIST.join(', ')}`, { errorCode: 'invalid_value' });
+    }
+
+    // Blocked-day enforcement. The employer is never blocked (they set the
+    // policy and may need to book on a company day themselves). Sick leave
+    // is exempt because it is non-discretionary — you cannot choose not to
+    // be ill on an all-hands day. Every other type is refused if it touches
+    // an employer-blocked range.
+    if (req.user.role !== 'employer' && type !== 'sick') {
+      const blocked = findBlockingRange(
+        { unit, start, end },
+        orgSettingsStore.get().leaves.blockedRanges,
+      );
+      if (blocked) {
+        const span = blocked.start === blocked.end
+          ? blocked.start
+          : `${blocked.start} → ${blocked.end}`;
+        const named = blocked.label ? `${blocked.label} (${span})` : span;
+        return res.badRequest(
+          `Leave cannot be booked: ${named} is blocked by your employer.`,
+          { errorCode: 'leave_day_blocked' },
+        );
+      }
     }
 
     // Cap enforcement: refuse to create if approving this request would push

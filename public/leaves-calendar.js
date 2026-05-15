@@ -38,6 +38,7 @@ const WEEKDAYS = ['mon','tue','wed','thu','fri','sat','sun'];
 
 let me = null;
 let allLeaves = [];
+let blockedRanges = [];  // employer-defined no-leave ranges (company policy)
 let cursor = new Date(); // which month is being viewed
 
 // -- Date helpers -----------------------------------------------------------
@@ -87,6 +88,18 @@ function leavesForDay(date) {
   return allLeaves.filter((l) => leaveTouches(l, date));
 }
 
+/**
+ * The first blocked range covering `date`, or null. Ranges are inclusive
+ * "YYYY-MM-DD" spans; lexicographic compare is correct for that format.
+ */
+function blockedForDay(date) {
+  const s = ymd(date);
+  for (const r of blockedRanges) {
+    if (r.start <= s && s <= r.end) return r;
+  }
+  return null;
+}
+
 // -- Rendering --------------------------------------------------------------
 
 function renderMonth() {
@@ -130,6 +143,18 @@ function renderMonth() {
     num.textContent = date.getDate();
     cell.appendChild(num);
 
+    const blk = blockedForDay(date);
+    if (blk) {
+      cell.classList.add('cal-day--blocked');
+      const tag = document.createElement('div');
+      tag.className = 'cal-day__blocked';
+      tag.textContent = blk.label || t('calendar.blocked');
+      tag.title = blk.label
+        ? `${blk.label} · ${t('calendar.blocked')}`
+        : t('calendar.blocked');
+      cell.appendChild(tag);
+    }
+
     const dayLeaves = leavesForDay(date);
     for (const leave of dayLeaves) {
       cell.appendChild(renderBar(leave));
@@ -151,10 +176,11 @@ function openDetailsForDate(dateStr) {
   // current dataset (re-renders after month changes pull from allLeaves).
   const date = parseYmd(dateStr);
   const dayLeaves = leavesForDay(date);
+  const blk = blockedForDay(date);
 
-  // Tapping a day with no leaves: just close the panel rather than
-  // showing an empty card. Keeps the surface minimal.
-  if (dayLeaves.length === 0) {
+  // Tapping a day with nothing to show (no leaves, not blocked): just
+  // close the panel rather than showing an empty card.
+  if (dayLeaves.length === 0 && !blk) {
     closeDetails();
     return;
   }
@@ -163,6 +189,7 @@ function openDetailsForDate(dateStr) {
   detailsTitleEl.textContent = fmtDate(date);
 
   detailsListEl.innerHTML = '';
+  if (blk) detailsListEl.appendChild(renderBlockedRow(blk));
   for (const leave of dayLeaves) {
     detailsListEl.appendChild(renderDetailRow(leave));
   }
@@ -188,6 +215,23 @@ function paintSelectedHighlight() {
   for (const cell of grid.querySelectorAll('.cal-day')) {
     cell.classList.toggle('cal-day--selected', cell.dataset.date === selectedDateStr);
   }
+}
+
+function renderBlockedRow(blk) {
+  const li = document.createElement('li');
+  li.className = 'cal-details__row cal-details__row--blocked';
+  const name = document.createElement('span');
+  name.className = 'cal-details__row-name';
+  name.textContent = blk.label || t('calendar.blocked');
+  li.appendChild(name);
+  const meta = document.createElement('span');
+  meta.className = 'cal-details__row-meta';
+  const span = blk.start === blk.end
+    ? fmtDate(parseYmd(blk.start))
+    : `${fmtDate(parseYmd(blk.start))} → ${fmtDate(parseYmd(blk.end))}`;
+  meta.textContent = `${t('calendar.blocked')} · ${span}`;
+  li.appendChild(meta);
+  return li;
 }
 
 function renderDetailRow(leave) {
@@ -334,6 +378,8 @@ detailsCloseBtn.addEventListener('click', closeDetails);
     showMessage(messageEl, 'Failed to load approved leaves.', 'error');
     return;
   }
-  allLeaves = (await lvRes.json()).leaves;
+  const payload = await lvRes.json();
+  allLeaves = payload.leaves;
+  blockedRanges = payload.blockedRanges || [];
   renderMonth();
 })();

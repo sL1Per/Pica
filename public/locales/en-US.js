@@ -363,6 +363,7 @@ export default {
   'calendar.weekday.sat':  'Sat',
   'calendar.anonymized':   'Unavailable',
   'calendar.detailsClose': 'Close details',
+  'calendar.blocked':      'Blocked',
 
   // ============================================================
   // Reports
@@ -682,6 +683,16 @@ export default {
   'settings.savedOrg':        'Organization settings saved.',
   'settings.savedWorkingTime': 'Working-time settings saved.',
   'settings.failedToSave':    'Failed to save',
+  'settings.blockedHeading':  'Blocked days',
+  'settings.blockedHint':     'Employees cannot book leave on these dates (sick leave is always allowed). As the employer you are never blocked.',
+  'settings.blockedAdd':      '+ Add blocked range',
+  'settings.blockedRemove':   'Remove',
+  'settings.blockedStart':    'Start date',
+  'settings.blockedEnd':      'End date',
+  'settings.blockedLabelPh':  'Label (e.g. Company offsite)',
+  'settings.blockedEmpty':    'No blocked days.',
+  'settings.blockedNeedStart': 'Each blocked range needs a start date.',
+  'settings.blockedBadRange': 'A blocked range ends before it starts.',
 
   // ============================================================
     'title.employeeSummary': 'Pica — Employee',
@@ -764,6 +775,7 @@ export default {
   'errors.cannot_demote_self':     'You cannot change your own role.',
   'errors.leave_overlaps':         'This leave overlaps another approved or pending leave.',
   'errors.leave_cap_exceeded':     'This leave would exceed your allowance.',
+  'errors.leave_day_blocked':      'Your employer has blocked leave on one or more of those days.',
   'errors.correction_window_too_long':  'Correction window cannot exceed 24 hours.',
   'errors.correction_window_too_short': 'Correction window must be at least 1 minute.',
   'errors.correction_end_before_start': 'End must be after start.',

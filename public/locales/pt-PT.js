@@ -359,6 +359,7 @@ export default {
   'calendar.weekday.sat':  'Sáb',
   'calendar.anonymized':   'Indisponível',
   'calendar.detailsClose': 'Fechar detalhes',
+  'calendar.blocked':      'Bloqueado',
 
   // ============================================================
   // Reports
@@ -678,6 +679,16 @@ export default {
   'settings.savedOrg':        'Definições da organização guardadas.',
   'settings.savedWorkingTime': 'Definições de horário guardadas.',
   'settings.failedToSave':    'Falha ao guardar',
+  'settings.blockedHeading':  'Dias bloqueados',
+  'settings.blockedHint':     'Os colaboradores não podem marcar ausências nestas datas (a baixa por doença é sempre permitida). Como entidade empregadora, nunca fica bloqueado.',
+  'settings.blockedAdd':      '+ Adicionar intervalo bloqueado',
+  'settings.blockedRemove':   'Remover',
+  'settings.blockedStart':    'Data de início',
+  'settings.blockedEnd':      'Data de fim',
+  'settings.blockedLabelPh':  'Etiqueta (ex.: Evento da empresa)',
+  'settings.blockedEmpty':    'Sem dias bloqueados.',
+  'settings.blockedNeedStart': 'Cada intervalo bloqueado precisa de uma data de início.',
+  'settings.blockedBadRange': 'Um intervalo bloqueado termina antes de começar.',
 
   // ============================================================
     'title.employeeSummary': 'Pica — Funcionário',
@@ -763,6 +774,7 @@ export default {
   'errors.cannot_demote_self':     'Não pode alterar o seu próprio tipo.',
   'errors.leave_overlaps':         'Estas férias sobrepõem-se a outras já aprovadas ou pendentes.',
   'errors.leave_cap_exceeded':     'Estas férias excederiam o seu limite.',
+  'errors.leave_day_blocked':      'A sua entidade empregadora bloqueou as ausências num ou mais desses dias.',
   'errors.correction_window_too_long':  'A janela da correção não pode exceder 24 horas.',
   'errors.correction_window_too_short': 'A janela da correção deve ter pelo menos 1 minuto.',
   'errors.correction_end_before_start': 'O fim deve ser posterior ao início.',

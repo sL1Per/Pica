@@ -34,6 +34,8 @@ const carryFwd    = $('carry-forward');
 const carryExpiresInput = $('carry-expires-at');
 const concurrent  = $('concurrent-allowed');
 const overridesWrap = $('overrides-table-wrap');
+const blockedWrap = $('blocked-ranges');
+const blockedAddBtn = $('blocked-add');
 
 // Backups form
 const backupsSection = $('backups');
@@ -75,6 +77,7 @@ function renderOrg(settings) {
   concurrent.checked = !!settings.leaves.concurrentAllowed;
 
   renderOverridesTable(settings.leaves.perEmployeeOverrides ?? {});
+  renderBlockedRanges(settings.leaves.blockedRanges ?? []);
 
   // Backups
   backupEnabled.checked   = !!settings.backups.enabled;
@@ -85,6 +88,96 @@ function renderOrg(settings) {
   dailyHoursInput.value  = settings.workingTime?.dailyHours  ?? 8;
   weeklyHoursInput.value = settings.workingTime?.weeklyHours ?? 40;
   renderWorkingTimeOverridesTable(settings.workingTime?.perEmployeeOverrides ?? {});
+}
+
+function blockedRowEl(range = { start: '', end: '', label: '' }) {
+  const row = document.createElement('div');
+  row.className = 'blocked-row';
+
+  const start = document.createElement('input');
+  start.type = 'date';
+  start.className = 'blocked-start';
+  start.value = range.start || '';
+  start.setAttribute('aria-label', t('settings.blockedStart'));
+
+  const arrow = document.createElement('span');
+  arrow.className = 'blocked-arrow';
+  arrow.textContent = '→';
+
+  const end = document.createElement('input');
+  end.type = 'date';
+  end.className = 'blocked-end';
+  end.value = range.end || '';
+  end.setAttribute('aria-label', t('settings.blockedEnd'));
+
+  const label = document.createElement('input');
+  label.type = 'text';
+  label.className = 'blocked-label';
+  label.maxLength = 80;
+  label.value = range.label || '';
+  label.placeholder = t('settings.blockedLabelPh');
+
+  // Keep end >= start: when start changes, bump end's min and value.
+  const syncMin = () => {
+    end.min = start.value || '';
+    if (start.value && end.value && end.value < start.value) end.value = start.value;
+  };
+  start.addEventListener('change', syncMin);
+  syncMin();
+
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'btn-ghost btn-sm blocked-del';
+  del.textContent = t('settings.blockedRemove');
+  del.addEventListener('click', () => {
+    row.remove();
+    if (blockedWrap.querySelectorAll('.blocked-row').length === 0) renderBlockedEmpty();
+  });
+
+  row.append(start, arrow, end, label, del);
+  return row;
+}
+
+function renderBlockedEmpty() {
+  blockedWrap.innerHTML = '';
+  const p = document.createElement('p');
+  p.className = 'subtle blocked-empty';
+  p.textContent = t('settings.blockedEmpty');
+  blockedWrap.appendChild(p);
+}
+
+function renderBlockedRanges(ranges) {
+  blockedWrap.innerHTML = '';
+  if (!ranges.length) { renderBlockedEmpty(); return; }
+  for (const r of ranges) blockedWrap.appendChild(blockedRowEl(r));
+}
+
+if (blockedAddBtn) {
+  blockedAddBtn.addEventListener('click', () => {
+    const empty = blockedWrap.querySelector('.blocked-empty');
+    if (empty) empty.remove();
+    blockedWrap.appendChild(blockedRowEl());
+  });
+}
+
+/**
+ * Collect blocked ranges from the DOM. A row counts only if BOTH dates
+ * are filled. End defaults to start when left blank (single-day block).
+ * Throws a user-facing message if a row has end < start.
+ */
+function collectBlockedRanges() {
+  const out = [];
+  for (const row of blockedWrap.querySelectorAll('.blocked-row')) {
+    const start = row.querySelector('.blocked-start').value.trim();
+    let end = row.querySelector('.blocked-end').value.trim();
+    const label = row.querySelector('.blocked-label').value.trim();
+    if (!start && !end) continue;            // wholly empty row → skip
+    if (!start) throw new Error(t('settings.blockedNeedStart'));
+    if (!end) end = start;                    // single-day shorthand
+    if (end < start) throw new Error(t('settings.blockedBadRange'));
+    out.push({ start, end, label });
+  }
+  return out;
 }
 
 function renderOverridesTable(overrides) {
@@ -189,6 +282,15 @@ if (orgForm) {
       overrides[uid][type] = Number(v);
     }
 
+    let blockedRanges;
+    try {
+      blockedRanges = collectBlockedRanges();
+    } catch (err) {
+      showMessage(messageEl, err.message, 'error');
+      setBusy(btn, false);
+      return;
+    }
+
     const patch = {
       leaves: {
         defaultAllowances: {
@@ -201,6 +303,7 @@ if (orgForm) {
         carryForward: carryFwd.checked,
         carryForwardExpiresAt: carryExpiresInput.value.trim() || '03-31',
         concurrentAllowed: concurrent.checked,
+        blockedRanges,
       },
     };
 

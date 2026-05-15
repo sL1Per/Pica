@@ -207,6 +207,44 @@ select:disabled, input:disabled {
   }
 }
 
+/* ---------- Blocked-days editor ----------------------------------------- */
+
+.blocked-ranges {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-2);
+  margin: var(--gap-2) 0 var(--gap-3);
+}
+.blocked-empty {
+  margin: var(--gap-2) 0;
+}
+.blocked-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  flex-wrap: wrap;
+}
+.blocked-row input[type="date"] {
+  margin: 0;
+  padding: 4px 6px;
+}
+.blocked-row .blocked-label {
+  margin: 0;
+  padding: 4px 6px;
+  flex: 1 1 12rem;
+  min-width: 8rem;
+}
+.blocked-arrow { color: var(--text-subtle); }
+
+@media (max-width: 600px) {
+  .blocked-row {
+    /* Each control on its own line is more tappable than a cramped row. */
+    align-items: stretch;
+  }
+  .blocked-row .blocked-label { flex-basis: 100%; }
+  .blocked-arrow { display: none; }
+}
+
 /* ---------- Dark mode ---------------------------------------------------- */
 
 :root[data-theme="dark"] {

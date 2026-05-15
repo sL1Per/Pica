@@ -24,7 +24,7 @@
 
 ### Add
 
-- Add an feature / option to block day or days from being able to book vacations (employer is exception) (5)
+- [**DONE**] Add an option to block day(s) from being bookable by an employee (employer can always do it). For example a special event day or days where the employer needs to make sure that all his employees are working so no leaves allowed for that specific day(s). This option should be added in the settings page and only the employer should have access to it. (5)
 - Add email notifications
 - [**DONE**] On punches, on the same day, show break time. For example, clock in at 9am clock out at 12PM and then clock in at 1PM and clock out at 6PM, i want to see in the UI total work time was 8h and break of 1h (4)
 - Add employee names also to filters for the leaves (on opt of the state). this is for the employer only view.

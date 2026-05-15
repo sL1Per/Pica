@@ -133,6 +133,27 @@
   flex: 1;
 }
 
+/* Employer-blocked days — distinct amber hatch, clearly not a leave type. */
+.cal-day--blocked {
+  background-image: repeating-linear-gradient(
+    135deg, transparent, transparent 7px,
+    rgba(194, 124, 12, 0.12) 7px, rgba(194, 124, 12, 0.12) 9px);
+}
+.cal-day__blocked {
+  display: block;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.25;
+  border-radius: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #fbedd6;
+  border-left: 3px solid #c27c0c;
+  color: #6b4209;
+  font-weight: 600;
+}
+
 /* Legend */
 
 .legend {
@@ -157,6 +178,7 @@
 .legend__chip--sick        { background: #fde6e6; border-left-color: #b33a3a; color: #6c1717; }
 .legend__chip--appointment { background: #f0e7fa; border-left-color: #7a4ec3; color: #3a1f6b; }
 .legend__chip--other       { background: #eee; border-left-color: #888; color: #333; }
+.legend__chip--blocked     { background: #fbedd6; border-left-color: #c27c0c; color: #6b4209; }
 
 /* ---------- Tap-to-expand day-details panel ------------------------------ */
 /* Shown when the user taps a day. Lists every leave for that day with
@@ -219,6 +241,7 @@
 .cal-details__row--appointment { border-left-color: #7a4ec3; }
 .cal-details__row--other       { border-left-color: #888; }
 .cal-details__row--anonymized  { border-left-color: #aaa; font-style: italic; color: var(--text-muted); }
+.cal-details__row--blocked     { border-left-color: #c27c0c; background: #fbedd6; color: #6b4209; }
 .cal-details__row--self        { box-shadow: inset 0 0 0 1px var(--accent); }
 .cal-details__row-name { font-weight: 600; }
 .cal-details__row-meta { color: var(--text-muted); font-size: var(--text-sm); margin-left: auto; }

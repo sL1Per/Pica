@@ -5,24 +5,52 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.14._
+_Last touched in 0.22.15._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.14 (released 2026-05-15)
-- **Test count:** 581 across 24 suites, all green (1 pre-existing
+- **Latest version:** 0.22.15 (released 2026-05-15)
+- **Test count:** 605 across 25 suites, all green (1 pre-existing
   TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
   count, unchanged by this release — see notes.md)
-- **Build artifact:** `pica-0.22.14-employer-widget-break.zip`
+- **Build artifact:** `pica-0.22.15-blocked-days.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.14)
+## What just shipped (0.22.15)
+
+**Blocked days** — employers define date ranges on which
+employees cannot book leave (company events, all-hands, peak
+periods). Three surfaces: a Settings → Organization editor
+(add/remove ranges + optional label), enforcement on
+`POST /api/leaves` (HTTP 400 `leave_day_blocked`), and the
+leave calendar (amber hatch + tag + legend + details row).
+
+Two exemptions by design: **sick leave is never blocked**
+(non-discretionary) and **the employer is never blocked**
+(they set the policy). All other types refused for employees.
+
+Data: `org-settings.json` → `leaves.blockedRanges`
+`[{start,end,label}]`, plaintext, ≤200 entries, validated +
+sorted on write, malformed entries dropped on read. Pure
+helpers `findBlockingRange` / `isValidYmd` exported from
+`src/storage/org-settings.js`. `GET /api/leaves/approved` now
+also returns `blockedRanges` (calendar transport; no new
+endpoint). New suite `test-leaves-blocked.mjs` (24 cases).
+CACHE_VERSION → v36 (locale files pre-cached).
+
+Key non-obvious decisions (full list in RELEASES.md): existing
+approved/pending leaves on a newly-blocked day are left
+untouched; approve does NOT re-check (gate is at creation);
+no recurring/bulk blocks; hard-refuse (no soft-warn mode);
+edits ride the existing `settings.org_updated` audit event.
+
+## What shipped in 0.22.14
 
 Follow-up to 0.22.13. The employer's home-page widget
 "Working today" now appends `· pausa Xh Ym` (pt-PT) /
@@ -392,6 +420,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Break time on the employer's today view  | ✅ 0.22.12 |
 | —     | Break on home widget + i18n duration words | ✅ 0.22.13 |
 | —     | Break on employer "Working today" widget | ✅ 0.22.14 |
+| —     | Blocked days (employer no-leave dates)   | ✅ 0.22.15 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

@@ -170,7 +170,8 @@ pica/
 │   ├── test-validators.mjs         # isUuid edge cases (path-traversal defense)
 │   ├── test-leaves-approved.mjs    # /api/leaves/approved privacy model
 │   ├── test-leaves-carry.mjs       # vacation carry-forward + MM-DD expiry
-│   └── test-punch-totals.mjs       # punch-page worked + break helpers
+│   ├── test-punch-totals.mjs       # punch-page worked + break helpers
+│   └── test-leaves-blocked.mjs     # employer blocked-days: helpers, store, route
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -313,9 +314,9 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 24 suites, 581 passing as of 0.22.11 (one pre-existing
+- Total: 25 suites, 605 passing as of 0.22.15 (one pre-existing
   TZ-sensitive flake in `test-reports.mjs` overnight-split bucket
-  count, unrelated to the 0.22.11 change).
+  count, unrelated to the blocked-days change).
 
 ---
 
@@ -379,4 +380,4 @@ upcoming-leaves block when interpreting the number.
 
 ---
 
-_Last touched in 0.22.14._
+_Last touched in 0.22.15._

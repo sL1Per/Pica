@@ -14,6 +14,129 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.15] — 2026-05-15 — Blocked days (employer-defined no-leave dates)
+
+### What's new
+
+**Employers can now block date ranges on which employees may not
+book leave** — company offsites, all-hands, peak periods. Three
+surfaces:
+
+1. **Settings → Organization → "Blocked days".** An add/remove
+   editor of date ranges, each with an optional label (e.g.
+   "Inventory week"). Employer-only (the whole Organization card
+   already is). Saved through the existing `PUT /api/settings/org`
+   leaves patch.
+2. **Enforcement on `POST /api/leaves`.** A request that touches
+   a blocked range is refused with HTTP 400 + `errorCode:
+   leave_day_blocked`; the message names the range
+   ("All-hands (2026-06-01 → 2026-06-03) is blocked…").
+3. **Leave calendar.** Blocked days get a distinct amber hatch,
+   an in-cell label tag, a legend chip, and a row in the
+   tap-to-expand day-details panel — so employees see the
+   restriction *before* trying to book.
+
+**Two exemptions, by design (operator chose these):**
+
+- **Sick leave is never blocked.** It is non-discretionary — you
+  cannot choose not to be ill on an all-hands day. `type ===
+  'sick'` skips the check.
+- **The employer is never blocked.** They set the policy and may
+  legitimately need to record their own leave on a company day.
+  `req.user.role === 'employer'` skips the check.
+
+Every other type (vacation, appointment, other) is refused for
+employees.
+
+### How it works
+
+- **Data model.** `org-settings.json` gains
+  `leaves.blockedRanges`: `[{ start, end, label }]`, `start <=
+  end`, label ≤ 80 chars, ≤ 200 entries, stored sorted by start.
+  Plaintext (it is company policy, not a secret) — consistent
+  with the rest of that file.
+- **Pure geometry.** `findBlockingRange(leave, ranges)` and
+  `isValidYmd(s)` are exported, side-effect-free helpers in
+  `src/storage/org-settings.js`. Days-mode leaves test the
+  `[start, end]` span; hours-mode leaves are intraday and test
+  `start.slice(0,10)`. Lexicographic compare is correct for
+  `YYYY-MM-DD`. The route owns the employer/sick *policy*; the
+  helper is geometry only.
+- **Calendar transport.** `GET /api/leaves/approved` now also
+  returns `blockedRanges` (unchanged otherwise). Blocked ranges
+  are company policy visible to everyone; only the employer can
+  write them. No new endpoint.
+- **Read resilience.** A hand-edited `org-settings.json` with
+  malformed range entries does not crash the app — bad entries
+  are dropped on read; the strict validator runs on write.
+
+### Files touched
+
+- `src/storage/org-settings.js` — `blockedRanges` default,
+  `mergeOntoDefaults` filter, `cleanBlockedRanges` validator,
+  exported `isValidYmd` + `findBlockingRange`.
+- `src/routes/leaves.js` — block check in `POST /api/leaves`
+  (employer/sick exempt); `blockedRanges` added to
+  `GET /api/leaves/approved`.
+- `public/settings.html` / `settings.js` / `settings.css` —
+  blocked-days editor in the Organization card.
+- `public/leaves-calendar.html` / `leaves-calendar.js` /
+  `leaves-calendar.css` — cell hatch + tag, legend chip,
+  details-panel row.
+- `public/locales/en-US.js`, `pt-PT.js` — `errors.leave_day_blocked`,
+  `calendar.blocked`, and 10 `settings.blocked*` keys per locale.
+- `tests/test-leaves-blocked.mjs` — new suite, 24 cases:
+  `isValidYmd`, `findBlockingRange` geometry (days/hours/edge),
+  org-settings validation + sort + cap + hand-edit resilience,
+  and route enforcement (employee blocked, sick allowed,
+  employer allowed, outside-range allowed, hours-mode blocked).
+- `tests/test-leaves-approved.mjs` — mock `orgSettingsStore.get()`
+  updated to return `{ leaves: { blockedRanges: [] } }` (route
+  now reads it).
+- `public/sw.js` — `CACHE_VERSION` → `pica-cache-v36` (locale
+  files are pre-cached; the changed `.css`/`.js`/`.html` for
+  settings and calendar are NOT in `PRECACHE_URLS`).
+- `package.json` — version `0.22.15`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **Existing approved/pending leaves on a newly-blocked day are
+  left untouched.** Blocking only refuses *new* bookings.
+  Retroactively cancelling someone's already-approved vacation
+  because the employer later added a block would be destructive
+  and surprising; the employer can cancel specific leaves
+  manually if they truly need to. The calendar will show both
+  the amber block AND the pre-existing leave bar on such a day.
+- **Approving a pending leave does not re-check blocked ranges.**
+  The gate is at creation. If a leave was created before a range
+  was added (so it slipped through) and is still pending, the
+  employer approving it is an explicit human decision — they can
+  see the block on the calendar. We did not add a second gate on
+  approve to avoid a confusing "you can't approve this" state
+  for the very person who set the policy.
+- **No bulk/recurring blocks.** Each range is a single
+  contiguous span. "Every Friday" or "the 1st of each month"
+  must be entered as individual ranges. Recurrence rules were
+  out of scope and add real complexity (timezones, end
+  conditions) for a ≤50-employee tool.
+- **The block is all-or-nothing per range.** There is no
+  per-employee or per-team exception list, and no "soft" warning
+  mode (like `concurrentAllowed`'s advisory banner). It is a
+  hard refuse for non-sick employee bookings. Per-employee
+  exceptions can be layered on later if asked.
+- **Calendar colours are fixed (amber hatch).** They are not
+  theme-variable-driven and not separately overridable, matching
+  how the existing leave-type chips are coded. Contrast was
+  checked for light and dark backgrounds but not formally
+  WCAG-audited.
+- **No audit event for editing blocked ranges.** The change
+  rides the existing `settings.org_updated` audit record (the
+  whole org patch is one event). A dedicated
+  `leaves.blocked_changed` event was not added; the org-settings
+  diff is recoverable from backups if ever needed.
+
+---
+
 ## [0.22.14] — 2026-05-15 — Break time on the employer's "Working today" widget
 
 ### What's new

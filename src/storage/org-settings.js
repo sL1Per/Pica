@@ -22,6 +22,54 @@ import path from 'node:path';
 export const LEAVE_TYPES = Object.freeze(['vacation', 'sick', 'appointment', 'other']);
 export const BACKUP_SCHEDULES = Object.freeze(['off', 'hourly', 'daily', 'weekly']);
 
+// Upper bound on stored blocked ranges. The file is plaintext and read on
+// every leave creation; 200 is far beyond any ≤50-employee org's real need
+// while keeping the file and the per-request scan trivially small.
+const MAX_BLOCKED_RANGES = 200;
+
+/** True iff `s` is a real calendar date in strict "YYYY-MM-DD" form. */
+export function isValidYmd(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y, m, d] = s.split('-').map(Number);
+  if (m < 1 || m > 12) return false;
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const dim = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+  return d >= 1 && d <= dim;
+}
+
+/**
+ * Does a leave hit any employer-blocked range?
+ *
+ * Pure function — no I/O. `leave` is the request shape the leaves route
+ * already has: { unit, start, end }. Date math:
+ *   - unit="days":  span is [start, end], both "YYYY-MM-DD".
+ *   - unit="hours": intraday — the single date is start.slice(0,10)
+ *     (the API contract guarantees hours-mode leaves are same-day).
+ * A blocked range [bStart, bEnd] is hit iff bStart <= spanEnd AND
+ * spanStart <= bEnd (lexicographic compare is correct for YYYY-MM-DD).
+ *
+ * Returns the FIRST matching range object (so the caller can name it in
+ * the error), or null if nothing is hit. Caller is responsible for the
+ * employer-exemption and sick-type-exemption policy — this is geometry
+ * only.
+ */
+export function findBlockingRange(leave, blockedRanges) {
+  if (!Array.isArray(blockedRanges) || blockedRanges.length === 0) return null;
+  let spanStart, spanEnd;
+  if (leave.unit === 'days') {
+    spanStart = String(leave.start);
+    spanEnd = String(leave.end ?? leave.start);
+  } else {
+    const d = String(leave.start).slice(0, 10);
+    spanStart = d;
+    spanEnd = d;
+  }
+  for (const r of blockedRanges) {
+    if (r.start <= spanEnd && spanStart <= r.end) return r;
+  }
+  return null;
+}
+
 export const DEFAULT_ORG_SETTINGS = Object.freeze({
   company: {
     // Display name for the org. Null means "use the fallback" ('Pica').
@@ -49,6 +97,13 @@ export const DEFAULT_ORG_SETTINGS = Object.freeze({
     carryForwardExpiresAt: '03-31',
     // Advisory flag used by M8 warning banner during approval.
     concurrentAllowed: true,
+    // Employer-defined date ranges on which employees may NOT book leave
+    // (company events, all-hands, peak periods). Each entry:
+    //   { start: "YYYY-MM-DD", end: "YYYY-MM-DD", label: string }
+    // start <= end; label optional (<=80 chars). Enforced for every leave
+    // type EXCEPT sick (non-discretionary). The employer is never blocked.
+    // Stored sorted by start. Empty = no restrictions (default).
+    blockedRanges: [],
   },
   backups: {
     enabled: false,          // scheduler dormant until M10 lights it up
@@ -136,6 +191,18 @@ export function createOrgSettingsStore(dataDir) {
       if (typeof stored.leaves.concurrentAllowed === 'boolean') {
         defaults.leaves.concurrentAllowed = stored.leaves.concurrentAllowed;
       }
+      if (Array.isArray(stored.leaves.blockedRanges)) {
+        // Best-effort: keep only well-formed entries on read so a hand-edited
+        // file can't crash the app. The strict validator runs on write.
+        defaults.leaves.blockedRanges = stored.leaves.blockedRanges
+          .filter((r) => r && isValidYmd(r.start) && isValidYmd(r.end) && r.start <= r.end)
+          .map((r) => ({
+            start: r.start,
+            end: r.end,
+            label: typeof r.label === 'string' ? r.label.slice(0, 80) : '',
+          }))
+          .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+      }
     }
     if (stored?.backups) {
       defaults.backups = deepMerge(defaults.backups, stored.backups);
@@ -195,6 +262,45 @@ export function createOrgSettingsStore(dataDir) {
     if ('concurrentAllowed' in patch) {
       out.concurrentAllowed = !!patch.concurrentAllowed;
     }
+    if ('blockedRanges' in patch) {
+      out.blockedRanges = cleanBlockedRanges(patch.blockedRanges);
+    }
+    return out;
+  }
+
+  function cleanBlockedRanges(value) {
+    if (!Array.isArray(value)) {
+      throw new Error('leaves.blockedRanges must be an array');
+    }
+    if (value.length > MAX_BLOCKED_RANGES) {
+      throw new Error(`leaves.blockedRanges cannot exceed ${MAX_BLOCKED_RANGES} entries`);
+    }
+    const out = [];
+    for (const r of value) {
+      if (!r || typeof r !== 'object') {
+        throw new Error('each blocked range must be an object');
+      }
+      if (!isValidYmd(r.start) || !isValidYmd(r.end)) {
+        throw new Error('blocked range start/end must be valid YYYY-MM-DD dates');
+      }
+      if (r.start > r.end) {
+        throw new Error('blocked range start must be on or before end');
+      }
+      let label = '';
+      if (r.label != null) {
+        if (typeof r.label !== 'string') {
+          throw new Error('blocked range label must be a string');
+        }
+        label = r.label.trim().slice(0, 80);
+      }
+      out.push({ start: r.start, end: r.end, label });
+    }
+    // Stable storage + display order. Ties broken by end then label so
+    // re-saving an identical set is a no-op (no spurious file churn).
+    out.sort((a, b) =>
+      a.start !== b.start ? (a.start < b.start ? -1 : 1)
+      : a.end !== b.end ? (a.end < b.end ? -1 : 1)
+      : (a.label < b.label ? -1 : a.label > b.label ? 1 : 0));
     return out;
   }
 

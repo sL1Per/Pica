@@ -99,7 +99,7 @@ function buildHandler(leaves) {
     leavesStore: buildLeavesStore(leaves),
     usersStore: buildUsersStore(),
     employeesStore: buildEmployeesStore(),
-    orgSettingsStore: { get: () => ({}) },
+    orgSettingsStore: { get: () => ({ leaves: { blockedRanges: [] } }) },
     leaveTypes: ['vacation', 'sick', 'appointment', 'other'],
     daysOf: () => 1,
     requireAuth,
