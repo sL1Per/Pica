@@ -44,9 +44,7 @@ async function firstRun(config, configPath, logger) {
   logger?.info('Store it safely. If lost, use the recovery code (if set) or the data is unrecoverable.');
 
   const pass1 = await readPassphraseFromSource('Choose a passphrase: ');
-  // Length guard is only meaningful for interactive input — if the operator
-  // set PICA_PASSPHRASE explicitly, trust their choice.
-  if (!process.env.PICA_PASSPHRASE && pass1.length < 8) throw new Error('Passphrase must be at least 8 characters');
+  if (pass1.length < 8) throw new Error('Passphrase must be at least 8 characters');
   if (!process.env.PICA_PASSPHRASE) {
     const pass2 = await readPassphrase('Confirm passphrase: ');
     if (pass1 !== pass2) throw new Error('Passphrases do not match');
@@ -96,9 +94,10 @@ async function unlockV2(config, configPath, logger) {
   const pSlot = getSlot(sec, 'passphrase');
   if (!pSlot) throw new Error('config.json security.wraps.passphrase is missing');
 
-  // Only attempt the passphrase slot when we actually have a passphrase source.
-  // Skipping the interactive prompt when stdin is non-TTY and no env var is set
-  // allows a recovery-code-only unlock path without hanging on stdin.
+  // Only attempt the passphrase slot if we can actually obtain a passphrase:
+  // PICA_PASSPHRASE is set, or there is a TTY to prompt. In a non-TTY process
+  // with only PICA_RECOVERY_CODE set, blocking on readPassphrase() would hang —
+  // fall through to the recovery-code path instead.
   const hasPassphraseSource = process.env.PICA_PASSPHRASE || process.stdin.isTTY;
   if (hasPassphraseSource) {
     const passphrase = await readPassphraseFromSource('Passphrase: ');

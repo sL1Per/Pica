@@ -114,7 +114,7 @@ await test('recover with code: unlocks DEK and flags mustResetPassphrase', async
 
 await test('PICA_RESET=1 moves data aside and re-runs first-run', async () => {
   const { dir, configPath } = tmpCfg();
-  process.env.PICA_PASSPHRASE = 'first';
+  process.env.PICA_PASSPHRASE = 'firstpass';
   const dataDir = path.join(dir, 'data');
   const cfg = { dataDir };
   await initMasterKey(cfg, configPath, QUIET);
