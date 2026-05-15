@@ -12,13 +12,34 @@ import {
 
 const VERIFIER_PLAINTEXT = 'pica-verifier-v1';
 
+// utcStamp granularity is ISO milliseconds. wipeReset is a one-shot boot
+// operation so a same-millisecond collision cannot occur in practice; if
+// it ever did, renameSync onto a non-empty dir throws ENOTEMPTY and the
+// error surfaces rather than silently overwriting an aside directory.
 function utcStamp() {
   return new Date().toISOString().replace(/[:.]/g, '-');
 }
 
+// Treat an empty PICA_PASSPHRASE the same as unset so a stray
+// `PICA_PASSPHRASE=` in a unit file doesn't silently skip the passphrase
+// path. Returns the env passphrase or undefined.
+function envPassphrase() {
+  const v = process.env.PICA_PASSPHRASE;
+  return v ? v : undefined;
+}
+
 function readPassphraseFromSource(prompt) {
-  if (process.env.PICA_PASSPHRASE) return Promise.resolve(process.env.PICA_PASSPHRASE);
+  const ev = envPassphrase();
+  if (ev) return Promise.resolve(ev);
   return readPassphrase(prompt);
+}
+
+// A wrong passphrase / recovery code manifests ONLY as an AES-GCM
+// authentication failure. Any other error (corrupt slot, malformed kdf,
+// truncated ciphertext) is structural and must propagate so the operator
+// gets a real diagnostic instead of a misleading "wrong passphrase".
+function isAuthFailure(err) {
+  return /authenticate|bad decrypt/i.test((err && err.message) || '');
 }
 
 /**
@@ -45,7 +66,7 @@ async function firstRun(config, configPath, logger) {
 
   const pass1 = await readPassphraseFromSource('Choose a passphrase: ');
   if (pass1.length < 8) throw new Error('Passphrase must be at least 8 characters');
-  if (!process.env.PICA_PASSPHRASE) {
+  if (!envPassphrase()) {
     const pass2 = await readPassphrase('Confirm passphrase: ');
     if (pass1 !== pass2) throw new Error('Passphrases do not match');
   }
@@ -66,15 +87,22 @@ async function firstRun(config, configPath, logger) {
 async function migrateV1(config, configPath, logger) {
   logger?.info('Legacy security format detected — migrating to envelope encryption.');
   const { salt, cost, blockSize, parallelization } = config.security.kdf;
-  const verifier = Buffer.from(config.security.verifier, 'base64');
+  const verifier = Buffer.from(config.security.verifier ?? '', 'base64');
+  // 12-byte IV + 16-byte GCM tag is the minimum valid ciphertext.
+  if (verifier.length < 28) {
+    throw new Error('config.json security.verifier is missing or truncated');
+  }
 
   const passphrase = await readPassphraseFromSource('Passphrase: ');
   const oldKey = await deriveKek(passphrase, { salt, cost, blockSize, parallelization });
+  let plain;
   try {
-    if (decryptBlob(verifier, oldKey).toString('utf8') !== VERIFIER_PLAINTEXT) {
-      throw new Error('mismatch');
-    }
-  } catch {
+    plain = decryptBlob(verifier, oldKey);
+  } catch (err) {
+    if (isAuthFailure(err)) throw new Error('Incorrect passphrase');
+    throw err; // structural corruption — surface it, don't mask as wrong passphrase
+  }
+  if (plain.toString('utf8') !== VERIFIER_PLAINTEXT) {
     throw new Error('Incorrect passphrase');
   }
 
@@ -98,7 +126,7 @@ async function unlockV2(config, configPath, logger) {
   // PICA_PASSPHRASE is set, or there is a TTY to prompt. In a non-TTY process
   // with only PICA_RECOVERY_CODE set, blocking on readPassphrase() would hang —
   // fall through to the recovery-code path instead.
-  const hasPassphraseSource = process.env.PICA_PASSPHRASE || process.stdin.isTTY;
+  const hasPassphraseSource = envPassphrase() || process.stdin.isTTY;
   if (hasPassphraseSource) {
     const passphrase = await readPassphraseFromSource('Passphrase: ');
     try {
@@ -106,7 +134,8 @@ async function unlockV2(config, configPath, logger) {
       const dek = unwrapDek(pSlot.wrapped, kek, 'passphrase');
       logger?.info('Master key unlocked.');
       return { masterKey: dek, mustResetPassphrase: false };
-    } catch {
+    } catch (err) {
+      if (!isAuthFailure(err)) throw err;
       logger?.warn('Passphrase did not unlock the master key.');
     }
   }
@@ -120,11 +149,16 @@ async function unlockV2(config, configPath, logger) {
       const dek = unwrapDek(recSlot.wrapped, kek, 'recovery');
       logger?.warn('Unlocked with the recovery code — set a new passphrase immediately.');
       return { masterKey: dek, mustResetPassphrase: true };
-    } catch {
+    } catch (err) {
+      if (!isAuthFailure(err)) throw err;
       logger?.error('Recovery code did not unlock the master key.');
     }
   }
-  throw new Error('Incorrect passphrase (and no valid recovery code). '
+
+  const why = hasPassphraseSource
+    ? 'Incorrect passphrase'
+    : 'No passphrase available (non-interactive)';
+  throw new Error(`${why} and no valid recovery code. `
     + 'Set PICA_RESET=1 to wipe and start over (old data is preserved aside).');
 }
 

@@ -39,6 +39,7 @@ await test('unlock with the correct passphrase returns the same DEK', async () =
   const reloaded = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   const second = await initMasterKey(reloaded, configPath, QUIET);
   assert.deepEqual(second.masterKey, first.masterKey);
+  assert.equal(second.mustResetPassphrase, false);
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
@@ -131,6 +132,69 @@ await test('PICA_RESET=1 moves data aside and re-runs first-run', async () => {
   const asideDirs = fs.readdirSync(dir).filter((n) => n.startsWith('data.pre-reset-'));
   assert.equal(asideDirs.length, 1, 'old data moved aside, not deleted');
   assert.equal(fs.readFileSync(path.join(dir, asideDirs[0], 'marker'), 'utf8'), 'keepme');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+await test('unknown security format throws', async () => {
+  const { dir, configPath } = tmpCfg();
+  const cfg = { dataDir: path.join(dir, 'data'),
+    security: { kdf: { salt: 'aa' }, wraps: { passphrase: {} } } };
+  await assert.rejects(() => initMasterKey(cfg, configPath, QUIET), /Unrecognized security section/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+await test('v1 migration with wrong passphrase throws and writes no config', async () => {
+  const { dir, configPath } = tmpCfg();
+  const { scrypt } = await import('node:crypto');
+  const { promisify } = await import('node:util');
+  const scryptAsync = promisify(scrypt);
+  const salt = Buffer.from('b'.repeat(64), 'hex');
+  const oldKey = await scryptAsync('legacy pass', salt, 32,
+    { cost: 1 << 17, blockSize: 8, parallelization: 1, maxmem: 512 * 1024 * 1024 });
+  const verifier = encryptBlob(Buffer.from('pica-verifier-v1', 'utf8'), oldKey);
+  const v1 = {
+    dataDir: path.join(dir, 'data'),
+    security: {
+      kdf: { algorithm: 'scrypt', salt: salt.toString('hex'),
+             cost: 1 << 17, blockSize: 8, parallelization: 1 },
+      verifier: verifier.toString('base64'),
+    },
+  };
+  process.env.PICA_PASSPHRASE = 'WRONG PASS';
+  await assert.rejects(() => initMasterKey(v1, configPath, QUIET), /Incorrect passphrase/);
+  assert.equal(fs.existsSync(configPath), false, 'no v2 config written on failed migration');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+await test('wrong recovery code does not unlock and throws', async () => {
+  const { dir, configPath } = tmpCfg();
+  process.env.PICA_PASSPHRASE = 'orig pass';
+  const { masterKey: dek } = await initMasterKey({ dataDir: path.join(dir, 'data') }, configPath, QUIET);
+  const { deriveKek, newKdf, setSlot, writeConfigAtomic } = await import('../src/crypto/keyring.js');
+  const { wrapDek, generateRecoveryCode, normalizeRecoveryCode } = await import('../src/crypto/dek.js');
+  const code = generateRecoveryCode();
+  const rk = newKdf();
+  const recKek = await deriveKek(normalizeRecoveryCode(code), rk);
+  const cfgObj = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  setSlot(cfgObj.security, 'recovery', rk, wrapDek(dek, recKek, 'recovery'),
+    { createdAt: new Date().toISOString() });
+  writeConfigAtomic(configPath, cfgObj);
+
+  delete process.env.PICA_PASSPHRASE;
+  process.env.PICA_RECOVERY_CODE = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX';
+  const reloaded = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  await assert.rejects(() => initMasterKey(reloaded, configPath, QUIET), /passphrase|recovery/i);
+  delete process.env.PICA_RECOVERY_CODE;
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+await test('first run rejects a passphrase shorter than 8 chars (even from env)', async () => {
+  const { dir, configPath } = tmpCfg();
+  process.env.PICA_PASSPHRASE = 'short';
+  await assert.rejects(
+    () => initMasterKey({ dataDir: path.join(dir, 'data') }, configPath, QUIET),
+    /at least 8 characters/);
+  process.env.PICA_PASSPHRASE = 'correct horse';
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
