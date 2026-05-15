@@ -6,6 +6,8 @@ import { encryptBlob, decryptBlob, encryptField, decryptField } from './aes.js';
 function walk(dir, base = dir, out = []) {
   for (const name of fs.readdirSync(dir)) {
     const full = path.join(dir, name);
+    // statSync follows symlinks; acceptable because the storage layer
+    // never creates symlinks under data/.
     if (fs.statSync(full).isDirectory()) walk(full, base, out);
     else out.push(path.relative(base, full));
   }
@@ -14,6 +16,8 @@ function walk(dir, base = dir, out = []) {
 
 // Returns null for "copy verbatim", or { kind, aad } for a re-encrypt rule.
 function classify(rel) {
+  // path.sep is '/' on the target platforms (darwin/linux); walk()'s
+  // path.relative output uses the same separator.
   const parts = rel.split(path.sep);
   const file = parts[parts.length - 1];
 
@@ -65,13 +69,24 @@ export async function rotateData({ dataDir, stagingDir, oldKey, newKey, logger }
       fs.writeFileSync(dst, rekeyBlob(fs.readFileSync(src), oldKey, newKey, rule.aad), { mode: 0o600 });
     } else if (rule.kind === 'audit-lines') {
       const out = fs.readFileSync(src, 'utf8').split('\n').map((line) => {
+        // Preserve empty elements (incl. the trailing-\n artifact of split)
+        // so the rewritten file is byte-identical in structure. Changing
+        // this to `continue`/`filter(Boolean)` would silently drop the
+        // trailing newline.
         if (!line) return line;
         return rekeyBlob(Buffer.from(line, 'base64'), oldKey, newKey, rule.aad).toString('base64');
       }).join('\n');
       fs.writeFileSync(dst, out, { mode: 0o600 });
     } else if (rule.kind === 'field-lines') {
       const out = fs.readFileSync(src, 'utf8').split('\n').map((line) => {
+        // Preserve empty elements (incl. the trailing-\n artifact of split)
+        // so the rewritten file is byte-identical in structure. Changing
+        // this to `continue`/`filter(Boolean)` would silently drop the
+        // trailing newline.
         if (!line) return line;
+        // JSON.parse throwing on a malformed line is intentional: key
+        // rotation is all-or-nothing. Silently skipping would drop data
+        // from the rotated file. The caller discards stagingDir on throw.
         const obj = JSON.parse(line);
         if (typeof obj.enc === 'string') {
           const aad = rule.aadKey(obj);
