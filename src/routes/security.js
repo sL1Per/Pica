@@ -1,8 +1,8 @@
 // src/routes/security.js
 import fs from 'node:fs';
 import { auditContext } from '../storage/audit.js';
-import { wrapDek, unwrapDek } from '../crypto/dek.js';
-import { deriveKek, newKdf, getSlot, setSlot, writeConfigAtomic } from '../crypto/keyring.js';
+import { wrapDek, unwrapDek, generateRecoveryCode, normalizeRecoveryCode } from '../crypto/dek.js';
+import { deriveKek, newKdf, getSlot, setSlot, removeSlot, writeConfigAtomic } from '../crypto/keyring.js';
 
 const MIN_PASSPHRASE = 8;
 
@@ -67,6 +67,45 @@ export function registerSecurityRoutes(router, deps) {
       ...auditContext(req), event: 'security.passphrase_changed', outcome: 'success',
     });
     logger?.info('Passphrase changed (DEK re-wrapped; data untouched).');
+    res.json({ ok: true });
+  }));
+
+  router.post('/api/security/recovery-code', employer(async (req, res) => {
+    const { currentPassphrase } = req.body || {};
+    if (typeof currentPassphrase !== 'string' || currentPassphrase.length === 0) {
+      return res.badRequest('Current passphrase is required', { errorCode: 'required' });
+    }
+    const config = readConfig(configPath);
+    const dek = await dekFromPassphrase(config.security, currentPassphrase);
+    if (!dek) return res.badRequest('Current passphrase is incorrect', { errorCode: 'wrong_passphrase' });
+
+    const code = generateRecoveryCode();
+    const kdf = newKdf();
+    const kek = await deriveKek(normalizeRecoveryCode(code), kdf);
+    setSlot(config.security, 'recovery', kdf, wrapDek(dek, kek, 'recovery'),
+      { createdAt: new Date().toISOString() });
+    writeConfigAtomic(configPath, config);
+
+    auditStore?.appendRecord({
+      ...auditContext(req), event: 'security.recovery_code_set', outcome: 'success',
+    });
+    logger?.info('Recovery code (re)generated.');
+    res.json({ code }); // shown to the operator exactly once — never logged
+  }));
+
+  router.delete('/api/security/recovery-code', employer(async (req, res) => {
+    const { currentPassphrase } = req.body || {};
+    if (typeof currentPassphrase !== 'string' || currentPassphrase.length === 0) {
+      return res.badRequest('Current passphrase is required', { errorCode: 'required' });
+    }
+    const config = readConfig(configPath);
+    const dek = await dekFromPassphrase(config.security, currentPassphrase);
+    if (!dek) return res.badRequest('Current passphrase is incorrect', { errorCode: 'wrong_passphrase' });
+    removeSlot(config.security, 'recovery');
+    writeConfigAtomic(configPath, config);
+    auditStore?.appendRecord({
+      ...auditContext(req), event: 'security.recovery_code_removed', outcome: 'success',
+    });
     res.json({ ok: true });
   }));
 }

@@ -114,5 +114,49 @@ await test('corrupt config is NOT masked as wrong passphrase (propagates)', asyn
   fs.rmSync(f.dir, { recursive: true, force: true });
 });
 
+await test('set recovery code returns it once and stores a recovery slot', async () => {
+  const f = await fixture();
+  const res = await call(f.router, 'POST', '/api/security/recovery-code',
+    { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'current-pass' } });
+  assert.equal(res.statusCode, 200);
+  assert.match(res.body.code, /^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){7}$/);
+  const cfg = JSON.parse(fs.readFileSync(f.configPath, 'utf8'));
+  assert.ok(cfg.security.wraps.recovery.wrapped);
+  assert.ok(cfg.security.wraps.recovery.createdAt);
+  assert.ok(f.audited.some((a) => a.event === 'security.recovery_code_set'));
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
+await test('set recovery code with wrong passphrase → 400', async () => {
+  const f = await fixture();
+  const res = await call(f.router, 'POST', '/api/security/recovery-code',
+    { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'NOPE' } });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.errorCode, 'wrong_passphrase');
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
+await test('set recovery code missing currentPassphrase → 400 required', async () => {
+  const f = await fixture();
+  const res = await call(f.router, 'POST', '/api/security/recovery-code',
+    { user: { id: 'm', role: 'employer' }, body: {} });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.errorCode, 'required');
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
+await test('delete recovery code removes the slot', async () => {
+  const f = await fixture();
+  await call(f.router, 'POST', '/api/security/recovery-code',
+    { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'current-pass' } });
+  const res = await call(f.router, 'DELETE', '/api/security/recovery-code',
+    { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'current-pass' } });
+  assert.equal(res.statusCode, 200);
+  const cfg = JSON.parse(fs.readFileSync(f.configPath, 'utf8'));
+  assert.equal(cfg.security.wraps.recovery, undefined);
+  assert.ok(f.audited.some((a) => a.event === 'security.recovery_code_removed'));
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
