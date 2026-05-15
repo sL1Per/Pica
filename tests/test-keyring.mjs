@@ -58,5 +58,28 @@ await test('writeConfigAtomic writes mode-0600 JSON and is re-readable', () => {
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+await test('detectFormat returns unknown for degenerate configs', () => {
+  assert.equal(detectFormat({ wraps: { x: 1 } }), 'unknown'); // wraps but no version:2
+  assert.equal(detectFormat({ kdf: { salt: 'aa' } }), 'unknown'); // kdf but no verifier
+});
+
+await test('deriveKek: different salt yields a different key for the same secret', async () => {
+  const k1 = await deriveKek('same-secret', newKdf());
+  const k2 = await deriveKek('same-secret', newKdf());
+  assert.notDeepEqual(k1, k2);
+});
+
+await test('writeConfigAtomic overwrites an existing file and lands at 0600', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-kr2-'));
+  const cfgPath = path.join(dir, 'config.json');
+  fs.writeFileSync(cfgPath, '{"old":true}');
+  fs.writeFileSync(cfgPath + '.tmp', 'stale', { mode: 0o644 }); // simulate a crash leftover
+  writeConfigAtomic(cfgPath, { fresh: 1 });
+  assert.deepEqual(JSON.parse(fs.readFileSync(cfgPath, 'utf8')), { fresh: 1 });
+  assert.equal(fs.statSync(cfgPath).mode & 0o777, 0o600);
+  assert.equal(fs.existsSync(cfgPath + '.tmp'), false);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

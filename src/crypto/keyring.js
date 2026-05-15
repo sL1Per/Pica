@@ -13,7 +13,7 @@ export const KDF = Object.freeze({
   blockSize: 8,         // r
   parallelization: 1,   // p
   keylen: 32,
-  saltBytes: 32,
+  saltBytes: 32,           // controls newKdf() salt length only; not stored per-slot
   maxmem: 512 * 1024 * 1024,
 });
 
@@ -66,5 +66,9 @@ export function removeSlot(security, slot) {
 export function writeConfigAtomic(configPath, config) {
   const tmp = configPath + '.tmp';
   fs.writeFileSync(tmp, JSON.stringify(config, null, 2) + '\n', { mode: 0o600 });
+  // writeFileSync's mode is ignored when tmp already exists (e.g. a stale
+  // file from a prior crash); enforce 0600 before the secret-bearing
+  // config is renamed into place.
+  fs.chmodSync(tmp, 0o600);
   fs.renameSync(tmp, configPath);
 }
