@@ -10,6 +10,7 @@
 - [**DONE**] Punches don't work if location is blocked or not available. Can we force the browser to ask again if its already blocked? Change punches to not block, if it can great if not its also ok. (1)
 - [**DONE**] Getting a http 400 when submitting vacations: "WARN  POST /api/leaves 400 4ms" This happens when someone is doing it via internet, in the localhost i cannot reproduce this. --> Check picture on desktop -> this happens when limit is reach but we need to fix the error and show a message to the user (1)
 - [**DONE**] Employee cannot see his profile (1)
+- [**DONE**] Employees are able to book vacations even if another one has already approved leave for the same day and the option in the settings page is not selected, meaning it should not be allowed for an employee to book vacation when another one already have a leave approved for the same day.
 
 ### Change
 

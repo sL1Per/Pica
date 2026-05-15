@@ -14,6 +14,100 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.17] — 2026-05-15 — Enforce "no concurrent leave" at booking time
+
+### What was wrong
+
+The Organization setting **"Allow multiple employees on leave at
+the same time"** was *advisory only*. When unchecked, it merely
+showed the employer a warning banner at approval time
+(`GET /api/leaves/:id/overlaps`) — but an employee could still
+freely **book** a vacation overlapping a colleague's already-
+approved leave. The `errors.leave_overlaps` message existed in
+both locales but was never produced by any code path: the
+setting had no teeth.
+
+### What's fixed
+
+`POST /api/leaves` now enforces the setting at creation. When
+`leaves.concurrentAllowed === false`, an employee's request is
+refused with **HTTP 400 `leave_overlaps`** if it shares any
+calendar day with a *different* employee's **approved** leave.
+
+Exemptions mirror the blocked-days policy (0.22.15), for the
+same reasons:
+
+- **The employer is never refused** — they have the final call
+  (consistent with the existing approval-time advisory model).
+- **Sick leave is never refused** — non-discretionary; you do
+  not choose to be ill on a day a colleague is off.
+
+So vacation / appointment / other by an employee are gated;
+sick and any employer booking pass.
+
+### How it works
+
+Two pure, exported helpers in `src/storage/leaves.js`:
+
+- `leavesShareADay(a, b)` — normalizes both leaves to inclusive
+  `[startDay, endDay]` date spans (days-mode dates are already
+  `YYYY-MM-DD`; hours-mode ISO timestamps → first 10 chars), so
+  mixed-unit comparisons are correct. Lexicographic compare is
+  valid for `YYYY-MM-DD`.
+- `findConcurrentApprovedLeave(candidate, requesterId, all)` —
+  first approved leave of a *different* employee sharing a day,
+  else null. Geometry + status/identity filter only; the route
+  owns the on/off + employer/sick policy.
+
+The orphan `errors.leave_overlaps` message (en-US + pt-PT) was
+rewritten to accurately describe the cause — it was previously
+"overlaps another approved or pending leave", which was both
+unused and inaccurate for this enforcement (we check approved
+only).
+
+### Files touched
+
+- `src/storage/leaves.js` — `leavesShareADay` +
+  `findConcurrentApprovedLeave` exports.
+- `src/routes/leaves.js` — concurrent check in `POST /api/leaves`
+  (after blocked-days, before cap), employer/sick exempt.
+- `public/locales/en-US.js`, `pt-PT.js` — accurate
+  `errors.leave_overlaps` wording.
+- `public/sw.js` — `CACHE_VERSION` → `pica-cache-v38` (locale
+  files are pre-cached).
+- `tests/test-leaves-concurrent.mjs` — new suite, 17 cases
+  (helper geometry incl. days↔hours, status/identity filter,
+  route enforcement incl. setting on/off, employer + sick
+  exemptions, own-leave-ignored, no-overlap-allowed).
+- `package.json` — version `0.22.17`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **Approval is still advisory.** Approving a *pending* leave
+  that overlaps is unchanged — the employer still gets the
+  `/overlaps` warning and the final call. The gate added here
+  is at employee booking only, matching the reported problem.
+  Closing the approval path the same hard way would take the
+  decision away from the very person who set the policy.
+- **Only OTHER employees' APPROVED leave blocks a booking.**
+  Pending leave of a colleague does not (a pending request is
+  not a commitment, and two pending requests racing would
+  otherwise deadlock each other). Documented; revisit if the
+  operator wants pending to reserve a slot.
+- **No team/role scoping.** The check is org-wide: any one
+  approved leave anywhere blocks any overlapping employee
+  booking. For a ≤50-person tool that is the intended reading
+  of the setting; per-team capacity rules are out of scope.
+- **Pre-existing overlaps are not touched.** Leaves approved
+  before this shipped that already overlap stay valid; the gate
+  only applies to *new* bookings.
+- **Same imperfect-but-consistent date model as elsewhere.**
+  Day granularity only — an hours-mode leave anywhere on a day
+  blocks (and is blocked by) any other leave on that calendar
+  day; Pica does not do sub-day capacity.
+
+---
+
 ## [0.22.16] — 2026-05-15 — Bugfix: picture upload 500 when no profile exists
 
 ### What was wrong

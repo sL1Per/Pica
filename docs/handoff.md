@@ -5,24 +5,43 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.16._
+_Last touched in 0.22.17._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.16 (released 2026-05-15)
-- **Test count:** 611 across 26 suites, all green (1 pre-existing
+- **Latest version:** 0.22.17 (released 2026-05-15)
+- **Test count:** 628 across 27 suites, all green (1 pre-existing
   TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
   count, unchanged by this release — see notes.md)
-- **Build artifact:** `pica-0.22.16-picture-upload-fix.zip`
+- **Build artifact:** `pica-0.22.17-concurrent-leave-enforce.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.16)
+## What just shipped (0.22.17)
+
+Bugfix. The Organization setting "Allow multiple employees on
+leave at the same time" was advisory only — when off it merely
+warned the employer at approval; employees could still book a
+vacation overlapping a colleague's approved leave. Now
+`POST /api/leaves` enforces it: with the setting off, an
+employee request sharing any calendar day with another
+employee's **approved** leave is refused with HTTP 400
+`leave_overlaps`. Employer and sick leave are exempt (same
+rationale as blocked-days 0.22.15). Approval stays advisory
+(employer's final call), by design.
+
+New pure helpers `leavesShareADay` / `findConcurrentApprovedLeave`
+exported from `src/storage/leaves.js`. The orphan
+`errors.leave_overlaps` message (was unused + inaccurate) was
+rewritten. New suite `test-leaves-concurrent.mjs` (17 cases).
+CACHE_VERSION → v38 (locale files pre-cached).
+
+## What shipped in 0.22.16
 
 Bugfix. `PUT /api/employees/:id/picture` returned a 500
 (`missing_required_field: fullName`) when the employee had no
@@ -440,6 +459,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Break on employer "Working today" widget | ✅ 0.22.14 |
 | —     | Blocked days (employer no-leave dates)   | ✅ 0.22.15 |
 | —     | Fix: picture upload 500 → 400 + message  | ✅ 0.22.16 |
+| —     | Enforce no-concurrent-leave at booking   | ✅ 0.22.17 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

@@ -494,3 +494,39 @@ export function createLeavesStore(dataDir, masterKey) {
 
 export const LEAVE_TYPES_LIST = LEAVE_TYPES;
 export const LEAVE_UNITS_LIST = LEAVE_UNITS;
+
+/**
+ * Do two leaves share at least one calendar day?
+ *
+ * Pure, no I/O. Both leaves are normalized to a [startDay, endDay]
+ * date span: days-mode start/end are already "YYYY-MM-DD"; hours-mode
+ * start/end are full ISO timestamps, so the first 10 chars are the
+ * date. Mixed-unit comparisons therefore work (a days leave vs an
+ * hours leave on one of those days overlaps). Lexicographic compare
+ * is correct for "YYYY-MM-DD". Spans are inclusive on both ends.
+ * Overlap iff aStart <= bEnd AND bStart <= aEnd.
+ */
+export function leavesShareADay(a, b) {
+  const aS = String(a.start).slice(0, 10);
+  const aE = String(a.end ?? a.start).slice(0, 10);
+  const bS = String(b.start).slice(0, 10);
+  const bE = String(b.end ?? b.start).slice(0, 10);
+  return aS <= bE && bS <= aE;
+}
+
+/**
+ * First APPROVED leave belonging to a DIFFERENT employee that shares
+ * a calendar day with `candidate`, or null. Used to enforce the
+ * "no concurrent leave" org policy at booking time. The caller owns
+ * the policy (whether the setting is off, employer/sick exemptions);
+ * this is the geometry + status/identity filter only.
+ */
+export function findConcurrentApprovedLeave(candidate, requesterId, allLeaves) {
+  if (!Array.isArray(allLeaves)) return null;
+  for (const l of allLeaves) {
+    if (l.status !== 'approved') continue;
+    if (l.employeeId === requesterId) continue;
+    if (leavesShareADay(candidate, l)) return l;
+  }
+  return null;
+}

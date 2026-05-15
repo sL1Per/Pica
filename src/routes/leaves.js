@@ -1,4 +1,4 @@
-import { LEAVE_TYPES_LIST, LEAVE_UNITS_LIST } from '../storage/leaves.js';
+import { LEAVE_TYPES_LIST, LEAVE_UNITS_LIST, findConcurrentApprovedLeave } from '../storage/leaves.js';
 import { findBlockingRange } from '../storage/org-settings.js';
 import { auditContext } from '../storage/audit.js';
 
@@ -182,6 +182,33 @@ export function registerLeaveRoutes(router, {
         return res.badRequest(
           `Leave cannot be booked: ${named} is blocked by your employer.`,
           { errorCode: 'leave_day_blocked' },
+        );
+      }
+    }
+
+    // Concurrent-leave enforcement. When the org has "allow multiple
+    // employees on leave at the same time" turned OFF, an employee may
+    // not book a leave that shares a calendar day with another
+    // employee's APPROVED leave. Exemptions mirror the blocked-days
+    // policy: the employer is never blocked (they have the final call —
+    // same principle as the approval-time advisory), and sick leave is
+    // non-discretionary so it is never refused for coverage reasons.
+    // start must be a string here; if it isn't, skip and let
+    // store.create() produce the proper validation error.
+    if (req.user.role !== 'employer'
+        && type !== 'sick'
+        && typeof start === 'string'
+        && orgSettingsStore.get().leaves.concurrentAllowed === false) {
+      const clash = findConcurrentApprovedLeave(
+        { start, end: end ?? start },
+        req.user.id,
+        leavesStore.list(),
+      );
+      if (clash) {
+        return res.badRequest(
+          'Cannot book leave: another employee already has approved leave on ' +
+          'one or more of these days, and concurrent leave is disabled.',
+          { errorCode: 'leave_overlaps' },
         );
       }
     }
