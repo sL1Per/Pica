@@ -106,6 +106,7 @@ export function registerSecurityRoutes(router, deps) {
     auditStore?.appendRecord({
       ...auditContext(req), event: 'security.recovery_code_removed', outcome: 'success',
     });
+    logger?.info('Recovery code removed.');
     res.json({ ok: true });
   }));
 }

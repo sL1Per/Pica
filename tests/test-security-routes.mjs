@@ -158,5 +158,52 @@ await test('delete recovery code removes the slot', async () => {
   fs.rmSync(f.dir, { recursive: true, force: true });
 });
 
+await test('employee is forbidden from recovery-code routes', async () => {
+  const f = await fixture();
+  for (const m of ['POST', 'DELETE']) {
+    const res = await call(f.router, m, '/api/security/recovery-code',
+      { user: { id: 'e', role: 'employee' }, body: { currentPassphrase: 'current-pass' } });
+    assert.equal(res.statusCode, 403);
+  }
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
+await test('regenerating the recovery code replaces (never duplicates) the slot', async () => {
+  const f = await fixture();
+  const r1 = await call(f.router, 'POST', '/api/security/recovery-code',
+    { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'current-pass' } });
+  const r2 = await call(f.router, 'POST', '/api/security/recovery-code',
+    { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'current-pass' } });
+  assert.notEqual(r1.body.code, r2.body.code);
+  const cfg = JSON.parse(fs.readFileSync(f.configPath, 'utf8'));
+  assert.equal(Object.keys(cfg.security.wraps).filter((k) => k === 'recovery').length, 1);
+  // old code must no longer unwrap the DEK
+  const { deriveKek } = await import('../src/crypto/keyring.js');
+  const { unwrapDek, normalizeRecoveryCode } = await import('../src/crypto/dek.js');
+  const slot = cfg.security.wraps.recovery;
+  const oldKek = await deriveKek(normalizeRecoveryCode(r1.body.code), slot.kdf);
+  assert.throws(() => unwrapDek(slot.wrapped, oldKek, 'recovery'));
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
+await test('deleting when no recovery code exists is an idempotent 200', async () => {
+  const f = await fixture();
+  const res = await call(f.router, 'DELETE', '/api/security/recovery-code',
+    { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'current-pass' } });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.ok, true);
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
+// Regression guard for the production bug the route-test harness masks:
+// the harness sets req.body directly, but the real server only parses a
+// request body for the methods in this list. DELETE MUST be present or
+// DELETE /api/security/recovery-code is dead in production (always 400).
+await test('server.js parses a request body for DELETE', () => {
+  const src = fs.readFileSync(new URL('../server.js', import.meta.url), 'utf8');
+  const m = src.match(/\[\s*'POST',\s*'PUT',\s*'PATCH',\s*'DELETE'\s*\]\.includes\(\s*nodeReq\.method\s*\)/);
+  assert.ok(m, "server.js body-parse gate must include 'DELETE'");
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

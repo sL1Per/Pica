@@ -308,7 +308,10 @@ async function handle(nodeReq, nodeRes) {
     // Parse body for methods that typically have one. The restore
     // endpoint accepts uploads up to backupMaxBytes (200 MB by
     // default); everything else stays under maxBodyBytes (5 MB).
-    if (['POST', 'PUT', 'PATCH'].includes(nodeReq.method)) {
+    // DELETE is included because some endpoints (e.g. recovery-code removal)
+    // require a credential in the body. Existing DELETE routes ignore req.body,
+    // so parsing one is harmless; the per-path size cap still applies.
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(nodeReq.method)) {
       const isLeaveUpload = nodeReq.path === '/api/leaves'
         || nodeReq.path.endsWith('/attachment');
       const cap = nodeReq.path === '/api/backups/restore'
