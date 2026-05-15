@@ -123,6 +123,18 @@ textarea {
 }
 .decided-note__label { color: var(--text-muted); margin-bottom: var(--gap-1); }
 
+.attachment-edit {
+  margin-top: var(--gap-4);
+  padding: var(--gap-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+.attachment-edit label { display: block; color: var(--text-muted); margin-bottom: var(--gap-1); }
+.attachment-edit input[type="file"] { margin-bottom: var(--gap-2); }
+.attachment-edit .actions { margin-top: var(--gap-2); }
+
 .reject-dialog {
   margin-top: var(--gap-4);
   padding: var(--gap-4);

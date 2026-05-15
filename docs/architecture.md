@@ -173,7 +173,8 @@ pica/
 │   ├── test-punch-totals.mjs       # punch-page worked + break helpers
 │   ├── test-leaves-blocked.mjs     # employer blocked-days: helpers, store, route
 │   ├── test-employee-picture-route.mjs  # picture upload: 400 not 500 when no profile
-│   └── test-leaves-concurrent.mjs  # no-concurrent-leave enforcement at booking
+│   ├── test-leaves-concurrent.mjs  # no-concurrent-leave enforcement at booking
+│   └── test-leaves-attachment.mjs  # leave justification file: storage, policy, authz
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -316,7 +317,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 27 suites, 628 passing as of 0.22.17 (one pre-existing
+- Total: 28 suites, 655 passing as of 0.22.18 (one pre-existing
   TZ-sensitive flake in `test-reports.mjs` overnight-split bucket
   count, unrelated to recent changes).
 
@@ -382,4 +383,4 @@ upcoming-leaves block when interpreting the number.
 
 ---
 
-_Last touched in 0.22.17._
+_Last touched in 0.22.18._

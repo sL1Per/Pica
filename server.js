@@ -290,9 +290,13 @@ async function handle(nodeReq, nodeRes) {
     // endpoint accepts uploads up to backupMaxBytes (200 MB by
     // default); everything else stays under maxBodyBytes (5 MB).
     if (['POST', 'PUT', 'PATCH'].includes(nodeReq.method)) {
+      const isLeaveUpload = nodeReq.path === '/api/leaves'
+        || nodeReq.path.endsWith('/attachment');
       const cap = nodeReq.path === '/api/backups/restore'
         ? config.backupMaxBytes
-        : config.maxBodyBytes;
+        : isLeaveUpload
+          ? config.attachmentMaxBytes
+          : config.maxBodyBytes;
       nodeReq.body = await parseBody(nodeReq, { maxBytes: cap });
     } else {
       nodeReq.body = {};

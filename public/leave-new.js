@@ -66,8 +66,36 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
+  const fileEl = $('attachment');
+  const file = fileEl?.files?.[0] || null;
+  if (file && file.size > 5 * 1024 * 1024) {
+    showMessage(messageEl, t('leaveNew.attachmentTooLarge'), 'error');
+    return;
+  }
+
   setBusy(submitBtn, true, t('leaveNew.submitting'));
-  const result = await postJson('/api/leaves', payload);
+
+  let result;
+  if (file) {
+    // Multipart: text fields + the file part (field name "file").
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(payload)) {
+      if (v !== undefined && v !== null) fd.append(k, String(v));
+    }
+    fd.append('file', file, file.name);
+    try {
+      const res = await fetch('/api/leaves', {
+        method: 'POST', body: fd, credentials: 'same-origin',
+      });
+      const data = await res.json().catch(() => ({}));
+      result = { ok: res.ok, data };
+    } catch {
+      result = { ok: false, data: {} };
+    }
+  } else {
+    result = await postJson('/api/leaves', payload);
+  }
+
   if (result.ok) {
     window.location.href = `/leaves/${result.data.leave.id}`;
     return;

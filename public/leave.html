@@ -45,7 +45,20 @@
         <dt data-i18n="leave.fieldRequested">Requested</dt>  <dd id="f-created"></dd>
         <dt id="l-reason-dt" hidden data-i18n="leave.fieldReason">Reason</dt>
         <dd id="f-reason" hidden></dd>
+        <dt id="l-attachment-dt" hidden data-i18n="leave.fieldAttachment">Attachment</dt>
+        <dd id="f-attachment" hidden></dd>
       </dl>
+
+      <div id="attachment-edit" class="attachment-edit" hidden>
+        <label for="att-file" data-i18n="leave.attachmentChange">Add or replace file</label>
+        <input type="file" id="att-file"
+               accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/jpeg,image/png,image/gif,image/webp">
+        <div class="actions">
+          <button type="button" id="att-upload" class="secondary" data-i18n="leave.attachmentUpload">Upload</button>
+          <button type="button" id="att-remove" class="secondary" hidden data-i18n="leave.attachmentRemove">Remove</button>
+        </div>
+        <p class="subtle" data-i18n="leaveNew.attachmentHint">PDF or image, max 5 MB. Encrypted; visible only to you and your employer.</p>
+      </div>
 
       <div id="decided-note" class="decided-note" hidden>
         <div class="decided-note__label" id="decided-label"></div>

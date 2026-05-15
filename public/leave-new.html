@@ -75,6 +75,11 @@
       <label for="reason" data-i18n="leaveNew.reason">Reason (optional)</label>
       <textarea id="reason" rows="3" maxlength="500" data-i18n-attr="placeholder:leaveNew.reasonPlaceholder" placeholder="Brief explanation. This field is encrypted."></textarea>
 
+      <label for="attachment" data-i18n="leaveNew.attachment">Justification file (optional)</label>
+      <input type="file" id="attachment"
+             accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/jpeg,image/png,image/gif,image/webp">
+      <p class="subtle" data-i18n="leaveNew.attachmentHint">PDF or image, max 5 MB. Encrypted; visible only to you and your employer.</p>
+
       <button id="submit-btn" type="submit" class="block" data-i18n="leaveNew.submit">Submit request</button>
 
       <div id="message" class="message"></div>

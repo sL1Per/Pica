@@ -4,5 +4,6 @@
   "dataDir": "./data",
   "backupDir": "./backups",
   "maxBodyBytes": 5242880,
+  "attachmentMaxBytes": 6291456,
   "logLevel": "info"
 }

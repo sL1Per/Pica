@@ -2,13 +2,66 @@ import { LEAVE_TYPES_LIST, LEAVE_UNITS_LIST, findConcurrentApprovedLeave } from 
 import { findBlockingRange } from '../storage/org-settings.js';
 import { auditContext } from '../storage/audit.js';
 
+// Justification attachment policy. One file per leave, ≤5 MB, only the
+// document types a justification realistically needs. Served as a
+// download (never inline) so even a hostile file can't execute in the
+// viewer's browser.
+export const LEAVE_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+const ATTACHMENT_EXTS  = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'];
+const ATTACHMENT_MIMES = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+/**
+ * Validate an uploaded multipart file part against the attachment
+ * policy. Pure. Returns { ok:true, name, mime, size, data } or
+ * { ok:false, errorCode, message }.
+ */
+export function validateAttachment(file) {
+  if (!file || !Buffer.isBuffer(file.data)) {
+    return { ok: false, errorCode: 'invalid_value', message: 'No file data' };
+  }
+  if (file.data.length > LEAVE_ATTACHMENT_MAX_BYTES) {
+    return { ok: false, errorCode: 'attachment_too_large',
+             message: `Attachment exceeds ${LEAVE_ATTACHMENT_MAX_BYTES} bytes` };
+  }
+  const name = String(file.filename || 'attachment');
+  const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+  const mime = String(file.contentType || 'application/octet-stream').toLowerCase();
+  const extOk = ATTACHMENT_EXTS.includes(ext);
+  // Trust the extension as the gate; accept the matching mime or a
+  // generic octet-stream (some browsers/proxies send that). A correct
+  // mime that disagrees with a disallowed extension is still rejected.
+  const mimeOk = ATTACHMENT_MIMES.includes(mime) || mime === 'application/octet-stream';
+  if (!extOk || !mimeOk) {
+    return { ok: false, errorCode: 'attachment_bad_type',
+             message: 'Attachment must be a PDF or an image (JPG, PNG, GIF, WEBP)' };
+  }
+  return { ok: true, name, mime, size: file.data.length, data: file.data };
+}
+
+/**
+ * Pull the leave fields + optional file part from a request body that
+ * may be JSON (existing API/tests) or multipart/form-data (the new
+ * form when a file is attached). Multipart shape:
+ *   { fields:{...}, files:[{ field, filename, contentType, data }] }
+ */
+function readLeaveInput(body) {
+  if (body && typeof body === 'object' && body.fields && Array.isArray(body.files)) {
+    const file = body.files.find((f) => f.field === 'file') || body.files[0] || null;
+    return { src: body.fields, file };
+  }
+  return { src: body ?? {}, file: null };
+}
+
 /**
  * Leaves endpoints.
  *
  * Route map:
  *   GET  /api/leaves                              — list (self / all depending on role)
  *   GET  /api/leaves/:id                          — one leave (owner or employer)
- *   POST /api/leaves                              — create (self)
+ *   GET  /api/leaves/:id/attachment               — download (owner or employer)
+ *   PUT  /api/leaves/:id/attachment               — add/replace (owner or employer, pending)
+ *   DELETE /api/leaves/:id/attachment             — remove (owner or employer, pending)
+ *   POST /api/leaves                              — create (self); optional file part
  *   POST /api/leaves/:id/approve                  — employer only, pending → approved
  *   POST /api/leaves/:id/reject                   — employer only, pending → rejected
  *   POST /api/leaves/:id/cancel                   — owner if pending, employer any
@@ -154,8 +207,92 @@ export function registerLeaveRoutes(router, {
   }));
 
   // --------------------------------------------------------------------------
+  // Attachment endpoints. Visibility rule (per the feature request):
+  // ONLY the leave's owner or an employer — never another employee.
+  // This is the same authz GET /api/leaves/:id already uses.
+  // --------------------------------------------------------------------------
+  function loadOwnLeaveOrEmployer(req, res) {
+    const leave = leavesStore.findById(req.params.id);
+    if (!leave) { res.notFound('Leave not found', { errorCode: 'not_found' }); return null; }
+    if (req.user.role !== 'employer' && leave.employeeId !== req.user.id) {
+      res.forbidden('Not your leave', { errorCode: 'forbidden' });
+      return null;
+    }
+    return leave;
+  }
+
+  // GET — download the decrypted file. Always Content-Disposition:
+  // attachment so even a hostile upload cannot execute in the browser.
+  router.get('/api/leaves/:id/attachment', requireAuth((req, res) => {
+    const leave = loadOwnLeaveOrEmployer(req, res);
+    if (!leave) return;
+    if (!leave.attachment) return res.notFound('No attachment', { errorCode: 'not_found' });
+    let att;
+    try {
+      att = leavesStore.readAttachment(req.params.id);
+    } catch {
+      return res.notFound('No attachment', { errorCode: 'not_found' });
+    }
+    if (!att) return res.notFound('No attachment', { errorCode: 'not_found' });
+    // Strip anything path-like / quote-breaking from the download name.
+    const safeName = String(att.name).replace(/[\r\n"\\/]+/g, '_').slice(0, 200);
+    res.writeHead(200, {
+      'Content-Type': att.mime || 'application/octet-stream',
+      'Content-Length': att.data.length,
+      'Content-Disposition': `attachment; filename="${safeName}"`,
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'private, no-store',
+    });
+    res.end(att.data);
+  }));
+
+  // PUT — add or replace (owner or employer, only while pending). The
+  // store enforces pending; we surface a clean errorCode.
+  router.put('/api/leaves/:id/attachment', requireAuth((req, res) => {
+    const leave = loadOwnLeaveOrEmployer(req, res);
+    if (!leave) return;
+    const body = req.body;
+    const file = body && Array.isArray(body.files)
+      ? (body.files.find((f) => f.field === 'file') || body.files[0])
+      : null;
+    if (!file) return res.badRequest('No file uploaded', { errorCode: 'required' });
+    const v = validateAttachment(file);
+    if (!v.ok) return res.badRequest(v.message, { errorCode: v.errorCode });
+    try {
+      const updated = leavesStore.setAttachment(req.params.id, {
+        name: v.name, mime: v.mime, size: v.size, data: v.data,
+      });
+      res.json({ ok: true, leave: enrich(updated, usersByIdMap(), fullNameMap()) });
+    } catch (err) {
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
+    }
+  }));
+
+  // DELETE — remove (owner or employer, only while pending).
+  router.delete('/api/leaves/:id/attachment', requireAuth((req, res) => {
+    const leave = loadOwnLeaveOrEmployer(req, res);
+    if (!leave) return;
+    try {
+      const updated = leavesStore.removeAttachment(req.params.id);
+      res.json({ ok: true, leave: enrich(updated, usersByIdMap(), fullNameMap()) });
+    } catch (err) {
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
+    }
+  }));
+
+  // --------------------------------------------------------------------------
   router.post('/api/leaves', requireAuth((req, res) => {
-    const { type, unit, start, end, hours, reason } = req.body ?? {};
+    const { src, file } = readLeaveInput(req.body);
+    const { type, unit, start, end, hours, reason } = src;
+
+    // Validate the optional file BEFORE creating the leave, so a bad
+    // upload never leaves a leave behind with no attachment.
+    let attachment = null;
+    if (file) {
+      const v = validateAttachment(file);
+      if (!v.ok) return res.badRequest(v.message, { errorCode: v.errorCode });
+      attachment = v;
+    }
 
     if (!LEAVE_TYPES_LIST.includes(type)) {
       return res.badRequest(`type must be one of: ${LEAVE_TYPES_LIST.join(', ')}`, { errorCode: 'invalid_value' });
@@ -240,10 +377,18 @@ export function registerLeaveRoutes(router, {
     }
 
     try {
-      const leave = leavesStore.create({
+      let leave = leavesStore.create({
         employeeId: req.user.id,
         type, unit, start, end, hours, reason,
       });
+      if (attachment) {
+        leave = leavesStore.setAttachment(leave.id, {
+          name: attachment.name,
+          mime: attachment.mime,
+          size: attachment.size,
+          data: attachment.data,
+        });
+      }
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });

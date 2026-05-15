@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-import { encryptField, decryptField } from '../crypto/aes.js';
+import { encryptField, decryptField, encryptBlob, decryptBlob } from '../crypto/aes.js';
 
 /**
  * Leaves storage.
@@ -35,12 +35,31 @@ import { encryptField, decryptField } from '../crypto/aes.js';
 
 const LEAVE_TYPES = Object.freeze(['vacation', 'sick', 'appointment', 'other']);
 const LEAVE_UNITS = Object.freeze(['days', 'hours']);
-const LEAVE_EVENTS = Object.freeze(['created', 'approved', 'rejected', 'cancelled']);
+const LEAVE_EVENTS = Object.freeze([
+  'created', 'approved', 'rejected', 'cancelled',
+  'attachment_set', 'attachment_removed',
+]);
 
 function padMonth(m) { return String(m).padStart(2, '0'); }
 
 function aadFor(leaveId) {
   return `leave:${leaveId}`;
+}
+
+// A distinct AAD for the binary attachment blob so its ciphertext can
+// never be confused with the reason/notes field ciphertext (different
+// purpose, different file). Same leave id binds them together.
+function attachmentAadFor(leaveId) {
+  return `leave-attachment:${leaveId}`;
+}
+
+// Leave ids are randomUUID(). Guard the on-disk attachment path against
+// anything that isn't a plain UUID so a crafted id can't escape the dir.
+function safeLeaveId(id) {
+  if (typeof id !== 'string' || !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)) {
+    throw new Error('Invalid leave id');
+  }
+  return id;
 }
 
 /**
@@ -75,6 +94,23 @@ export function createLeavesStore(dataDir, masterKey) {
   }
   const rootDir = path.join(dataDir, 'leaves');
   fs.mkdirSync(rootDir, { recursive: true });
+
+  // One encrypted attachment file per leave (single-attachment model).
+  // Kept OUT of the ndjson event log on purpose: a ≤5 MB blob would
+  // bloat the append-only log (which is read+reduced in full on every
+  // list()). The log only carries small encrypted metadata events.
+  const attachmentsDir = path.join(rootDir, 'attachments');
+
+  function attachmentFile(id) {
+    return path.join(attachmentsDir, safeLeaveId(id));
+  }
+
+  function atomicWrite(filePath, buffer) {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    const tmp = filePath + '.tmp';
+    fs.writeFileSync(tmp, buffer, { mode: 0o600 });
+    fs.renameSync(tmp, filePath);
+  }
 
   function monthFile(year, month) {
     return path.join(rootDir, String(year), `${padMonth(month)}.ndjson`);
@@ -162,6 +198,7 @@ export function createLeavesStore(dataDir, masterKey) {
           hours: ev.hours ?? null,
           reason,
           notes: null,
+          attachment: null,
           status: 'pending',
           createdAt: ev.ts,
           decidedBy: null,
@@ -188,6 +225,16 @@ export function createLeavesStore(dataDir, masterKey) {
         state.status = 'cancelled';
         state.cancelledBy = ev.actorId;
         state.cancelledAt = ev.ts;
+      } else if (ev.event === 'attachment_set') {
+        let meta = null;
+        if (ev.enc) {
+          try {
+            meta = JSON.parse(decryptField(ev.enc, masterKey, aad)).attachment ?? null;
+          } catch { /* decrypt failed — treat as no attachment */ }
+        }
+        state.attachment = meta;
+      } else if (ev.event === 'attachment_removed') {
+        state.attachment = null;
       }
     }
     return state;
@@ -429,6 +476,74 @@ export function createLeavesStore(dataDir, masterKey) {
   function reject(id, actorId, notes)   { return transition(id, actorId, 'rejected', { notes }); }
   function cancel(id, actorId)          { return transition(id, actorId, 'cancelled'); }
 
+  // --------------------------------------------------------------------------
+  // Attachment (single justification file per leave). Only mutable while
+  // the leave is pending — once decided/cancelled the attachment is
+  // frozen alongside the rest of the record.
+  // --------------------------------------------------------------------------
+
+  function assertPending(current, verb) {
+    if (current.status !== 'pending') {
+      const e = new Error(`Cannot ${verb} the attachment of a leave that is ${current.status}`);
+      e.code = 'attachment_locked';
+      throw e;
+    }
+  }
+
+  /**
+   * Attach (or replace) the justification file. `data` is the raw bytes
+   * (Buffer); the route is responsible for size/type validation. Writes
+   * the encrypted blob to its own file and appends an `attachment_set`
+   * event carrying the encrypted metadata. Replacing simply overwrites
+   * the file and appends a new event (the reducer keeps the last one).
+   */
+  function setAttachment(id, { name, mime, size, data }) {
+    const current = findById(id);
+    if (!current) throw new Error('Leave not found');
+    assertPending(current, 'change');
+    if (!Buffer.isBuffer(data)) throw new TypeError('attachment data must be a Buffer');
+    const meta = {
+      name: String(name ?? 'attachment').slice(0, 255),
+      mime: String(mime ?? 'application/octet-stream').slice(0, 100),
+      size: Number.isFinite(size) ? size : data.length,
+    };
+    atomicWrite(attachmentFile(id), encryptBlob(data, masterKey, attachmentAadFor(id)));
+    const ts = new Date().toISOString();
+    const ev = {
+      id, ts, event: 'attachment_set',
+      enc: encryptField(JSON.stringify({ attachment: meta }), masterKey, aadFor(id)),
+    };
+    const { year, month } = current._partition;
+    appendEvent(year, month, ev);
+    return findById(id);
+  }
+
+  /** Remove the attachment (while pending). Best-effort file unlink. */
+  function removeAttachment(id) {
+    const current = findById(id);
+    if (!current) throw new Error('Leave not found');
+    assertPending(current, 'remove');
+    if (!current.attachment) return current; // nothing to do — idempotent
+    const ts = new Date().toISOString();
+    const { year, month } = current._partition;
+    appendEvent(year, month, { id, ts, event: 'attachment_removed' });
+    try { fs.unlinkSync(attachmentFile(id)); } catch { /* already gone */ }
+    return findById(id);
+  }
+
+  /**
+   * Read and decrypt the attachment. Returns
+   * { name, mime, size, data:Buffer } or null when there is none.
+   */
+  function readAttachment(id) {
+    const current = findById(id);
+    if (!current || !current.attachment) return null;
+    const file = attachmentFile(id);
+    if (!fs.existsSync(file)) return null;
+    const data = decryptBlob(fs.readFileSync(file), masterKey, attachmentAadFor(id));
+    return { ...current.attachment, data };
+  }
+
   /**
    * Check whether booking `additionalDays` of `type` for `userId` in `year`
    * would push the user's booked total over their allowance.
@@ -486,8 +601,11 @@ export function createLeavesStore(dataDir, masterKey) {
     approve,
     reject,
     cancel,
+    setAttachment,
+    removeAttachment,
+    readAttachment,
     // Exposed for diagnostics / tests:
-    paths: { rootDir, monthFile },
+    paths: { rootDir, monthFile, attachmentsDir },
     listPartitions,
   };
 }

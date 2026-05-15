@@ -14,6 +14,109 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.22.18] — 2026-05-15 — Leave justification attachments
+
+### What's new
+
+An employee can attach **one justification file** to a leave
+request (a doctor's note, a scanned form, etc.):
+
+- **In the new-leave form**: an optional file input. PDF or
+  image (JPG, PNG, GIF, WEBP), **max 5 MB**.
+- **On the leave detail page**: the filename shows as a
+  download link; while the leave is still **pending**, the
+  owner or an employer can add / replace / remove the file.
+- **Encrypted at rest** (AES-256-GCM) in its own file,
+  `data/leaves/attachments/<leaveId>`, never in the event log.
+- **Visibility is exactly the leave's own ACL**: only the
+  leave's owner or an employer. Another employee gets HTTP 403
+  — the same rule `GET /api/leaves/:id` already enforces.
+- Served **download-only** (`Content-Disposition: attachment` +
+  `X-Content-Type-Options: nosniff`) so even a hostile upload
+  cannot execute in the viewer's browser.
+
+### How it works
+
+- **Storage** (`src/storage/leaves.js`): two new append-only
+  events, `attachment_set` / `attachment_removed`. The reducer
+  folds them into `state.attachment = { name, mime, size } |
+  null`. The bytes live in a separate encrypted file (AAD
+  `leave-attachment:<id>`, distinct from the `leave:<id>` AAD
+  that binds the reason/notes blob); the metadata travels in
+  the event's encrypted field. Kept out of the ndjson log on
+  purpose — a ≤5 MB blob there would bloat every `list()`.
+  New store methods `setAttachment` / `removeAttachment` /
+  `readAttachment`, all **pending-only** (decided leaves are
+  frozen).
+- **Routes** (`src/routes/leaves.js`): `POST /api/leaves` now
+  accepts `multipart/form-data` (still accepts JSON — the file
+  is validated *before* the leave is created, so a bad upload
+  never leaves an orphan leave). New `GET/PUT/DELETE
+  /api/leaves/:id/attachment`, all behind the owner-or-employer
+  check. `validateAttachment()` is a pure, exported, tested
+  policy function (size + extension/mime allowlist).
+- **Body cap**: `POST /api/leaves` and `*/attachment` get a
+  dedicated `attachmentMaxBytes` (6 MB default — a full 5 MB
+  file plus the multipart envelope) via the same path-scoped
+  mechanism the restore endpoint already uses. The file itself
+  is still hard-capped at 5 MB in `validateAttachment`.
+
+### Files touched
+
+- `src/storage/leaves.js` — events, reducer, attachment file
+  I/O, `setAttachment`/`removeAttachment`/`readAttachment`,
+  `safeLeaveId` path guard.
+- `src/routes/leaves.js` — multipart-aware create,
+  `validateAttachment`, three attachment routes.
+- `src/config.js`, `config.json.example`, `server.js` —
+  `attachmentMaxBytes` (6 MB) + path-scoped body cap.
+- `public/leave-new.html` / `leave-new.js` — file input,
+  multipart submit (JSON path unchanged when no file).
+- `public/leave.html` / `leave.js` / `leave.css` — download
+  link + pending-only add/replace/remove UI.
+- `public/locales/en-US.js`, `pt-PT.js` — `leave.attachment*`,
+  `leaveNew.attachment*`, `errors.attachment_*` (3 codes).
+- `public/sw.js` — `CACHE_VERSION` → `pica-cache-v39` (locale
+  files are pre-cached).
+- `tests/test-leaves-attachment.mjs` — new suite, 26 cases
+  (storage lifecycle incl. encrypted-at-rest + pending-lock +
+  wrong-key, `validateAttachment` policy, route authz incl.
+  the **other-employee 403** privacy case).
+- `package.json` — version `0.22.18`.
+
+### What this does NOT do (Honest Disclosures)
+
+- **One file per leave.** Replacing uploads a new one and
+  discards the old. Multiple attachments were explicitly out of
+  scope; if needed later it's a storage-layout change
+  (`<leaveId>/` directory) plus list UI.
+- **Type checking is extension + declared-MIME, not content
+  sniffing.** A renamed `.pdf` that is really something else is
+  accepted. Mitigated by: download-only + `nosniff` (the file
+  is never rendered inline by Pica), 5 MB cap, and same-org
+  trust model (≤50 employees). Pica does not parse/scan
+  uploads for malware.
+- **No virus scanning.** Out of scope for a zero-dependency
+  self-hosted tool; the operator's environment is trusted.
+- **Attachment is frozen once the leave is decided/cancelled.**
+  Deliberate — the justification should reflect what was true
+  at decision time. There is no post-decision edit path; an
+  employer who needs a corrected document asks for a new leave
+  or keeps it out-of-band.
+- **The original filename is stored (encrypted) and echoed in
+  the download.** It is sanitized for header-injection / path
+  characters but is otherwise the user's chosen name; it is
+  only ever shown to the owner/employer.
+- **No audit event for attachment add/replace/remove.** Leave
+  lifecycle events were already un-audited; this stays
+  consistent. The encrypted event log itself records that an
+  `attachment_set`/`attachment_removed` happened and when.
+- **No download rate-limiting / streaming.** The decrypted
+  file is buffered in memory and sent in one `res.end()`. Fine
+  at 5 MB and this scale; not a streaming pipeline.
+
+---
+
 ## [0.22.17] — 2026-05-15 — Enforce "no concurrent leave" at booking time
 
 ### What was wrong

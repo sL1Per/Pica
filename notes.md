@@ -17,9 +17,7 @@
 - [**DONE**] Employee should not see other employee leaves (1)
 - [**DONE**] Remove time bank, not needed, improve report to show who is missing hours and how many (3)
 - [**DONE**] Improve calendar in mobile phone, cannot read details
-- Reports revamp
 - [**DONE**] Leaves that move to next year need to expire at some point. Add a option in the organization settings to set the date when the vacations that moved from previous year expire. This should also reflect on the amount each employee has. (2)
-- Infinite approved / rejected / etc view, need a way to show only last 10.
 - [**DONE**] Make profile fields mandatory (2)
 - [**DONE**] Instead of showing coordinates, try to show an approximate address.
 
@@ -28,10 +26,18 @@
 - [**DONE**] Add an option to block day(s) from being bookable by an employee (employer can always do it). For example a special event day or days where the employer needs to make sure that all his employees are working so no leaves allowed for that specific day(s). This option should be added in the settings page and only the employer should have access to it. (5)
 - Add email notifications
 - [**DONE**] On punches, on the same day, show break time. For example, clock in at 9am clock out at 12PM and then clock in at 1PM and clock out at 6PM, i want to see in the UI total work time was 8h and break of 1h (4)
-- Add employee names also to filters for the leaves (on opt of the state). this is for the employer only view.
-- Add ability to upload files for justifications
-- Add profile picture every time the name appears in the UI except on headings.
+- [**DONE**] Add ability to upload files on leave request for justification. Max 5mb file size. This needs to be encrypted on the disk/storage but visible to the employer or the employee that updated (not to other employees!)
 - Add an option to reset the masterkey
+
+### Reports updates
+
+- Reports revamp
+
+### UI Changes
+
+- Add profile picture every time the name appears in the UI except on headings.
+- Infinite approved / rejected / etc view, need a way to show only last 10.
+- Add employee names also to filters for the leaves (on opt of the state). this is for the employer only view.
 
 ### Translations
 
@@ -39,6 +45,7 @@
 
 ### Before Production
 
+- test backup restore
 - remove any placeholder or mention to future milestone / development notes, etc.
 - Deploy server to make it accessible by other people, INTRANET only?
 - ssl ? - can be self-signed ..

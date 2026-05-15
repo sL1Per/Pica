@@ -11,6 +11,7 @@ const DEFAULTS = {
   dataDir: './data',
   backupDir: './backups',
   maxBodyBytes: 5 * 1024 * 1024,        // 5 MB — pictures are resized client-side
+  attachmentMaxBytes: 6 * 1024 * 1024,  // 6 MB — 5 MB leave file + multipart envelope
   backupMaxBytes: 200 * 1024 * 1024,    // 200 MB — restore upload ceiling
   logLevel: 'info',                     // debug | info | warn | error
 };
@@ -35,6 +36,9 @@ export function loadConfig(configPath) {
   }
   if (!Number.isInteger(merged.maxBodyBytes) || merged.maxBodyBytes < 1024) {
     throw new Error(`Invalid maxBodyBytes: ${merged.maxBodyBytes}`);
+  }
+  if (!Number.isInteger(merged.attachmentMaxBytes) || merged.attachmentMaxBytes < merged.maxBodyBytes) {
+    throw new Error(`Invalid attachmentMaxBytes: ${merged.attachmentMaxBytes} (must be ≥ maxBodyBytes)`);
   }
   if (!Number.isInteger(merged.backupMaxBytes) || merged.backupMaxBytes < merged.maxBodyBytes) {
     throw new Error(`Invalid backupMaxBytes: ${merged.backupMaxBytes} (must be ≥ maxBodyBytes)`);

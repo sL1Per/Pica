@@ -5,24 +5,49 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.17._
+_Last touched in 0.22.18._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.17 (released 2026-05-15)
-- **Test count:** 628 across 27 suites, all green (1 pre-existing
+- **Latest version:** 0.22.18 (released 2026-05-15)
+- **Test count:** 655 across 28 suites, all green (1 pre-existing
   TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
   count, unchanged by this release — see notes.md)
-- **Build artifact:** `pica-0.22.17-concurrent-leave-enforce.zip`
+- **Build artifact:** `pica-0.22.18-leave-attachments.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M12 closed; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.17)
+## What just shipped (0.22.18)
+
+Leave **justification attachments**. An employee can attach one
+file (PDF or image, ≤5 MB) to a leave request — in the new-leave
+form, and add/replace/remove on the detail page while the leave
+is still pending. Encrypted at rest in its own file
+(`data/leaves/attachments/<id>`, AAD `leave-attachment:<id>`),
+kept out of the ndjson event log. Download-only serving
+(`Content-Disposition: attachment` + `nosniff`). Visibility =
+the leave's own ACL: **owner or employer only; another employee
+gets 403**.
+
+Storage: `attachment_set`/`attachment_removed` events,
+`setAttachment`/`removeAttachment`/`readAttachment` (pending-only).
+Routes: multipart-aware `POST /api/leaves` (file validated
+before create), `GET/PUT/DELETE /api/leaves/:id/attachment`,
+pure exported `validateAttachment`. New `attachmentMaxBytes`
+(6 MB) path-scoped body cap. New suite
+`test-leaves-attachment.mjs` (26 cases). CACHE_VERSION → v39.
+
+Non-obvious (full list in RELEASES.md): one file per leave;
+type check is extension+MIME not content-sniffing (mitigated by
+download-only + nosniff + trust model); attachment frozen once
+the leave is decided; no virus scan; no attachment audit event.
+
+## What shipped in 0.22.17
 
 Bugfix. The Organization setting "Allow multiple employees on
 leave at the same time" was advisory only — when off it merely
@@ -460,6 +485,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Blocked days (employer no-leave dates)   | ✅ 0.22.15 |
 | —     | Fix: picture upload 500 → 400 + message  | ✅ 0.22.16 |
 | —     | Enforce no-concurrent-leave at booking   | ✅ 0.22.17 |
+| —     | Leave justification file attachments     | ✅ 0.22.18 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 

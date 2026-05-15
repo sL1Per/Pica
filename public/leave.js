@@ -67,6 +67,8 @@ function render() {
     $('f-reason').textContent = leave.reason;
   }
 
+  renderAttachment();
+
   banner.className = `status-banner status-banner--${leave.status}`;
   banner.innerHTML = `<span>${t('status.' + leave.status).toUpperCase()}</span>`;
 
@@ -90,6 +92,85 @@ function render() {
 
   renderActions();
   detail.hidden = false;
+}
+
+function renderAttachment() {
+  const dt = $('l-attachment-dt');
+  const dd = $('f-attachment');
+  const edit = $('attachment-edit');
+  const removeBtn = $('att-remove');
+
+  if (leave.attachment) {
+    dt.hidden = false;
+    dd.hidden = false;
+    dd.innerHTML = '';
+    const a = document.createElement('a');
+    a.href = `/api/leaves/${leaveId}/attachment`;
+    a.textContent = leave.attachment.name || t('leave.fieldAttachment');
+    a.setAttribute('download', leave.attachment.name || 'attachment');
+    a.rel = 'noopener';
+    dd.appendChild(a);
+  } else {
+    dt.hidden = true;
+    dd.hidden = true;
+    dd.textContent = '';
+  }
+
+  // Add/replace/remove only while pending, only for owner or employer
+  // (the server enforces this too — this is just UI gating).
+  const isOwner    = leave.employeeId === me.id;
+  const isEmployer = me.role === 'employer';
+  const canEdit = leave.status === 'pending' && (isOwner || isEmployer);
+  edit.hidden = !canEdit;
+  if (removeBtn) removeBtn.hidden = !leave.attachment;
+}
+
+async function uploadAttachment() {
+  const fileEl = $('att-file');
+  const file = fileEl?.files?.[0];
+  if (!file) { showMessage(messageEl, t('leave.attachmentPick'), 'error'); return; }
+  if (file.size > 5 * 1024 * 1024) {
+    showMessage(messageEl, t('leaveNew.attachmentTooLarge'), 'error');
+    return;
+  }
+  showMessage(messageEl, '');
+  const fd = new FormData();
+  fd.append('file', file, file.name);
+  try {
+    const res = await fetch(`/api/leaves/${leaveId}/attachment`, {
+      method: 'PUT', body: fd, credentials: 'same-origin',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      leave = data.leave;
+      fileEl.value = '';
+      render();
+      showMessage(messageEl, t('leave.attachmentSaved'), 'success');
+    } else {
+      showMessage(messageEl, translateError(data.errorCode, data.error || t('leave.attachmentFailed')), 'error');
+    }
+  } catch {
+    showMessage(messageEl, t('leave.attachmentFailed'), 'error');
+  }
+}
+
+async function removeAttachment() {
+  showMessage(messageEl, '');
+  try {
+    const res = await fetch(`/api/leaves/${leaveId}/attachment`, {
+      method: 'DELETE', credentials: 'same-origin',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      leave = data.leave;
+      render();
+      showMessage(messageEl, t('leave.attachmentRemoved'), 'success');
+    } else {
+      showMessage(messageEl, translateError(data.errorCode, data.error || t('leave.attachmentFailed')), 'error');
+    }
+  } catch {
+    showMessage(messageEl, t('leave.attachmentFailed'), 'error');
+  }
 }
 
 function renderActions() {
@@ -174,6 +255,9 @@ async function approveWithConcurrencyCheck() {
 
   await action('approve');
 }
+
+$('att-upload')?.addEventListener('click', uploadAttachment);
+$('att-remove')?.addEventListener('click', removeAttachment);
 
 $('reject-cancel').addEventListener('click', () => { rejectDialog.hidden = true; });
 $('reject-confirm').addEventListener('click', async () => {
