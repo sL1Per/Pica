@@ -8,7 +8,10 @@
 
 import assert from 'node:assert/strict';
 
-import { computePeriod, ymdOf, isWeekday } from '../src/storage/period.js';
+import {
+  computePeriod, ymdOf, isWeekday,
+  resolvePeriod, shiftPeriod, defaultAnchor, enumerateBuckets,
+} from '../src/storage/period.js';
 
 let passed = 0;
 let failed = 0;
@@ -185,6 +188,59 @@ test('computePeriod throws on unknown period', () => {
     () => computePeriod('quarter', new Date()),
     /unknown period/,
   );
+});
+
+// ---- new period-preset helpers (M13 reports revamp) --------------------
+// These use async/await style consistent with the plan but we wrap them
+// in the same synchronous `test()` harness — no actual async work.
+
+test('resolvePeriod day', () => {
+  const p = resolvePeriod('day', '2026-03-09');
+  assert.deepEqual(p, { type: 'day', from: '2026-03-09', to: '2026-03-09', bucketBy: 'day', label: '2026-03-09' });
+});
+
+test('resolvePeriod week = ISO Mon..Sun', () => {
+  const p = resolvePeriod('week', '2026-03-11'); // Wed
+  assert.equal(p.from, '2026-03-09'); // Monday
+  assert.equal(p.to,   '2026-03-15'); // Sunday
+  assert.equal(p.bucketBy, 'day');
+  assert.match(p.label, /^2026-W\d{2}$/);
+});
+
+test('resolvePeriod month', () => {
+  const p = resolvePeriod('month', '2026-02-17');
+  assert.equal(p.from, '2026-02-01');
+  assert.equal(p.to,   '2026-02-28'); // 2026 not leap
+  assert.equal(p.bucketBy, 'day');
+  assert.equal(p.label, '2026-02');
+});
+
+test('resolvePeriod year', () => {
+  const p = resolvePeriod('year', '2026-07-04');
+  assert.deepEqual(p, { type: 'year', from: '2026-01-01', to: '2026-12-31', bucketBy: 'month', label: '2026' });
+});
+
+test('shiftPeriod crosses boundaries', () => {
+  assert.equal(shiftPeriod('day',   '2026-03-01', -1), '2026-02-28');
+  assert.equal(shiftPeriod('month', '2026-01-15', -1), '2025-12-01');
+  assert.equal(shiftPeriod('year',  '2026-07-04', +1), '2027-07-04');
+  const a = shiftPeriod('week', '2026-03-11', +1);
+  assert.equal(resolvePeriod('week', a).from, '2026-03-16');
+});
+
+test('defaultAnchor returns a YYYY-MM-DD', () => {
+  assert.match(defaultAnchor('month'), /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test('enumerateBuckets: month→days, year→months', () => {
+  const days = enumerateBuckets('2026-02-01', '2026-02-28', 'day');
+  assert.equal(days.length, 28);
+  assert.equal(days[0], '2026-02-01');
+  assert.equal(days[27], '2026-02-28');
+  const months = enumerateBuckets('2026-01-01', '2026-12-31', 'month');
+  assert.deepEqual(months, [
+    '2026-01','2026-02','2026-03','2026-04','2026-05','2026-06',
+    '2026-07','2026-08','2026-09','2026-10','2026-11','2026-12']);
 });
 
 console.log('');

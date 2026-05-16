@@ -8,6 +8,8 @@
  * the storage layer's date-keyed indexing.
  */
 
+import { bucketKeyFor } from './reports.js';
+
 function pad2(n) { return String(n).padStart(2, '0'); }
 
 /** YYYY-MM-DD in the local time zone for a Date instance. */
@@ -86,3 +88,94 @@ export function computePeriod(period, now) {
 
   throw new Error(`unknown period '${period}'`);
 }
+
+// ---- Period presets (M13 reports revamp) --------------------------------
+// Additive. computePeriod/ymdOf/isWeekday above are unchanged — they are
+// still used by src/routes/employees.js (dashboard summary).
+
+function parseYmd(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Any date inside the "current" period; resolvePeriod normalizes it. */
+export function defaultAnchor(type, now = new Date()) {
+  // `type` is accepted for call-site symmetry with resolvePeriod and to
+  // allow future per-type anchoring; today's date sits inside every
+  // current period so it is sufficient for all types now.
+  return ymdOf(now);
+}
+
+/**
+ * Resolve a period preset to concrete bounds.
+ * @returns {{type,from,to,bucketBy,label}}
+ */
+export function resolvePeriod(type, anchorYmd) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(anchorYmd)) {
+    throw new Error('anchor must be YYYY-MM-DD');
+  }
+  const a = parseYmd(anchorYmd);
+
+  if (type === 'day') {
+    return { type, from: anchorYmd, to: anchorYmd, bucketBy: 'day', label: anchorYmd };
+  }
+  if (type === 'week') {
+    const dayIdx = (a.getDay() + 6) % 7;       // Mon=0 … Sun=6
+    const mon = new Date(a); mon.setDate(a.getDate() - dayIdx);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return {
+      type, from: ymdOf(mon), to: ymdOf(sun),
+      bucketBy: 'day', label: bucketKeyFor(a, 'week'),
+    };
+  }
+  if (type === 'month') {
+    const y = a.getFullYear(), m = a.getMonth();
+    const first = new Date(y, m, 1);
+    const last  = new Date(y, m + 1, 0);
+    return {
+      type, from: ymdOf(first), to: ymdOf(last),
+      bucketBy: 'day', label: `${y}-${String(m + 1).padStart(2, '0')}`,
+    };
+  }
+  if (type === 'year') {
+    const y = a.getFullYear();
+    return {
+      type, from: `${y}-01-01`, to: `${y}-12-31`,
+      bucketBy: 'month', label: String(y),
+    };
+  }
+  throw new Error(`unknown period type '${type}'`);
+}
+
+/** Step the anchor by `delta` units of `type`; returns YYYY-MM-DD. */
+export function shiftPeriod(type, anchorYmd, delta) {
+  const a = parseYmd(anchorYmd);
+  if (type === 'day')   a.setDate(a.getDate() + delta);
+  else if (type === 'week')  a.setDate(a.getDate() + delta * 7);
+  else if (type === 'month') { a.setDate(1); a.setMonth(a.getMonth() + delta); }
+  else if (type === 'year')  a.setFullYear(a.getFullYear() + delta);
+  else throw new Error(`unknown period type '${type}'`);
+  return ymdOf(a);
+}
+
+/** Canonical, sorted bucket keys spanning [from..to] for a bucketBy. */
+export function enumerateBuckets(from, to, bucketBy) {
+  const start = parseYmd(from), end = parseYmd(to);
+  if (bucketBy === 'month') {
+    const out = [];
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cur <= end) {
+      out.push(bucketKeyFor(cur, 'month'));
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    return out;
+  }
+  const seen = new Set();
+  const cur = new Date(start);
+  while (cur <= end) {
+    seen.add(bucketKeyFor(cur, bucketBy === 'week' ? 'week' : 'day'));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return [...seen];
+}
+
