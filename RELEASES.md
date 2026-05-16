@@ -145,7 +145,7 @@ server log, not the encrypted audit log.
 - `tests/test-keyring.mjs` — 8 cases
 - `tests/test-rotate.mjs` — 3 cases
 - `tests/test-masterkey-envelope.mjs` — 10 cases
-- `tests/test-security-routes.mjs` — 16 cases
+- `tests/test-security-routes.mjs` — 17 cases
 
 **Modified:**
 - `src/crypto/masterkey.js` — now returns `{ masterKey, mustResetPassphrase }`;
