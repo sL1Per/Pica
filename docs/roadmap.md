@@ -31,8 +31,11 @@ app in a usable state.
 | M12.3     | Hardening — Drop 3 (audit log)            | ✅ 0.21.0     |
 | M12.4     | Hardening — Drop 4 (input validation + numfmt) | ✅ 0.22.0  |
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
-| M13       | E2E browser tests                  | 📋 Planned    |
-| M14       | Deployment guide + TLS samples     | 📋 Planned    |
+| M13       | Reports revamp                     | 📋 Planned    |
+| M14       | Add email notifications            | 📋 Planned    |
+| M15       | Full UI revamp                     | 📋 Planned    |
+| M16       | E2E browser tests                  | 📋 Planned    |
+| M17       | Deployment guide + TLS samples     | 📋 Planned    |
 
 The roadmap was renumbered after M9 closed: M10 was originally
 "Backups" but the dashboard widget work earned its own milestone,
@@ -269,19 +272,42 @@ drops; each is independently shippable.
 - ✅ New `src/util/validators.js` (`isUuid`) and new test suite
       `tests/test-validators.mjs` (15 tests).
 
-**Pulled out into M14 (its own milestone) — Deployment guide:**
+**Pulled out into M17 (its own milestone) — Deployment guide:**
 - Will ship as the very last milestone before any future work, so
   it can reference the final security posture rather than describing
   a moving target.
 
-**Pulled out into M13 (its own milestone):**
+**Deferred / pulled out:**
 - ~~CSRF tokens~~ — `SameSite=Lax` cookies already provide solid
   CSRF protection. Adding double-submit tokens is real architectural
   work and touches every fetch in the frontend. Deferred with a
   note in `docs/security.md`.
-- ~~E2E browser tests~~ — pulled out into M13. Adding Playwright is
+- ~~E2E browser tests~~ — pulled out into M16. Adding Playwright is
   a significant architectural shift (first npm dependency, ~300 MB
-  on disk) and deserves its own milestone.
+  on disk); see M16 below.
+
+### Milestones 13–17 — planned 📋
+
+Titles are firm; detailed scope firms up when each milestone
+starts. The order is deliberate — the deployment guide ships last
+so it documents the final security posture, not a moving target,
+and the E2E suite lands after the UI revamp so tests target the
+final UI rather than one about to change.
+
+- **M13 — Reports revamp.** Rework the reports pages.
+- **M14 — Add email notifications.** Password reset, password
+  recovery, master-key recovery, approvals / rejections, and
+  reminders (the backlog enumerated in `notes.md`). Unblocks the
+  email-based KEK recovery slot reserved in 0.23.0 — the offline
+  recovery code is the equivalent shipped then.
+- **M15 — Full UI revamp.** End-to-end visual and interaction pass
+  across every page.
+- **M16 — E2E browser tests.** Playwright — the project's first
+  npm dependency (~300 MB on disk), a deliberate departure from
+  the zero-dependency constraint, hence its own milestone. Lands
+  after M15 so it tests the post-revamp UI.
+- **M17 — Deployment guide + TLS samples.** Caddy / nginx / systemd
+  samples plus TLS guidance. Ships last by design.
 
 ---
 
@@ -303,4 +329,4 @@ drops; each is independently shippable.
 
 ---
 
-_Last touched in 0.23.0._
+_Last touched in 0.23.1._

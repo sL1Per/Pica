@@ -2,8 +2,11 @@
 
 ### Roadmap
 
-- M13: E2E browser tests
-- M14: Deployment guide + TLS samples
+- M13: Reports revamp
+- M14: Add email notifications
+- M15: Full UI revamp
+- M16: E2E browser tests
+- M16: Deployment guide + TLS samples
 
 ### Bugs
 
@@ -28,22 +31,12 @@
 - [**DONE**] Add ability to upload files on leave request for justification. Max 5mb file size. This needs to be encrypted on the disk/storage but visible to the employer or the employee that updated (not to other employees!)
 - [**DONE**] Add an option to reset the master-key (0.23.0: envelope encryption + passphrase change + rotation + recovery code + wipe-reset)
 - Employer to create employee positions and employees need to pick up from a select box instead of current free text.
-- Add email notifications:
+- email notifications
   - Password reset
   - Password recovery
   - Masterkey recovery
   - Approvals / rejections
   - Reminders
-
-### Reports updates
-
-- Reports revamp
-
-### UI Changes
-
-- Add profile picture every time the name appears in the UI except on headings.
-- Infinite approved / rejected / etc view, need a way to show only last 10.
-- Add employee names also to filters for the leaves (on opt of the state). this is for the employer only view.
 
 ### Translations
 
