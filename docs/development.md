@@ -31,33 +31,48 @@ to create the first employer.
 
 ### Running the test suite
 
-```bash
-$ for s in crypto auth employees punches leaves reports user-prefs \
-            org-settings company-logo corrections i18n frontend-imports; do
-    node tests/test-$s.mjs
-  done
-```
-
-Each suite is independent; you can run any single suite directly.
-The suites use temp directories, but it's still good practice to
-clear local state between full runs:
+All 33 suites can be run with:
 
 ```bash
-$ rm -rf data backups config.json
+$ for f in tests/test-*.mjs; do printf '%s: ' "$f"; node "$f" 2>&1 | tail -1; done
 ```
+
+Or run any single suite directly:
+
+```bash
+$ node tests/test-dek.mjs
+$ node tests/test-keyring.mjs
+$ node tests/test-rotate.mjs
+$ node tests/test-masterkey-envelope.mjs
+$ node tests/test-security-routes.mjs
+```
+
+Each suite is independent; it creates its own temp directories and
+cleans up after itself. The suites **never touch** `./data`,
+`./backups`, or `./config.json` — those are live install state and
+must never be deleted by tooling.
 
 ### Smoke testing changes that touch routes or pages
 
+Smokes use throwaway temp directories only. **Never delete `./data`,
+`./backups`, or `./config.json`** — these hold live install state
+and are irreplaceable. Use a dedicated temp path for each smoke run:
+
 ```bash
-$ rm -rf data backups config.json
-$ PICA_PASSPHRASE=smokepass node server.js > /tmp/pica.out 2>&1 &
+$ SMOKE_DIR=$(mktemp -d)
+$ PICA_DATA_DIR="$SMOKE_DIR/data" PICA_BACKUP_DIR="$SMOKE_DIR/backups" \
+    PICA_CONFIG="$SMOKE_DIR/config.json" PICA_PASSPHRASE=smokepass \
+    node server.js > /tmp/pica.out 2>&1 &
 $ sleep 2
 $ curl -s -X POST -H "Content-Type: application/json" -c /tmp/cj \
     -d '{"username":"admin","password":"adminpass123"}' \
     http://127.0.0.1:8080/api/setup
 $ # ... your curls here, with -b /tmp/cj for the cookie ...
-$ kill %1 && rm -rf data backups config.json
+$ kill %1 && rm -rf "$SMOKE_DIR"
 ```
+
+If you need to run against the real config layout (e.g. to test
+`PICA_RESET=1`), use a separate project clone — never the live one.
 
 The passphrase must be at least 8 characters. The setup password
 must too.
@@ -440,4 +455,4 @@ losing them is how documentation rots.
 
 ---
 
-_Last touched in 0.22.18._
+_Last touched in 0.23.0._

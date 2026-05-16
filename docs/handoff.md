@@ -5,47 +5,60 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.22.18._
+_Last touched in 0.23.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.22.18 (released 2026-05-15)
-- **Test count:** 655 across 28 suites, all green (1 pre-existing
+- **Latest version:** 0.23.0 (released 2026-05-16)
+- **Test count:** 706 across 33 suites, all green (1 pre-existing
   TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
   count, unchanged by this release — see notes.md)
-- **Build artifact:** `pica-0.22.18-leave-attachments.zip`
+- **Build artifact:** `pica-0.23.0-master-key-management.zip`
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
-- **Active milestone:** M12 closed; M13 and M14 are next
+- **Active milestone:** 0.23.0 shipped; M13 and M14 are next
 
 ---
 
-## What just shipped (0.22.18)
+## What just shipped (0.23.0)
 
-Leave **justification attachments**. An employee can attach one
-file (PDF or image, ≤5 MB) to a leave request — in the new-leave
-form, and add/replace/remove on the detail page while the leave
-is still pending. Encrypted at rest in its own file
-(`data/leaves/attachments/<id>`, AAD `leave-attachment:<id>`),
-kept out of the ndjson event log. Download-only serving
-(`Content-Disposition: attachment` + `nosniff`). Visibility =
-the leave's own ACL: **owner or employer only; another employee
-gets 403**.
+**Master key management** — envelope encryption, passphrase change,
+key rotation, recovery code, and wipe-reset. New **Settings →
+Security** page (employer-only).
 
-Storage: `attachment_set`/`attachment_removed` events,
-`setAttachment`/`removeAttachment`/`readAttachment` (pending-only).
-Routes: multipart-aware `POST /api/leaves` (file validated
-before create), `GET/PUT/DELETE /api/leaves/:id/attachment`,
-pure exported `validateAttachment`. New `attachmentMaxBytes`
-(6 MB) path-scoped body cap. New suite
-`test-leaves-attachment.mjs` (26 cases). CACHE_VERSION → v39.
+The master key is now a two-layer scheme: a random **DEK** (data-
+encryption key) that encrypts all data on disk, wrapped under a
+**KEK** derived from the passphrase via scrypt. The DEK is stored
+(wrapped, AES-256-GCM) in `config.json` under a `security.wraps`
+array. Multiple wrap slots support both the passphrase (slot 0) and
+an optional recovery code (slot 1).
 
-Non-obvious (full list in RELEASES.md): one file per leave;
-type check is extension+MIME not content-sniffing (mitigated by
-download-only + nosniff + trust model); attachment frozen once
-the leave is decided; no virus scan; no attachment audit event.
+**Migration is zero-touch:** on first boot after upgrading, the legacy
+scrypt output is frozen as the DEK — no data file is re-encrypted.
+
+**Operations shipped:**
+- `POST /api/security/passphrase` — change passphrase (re-wraps DEK, no data re-encryption)
+- `POST /api/security/recovery-code` — generate 26-char Crockford base32 recovery code (shown once)
+- `DELETE /api/security/recovery-code` — remove recovery code (requires passphrase)
+- `POST /api/security/rotate` — generate new random DEK, re-encrypt all data, lockdown + restart
+- `PICA_RESET=1` boot — wipe reset (moves data aside, never deleted)
+- `PICA_RECOVERY_CODE=<code>` boot — recover forgotten passphrase, forces new passphrase
+
+**4 new audit events:** `security.passphrase_changed`,
+`security.recovery_code_set`, `security.recovery_code_removed`,
+`security.key_rotated`. Wipe-reset and recovery-code unlock are
+boot-time operations and are logged via the regular logger only.
+
+**5 new test suites** (48 cases): test-dek (11), test-keyring (8),
+test-rotate (3), test-masterkey-envelope (10), test-security-routes (16).
+CACHE_VERSION → v40. Total: 33 suites, 706 tests.
+
+Non-obvious (full list in RELEASES.md): losing config.json is
+unrecoverable; old backups break after rotation; rotation is forward-
+only; body parsing now runs for DELETE requests globally; DELETE body
+widening is harmless for all existing DELETE routes.
 
 ## What shipped in 0.22.17
 
@@ -486,6 +499,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Fix: picture upload 500 → 400 + message  | ✅ 0.22.16 |
 | —     | Enforce no-concurrent-leave at booking   | ✅ 0.22.17 |
 | —     | Leave justification file attachments     | ✅ 0.22.18 |
+| —     | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13   | E2E browser tests (Playwright)           | 📋 planned |
 | M14   | Deployment guide + TLS samples           | 📋 planned |
 
@@ -640,25 +654,21 @@ would be less robust.
 If you're about to make a non-trivial change, run these checks first:
 
 ```bash
-# Full regression (21 suites)
-for s in crypto auth employees punches leaves reports user-prefs \
-         org-settings company-logo corrections i18n frontend-imports \
-         period reports-team employees-summary error-codes backups \
-         backup-scheduler security-headers audit validators \
-         leaves-approved leaves-carry; do
-  node tests/test-$s.mjs 2>&1 | tail -1 | sed "s/^/$s: /"
-done
+# Full regression (33 suites)
+for f in tests/test-*.mjs; do printf '%s: ' "$f"; node "$f" 2>&1 | tail -1; done
 ```
 
 ```bash
-# Live smoke pattern
-rm -rf data backups config.json data.pre-restore-* data.staging-*
-PICA_PASSPHRASE="changeme123" node server.js > /tmp/p.out 2>&1 &
+# Live smoke pattern — ALWAYS use a throwaway temp dir; NEVER delete ./data, ./backups, ./config.json
+SMOKE=$(mktemp -d)
+PICA_DATA_DIR="$SMOKE/data" PICA_BACKUP_DIR="$SMOKE/backups" \
+  PICA_CONFIG="$SMOKE/config.json" PICA_PASSPHRASE="changeme123" \
+  node server.js > /tmp/p.out 2>&1 &
 PID=$!
 sleep 2
 # ... your test requests via curl ...
 kill -INT $PID; wait $PID
-rm -rf data backups config.json
+rm -rf "$SMOKE"
 ```
 
 ```bash

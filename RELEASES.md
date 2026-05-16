@@ -14,6 +14,195 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.23.0] — 2026-05-16 — Master key management: envelope encryption, passphrase change, rotation, recovery code
+
+### What's new
+
+Full **master-key management** for the server admin — change the
+passphrase, generate a recovery code, rotate the data-encryption
+key, perform a wipe-reset, and recover when the passphrase is
+forgotten. New **Settings → Security** page in the employer UI.
+
+#### Envelope encryption (config.json `security`, version 2)
+
+The master key is now a two-layer scheme:
+
+- **DEK** (data-encryption key, 32 bytes random): the key that
+  actually encrypts all data on disk. Unchanged from what lived
+  in RAM in prior releases — the same AES-256-GCM everywhere.
+- **KEK** (key-encryption key): derived from the passphrase via
+  scrypt (same N=2¹⁷, r=8, p=1 as before). The DEK is wrapped
+  (AES-256-GCM) under the KEK and stored in `config.json` as a
+  `wraps` array (slot 0 = passphrase slot, slot 1 = recovery
+  code slot when set). AAD binds each wrap to its slot:
+  `pica-dek-wrap-v1:<slot>`.
+
+`config.json` gains a `security` object:
+```json
+{
+  "security": {
+    "version": 2,
+    "kdfSalt": "<hex>",
+    "verifier": "<base64>",
+    "wraps": [
+      { "slot": 0, "kdfSalt": "<hex>", "wrappedDek": "<base64>" }
+    ]
+  }
+}
+```
+
+**Migration (v1 → v2):** automatic on first boot after upgrade.
+The legacy scrypt output (the old "master key") is frozen as the
+DEK — no re-encryption of any data file. The scrypt salt from
+the old `config.json` becomes the DEK-wrap salt for slot 0.
+The `masterkey.js` module returns `{ masterKey, mustResetPassphrase }`
+after migration; `mustResetPassphrase` is always `false` (the
+migration is seamless, no action required from the operator).
+
+#### Operations
+
+| Operation | How to invoke | Audit event |
+|---|---|---|
+| Change passphrase | `POST /api/security/passphrase` (current + new passphrase) | `security.passphrase_changed` |
+| Set recovery code | `POST /api/security/recovery-code` | `security.recovery_code_set` |
+| Remove recovery code | `DELETE /api/security/recovery-code` (passphrase required) | `security.recovery_code_removed` |
+| Rotate keys | `POST /api/security/rotate` (current passphrase + new passphrase) | `security.key_rotated` |
+| Wipe reset | Boot with `PICA_RESET=1` env var | (boot-time; logged via regular logger, not audit) |
+| Recover with code | Boot with `PICA_RECOVERY_CODE=<code>` env var | (boot-time; logged via regular logger, not audit) |
+
+**Recovery code**: offline, 26 Crockford base32 characters (5
+groups of 5 separated by dashes), shown exactly once at
+generation time. Stored as a second KEK-slot in `wraps`. Lets
+the admin unlock the DEK when the passphrase is forgotten; forces
+the admin to pick a new passphrase on the same boot.
+
+**Key rotation**: generates a new random DEK, re-encrypts the
+entire `data/` directory in a staging copy, swaps staging into
+place, updates `config.json` with the new DEK wrapped under the
+new passphrase. A 503 lockdown (restart required) follows a
+successful rotation. Takes a pre-rotation snapshot
+(`data.pre-rotate-<ts>/`) before the swap.
+
+**Wipe reset** (`PICA_RESET=1`): moves `data/` aside to
+`data.pre-reset-<ts>/` (never deleted), generates a fresh DEK
+and new `config.json security` block, starts with a blank
+`data/`. The passphrase at boot becomes the new credential.
+Irreversible in the sense that all prior data is no longer
+accessible under the new key — but the moved-aside directory
+is preserved if the operator needs it.
+
+**Recover with code** (`PICA_RECOVERY_CODE=<code>`): unwraps
+the DEK from slot 1. On the same boot the server forces the
+admin to pick a new passphrase via the `/change-password` page
+before any other action is allowed; the recovery code is
+invalidated after a successful passphrase change.
+
+#### Settings → Security page
+
+New employer-only page at `/security`. Displays the security
+version and active slots; provides buttons for passphrase change
+and recovery code management (set / remove). Key rotation has a
+dedicated form with a warning about the backup incompatibility
+(see Honest Disclosures). The page is the only place in the app
+that exposes the recovery code — shown once in a modal after
+generation.
+
+#### Body-parsing gate widened
+
+`server.js` now parses request bodies for `DELETE` requests in
+addition to `POST`, `PUT`, and `PATCH`. This was necessary so
+`DELETE /api/security/recovery-code` can carry the passphrase in
+the request body. Existing `DELETE` routes (corrections, leaves,
+employees, backups) ignore the body, so behavior is unchanged.
+
+### Audit events (exact set)
+
+- `security.passphrase_changed`
+- `security.recovery_code_set`
+- `security.recovery_code_removed`
+- `security.key_rotated`
+
+Wipe-reset and recovery-code unlock happen at boot, before the
+audit store is initialized — they are recorded in the regular
+server log, not the encrypted audit log.
+
+### Files touched
+
+**New:**
+- `src/crypto/dek.js` — DEK wrap/unwrap, v1→v2 migration logic
+- `src/crypto/keyring.js` — multi-slot wrap array management
+- `src/crypto/rotate.js` — staged re-encrypt + atomic swap
+- `src/routes/security.js` — 6 HTTP endpoints + wipe/recover boot paths
+- `public/security.html`, `public/security.css`, `public/security.js` — Settings → Security page
+- `tests/test-dek.mjs` — 11 cases
+- `tests/test-keyring.mjs` — 8 cases
+- `tests/test-rotate.mjs` — 3 cases
+- `tests/test-masterkey-envelope.mjs` — 10 cases
+- `tests/test-security-routes.mjs` — 16 cases
+
+**Modified:**
+- `src/crypto/masterkey.js` — now returns `{ masterKey, mustResetPassphrase }`;
+  detects v1 config and performs zero-touch v1→v2 migration on startup
+- `src/crypto/index.js` — re-exports new modules
+- `src/routes/pages.js` — `/security` page route
+- `server.js` — body parsing extended to DELETE; registers security routes;
+  wipe-reset and recover-with-code boot paths
+- `public/locales/en-US.js`, `public/locales/pt-PT.js` — `security.*`
+  and `errors.*` keys for new page and new error codes
+- `public/topbar.js` — adds Security link to employer nav
+- `public/sw.js` — `CACHE_VERSION` → `pica-cache-v40`; `/security.css`
+  and `/security.js` added to precache (consistent with pattern for
+  page-specific CSS/JS)
+- `package.json` — version `0.23.0`
+
+### What this does NOT do (Honest Disclosures)
+
+- **Losing `config.json` makes all data unrecoverable.** The DEK is
+  wrapped inside `config.json` — without it, neither the passphrase
+  nor the recovery code can unlock anything. `config.json` is
+  intentionally NOT restored from backups (it is install-specific).
+  The recovery code guards against a *forgotten passphrase*; it does
+  not guard against loss of `config.json` itself.
+- **After key rotation OR wipe-reset, pre-existing backups become
+  unrestorable under the new passphrase.** The DEK changes; old
+  backup archives were encrypted with the old DEK. Take a fresh
+  backup immediately after rotating or resetting.
+- **Rotation cannot un-leak already-exfiltrated plaintext.** If an
+  attacker copied the in-memory DEK before rotation, rotating gives
+  them no benefit — the new DEK protects only future writes. Rotation
+  is a forward-looking control, not a retroactive one.
+- **Weak-passphrase offline brute force is bounded only by the scrypt
+  cost.** Envelope encryption does not change this. The wrapping layer
+  adds no extra KDF stretch beyond what scrypt already provides.
+- **A written-down recovery code is passphrase-equivalent.** Anyone
+  who has it can unlock the DEK and set a new passphrase. Guard it
+  with the same care as the passphrase itself. It is shown exactly
+  once; Pica does not store it in plaintext anywhere.
+- **Migrated installs carry a derived-then-frozen DEK.** The historical
+  scrypt output becomes the DEK verbatim — cryptographically identical
+  strength to the prior scheme. It is neither weaker nor stronger.
+  Rotating after upgrade generates a truly random DEK if the operator
+  wants a clean break.
+- **`wipeReset` is not atomic.** The sequence is: rename `data/` →
+  `data.pre-reset-<ts>/`, then write the new `config.json security`
+  block. If the config write fails after the rename, the server starts
+  with no data directory and no valid config. Recovery: restore the
+  aside `data.pre-reset-*` directory and re-run with `PICA_RESET=1`.
+- **Rotate residual window.** Rotation writes the new `config.json`
+  BEFORE the staging-data swap completes. If the swap fails
+  mid-flight and the rollback restores the old data directory, the
+  config wraps the new DEK while the data files are encrypted with the
+  old DEK. In this failure state the operator must restore from a
+  pre-rotation backup. The common (non-failure) path is safe; only
+  the mid-swap crash window is affected. This is disclosed, not
+  eliminated.
+- **`DELETE /api/security/recovery-code` requires the passphrase in
+  the request body.** `server.js` now parses bodies for DELETE
+  requests globally. Existing DELETE endpoints ignore the body, so
+  this is harmless — but it is a widening of prior behavior.
+
+---
+
 ## [0.22.18] — 2026-05-15 — Leave justification attachments
 
 ### What's new

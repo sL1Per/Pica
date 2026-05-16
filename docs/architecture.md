@@ -78,7 +78,10 @@ pica/
 │   ├── crypto/              # encryption + password primitives
 │   │   ├── aes.js           # AES-256-GCM wrappers
 │   │   ├── passwords.js     # scrypt hash + verify
-│   │   ├── masterkey.js     # KDF + verifier persisted in config.json
+│   │   ├── masterkey.js     # KDF + verifier; v1→v2 migration; returns { masterKey, mustResetPassphrase }
+│   │   ├── dek.js           # DEK wrap/unwrap under a KEK; v1→v2 migration logic (0.23.0)
+│   │   ├── keyring.js       # multi-slot wraps array management (0.23.0)
+│   │   ├── rotate.js        # staged re-encrypt + atomic data-dir swap (0.23.0)
 │   │   ├── backup-archive.js # pack/unpack encrypted backup blobs
 │   │   ├── prompt.js        # TTY passphrase prompt
 │   │   └── index.js         # facade re-exporting the rest
@@ -111,6 +114,7 @@ pica/
 │       ├── reports.js       # /api/reports/*
 │       ├── settings.js      # /api/settings/* (org, working-time, branding)
 │       ├── backups.js       # /api/backups (list, create, download, delete, restore, status)
+│       ├── security.js      # /api/security/* (passphrase, recovery-code, rotate) (0.23.0)
 │       └── pages.js         # GET / GET /punch / etc. — serves HTML with i18n meta injection
 │   ├── scheduler/           # background timers
 │   │   └── backup-scheduler.js # periodic check; makes a backup if due
@@ -145,6 +149,7 @@ pica/
 │   ├── correction.{html,js}  # correction detail
 │   ├── settings.{html,js,css}
 │   ├── preferences.{html,js,css}
+│   ├── security.{html,js,css}       # Settings → Security page (0.23.0)
 │   └── change-password.{html,js}    # forced + voluntary password change
 ├── tests/                   # node:test-style suites, no framework
 │   ├── test-crypto.mjs
@@ -174,7 +179,12 @@ pica/
 │   ├── test-leaves-blocked.mjs     # employer blocked-days: helpers, store, route
 │   ├── test-employee-picture-route.mjs  # picture upload: 400 not 500 when no profile
 │   ├── test-leaves-concurrent.mjs  # no-concurrent-leave enforcement at booking
-│   └── test-leaves-attachment.mjs  # leave justification file: storage, policy, authz
+│   ├── test-leaves-attachment.mjs  # leave justification file: storage, policy, authz
+│   ├── test-dek.mjs                # DEK wrap/unwrap + v1→v2 migration (0.23.0)
+│   ├── test-keyring.mjs            # multi-slot keyring operations (0.23.0)
+│   ├── test-rotate.mjs             # key rotation staged swap (0.23.0)
+│   ├── test-masterkey-envelope.mjs # envelope encryption end-to-end (0.23.0)
+│   └── test-security-routes.mjs    # security HTTP endpoints: passphrase, recovery code, rotate (0.23.0)
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -317,9 +327,11 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × scheduled-hours math ×
   per-employee overrides ×  RBAC enforcement).
-- Total: 28 suites, 655 passing as of 0.22.18 (one pre-existing
+- Total: 33 suites, 706 passing as of 0.23.0 (one pre-existing
   TZ-sensitive flake in `test-reports.mjs` overnight-split bucket
-  count, unrelated to recent changes).
+  count, unrelated to recent changes). 5 new suites added in 0.23.0
+  (test-dek, test-keyring, test-rotate, test-masterkey-envelope,
+  test-security-routes); test-crypto.mjs migrated to the v2 contract.
 
 ---
 
@@ -383,4 +395,4 @@ upcoming-leaves block when interpreting the number.
 
 ---
 
-_Last touched in 0.22.18._
+_Last touched in 0.23.0._

@@ -30,6 +30,7 @@ app in a usable state.
 | M12.2     | Hardening — Drop 2 (security headers, CSP) | ✅ 0.20.0     |
 | M12.3     | Hardening — Drop 3 (audit log)            | ✅ 0.21.0     |
 | M12.4     | Hardening — Drop 4 (input validation + numfmt) | ✅ 0.22.0  |
+| —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13       | E2E browser tests                  | 📋 Planned    |
 | M14       | Deployment guide + TLS samples     | 📋 Planned    |
 
@@ -302,4 +303,4 @@ drops; each is independently shippable.
 
 ---
 
-_Last touched in 0.22.18._
+_Last touched in 0.23.0._

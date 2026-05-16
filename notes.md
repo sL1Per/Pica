@@ -27,7 +27,8 @@
 - Add email notifications
 - [**DONE**] On punches, on the same day, show break time. For example, clock in at 9am clock out at 12PM and then clock in at 1PM and clock out at 6PM, i want to see in the UI total work time was 8h and break of 1h (4)
 - [**DONE**] Add ability to upload files on leave request for justification. Max 5mb file size. This needs to be encrypted on the disk/storage but visible to the employer or the employee that updated (not to other employees!)
-- Add an option to reset the masterkey
+- [**DONE**] Add an option to reset the master-key (0.23.0: envelope encryption + passphrase change + rotation + recovery code + wipe-reset)
+- Employer to create employee positions and employees need to pick up from a select box instead of current free text.
 
 ### Reports updates
 

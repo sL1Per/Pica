@@ -157,7 +157,49 @@ or in a Linux VM with LUKS.
 
 ---
 
-## Passphrase handling
+## Master key management (0.23.0)
+
+### Envelope encryption — v2 scheme
+
+From 0.23.0, the master key is a two-layer (envelope) scheme:
+
+- **DEK** (data-encryption key, 32 bytes): the key that encrypts all
+  data on disk. In prior releases this was derived directly from the
+  passphrase via scrypt and held only in RAM. In v2 it is a random
+  value that persists (wrapped) in `config.json`.
+- **KEK** (key-encryption key): derived from the passphrase via scrypt
+  (N=2¹⁷, r=8, p=1). The KEK is used only to wrap and unwrap the DEK;
+  it is never written to disk.
+
+The DEK is wrapped under the KEK using AES-256-GCM with slot-bound
+AAD `pica-dek-wrap-v1:<slot>`. Wrapped values live in
+`config.json` under `security.wraps`:
+
+```json
+{
+  "security": {
+    "version": 2,
+    "kdfSalt": "<hex>",
+    "verifier": "<base64>",
+    "wraps": [
+      { "slot": 0, "kdfSalt": "<hex>", "wrappedDek": "<base64>" },
+      { "slot": 1, "kdfSalt": "<hex>", "wrappedDek": "<base64>" }
+    ]
+  }
+}
+```
+
+Slot 0 is always the passphrase slot. Slot 1, when present, is the
+recovery code slot. Additional slots could represent other KEKs; the
+array is intentionally extensible.
+
+**Migration (v1 → v2):** performed automatically on first boot after
+upgrading to 0.23.0. The legacy scrypt output (the old master key) is
+frozen as the DEK — no data file is re-encrypted during migration.
+The v1 scrypt salt becomes the slot-0 wrap salt. The migration is
+zero-touch from the operator's perspective.
+
+### Passphrase handling
 
 By default, the server **prompts for the passphrase on startup** via
 the TTY. For automation, two optional modes are available, each with
@@ -169,10 +211,100 @@ a clear tradeoff:
   on the key file's location and filesystem permissions. We
   recommend putting it on a separate mount or removable media.
 
-**No passphrase recovery.** If the passphrase is lost, the encrypted
-data is gone. This is a deliberate tradeoff for simplicity. The
-admin is responsible for storing the passphrase somewhere safe
-(a password manager).
+### Recovery code
+
+A recovery code can be generated from **Settings → Security**
+(employer-only). It is:
+
+- 26 Crockford base32 characters displayed as 5 groups of 5
+  separated by dashes (e.g. `ABCDE-FGHJK-MNPQR-STUVW-XY234-Z`).
+- Stored as a second wrapped-DEK entry in `config.json` (slot 1).
+  The code itself is never stored in plaintext anywhere — only the
+  wrapped DEK is persisted.
+- Shown exactly **once** at generation time. If lost, remove it and
+  generate a new one.
+- **Passphrase-equivalent**: anyone with the recovery code can
+  unlock the DEK. Guard it with the same care as the passphrase.
+
+To recover a forgotten passphrase: boot with `PICA_RECOVERY_CODE=<code>`
+set in the environment. The server unlocks the DEK from slot 1, then
+forces the admin through the `/change-password` page to pick a new
+passphrase before any other action is allowed. The recovery code is
+invalidated (slot 1 removed) after a successful passphrase change.
+
+### Changing the passphrase
+
+`POST /api/security/passphrase` (employer, requires current passphrase
+in the request body). Derives a new KEK from the new passphrase,
+re-wraps the DEK under it, and writes the new slot 0 to `config.json`.
+The DEK itself does not change — no data re-encryption. If a recovery
+code existed, it remains valid (slot 1 is untouched). Emits audit
+event `security.passphrase_changed`.
+
+### Key rotation
+
+`POST /api/security/rotate` (employer, requires current passphrase and
+new passphrase). Generates a fresh random DEK, then:
+
+1. Stages a full re-encryption of `data/` under the new DEK.
+2. Writes the new `config.json` (new DEK wrapped under the new KEK).
+3. Atomically swaps the staging data directory into place.
+4. Enters a 503 lockdown (restart required) so all in-memory stores
+   are refreshed from the newly re-encrypted data.
+
+A pre-rotation snapshot is taken at `data.pre-rotate-<ts>/` before
+the swap. Emits audit event `security.key_rotated`.
+
+**Important:** after rotation, pre-existing backup archives are
+encrypted with the old DEK and cannot be restored under the new
+passphrase. Take a fresh backup immediately after rotating.
+
+### Wipe reset
+
+Boot with `PICA_RESET=1` to discard all data and start fresh. The
+server moves `data/` aside to `data.pre-reset-<ts>/` (never deleted),
+generates a new random DEK, writes a new `config.json security` block,
+and starts with an empty `data/` directory. The passphrase entered
+at that boot becomes the new credential.
+
+This is irreversible in the sense that all prior data is no longer
+accessible under the new key. The moved-aside directory is preserved
+if the operator needs it. Wipe-reset happens at boot, before the
+audit store exists; it is recorded in the regular server log, not the
+encrypted audit log.
+
+### Audit events for security operations
+
+The following events are written to the encrypted audit log:
+
+- `security.passphrase_changed` — admin changed the passphrase via
+  `POST /api/security/passphrase`.
+- `security.recovery_code_set` — admin generated a recovery code via
+  `POST /api/security/recovery-code`.
+- `security.recovery_code_removed` — admin removed the recovery code
+  via `DELETE /api/security/recovery-code`.
+- `security.key_rotated` — key rotation completed via
+  `POST /api/security/rotate`.
+
+Wipe-reset and recovery-code unlock are **not** audit events — they
+happen at boot before the audit store is initialized. Both are
+recorded in the regular server log (stdout/stderr).
+
+### Key management disclosures
+
+- **Losing `config.json` makes all data unrecoverable.** The DEK
+  wraps live there. Neither passphrase nor recovery code can help
+  without the wrapped ciphertext to unwrap. `config.json` is NOT
+  restored from backups — it is install-specific by design.
+- **After rotation or wipe-reset, old backups cannot be restored**
+  under the new passphrase. The DEK changed; old archives were
+  encrypted with the previous DEK.
+- **Rotation is a forward-looking control.** An attacker who copied
+  the in-memory DEK before rotation is unaffected by it.
+- **Weak passphrases remain bounded only by the scrypt cost.** The
+  wrapping layer adds no extra KDF stretch.
+- **Migrated installs carry a derived-then-frozen DEK** — the
+  historical scrypt output, neither stronger nor weaker than before.
 
 ---
 
@@ -279,6 +411,10 @@ rotate by calendar month.
   not the values)
 - `backup.created` / `backup.deleted`
 - `backup.restore` (success + failure with errorCode)
+- `security.passphrase_changed` (0.23.0)
+- `security.recovery_code_set` (0.23.0)
+- `security.recovery_code_removed` (0.23.0)
+- `security.key_rotated` (0.23.0)
 
 ### What's NOT logged
 
@@ -331,7 +467,7 @@ import { initMasterKey } from './src/crypto/masterkey.js';
 import { createAuditStore } from './src/storage/audit.js';
 const config = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 process.env.PICA_PASSPHRASE = '...';
-const masterKey = await initMasterKey(config, 'config.json', null);
+const { masterKey } = await initMasterKey(config, 'config.json', null);
 const store = createAuditStore({ dataDir: 'data', masterKey });
 console.log(store.readMonth(2026, 5));
 ```
@@ -573,4 +709,4 @@ patch.
 
 ---
 
-_Last touched in 0.22.18._
+_Last touched in 0.23.0._
