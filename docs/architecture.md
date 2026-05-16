@@ -149,7 +149,8 @@ pica/
 │   ├── correction.{html,js}  # correction detail
 │   ├── settings.{html,js,css}
 │   ├── preferences.{html,js,css}
-│   ├── security.{html,js,css}       # Settings → Security page (0.23.0)
+│   ├── security.{html,js,css}       # standalone page (passphrase/recovery/rotate);
+│   │                                #   linked from a Settings → Security card (0.23.0; entry point 0.23.1)
 │   └── change-password.{html,js}    # forced + voluntary password change
 ├── tests/                   # node:test-style suites, no framework
 │   ├── test-crypto.mjs
@@ -395,4 +396,4 @@ upcoming-leaves block when interpreting the number.
 
 ---
 
-_Last touched in 0.23.0._
+_Last touched in 0.23.1._

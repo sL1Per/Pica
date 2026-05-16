@@ -35,9 +35,8 @@
       <a href="#company" id="nav-company" hidden data-i18n="settings.nav.company">Company</a>
       <a href="#organization" id="nav-org" hidden data-i18n="settings.nav.org">Organization</a>
       <a href="#backups" id="nav-bak" hidden data-i18n="settings.nav.backups">Backups</a>
+      <a href="#security" id="nav-sec" hidden data-i18n="settings.nav.security">Security</a>
     </nav>
-
-    <p><a href="/security" data-i18n="nav.security">Security</a></p>
 
     <div id="message" class="message"></div>
 
@@ -221,6 +220,18 @@
           <button type="button" id="save-schedule-btn" class="secondary" data-i18n="settings.saveSchedule">Save schedule</button>
         </div>
       </form>
+    </section>
+
+    <!-- Security section (employer only) — entry point to the
+         standalone /security page (change passphrase, recovery code,
+         encryption-key rotation). Kept a separate page on purpose: the
+         recover-with-code lockdown needs a minimal screen that only
+         calls the allowlisted passphrase endpoint, which a data-heavy
+         page like this one can't be. -->
+    <section id="security" class="card" hidden>
+      <h2 data-i18n="settings.securityHeading">Security</h2>
+      <p class="subtle" data-i18n="settings.securitySubtitle">Passphrase, recovery code, and encryption-key rotation. Employer only.</p>
+      <a href="/security" class="btn btn-primary block" data-i18n="settings.securityOpenBtn">Open security settings</a>
     </section>
   </main>
 

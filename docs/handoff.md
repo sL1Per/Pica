@@ -5,20 +5,35 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.23.0._
+_Last touched in 0.23.1._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.23.0 (released 2026-05-16)
+- **Latest version:** 0.23.1 (released 2026-05-16)
 - **Test count:** 706 across 33 suites, all green (1 pre-existing
   TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
-  count, unchanged by this release — see notes.md)
-- **Build artifact:** `pica-0.23.0-master-key-management.zip`
+  count, unchanged by this release — see notes.md). 0.23.1 added no
+  tests (markup/locale/visibility only).
+- **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.23.1
+  is a UI-only point release on top)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
-- **Active milestone:** 0.23.0 shipped; M13 and M14 are next
+- **Active milestone:** 0.23.1 shipped; M13 and M14 are next
+
+---
+
+## What just shipped (0.23.1)
+
+**Security page discoverability.** The standalone `/security` page
+(unchanged) now has a proper entry point: a **Security** card at the
+end of the Settings page with a full-width button, plus a "Security"
+pill in the Settings section-nav. Removed the stray text link that
+used to sit above the Settings cards. No backend, route, or recovery-
+flow change — `/security` stays a separate minimal page on purpose so
+the recover-with-code lockdown screen only touches the allowlisted
+passphrase endpoint. See RELEASES.md 0.23.1.
 
 ---
 
@@ -40,7 +55,7 @@ scrypt output is frozen as the DEK — no data file is re-encrypted.
 
 **Operations shipped:**
 - `POST /api/security/passphrase` — change passphrase (re-wraps DEK, no data re-encryption)
-- `POST /api/security/recovery-code` — generate 26-char Crockford base32 recovery code (shown once)
+- `POST /api/security/recovery-code` — generate 32-char (160-bit, 8 groups of 4) Crockford base32 recovery code (shown once)
 - `DELETE /api/security/recovery-code` — remove recovery code (requires passphrase)
 - `POST /api/security/rotate` — generate new random DEK, re-encrypt all data, lockdown + restart
 - `PICA_RESET=1` boot — wipe reset (moves data aside, never deleted)

@@ -14,6 +14,80 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.23.1] — 2026-05-16 — Security page reachable from Settings
+
+### What changed
+
+The standalone **Security** page (change passphrase, recovery code,
+encryption-key rotation) introduced in 0.23.0 had no entry point in
+the navigation — operators reached it only by typing `/security` or
+following a stray text link wedged above the Settings cards.
+
+This release replaces that link with a proper **Security** card at
+the end of the Settings page, matching the Company / Organization /
+Backups sections in layout, and adds a "Security" pill to the
+Settings section-nav. The card holds one full-width primary button
+that opens `/security`.
+
+The `/security` page itself is **unchanged**: same HTML/CSS/JS, same
+route, same employer-only guard, same API endpoints, same
+recover-with-code lockdown behavior. Only the way you get there from
+the UI changed.
+
+### Why the page stays separate
+
+The recover-with-code flow boots the server into a lockdown where
+every API call except login / `me` / logout / set-passphrase returns
+503. The Security page is deliberately minimal so that, in that
+state, it renders and works while calling only the allowlisted
+passphrase endpoint. The Settings page loads employee, org, and
+branding data on mount — all of which 503 in lockdown — so folding
+the security forms into it would have made the single most
+safety-critical screen in the app a wall of errors exactly when the
+operator needs it. The card-with-a-button keeps the discoverability
+win without touching the recovery path.
+
+### Files touched
+
+- `public/settings.html` — removed the stray `<p><a href="/security">`
+  link; added a `#security` section-nav pill and a `#security`
+  `.card` with the entry-point button.
+- `public/settings.js` — reveal the new nav pill + section for
+  employers (same pattern as the other employer-only sections).
+- `public/locales/en-US.js`, `public/locales/pt-PT.js` — added
+  `settings.nav.security`, `settings.securityHeading`,
+  `settings.securitySubtitle`, `settings.securityOpenBtn`; removed
+  the now-unused `nav.security` key (its only consumer was the
+  deleted link).
+- `public/sw.js` — `CACHE_VERSION` v40 → v41 (precached locale
+  dictionaries changed).
+- `package.json` — 0.23.1.
+
+### Honest Disclosures
+
+- **This does not change the recovery flow.** It only adds a way to
+  find the existing Security page. The lockdown allowlist, the
+  passphrase-reset path, and `/security`'s own minimalism are all
+  untouched.
+- **The Security card is a link, not the forms.** Clicking it is a
+  full-page navigation to `/security`, not an in-place reveal. The
+  forms still live on their own page; this is intentional (see "Why
+  the page stays separate").
+- **No automatic redirect on `passphrase_reset_required`.** As
+  before, after a recovery-code boot the operator must navigate to
+  the Security page themselves once they see the error — the dotted
+  errorCode is shown but nothing routes them there. Unchanged by
+  this release; noted because the new card does not address it.
+- **`/security` still has no link in the top bar.** The only UI
+  entry point is now Settings → Security. Employees never see it
+  (the Settings route already redirects non-employers away).
+- **No new tests.** The change is markup/locale/visibility only;
+  `test-security-routes.mjs` exercises the unchanged API layer and
+  `test-security-headers.mjs` enumerates `public/*.html`
+  dynamically, so both still pass without modification.
+
+---
+
 ## [0.23.0] — 2026-05-16 — Master key management: envelope encryption, passphrase change, rotation, recovery code
 
 ### What's new

@@ -12,6 +12,7 @@ const messageEl = $('message');
 const navOrg = $('nav-org');
 const navBak = $('nav-bak');
 const navCompany = $('nav-company');
+const navSec = $('nav-sec');
 
 // Account form
 // Company form
@@ -36,6 +37,10 @@ const concurrent  = $('concurrent-allowed');
 const overridesWrap = $('overrides-table-wrap');
 const blockedWrap = $('blocked-ranges');
 const blockedAddBtn = $('blocked-add');
+
+// Security section — just an entry point to the standalone /security
+// page; no forms or handlers live here.
+const securitySection = $('security');
 
 // Backups form
 const backupsSection = $('backups');
@@ -384,9 +389,11 @@ if (workingTimeForm) {
     navCompany.hidden = false;
     navOrg.hidden = false;
     navBak.hidden = false;
+    navSec.hidden = false;
     companySection.hidden = false;
     orgSection.hidden = false;
     backupsSection.hidden = false;
+    securitySection.hidden = false;
 
     // Load employees for the overrides table and the org settings.
     const [empRes, orgRes, brandRes] = await Promise.all([

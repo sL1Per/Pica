@@ -214,7 +214,9 @@ a clear tradeoff:
 ### Recovery code
 
 A recovery code can be generated from **Settings → Security**
-(employer-only). It is:
+(employer-only — the Settings page has a Security card whose button
+opens the standalone `/security` page; as of 0.23.1 that card is the
+only UI entry point). It is:
 
 - 32 Crockford base32 characters displayed as 8 groups of 4
   separated by dashes (e.g. `ABCD-EFGH-JKMN-PQRS-TUVW-XY23-4567-ABCD`),
@@ -719,4 +721,4 @@ patch.
 
 ---
 
-_Last touched in 0.23.0._
+_Last touched in 0.23.1._
