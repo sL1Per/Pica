@@ -284,5 +284,38 @@ await test('rotate: rotateData failure aborts cleanly (data intact, no lockdown)
   fs.rmSync(f.dir, { recursive: true, force: true });
 });
 
+await test('passphrase reset mode: no currentPassphrase needed; re-wraps in-memory DEK', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-sec-rst-'));
+  const configPath = path.join(dir, 'config.json');
+  const dek = randomBytes(32);
+  const kdf = newKdf();
+  const kek = await deriveKek('forgotten-pass', kdf);
+  const config = { security: {} };
+  setSlot(config.security, 'passphrase', kdf, wrapDek(dek, kek, 'passphrase'));
+  writeConfigAtomic(configPath, config);
+  const serverState = { passphraseResetRequired: true };
+  const audited = [];
+  const router = createRouter();
+  registerSecurityRoutes(router, {
+    configPath, masterKey: dek, serverState,
+    requireAuth, requireRole,
+    auditStore: { appendRecord: (r) => audited.push(r) },
+    logger: { info() {}, warn() {}, error() {} },
+  });
+  const res = await call(router, 'POST', '/api/security/passphrase',
+    { user: { id: 'm', role: 'employer' }, body: { newPassphrase: 'brand-new-pass' } });
+  assert.equal(res.statusCode, 200);
+  assert.equal(serverState.passphraseResetRequired, false);
+  const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const { deriveKek: dk } = await import('../src/crypto/keyring.js');
+  const { unwrapDek } = await import('../src/crypto/dek.js');
+  const slot = cfg.security.wraps.passphrase;
+  const kek2 = await dk('brand-new-pass', slot.kdf);
+  assert.deepEqual(unwrapDek(slot.wrapped, kek2, 'passphrase'), dek);
+  assert.ok(audited.some((a) => a.event === 'security.passphrase_changed'
+    && a.details && a.details.viaRecovery === true));
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -811,6 +811,7 @@ export default {
   'security.rotateConfirm': 'Escreva ROTATE para confirmar',
   'security.rotateBtn': 'Rodar chave',
   'security.rotateOk': 'Chave rodada. Reinicie o Pica agora e defina um novo código de recuperação. Os dados antigos foram preservados à parte.',
+  'security.currentPassHint': 'Se desbloqueou com um código de recuperação, deixe este campo em branco.',
   'errors.wrong_passphrase': 'A palavra-passe atual está incorreta.',
   'errors.passphrase_too_short': 'A palavra-passe deve ter pelo menos 8 caracteres.',
   'errors.confirm_required': 'O texto de confirmação não corresponde.',

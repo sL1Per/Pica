@@ -47,29 +47,41 @@ export function registerSecurityRoutes(router, deps) {
       return res.badRequest(`Passphrase must be at least ${MIN_PASSPHRASE} characters`,
         { errorCode: 'passphrase_too_short' });
     }
-    if (typeof currentPassphrase !== 'string' || currentPassphrase.length === 0) {
-      return res.badRequest('Current passphrase is required', { errorCode: 'required' });
-    }
     const config = readConfig(configPath);
-    const dek = await dekFromPassphrase(config.security, currentPassphrase);
-    if (!dek) {
-      return res.badRequest('Current passphrase is incorrect',
-        { errorCode: 'wrong_passphrase' });
+
+    // Two modes:
+    //  - Normal: the operator proves the CURRENT passphrase (it unwraps the DEK).
+    //  - Recovery-reset: the server booted via the recovery code
+    //    (serverState.passphraseResetRequired). Boot already authenticated and
+    //    the DEK is in memory (masterKey); the operator does NOT know the old
+    //    passphrase, so none is required — re-wrap the in-memory DEK.
+    const resetMode = !!(serverState && serverState.passphraseResetRequired);
+    let dek;
+    if (resetMode) {
+      dek = masterKey;
+    } else {
+      if (typeof currentPassphrase !== 'string' || currentPassphrase.length === 0) {
+        return res.badRequest('Current passphrase is required', { errorCode: 'required' });
+      }
+      dek = await dekFromPassphrase(config.security, currentPassphrase);
+      if (!dek) {
+        return res.badRequest('Current passphrase is incorrect', { errorCode: 'wrong_passphrase' });
+      }
     }
+
     const kdf = newKdf();
     const kek = await deriveKek(newPassphrase, kdf);
     setSlot(config.security, 'passphrase', kdf, wrapDek(dek, kek, 'passphrase'));
     writeConfigAtomic(configPath, config);
 
-    // If the operator reached here via a recovery-code unlock (server in the
-    // passphrase-reset lockdown), setting a proper passphrase satisfies that
-    // obligation — clear the lock so normal operation resumes without a restart.
     if (serverState) serverState.passphraseResetRequired = false;
-
     auditStore?.appendRecord({
       ...auditContext(req), event: 'security.passphrase_changed', outcome: 'success',
+      details: resetMode ? { viaRecovery: true } : null,
     });
-    logger?.info('Passphrase changed (DEK re-wrapped; data untouched).');
+    logger?.info(resetMode
+      ? 'Passphrase set after recovery-code unlock (DEK re-wrapped; data untouched).'
+      : 'Passphrase changed (DEK re-wrapped; data untouched).');
     res.json({ ok: true });
   }));
 

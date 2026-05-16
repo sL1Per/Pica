@@ -313,10 +313,14 @@ async function handle(nodeReq, nodeRes) {
 
   // Recovery-code unlock lockdown: the master key is live but the passphrase
   // slot is no longer trusted. Force the operator to set a new passphrase
-  // before anything else runs. Allowlist below is the minimum the reset page
-  // needs; cleared in-process by /api/security/passphrase on success.
+  // before anything else runs. Allowlist includes /api/login so the operator
+  // can authenticate first (they have no session on a fresh boot), /api/me
+  // so the frontend can identify the session, /api/logout, and the passphrase-
+  // set endpoint itself. Cleared in-process by /api/security/passphrase on
+  // success — no restart needed.
   if (serverState.passphraseResetRequired && isApiEndpoint(nodeReq.path)) {
-    const allowed = nodeReq.path === '/api/security/passphrase'
+    const allowed = nodeReq.path === '/api/login'
+                 || nodeReq.path === '/api/security/passphrase'
                  || nodeReq.path === '/api/logout'
                  || nodeReq.path === '/api/me';
     if (!allowed) {

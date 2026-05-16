@@ -216,8 +216,9 @@ a clear tradeoff:
 A recovery code can be generated from **Settings → Security**
 (employer-only). It is:
 
-- 26 Crockford base32 characters displayed as 5 groups of 5
-  separated by dashes (e.g. `ABCDE-FGHJK-MNPQR-STUVW-XY234-Z`).
+- 32 Crockford base32 characters displayed as 8 groups of 4
+  separated by dashes (e.g. `ABCD-EFGH-JKMN-PQRS-TUVW-XY23-4567-ABCD`),
+  providing 160 bits of entropy.
 - Stored as a second wrapped-DEK entry in `config.json` (slot 1).
   The code itself is never stored in plaintext anywhere — only the
   wrapped DEK is persisted.
@@ -228,9 +229,18 @@ A recovery code can be generated from **Settings → Security**
 
 To recover a forgotten passphrase: boot with `PICA_RECOVERY_CODE=<code>`
 set in the environment. The server unlocks the DEK from slot 1, then
-forces the admin through the `/change-password` page to pick a new
-passphrase before any other action is allowed. The recovery code is
-invalidated (slot 1 removed) after a successful passphrase change.
+enters a lockdown that allows only login, `/api/me`, logout, and the
+passphrase-set endpoint (`POST /api/security/passphrase`). The
+operator signs in and uses **Settings → Security** to set a new
+passphrase; no current passphrase is required in that state (the
+recovery-code boot already authenticated and the in-memory DEK is
+re-wrapped under the new passphrase). The lockdown does not
+auto-redirect pages.
+
+After recovering, the operator should regenerate or remove the recovery
+code from Settings → Security — a passphrase change does NOT invalidate
+it (slot 1 is untouched). It is key rotation that drops the recovery
+slot.
 
 ### Changing the passphrase
 

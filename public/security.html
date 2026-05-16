@@ -32,7 +32,8 @@
       <h2 data-i18n="security.changePassTitle">Change passphrase</h2>
       <form id="pass-form">
         <label for="cp-current" data-i18n="security.currentPass">Current passphrase</label>
-        <input type="password" id="cp-current" autocomplete="current-password" required>
+        <input type="password" id="cp-current" autocomplete="current-password">
+        <small data-i18n="security.currentPassHint">If you unlocked with a recovery code, leave this blank.</small>
         <label for="cp-new" data-i18n="security.newPass">New passphrase</label>
         <input type="password" id="cp-new" autocomplete="new-password" minlength="8" required>
         <button type="submit" data-i18n="security.changePassBtn">Change passphrase</button>

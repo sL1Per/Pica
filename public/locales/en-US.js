@@ -812,6 +812,7 @@ export default {
   'security.rotateConfirm': 'Type ROTATE to confirm',
   'security.rotateBtn': 'Rotate key',
   'security.rotateOk': 'Key rotated. Restart Pica now, then set a new recovery code. Old data was preserved aside.',
+  'security.currentPassHint': 'If you unlocked with a recovery code, leave this blank.',
   'errors.wrong_passphrase': 'Current passphrase is incorrect.',
   'errors.passphrase_too_short': 'Passphrase must be at least 8 characters.',
   'errors.confirm_required': 'Confirmation text did not match.',

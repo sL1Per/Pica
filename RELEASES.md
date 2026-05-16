@@ -70,11 +70,11 @@ migration is seamless, no action required from the operator).
 | Wipe reset | Boot with `PICA_RESET=1` env var | (boot-time; logged via regular logger, not audit) |
 | Recover with code | Boot with `PICA_RECOVERY_CODE=<code>` env var | (boot-time; logged via regular logger, not audit) |
 
-**Recovery code**: offline, 26 Crockford base32 characters (5
-groups of 5 separated by dashes), shown exactly once at
-generation time. Stored as a second KEK-slot in `wraps`. Lets
-the admin unlock the DEK when the passphrase is forgotten; forces
-the admin to pick a new passphrase on the same boot.
+**Recovery code**: offline, 32 Crockford base32 characters (8
+groups of 4 separated by dashes, 160 bits of entropy), shown
+exactly once at generation time. Stored as a second KEK-slot in
+`wraps`. Lets the admin unlock the DEK when the passphrase is
+forgotten.
 
 **Key rotation**: generates a new random DEK, re-encrypts the
 entire `data/` directory in a staging copy, swaps staging into
@@ -92,10 +92,17 @@ accessible under the new key — but the moved-aside directory
 is preserved if the operator needs it.
 
 **Recover with code** (`PICA_RECOVERY_CODE=<code>`): unwraps
-the DEK from slot 1. On the same boot the server forces the
-admin to pick a new passphrase via the `/change-password` page
-before any other action is allowed; the recovery code is
-invalidated after a successful passphrase change.
+the DEK from slot 1. On the same boot the server enters a
+lockdown that allows only login, `/api/me`, logout, and the
+passphrase-set endpoint. The operator signs in and uses
+**Settings → Security** to set a new passphrase; no current
+passphrase is required in that state (the recovery-code boot
+already authenticated and the in-memory DEK is re-wrapped under
+the new passphrase). The lockdown does not auto-redirect pages.
+After recovering, the operator should regenerate or remove the
+recovery code from Settings → Security — a passphrase change
+alone does NOT invalidate it (key rotation drops the recovery
+slot).
 
 #### Settings → Security page
 
