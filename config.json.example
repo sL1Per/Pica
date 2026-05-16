@@ -29,32 +29,7 @@
     "automatically on next server start. No data is re-encrypted during migration.",
     "",
     "WARNING: losing config.json makes all encrypted data unrecoverable.",
-    "The wrapped keys live here and are intentionally NOT restored from backups."
-  ],
-  "security": {
-    "version": 2,
-    "wraps": {
-      "passphrase": {
-        "kdf": {
-          "algorithm": "scrypt",
-          "salt": "<hex>",
-          "cost": 131072,
-          "blockSize": 8,
-          "parallelization": 1
-        },
-        "wrapped": "<base64>"
-      },
-      "recovery": {
-        "kdf": {
-          "algorithm": "scrypt",
-          "salt": "<hex>",
-          "cost": 131072,
-          "blockSize": 8,
-          "parallelization": 1
-        },
-        "wrapped": "<base64>",
-        "createdAt": "<ISO8601>"
-      }
-    }
-  }
+    "The wrapped keys live here and are intentionally NOT restored from backups.",
+    "DO NOT copy a 'security' block into config.json — the server writes it automatically on first run."
+  ]
 }
