@@ -15,7 +15,7 @@ import path from 'node:path';
 import { createPunchesStore } from '../src/storage/punches.js';
 import { createLeavesStore } from '../src/storage/leaves.js';
 import {
-  hoursReport, leavesReport,
+  hoursReport, leavesReport, leavesRangeReport,
   hoursReportToCsv, leavesReportToCsv,
   isoWeek, bucketKeyFor,
 } from '../src/storage/reports.js';
@@ -321,6 +321,38 @@ try {
     assert.equal(bucketKeyFor(d, 'day'), '2026-03-09');
     assert.equal(bucketKeyFor(d, 'month'), '2026-03');
     assert.match(bucketKeyFor(d, 'week'), /^2026-W\d{2}$/);
+  });
+
+  // -------------------------------------------------------------------------
+  console.log('\nleavesRangeReport');
+  // -------------------------------------------------------------------------
+
+  function fakeLeavesStore(list) {
+    return { list: ({ employeeId }) => list.filter((l) => l.employeeId === employeeId) };
+  }
+  const LRR_EID = '11111111-1111-4111-8111-111111111111';
+
+  await test('leavesRangeReport: overlap + counts + approvedDaysOff', () => {
+    const store = fakeLeavesStore([
+      { id: 'a', employeeId: LRR_EID, type: 'vacation', unit: 'days', start: '2026-03-02', end: '2026-03-04', status: 'approved' },
+      { id: 'b', employeeId: LRR_EID, type: 'sick', unit: 'hours', start: '2026-03-10T09:00:00', end: '2026-03-10T13:00:00', hours: 4, status: 'pending' },
+      { id: 'c', employeeId: LRR_EID, type: 'other', unit: 'days', start: '2026-04-01', end: '2026-04-02', status: 'approved' },
+    ]);
+    const r = leavesRangeReport(store, LRR_EID, '2026-03-01', '2026-03-31');
+    assert.equal(r.totalLeaves, 2);            // a, b overlap March; c does not
+    assert.equal(r.byStatus.approved, 1);
+    assert.equal(r.byStatus.pending, 1);
+    assert.equal(r.byType.vacation, 1);
+    assert.equal(r.approvedDaysOff, 3);        // a = 3 inclusive days
+  });
+
+  await test('leavesReport delegates to range (month)', () => {
+    const store = fakeLeavesStore([
+      { id: 'a', employeeId: LRR_EID, type: 'vacation', unit: 'days', start: '2026-03-02', end: '2026-03-04', status: 'approved' },
+    ]);
+    const r = leavesReport(store, LRR_EID, 2026, 3);
+    assert.equal(r.totalLeaves, 1);
+    assert.equal(r.approvedDaysOff, 3);
   });
 
 } finally {

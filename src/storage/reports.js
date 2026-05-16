@@ -185,10 +185,49 @@ function keyFor(date, groupBy) { return bucketKeyFor(date, groupBy); }
 // ----------------------------------------------------------------------------
 
 /**
- * Count leaves that overlap a given month, broken down by type and status.
- * Includes a days-off estimate (working-day count, Mon–Fri), using the
- * stored unit to decide: days-mode sums inclusive day counts; hours-mode
- * sums the stored `hours` field divided by 8.
+ * Count leaves that overlap an arbitrary date range [from..to], broken down
+ * by type and status. Includes a days-off estimate using the stored unit:
+ * days-mode sums inclusive day counts; hours-mode sums the stored `hours`
+ * field divided by 8.
+ */
+export function leavesRangeReport(leavesStore, employeeId, from, to) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) throw new Error('from must be YYYY-MM-DD');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(to))   throw new Error('to must be YYYY-MM-DD');
+  if (from > to) throw new Error('from must be <= to');
+
+  const all = leavesStore.list({ employeeId });
+  const touching = all.filter((l) => overlapsRange(l, from, to));
+
+  const byStatus = { pending: 0, approved: 0, rejected: 0, cancelled: 0 };
+  const byType   = { vacation: 0, sick: 0, appointment: 0, other: 0 };
+  let approvedDays = 0;
+
+  for (const l of touching) {
+    byStatus[l.status] = (byStatus[l.status] ?? 0) + 1;
+    byType[l.type]     = (byType[l.type]     ?? 0) + 1;
+    if (l.status === 'approved') approvedDays += approxDaysOff(l);
+  }
+
+  return {
+    employeeId, from, to,
+    totalLeaves: touching.length,
+    byStatus, byType,
+    approvedDaysOff: round1(approvedDays),
+    leaves: touching.map((l) => ({
+      id: l.id, type: l.type, unit: l.unit,
+      start: l.start, end: l.end, hours: l.hours, status: l.status,
+    })),
+  };
+}
+
+function overlapsRange(l, from, to) {
+  if (l.unit === 'days') return !(l.end < from || l.start > to);
+  const day = l.start.slice(0, 10);          // hours mode → ISO ts
+  return day >= from && day <= to;
+}
+
+/**
+ * Count leaves for a given calendar month. Delegates to leavesRangeReport.
  */
 export function leavesReport(leavesStore, employeeId, year, month) {
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
@@ -197,55 +236,11 @@ export function leavesReport(leavesStore, employeeId, year, month) {
   if (!Number.isInteger(month) || month < 1 || month > 12) {
     throw new Error('month must be 1..12');
   }
-
-  const monthStart = `${year}-${pad2(month)}-01`;
+  const from = `${year}-${pad2(month)}-01`;
   const lastDay = new Date(year, month, 0).getDate();
-  const monthEnd = `${year}-${pad2(month)}-${pad2(lastDay)}`;
-
-  const all = leavesStore.list({ employeeId });
-  const touching = all.filter((l) => overlapsMonth(l, monthStart, monthEnd));
-
-  const byStatus = { pending: 0, approved: 0, rejected: 0, cancelled: 0 };
-  const byType   = { vacation: 0, sick: 0, appointment: 0, other: 0 };
-
-  let approvedDays = 0;
-
-  for (const l of touching) {
-    byStatus[l.status] = (byStatus[l.status] ?? 0) + 1;
-    byType[l.type] = (byType[l.type] ?? 0) + 1;
-
-    if (l.status === 'approved') {
-      approvedDays += approxDaysOff(l);
-    }
-  }
-
-  return {
-    employeeId,
-    year,
-    month,
-    totalLeaves: touching.length,
-    byStatus,
-    byType,
-    approvedDaysOff: round1(approvedDays),
-    leaves: touching.map((l) => ({
-      id: l.id,
-      type: l.type,
-      unit: l.unit,
-      start: l.start,
-      end: l.end,
-      hours: l.hours,
-      status: l.status,
-    })),
-  };
-}
-
-function overlapsMonth(l, monthStart, monthEnd) {
-  if (l.unit === 'days') {
-    return !(l.end < monthStart || l.start > monthEnd);
-  }
-  // hours mode — start/end are ISO timestamps
-  const leaveDay = l.start.slice(0, 10);
-  return leaveDay >= monthStart && leaveDay <= monthEnd;
+  const to   = `${year}-${pad2(month)}-${pad2(lastDay)}`;
+  const r = leavesRangeReport(leavesStore, employeeId, from, to);
+  return { ...r, year, month };
 }
 
 export function approxDaysOff(l) {
