@@ -404,5 +404,77 @@ export function leavesReportToCsv(report) {
   return lines.join('\n') + '\n';
 }
 
+export function timesheetSingleCsv(report, meta) {
+  const L = [];
+  L.push(`"Employee",${csvEscape(meta.employeeName)}`);
+  L.push(`"Period",${csvEscape(meta.periodLabel)}`);
+  L.push(`"Range",${csvEscape(report.range.from)},${csvEscape(report.range.to)}`);
+  L.push('');
+  L.push(`"${report.groupBy}","hours"`);
+  for (const b of report.buckets) L.push(`${csvEscape(b.key)},${csvEscape(b.hours)}`);
+  L.push('');
+  L.push(`"Total",${csvEscape(report.totalHours)}`);
+  return L.join('\n') + '\n';
+}
+
+export function timesheetMatrixCsv(matrix, meta) {
+  const L = [];
+  // Column-name header first so spreadsheet tools pick it up on row 1.
+  // Period metadata follows in a second header block separated by a blank line.
+  L.push(['"bucket"', ...matrix.rows.map((r) => csvEscape(r.name)), '"Total"'].join(','));
+  L.push('');
+  L.push(`"Period",${csvEscape(meta.periodLabel)}`);
+  L.push('');
+  for (const k of matrix.buckets) {
+    L.push([csvEscape(k),
+      ...matrix.rows.map((r) => csvEscape(r.cells[k] ?? 0)),
+      csvEscape(matrix.bucketTotals[k] ?? 0)].join(','));
+  }
+  // "Total" is unquoted so callers can detect it with .startsWith('Total,').
+  L.push(['Total',
+    ...matrix.rows.map((r) => csvEscape(r.total)),
+    csvEscape(matrix.grandTotal)].join(','));
+  return L.join('\n') + '\n';
+}
+
+export function leavesSingleCsv(report, meta) {
+  const L = [];
+  L.push(`"Employee",${csvEscape(meta.employeeName)}`);
+  L.push(`"Period",${csvEscape(meta.periodLabel)}`);
+  L.push(`"Range",${csvEscape(report.from)},${csvEscape(report.to)}`);
+  L.push(`"Total leaves",${report.totalLeaves}`);
+  L.push(`"Approved days off (approx)",${report.approvedDaysOff}`);
+  L.push('');
+  L.push('"type","unit","start","end","hours","status"');
+  for (const l of report.leaves) {
+    L.push([csvEscape(l.type), csvEscape(l.unit), csvEscape(l.start),
+      csvEscape(l.end), csvEscape(l.hours ?? ''), csvEscape(l.status)].join(','));
+  }
+  return L.join('\n') + '\n';
+}
+
+export function leavesMatrixCsv(matrix, meta) {
+  const L = [];
+  // Column-name header first so spreadsheet tools pick it up on row 1.
+  // Period metadata follows in a second header block separated by a blank line.
+  // Layout kept structurally identical to timesheetMatrixCsv (plus the
+  // extra "Metric" line) so the two matrix CSVs parse the same way.
+  L.push(['"bucket"', ...matrix.rows.map((r) => csvEscape(r.name)), '"Total"'].join(','));
+  L.push('');
+  L.push(`"Period",${csvEscape(meta.periodLabel)}`);
+  L.push(`"Metric","approved days off"`);
+  L.push('');
+  for (const k of matrix.buckets) {
+    L.push([csvEscape(k),
+      ...matrix.rows.map((r) => csvEscape(r.cells[k] ?? 0)),
+      csvEscape(matrix.bucketTotals[k] ?? 0)].join(','));
+  }
+  // "Total" is unquoted for symmetry with timesheetMatrixCsv.
+  L.push(['Total',
+    ...matrix.rows.map((r) => csvEscape(r.total)),
+    csvEscape(matrix.grandTotal)].join(','));
+  return L.join('\n') + '\n';
+}
+
 // Re-exports useful to the routes layer.
 export { isoWeek, ymd };

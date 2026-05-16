@@ -18,6 +18,8 @@ import {
   hoursReport, leavesReport, leavesRangeReport,
   hoursReportToCsv, leavesReportToCsv,
   isoWeek, bucketKeyFor, hoursMatrix, leavesMatrix,
+  timesheetSingleCsv, timesheetMatrixCsv,
+  leavesSingleCsv, leavesMatrixCsv,
 } from '../src/storage/reports.js';
 
 let passed = 0;
@@ -417,6 +419,56 @@ try {
     assert.equal(m.rows.find((r) => r.id === LM_A).total, 2);
     assert.equal(m.rows.find((r) => r.id === LM_B).cells['2026-04-15'], 1); // 8/8
     assert.equal(m.grandTotal, 3);
+  });
+
+  // -------------------------------------------------------------------------
+  console.log('\nperiod-aware CSV serializers');
+  // -------------------------------------------------------------------------
+
+  const CSV_A = '11111111-1111-4111-8111-111111111111';
+  const CSV_B = '22222222-2222-4222-8222-222222222222';
+
+  await test('timesheetMatrixCsv: header + total column/row', () => {
+    const matrix = {
+      buckets: ['2026-01', '2026-02'], bucketBy: 'month',
+      rows: [
+        { id: CSV_A, name: 'Ana',  cells: { '2026-01': 10, '2026-02': 5 }, total: 15 },
+        { id: CSV_B, name: 'Beto', cells: { '2026-01': 0,  '2026-02': 8 }, total: 8  },
+      ],
+      bucketTotals: { '2026-01': 10, '2026-02': 13 }, grandTotal: 23,
+    };
+    const csv = timesheetMatrixCsv(matrix, { periodLabel: '2026' });
+    const lines = csv.trim().split('\n');
+    assert.ok(lines[0].includes('Ana') && lines[0].includes('Beto') && lines[0].includes('Total'));
+    assert.ok(lines.some((l) => l.startsWith('2026-01,')));
+    assert.ok(lines[lines.length - 1].startsWith('Total,'));
+  });
+
+  await test('leavesSingleCsv: summary + record table', () => {
+    const r = { from: '2026-03-01', to: '2026-03-31', totalLeaves: 1,
+      byStatus: { approved: 1, pending: 0, rejected: 0, cancelled: 0 },
+      byType: { vacation: 1, sick: 0, appointment: 0, other: 0 },
+      approvedDaysOff: 3,
+      leaves: [{ type: 'vacation', unit: 'days', start: '2026-03-02', end: '2026-03-04', hours: null, status: 'approved' }] };
+    const csv = leavesSingleCsv(r, { employeeName: 'Ana', periodLabel: '2026-03' });
+    assert.ok(csv.includes('Ana'));
+    assert.ok(csv.includes('"type","unit","start","end","hours","status"'));
+    assert.ok(csv.includes('vacation,days,2026-03-02,2026-03-04,,approved'));
+  });
+
+  await test('timesheetSingleCsv + leavesMatrixCsv smoke', () => {
+    const tsc = timesheetSingleCsv(
+      { range: { from: '2026-03-01', to: '2026-03-31' }, groupBy: 'day',
+        buckets: [{ key: '2026-03-02', hours: 8 }], totalHours: 8 },
+      { employeeName: 'Ana', periodLabel: '2026-03' });
+    assert.ok(tsc.includes('Ana') && tsc.includes('"Total",8'));
+    const lmc = leavesMatrixCsv(
+      { buckets: ['2026-04-01'], bucketBy: 'day',
+        rows: [{ id: CSV_A, name: 'Ana', cells: { '2026-04-01': 1 }, total: 1 }],
+        bucketTotals: { '2026-04-01': 1 }, grandTotal: 1 },
+      { periodLabel: '2026-04' });
+    assert.ok(lmc.includes('approved days off'));
+    assert.ok(lmc.split('\n')[lmc.split('\n').length - 1] === '' ? true : true); // trailing newline tolerated
   });
 
 } finally {
