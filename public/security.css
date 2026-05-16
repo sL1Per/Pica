@@ -1,0 +1,12 @@
+.recovery-code {
+  font-size: 1.25rem;
+  letter-spacing: 0.08em;
+  padding: 1rem;
+  background: var(--surface-2, #f4f4f5);
+  border: 1px dashed var(--border, #ccc);
+  border-radius: 6px;
+  user-select: all;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+button.danger { color: #fff; background: #b91c1c; }

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    try {
+      var m = localStorage.getItem('pica-color-mode');
+      if (m === 'light' || m === 'dark') {
+        document.documentElement.setAttribute('data-theme', m);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) { /* localStorage blocked → fall back to system */ }
+  </script>
+  <title data-i18n="security.title">Pica — Security</title>
+    <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <meta name="theme-color" content="#2e7d32">
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/topbar.css">
+  <link rel="stylesheet" href="/security.css">
+</head>
+<body>
+  <main class="container">
+    <h1 data-i18n="security.title">Security</h1>
+    <p id="message" class="message" hidden></p>
+
+    <section class="card">
+      <h2 data-i18n="security.changePassTitle">Change passphrase</h2>
+      <form id="pass-form">
+        <label data-i18n="security.currentPass">Current passphrase</label>
+        <input type="password" id="cp-current" autocomplete="current-password" required>
+        <label data-i18n="security.newPass">New passphrase</label>
+        <input type="password" id="cp-new" autocomplete="new-password" minlength="8" required>
+        <button type="submit" data-i18n="security.changePassBtn">Change passphrase</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="security.recoveryTitle">Recovery code</h2>
+      <p data-i18n="security.recoveryIntro"></p>
+      <form id="rec-form">
+        <label data-i18n="security.currentPass">Current passphrase</label>
+        <input type="password" id="rc-current" autocomplete="current-password" required>
+        <button type="submit" data-i18n="security.genRecoveryBtn">Generate recovery code</button>
+        <button type="button" id="rc-remove" class="danger" data-i18n="security.removeRecoveryBtn">Remove recovery code</button>
+      </form>
+      <pre id="rc-output" class="recovery-code" hidden></pre>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="security.rotateTitle">Rotate encryption key</h2>
+      <p data-i18n="security.rotateIntro"></p>
+      <form id="rot-form">
+        <label data-i18n="security.currentPass">Current passphrase</label>
+        <input type="password" id="rot-current" autocomplete="current-password" required>
+        <label data-i18n="security.rotateConfirm">Type ROTATE to confirm</label>
+        <input type="text" id="rot-confirm" required>
+        <button type="submit" class="danger" data-i18n="security.rotateBtn">Rotate key</button>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="/security.js"></script>
+</body>
+</html>

@@ -214,6 +214,15 @@ export function registerPageRoutes(router, { publicDir, usersStore, userPrefsSto
     await sendHtml(res, 'settings.html', req);
   });
 
+  // -- Security (employer only) -------------------------------------------
+
+  router.get('/security', async (req, res) => {
+    const a = authed(req);
+    if (a.redirect) return res.redirect(a.redirect);
+    if (a.ctx.user.role !== 'employer') return res.redirect('/preferences');
+    await sendHtml(res, 'security.html', req);
+  });
+
   // /employees/:id/profile — full profile editor (was the old /employees/:id).
   // Must be registered BEFORE /employees/:id so the more-specific path wins.
   router.get('/employees/:id/profile', async (req, res) => {
