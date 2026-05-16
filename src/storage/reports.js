@@ -8,6 +8,8 @@
  * returned as numbers (floats, rounded to minutes: one decimal digit).
  */
 
+import { enumerateBuckets } from './period.js';
+
 const MS_PER_HOUR = 3_600_000;
 
 function pad2(n) { return String(n).padStart(2, '0'); }
@@ -250,6 +252,47 @@ export function approxDaysOff(l) {
   const s = parseYmd(l.start);
   const e = parseYmd(l.end);
   return Math.round((e - s) / 86_400_000) + 1;
+}
+
+// ----------------------------------------------------------------------------
+// Hours matrix — employees × buckets
+// ----------------------------------------------------------------------------
+
+/**
+ * Build a cross-tabulation of hours for a set of employees over a date range.
+ *
+ * Each row represents one user; each cell holds the hours worked in one bucket.
+ * Bucket keys are the same YYYY-MM-DD / YYYY-Www / YYYY-MM strings produced by
+ * hoursReport. Zero-hour cells are omitted from `cells` (callers use `?? 0`).
+ *
+ * @param {object} punchesStore
+ * @param {Array<{id, name}>} users
+ * @param {string} from       YYYY-MM-DD
+ * @param {string} to         YYYY-MM-DD
+ * @param {'day'|'week'|'month'} bucketBy
+ * @returns {{ from, to, bucketBy, buckets, rows, bucketTotals, grandTotal }}
+ */
+export function hoursMatrix(punchesStore, users, from, to, bucketBy, now = new Date()) {
+  const buckets = enumerateBuckets(from, to, bucketBy);
+  const bucketTotals = Object.fromEntries(buckets.map((k) => [k, 0]));
+  let grandTotal = 0;
+
+  const rows = users.map((u) => {
+    const cells = {};
+    let total = 0;
+    try {
+      const r = hoursReport(punchesStore, u.id, from, to, bucketBy, now);
+      for (const b of r.buckets) {
+        cells[b.key] = b.hours;
+        if (b.key in bucketTotals) bucketTotals[b.key] = round1(bucketTotals[b.key] + b.hours);
+      }
+      total = r.totalHours;
+    } catch { /* unreadable punches for one user → empty row */ }
+    grandTotal = round1(grandTotal + total);
+    return { id: u.id, name: u.name, cells, total };
+  });
+
+  return { from, to, bucketBy, buckets, rows, bucketTotals, grandTotal };
 }
 
 // ----------------------------------------------------------------------------

@@ -17,7 +17,7 @@ import { createLeavesStore } from '../src/storage/leaves.js';
 import {
   hoursReport, leavesReport, leavesRangeReport,
   hoursReportToCsv, leavesReportToCsv,
-  isoWeek, bucketKeyFor,
+  isoWeek, bucketKeyFor, hoursMatrix,
 } from '../src/storage/reports.js';
 
 let passed = 0;
@@ -353,6 +353,43 @@ try {
     const r = leavesReport(store, LRR_EID, 2026, 3);
     assert.equal(r.totalLeaves, 1);
     assert.equal(r.approvedDaysOff, 3);
+  });
+
+  // -------------------------------------------------------------------------
+  console.log('\nhoursMatrix');
+  // -------------------------------------------------------------------------
+
+  function hmFakePunches(byEmp) {
+    return { listMonth: (emp, y, m) =>
+      (byEmp[emp] || []).filter((p) => {
+        const d = new Date(p.ts);
+        return d.getFullYear() === y && (d.getMonth() + 1) === m;
+      }) };
+  }
+  const HM_A = '11111111-1111-4111-8111-111111111111';
+  const HM_B = '22222222-2222-4222-8222-222222222222';
+
+  await test('hoursMatrix: rectangular cells + totals', () => {
+    const store = hmFakePunches({
+      [HM_A]: [
+        { ts: '2026-03-02T09:00:00', type: 'in' },
+        { ts: '2026-03-02T17:00:00', type: 'out' }, // 8h on 03-02
+      ],
+      [HM_B]: [
+        { ts: '2026-03-03T09:00:00', type: 'in' },
+        { ts: '2026-03-03T13:00:00', type: 'out' }, // 4h on 03-03
+      ],
+    });
+    const users = [{ id: HM_A, name: 'Ana' }, { id: HM_B, name: 'Beto' }];
+    const m = hoursMatrix(store, users, '2026-03-01', '2026-03-31', 'day',
+                          new Date('2026-04-01T00:00:00'));
+    assert.equal(m.buckets.length, 31);
+    const ana = m.rows.find((r) => r.id === HM_A);
+    assert.equal(ana.cells['2026-03-02'], 8);
+    assert.equal(ana.cells['2026-03-03'] ?? 0, 0);
+    assert.equal(ana.total, 8);
+    assert.equal(m.bucketTotals['2026-03-03'], 4);
+    assert.equal(m.grandTotal, 12);
   });
 
 } finally {
