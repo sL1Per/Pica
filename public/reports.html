@@ -26,151 +26,58 @@
 <body>
   <main class="container container--wide">
     <header class="page-header no-print">
-      <div>
-        <h1 data-i18n="reports.title">Reports</h1>
-      </div>
+      <div><h1 data-i18n="reports.title">Reports</h1></div>
     </header>
 
     <div class="printable-title" aria-hidden="true">
-      <h1 id="print-title" data-i18n="reports.printTitle">Pica — Report</h1>
-      <p id="print-subtitle"></p>
+      <h1 data-i18n="reports.printTitle">Pica — Report</h1>
+      <p id="print-meta"></p>
     </div>
 
     <div id="message" class="message no-print"></div>
 
-    <!-- Team overview (employer only) -->
-    <section class="card no-print" id="team-section" hidden>
-      <div class="report-section__header">
-        <h2 data-i18n="reports.teamOverview">Team overview</h2>
-        <div class="report-section__meta">
-          <div class="chips" id="team-period-chips" role="tablist">
-            <button type="button" class="chip" data-period="today" data-i18n="reports.periodToday">Today</button>
-            <button type="button" class="chip" data-period="week" data-i18n="reports.periodWeek">This week</button>
-            <button type="button" class="chip active" data-period="month" data-i18n="reports.periodMonth">This month</button>
-          </div>
+    <section class="card no-print" id="controls">
+      <div class="rpt-tabs">
+        <button type="button" class="chip active" data-rt="timesheets" data-i18n="reports.typeTimesheets">Timesheets</button>
+        <button type="button" class="chip" data-rt="leaves" data-i18n="reports.typeLeaves">Leaves</button>
+      </div>
+
+      <div class="rpt-scope" id="scope-wrap" hidden>
+        <label data-i18n="reports.scope">Who</label>
+        <div class="chips">
+          <button type="button" class="chip active" data-scope="all" data-i18n="reports.scopeEveryone">Everyone</button>
+          <button type="button" class="chip" data-scope="me" data-i18n="reports.scopePerson">One person</button>
+        </div>
+        <select id="employee-picker" hidden></select>
+      </div>
+
+      <div class="rpt-period">
+        <div class="chips" id="period-chips">
+          <button type="button" class="chip" data-pt="day" data-i18n="reports.periodDay">Day</button>
+          <button type="button" class="chip" data-pt="week" data-i18n="reports.periodWeek">Week</button>
+          <button type="button" class="chip active" data-pt="month" data-i18n="reports.periodMonth">Month</button>
+          <button type="button" class="chip" data-pt="year" data-i18n="reports.periodYear">Year</button>
+        </div>
+        <div class="rpt-nav">
+          <button type="button" id="prev-period" class="btn-ghost" aria-label="Previous">◀</button>
+          <span id="period-label" class="rpt-label"></span>
+          <button type="button" id="next-period" class="btn-ghost" aria-label="Next">▶</button>
         </div>
       </div>
-      <p id="team-range" class="subtle"></p>
-      <div class="table-wrap">
-        <table class="report-table team-table" id="team-table">
-          <thead>
-            <tr>
-              <th data-i18n="reports.teamPeriod">Period</th>
-              <th data-i18n="reports.teamStaff">Staff</th>
-              <th class="right" data-i18n="reports.teamScheduled">Scheduled</th>
-              <th class="right" data-i18n="reports.teamWorked">Timesheets</th>
-              <th class="right" data-i18n="reports.teamMissing">Missing</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+
+      <div class="controls-actions">
+        <button id="print-btn" type="button" class="secondary" data-i18n="reports.print">Print</button>
+        <a id="csv-link" class="btn-link btn-link--secondary" href="#" download data-i18n="reports.downloadCSV">Download CSV</a>
       </div>
-      <p id="team-empty" class="subtle center" hidden data-i18n="reports.teamEmpty">No employees yet.</p>
-      <p id="team-error" class="subtle center" hidden></p>
+      <p class="subtle" data-i18n="reports.pdfHint">To save as PDF, use Print and choose "Save as PDF".</p>
     </section>
 
-    <section class="card no-print">
-      <div class="controls-grid">
-        <div id="employee-picker-wrap" hidden>
-          <label for="employee-picker" data-i18n="reports.employee">Employee</label>
-          <select id="employee-picker"></select>
-        </div>
-
-        <div>
-          <label for="from-date" data-i18n="reports.hoursFrom">Hours from</label>
-          <input type="date" id="from-date">
-        </div>
-        <div>
-          <label for="to-date" data-i18n="reports.hoursTo">to</label>
-          <input type="date" id="to-date">
-        </div>
-
-        <div class="groupby-row">
-          <label data-i18n="reports.groupBy">Group hours by</label>
-          <div class="chips">
-            <button type="button" class="chip active" data-groupby="day" data-i18n="reports.groupByDay">Day</button>
-            <button type="button" class="chip" data-groupby="week" data-i18n="reports.groupByWeek">Week</button>
-            <button type="button" class="chip" data-groupby="month" data-i18n="reports.groupByMonth">Month</button>
-          </div>
-        </div>
-
-        <div>
-          <label for="leave-year" data-i18n="reports.leavesYear">Leaves year</label>
-          <input type="number" id="leave-year" min="2000" max="2100">
-        </div>
-        <div>
-          <label for="leave-month" data-i18n="reports.leavesMonth">Leaves month</label>
-          <select id="leave-month">
-            <option value="1" data-i18n="reports.monthJan">January</option><option value="2" data-i18n="reports.monthFeb">February</option>
-            <option value="3" data-i18n="reports.monthMar">March</option><option value="4" data-i18n="reports.monthApr">April</option>
-            <option value="5" data-i18n="reports.monthMay">May</option><option value="6" data-i18n="reports.monthJun">June</option>
-            <option value="7" data-i18n="reports.monthJul">July</option><option value="8" data-i18n="reports.monthAug">August</option>
-            <option value="9" data-i18n="reports.monthSep">September</option><option value="10" data-i18n="reports.monthOct">October</option>
-            <option value="11" data-i18n="reports.monthNov">November</option><option value="12" data-i18n="reports.monthDec">December</option>
-          </select>
-        </div>
-
-        <div class="controls-actions">
-          <button id="refresh-btn" type="button" data-i18n="reports.refresh">Refresh</button>
-          <button id="print-btn" type="button" class="secondary" data-i18n="reports.print">Print</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Hours -->
-    <section class="card report-section" id="hours-section">
-      <div class="report-section__header">
-        <h2 data-i18n="reports.workedHours">Worked hours</h2>
-        <div class="report-section__meta">
-          <span id="hours-range" class="subtle"></span>
-          <a id="hours-csv-link" class="btn-link btn-link--secondary no-print" href="#" download data-i18n="reports.downloadCSV">Download CSV</a>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table class="report-table" id="hours-table">
-          <thead><tr><th id="hours-key-col" data-i18n="reports.colDay">Day</th><th class="right" data-i18n="reports.colHours">Hours</th></tr></thead>
-          <tbody></tbody>
-          <tfoot><tr><th data-i18n="reports.total">Total</th><th class="right" id="hours-total">0</th></tr></tfoot>
-        </table>
-      </div>
-      <p id="hours-empty" class="subtle center" hidden data-i18n="reports.noHours">No hours logged in this range.</p>
-    </section>
-
-    <!-- Leaves -->
-    <section class="card report-section" id="leaves-section">
-      <div class="report-section__header">
-        <h2 data-i18n="reports.leavesMonthly">Leaves — monthly summary</h2>
-        <div class="report-section__meta">
-          <span id="leaves-range" class="subtle"></span>
-          <a id="leaves-csv-link" class="btn-link btn-link--secondary no-print" href="#" download data-i18n="reports.downloadCSV">Download CSV</a>
-        </div>
-      </div>
-
-      <div class="stat-grid">
-        <div class="stat"><div class="stat__num" id="stat-approved">0</div><div class="stat__lbl" data-i18n="reports.statApproved">Approved</div></div>
-        <div class="stat"><div class="stat__num" id="stat-pending">0</div><div class="stat__lbl" data-i18n="reports.statPending">Pending</div></div>
-        <div class="stat"><div class="stat__num" id="stat-rejected">0</div><div class="stat__lbl" data-i18n="reports.statRejected">Rejected</div></div>
-        <div class="stat"><div class="stat__num" id="stat-cancelled">0</div><div class="stat__lbl" data-i18n="reports.statCancelled">Cancelled</div></div>
-        <div class="stat"><div class="stat__num" id="stat-days">0</div><div class="stat__lbl" data-i18n="reports.statDays">Approved days off</div></div>
-      </div>
-
-      <div class="table-wrap">
-        <table class="report-table" id="leaves-table">
-          <thead>
-            <tr>
-              <th data-i18n="reports.headerLeaves">Type</th>
-              <th data-i18n="reports.colWhen">When</th>
-              <th class="right" data-i18n="reports.colDuration">Duration</th>
-              <th data-i18n="reports.colStatus">Status</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <p id="leaves-empty" class="subtle center" hidden data-i18n="reports.noLeaves">No leaves this month.</p>
+    <section class="card report-section" id="result">
+      <div class="table-wrap" id="result-table-wrap"></div>
+      <p id="result-empty" class="subtle center" hidden data-i18n="reports.empty">Nothing for this period.</p>
+      <p id="result-error" class="subtle center no-print" hidden></p>
     </section>
   </main>
-
   <script type="module" src="/reports.js"></script>
 </body>
 </html>
