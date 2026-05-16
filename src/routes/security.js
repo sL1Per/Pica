@@ -1,8 +1,10 @@
 // src/routes/security.js
 import fs from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { auditContext } from '../storage/audit.js';
 import { wrapDek, unwrapDek, generateRecoveryCode, normalizeRecoveryCode } from '../crypto/dek.js';
 import { deriveKek, newKdf, getSlot, setSlot, removeSlot, writeConfigAtomic } from '../crypto/keyring.js';
+import { rotateData } from '../crypto/rotate.js';
 
 const MIN_PASSPHRASE = 8;
 
@@ -22,7 +24,8 @@ function readConfig(configPath) {
 }
 
 export function registerSecurityRoutes(router, deps) {
-  const { configPath, masterKey, serverState, requireAuth, requireRole, auditStore, logger } = deps;
+  const { configPath, masterKey, dataDir, serverState, requireAuth, requireRole, auditStore, logger } = deps;
+  const rotate = deps.rotate || rotateData;
   const employer = (h) => requireRole('employer')(requireAuth(h));
 
   // Unwrap the DEK with a supplied passphrase; returns Buffer or null.
@@ -108,5 +111,54 @@ export function registerSecurityRoutes(router, deps) {
     });
     logger?.info('Recovery code removed.');
     res.json({ ok: true });
+  }));
+
+  router.post('/api/security/rotate', employer(async (req, res) => {
+    if (req.body?.confirm !== 'ROTATE') {
+      return res.badRequest('Type ROTATE to confirm', { errorCode: 'confirm_required' });
+    }
+    const { currentPassphrase } = req.body || {};
+    if (typeof currentPassphrase !== 'string' || currentPassphrase.length === 0) {
+      return res.badRequest('Current passphrase is required', { errorCode: 'required' });
+    }
+    const config = readConfig(configPath);
+    const oldKey = await dekFromPassphrase(config.security, currentPassphrase);
+    if (!oldKey) return res.badRequest('Current passphrase is incorrect', { errorCode: 'wrong_passphrase' });
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const stagingDir = `${dataDir}.staging-${stamp}`;
+    const preRotate = `${dataDir}.pre-rotate-${stamp}`;
+    const newKey = randomBytes(32);
+
+    try {
+      await rotate({ dataDir, stagingDir, oldKey, newKey, logger });
+    } catch (err) {
+      // stagingDir is a transient scratch sibling (NOT data/ or backups/);
+      // discarding it on abort mirrors the restore flow. data/ is untouched.
+      try { if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true }); } catch { /* */ }
+      logger?.error(`Rotation aborted before swap: ${err.message}`);
+      return res.badRequest('Rotation failed — data left unchanged', { errorCode: 'rotation_failed' });
+    }
+
+    // Atomic swap: data/ is moved aside (NEVER deleted), staging becomes data/.
+    if (fs.existsSync(dataDir)) fs.renameSync(dataDir, preRotate);
+    fs.renameSync(stagingDir, dataDir);
+
+    // New DEK wrapped under the current passphrase; recovery slot dropped
+    // (it wrapped the OLD DEK — operator re-mints a code after restart).
+    const kdf = newKdf();
+    const kek = await deriveKek(currentPassphrase, kdf);
+    setSlot(config.security, 'passphrase', kdf, wrapDek(newKey, kek, 'passphrase'));
+    removeSlot(config.security, 'recovery');
+    writeConfigAtomic(configPath, config);
+
+    // Reuse the restore lockdown: subsequent API calls get 503 until restart.
+    if (serverState) serverState.restoreCompleted = true;
+    auditStore?.appendRecord({
+      ...auditContext(req), event: 'security.key_rotated', outcome: 'success',
+      details: { preRotate },
+    });
+    logger?.warn(`Key rotated. Old data preserved at ${preRotate}. Restart Pica.`);
+    res.json({ ok: true, restartRequired: true, preRotatePath: preRotate });
   }));
 }

@@ -53,6 +53,30 @@ async function fixture() {
   });
   return { dir, configPath, router, audited, serverState };
 }
+async function rotFixture() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-rot-'));
+  const configPath = path.join(dir, 'config.json');
+  const dataDir = path.join(dir, 'data');
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(path.join(dataDir, 'marker'), 'x');
+  const dek = randomBytes(32);
+  const kdf = newKdf();
+  const kek = await deriveKek('current-pass', kdf);
+  const config = { security: {} };
+  setSlot(config.security, 'passphrase', kdf, wrapDek(dek, kek, 'passphrase'));
+  writeConfigAtomic(configPath, config);
+  const serverState = { restoreCompleted: false };
+  const audited = [];
+  const router = createRouter();
+  registerSecurityRoutes(router, {
+    configPath, masterKey: dek, dataDir, serverState,
+    requireAuth, requireRole,
+    auditStore: { appendRecord: (r) => audited.push(r) },
+    logger: { info() {}, warn() {}, error() {} },
+    rotate: async ({ stagingDir }) => { fs.mkdirSync(stagingDir, { recursive: true }); },
+  });
+  return { dir, configPath, dataDir, router, audited, serverState };
+}
 async function call(router, method, urlPath, { user, body } = {}) {
   const m = router.match(method, urlPath);
   assert.ok(m && m.handler, `${method} ${urlPath} should be registered`);
@@ -203,6 +227,47 @@ await test('server.js parses a request body for DELETE', () => {
   const src = fs.readFileSync(new URL('../server.js', import.meta.url), 'utf8');
   const m = src.match(/\[\s*'POST',\s*'PUT',\s*'PATCH',\s*'DELETE'\s*\]\.includes\(\s*nodeReq\.method\s*\)/);
   assert.ok(m, "server.js body-parse gate must include 'DELETE'");
+});
+
+await test('rotate: confirm required, then swaps dirs and locks down', async () => {
+  const f = await rotFixture();
+  let res = await call(f.router, 'POST', '/api/security/rotate',
+    { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'current-pass' } });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.errorCode, 'confirm_required');
+
+  res = await call(f.router, 'POST', '/api/security/rotate',
+    { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'current-pass', confirm: 'ROTATE' } });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.restartRequired, true);
+  assert.equal(f.serverState.restoreCompleted, true);
+  const aside = fs.readdirSync(f.dir).filter((n) => n.startsWith('data.pre-rotate-'));
+  assert.equal(aside.length, 1);
+  assert.equal(fs.readFileSync(path.join(f.dir, aside[0], 'marker'), 'utf8'), 'x');
+  assert.ok(f.audited.some((a) => a.event === 'security.key_rotated'));
+  const cfg = JSON.parse(fs.readFileSync(f.configPath, 'utf8'));
+  assert.equal(cfg.security.wraps.recovery, undefined);
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
+await test('rotate: employee forbidden; wrong/missing passphrase rejected', async () => {
+  const f = await rotFixture();
+  let res = await call(f.router, 'POST', '/api/security/rotate',
+    { user: { id: 'e', role: 'employee' }, body: { currentPassphrase: 'current-pass', confirm: 'ROTATE' } });
+  assert.equal(res.statusCode, 403);
+
+  res = await call(f.router, 'POST', '/api/security/rotate',
+    { user: { id: 'm', role: 'employer' }, body: { confirm: 'ROTATE' } });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.errorCode, 'required');
+
+  res = await call(f.router, 'POST', '/api/security/rotate',
+    { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'WRONG', confirm: 'ROTATE' } });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.errorCode, 'wrong_passphrase');
+  assert.equal(f.serverState.restoreCompleted, false);
+  assert.equal(fs.readdirSync(f.dir).filter((n) => n.startsWith('data.pre-rotate-')).length, 0);
+  fs.rmSync(f.dir, { recursive: true, force: true });
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
