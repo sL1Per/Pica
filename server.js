@@ -36,6 +36,7 @@ import { registerReportRoutes } from './src/routes/reports.js';
 import { approxDaysOff } from './src/storage/reports.js';
 import { registerSettingsRoutes } from './src/routes/settings.js';
 import { registerBackupRoutes } from './src/routes/backups.js';
+import { registerSecurityRoutes } from './src/routes/security.js';
 import { startBackupScheduler } from './src/scheduler/backup-scheduler.js';
 import { createEmployeesStore } from './src/storage/employees.js';
 import { createPunchesStore } from './src/storage/punches.js';
@@ -222,6 +223,16 @@ registerSettingsRoutes(router, {
 registerBackupRoutes(router, {
   backupsStore,
   serverState,
+  requireRole: rbac.requireRole,
+  auditStore,
+  logger: log,
+});
+registerSecurityRoutes(router, {
+  configPath,
+  masterKey,
+  dataDir: config.dataDir,
+  serverState,
+  requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
   auditStore,
   logger: log,
