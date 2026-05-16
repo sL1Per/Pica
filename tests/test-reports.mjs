@@ -16,7 +16,6 @@ import { createPunchesStore } from '../src/storage/punches.js';
 import { createLeavesStore } from '../src/storage/leaves.js';
 import {
   hoursReport, leavesReport, leavesRangeReport,
-  hoursReportToCsv, leavesReportToCsv,
   isoWeek, bucketKeyFor, hoursMatrix, leavesMatrix,
   timesheetSingleCsv, timesheetMatrixCsv,
   leavesSingleCsv, leavesMatrixCsv,
@@ -272,46 +271,6 @@ try {
     // No overlap.
     const aliceIds = new Set(aliceR.leaves.map((l) => l.id));
     for (const l of bobR.leaves) assert.ok(!aliceIds.has(l.id));
-  });
-
-  // -------------------------------------------------------------------------
-  console.log('\nCSV export');
-  // -------------------------------------------------------------------------
-
-  await test('hours CSV has header and total row', () => {
-    const r = hoursReport(punches, aliceId, '2026-04-06', '2026-04-07', 'day',
-      new Date('2026-04-08T00:00:00.000Z'));
-    const csv = hoursReportToCsv(r);
-    assert.match(csv, /"Employee"/);
-    assert.match(csv, /"day","hours"/);
-    assert.match(csv, /"Total"/);
-    // Total line reflects data.
-    assert.match(csv, /Total.*11\.5/);
-  });
-
-  await test('leaves CSV has header and one row per leave', () => {
-    const r = leavesReport(leaves, aliceId, 2026, 5);
-    const csv = leavesReportToCsv(r);
-    assert.match(csv, /"Employee"/);
-    assert.match(csv, /"type","unit","start","end","hours","status"/);
-    // Two alice leaves in May at the start of the test — plus the cross-month one above.
-    const lines = csv.trim().split('\n');
-    // Header rows (4) + blank + column header (1) + one per leave
-    const dataRows = lines.length - 6;
-    assert.equal(dataRows, r.leaves.length);
-  });
-
-  await test('CSV escapes embedded commas and quotes', () => {
-    const r = {
-      employeeId: 'x',
-      range: { from: '2026-04-01', to: '2026-04-01' },
-      groupBy: 'day',
-      buckets: [{ key: 'weird,key"inside', hours: 1 }],
-      totalHours: 1,
-    };
-    const csv = hoursReportToCsv(r);
-    // The key "weird,key\"inside" must be quoted and the inner " doubled.
-    assert.match(csv, /"weird,key""inside"/);
   });
 
   // -------------------------------------------------------------------------

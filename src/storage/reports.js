@@ -368,42 +368,6 @@ function csvEscape(v) {
   return s;
 }
 
-export function hoursReportToCsv(report) {
-  const lines = [];
-  lines.push(`"Employee",${csvEscape(report.employeeId)}`);
-  lines.push(`"Range",${csvEscape(report.range.from)},${csvEscape(report.range.to)}`);
-  lines.push(`"GroupBy",${csvEscape(report.groupBy)}`);
-  lines.push('');
-  lines.push(`"${report.groupBy}","hours"`);
-  for (const b of report.buckets) {
-    lines.push(`${csvEscape(b.key)},${csvEscape(b.hours)}`);
-  }
-  lines.push('');
-  lines.push(`"Total",${csvEscape(report.totalHours)}`);
-  return lines.join('\n') + '\n';
-}
-
-export function leavesReportToCsv(report) {
-  const lines = [];
-  lines.push(`"Employee",${csvEscape(report.employeeId)}`);
-  lines.push(`"Year",${report.year},"Month",${pad2(report.month)}`);
-  lines.push(`"Total leaves",${report.totalLeaves}`);
-  lines.push(`"Approved days off (approx)",${report.approvedDaysOff}`);
-  lines.push('');
-  lines.push('"type","unit","start","end","hours","status"');
-  for (const l of report.leaves) {
-    lines.push([
-      csvEscape(l.type),
-      csvEscape(l.unit),
-      csvEscape(l.start),
-      csvEscape(l.end),
-      csvEscape(l.hours ?? ''),
-      csvEscape(l.status),
-    ].join(','));
-  }
-  return lines.join('\n') + '\n';
-}
-
 export function timesheetSingleCsv(report, meta) {
   const L = [];
   L.push(`"Employee",${csvEscape(meta.employeeName)}`);

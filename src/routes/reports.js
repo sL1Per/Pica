@@ -1,43 +1,39 @@
 import {
-  hoursReport, leavesReport,
-  hoursReportToCsv, leavesReportToCsv,
+  hoursReport, leavesRangeReport, hoursMatrix, leavesMatrix,
+  timesheetSingleCsv, timesheetMatrixCsv, leavesSingleCsv, leavesMatrixCsv,
 } from '../storage/reports.js';
-import { computePeriod } from '../storage/period.js';
+import { resolvePeriod, defaultAnchor } from '../storage/period.js';
+import { isUuid } from '../util/validators.js';
 
 /**
- * Reports endpoints. All require authentication. Access follows the
- * same pattern as employees/leaves: owner or employer.
+ * Reports endpoints — scope-aware timesheets and leaves.
  *
- * Routes:
- *   GET /api/reports/hours/:id[.csv]?from=YYYY-MM-DD&to=YYYY-MM-DD&groupBy=day|week|month
- *   GET /api/reports/leaves/:id[.csv]?year=YYYY&month=MM
- *   GET /api/reports/summary                          — employer only
- *   GET /api/reports/team-hours?period=today|week|month — employer only
+ *   GET /api/reports/timesheets?scope=me|all&id=<uid>&type=day|week|month|year&anchor=YYYY-MM-DD[&format=csv]
+ *   GET /api/reports/leaves?scope=me|all&id=<uid>&type=...&anchor=...[&format=csv]
+ *
+ * The MAIN RULE (security-critical): the SERVER decides scope, never the
+ * client. An employer sees everyone; an employee only ever sees
+ * themselves. `scope=all` from a non-employer is a 403 with no data.
+ * A `?id=` from a non-employer is ignored — it is coerced to the
+ * caller's own id. We never trust client-supplied scope/id.
  */
+
+const TYPES = ['day', 'week', 'month', 'year'];
+
 export function registerReportRoutes(router, {
   punchesStore,
   leavesStore,
   usersStore,
   employeesStore,
-  orgSettingsStore,
+  // server.js also passes orgSettingsStore/requireRole/requireOwnerOrEmployer;
+  // accepted for call-site compatibility but access is enforced inline below
+  // (the role check is simpler and self-contained than the generic wrappers).
   requireAuth,
   requireRole,
   requireOwnerOrEmployer,
 }) {
-
-  // Default range helpers.
-  function todayYmd() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  }
-  function firstOfMonthYmd() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
-  }
-  function thisYearMonth() {
-    const d = new Date();
-    return { year: d.getFullYear(), month: d.getMonth() + 1 };
-  }
+  void requireRole;
+  void requireOwnerOrEmployer;
 
   function sendCsv(res, filename, body) {
     const buf = Buffer.from(body, 'utf8');
@@ -50,227 +46,129 @@ export function registerReportRoutes(router, {
     res.end(buf);
   }
 
-  // --------------------------------------------------------------------------
-  // Hours — CSV export (registered BEFORE the JSON route so the router
-  // matches the more specific pattern first).
-  // --------------------------------------------------------------------------
-  router.get('/api/reports/hours/:id.csv', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
-    const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
-    const { from, to, groupBy } = parseHoursQuery(req.query);
+  /**
+   * Parse the shared query (type/anchor/scope/id) and resolve the access
+   * decision. Returns null after writing an error response; otherwise
+   * { period, scope, targetId, format }.
+   *
+   * targetId is null for scope=all. For scope=me it is the caller's own
+   * id UNLESS the caller is an employer who explicitly passed ?id=, in
+   * which case it is that id (so an employer can view one employee).
+   */
+  function parseCommon(req, res) {
+    const q = req.query || {};
+    const type = (q.type || 'month').toLowerCase();
+    if (!TYPES.includes(type)) {
+      res.badRequest('type must be day|week|month|year', { errorCode: 'invalid_value' });
+      return null;
+    }
+    const anchor = q.anchor || defaultAnchor(type);
+    let period;
     try {
-      const report = hoursReport(punchesStore, user.id, from, to, groupBy);
-      const fname = `pica-hours-${user.username}-${from}-to-${to}-${groupBy}.csv`;
-      sendCsv(res, fname, hoursReportToCsv(report));
-    } catch (err) {
-      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
-    }
-  }));
-
-  // --------------------------------------------------------------------------
-  // Hours — JSON
-  // --------------------------------------------------------------------------
-  router.get('/api/reports/hours/:id', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
-    const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
-    const { from, to, groupBy } = parseHoursQuery(req.query);
-    try {
-      const report = hoursReport(punchesStore, user.id, from, to, groupBy);
-      res.json({ ...report, username: user.username });
-    } catch (err) {
-      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
-    }
-  }));
-
-  // --------------------------------------------------------------------------
-  // Leaves — CSV export (before JSON route, same reason)
-  // --------------------------------------------------------------------------
-  router.get('/api/reports/leaves/:id.csv', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
-    const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
-    const { year, month } = parseMonthQuery(req.query);
-    try {
-      const report = leavesReport(leavesStore, user.id, year, month);
-      const fname = `pica-leaves-${user.username}-${year}-${String(month).padStart(2,'0')}.csv`;
-      sendCsv(res, fname, leavesReportToCsv(report));
-    } catch (err) {
-      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
-    }
-  }));
-
-  // --------------------------------------------------------------------------
-  // Leaves — JSON
-  // --------------------------------------------------------------------------
-  router.get('/api/reports/leaves/:id', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
-    const user = usersStore.findById(req.params.id);
-    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
-    const { year, month } = parseMonthQuery(req.query);
-    try {
-      const report = leavesReport(leavesStore, user.id, year, month);
-      res.json({ ...report, username: user.username });
-    } catch (err) {
-      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
-    }
-  }));
-
-  // --------------------------------------------------------------------------
-  // Team summary (employer only).
-  // Hours this month + leave counts per employee.
-  // --------------------------------------------------------------------------
-  router.get('/api/reports/summary', requireRole('employer')((req, res) => {
-    const { year, month } = thisYearMonth();
-    const first = `${year}-${String(month).padStart(2,'0')}-01`;
-    const last = new Date(year, month, 0).getDate();
-    const to = `${year}-${String(month).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
-
-    const rows = usersStore.list().map((u) => {
-      let hours = 0;
-      try {
-        hours = hoursReport(punchesStore, u.id, first, to, 'month').totalHours;
-      } catch {}
-      let leavesSummary = { approved: 0, pending: 0, rejected: 0, cancelled: 0, approvedDaysOff: 0 };
-      try {
-        const r = leavesReport(leavesStore, u.id, year, month);
-        leavesSummary = {
-          approved:  r.byStatus.approved  ?? 0,
-          pending:   r.byStatus.pending   ?? 0,
-          rejected:  r.byStatus.rejected  ?? 0,
-          cancelled: r.byStatus.cancelled ?? 0,
-          approvedDaysOff: r.approvedDaysOff,
-        };
-      } catch {}
-      return {
-        id: u.id,
-        username: u.username,
-        role: u.role,
-        hoursThisMonth: hours,
-        leaves: leavesSummary,
-      };
-    });
-
-    res.json({
-      year, month,
-      employees: rows,
-    });
-  }));
-
-  // --------------------------------------------------------------------------
-  // Team hours (employer only).
-  //
-  // Cross-employee table for a single time window. Three windows
-  // selectable via the `period` query parameter:
-  //   - today: the current calendar day [today, today]
-  //   - week:  the ISO week containing today (Mon-Sun)
-  //   - month: the current calendar month [1st, last day]
-  //
-  // For each employee returns the period boundaries plus their
-  // worked hours (computed from punches, accurate to ±0.1h) and
-  // their scheduled hours for the same window (computed from the
-  // org's working-time settings, applying any per-employee
-  // override).
-  //
-  // Scheduled hours computation:
-  //   today:    dailyHours
-  //   week:     weeklyHours
-  //   month:    dailyHours × number-of-weekdays-in-the-month
-  //             (excluding Saturday and Sunday — matches the most
-  //              common European workweek expectation; doesn't yet
-  //              account for public holidays)
-  //
-  // Both numbers are rounded to one decimal place to match the
-  // hoursReport convention.
-  // --------------------------------------------------------------------------
-  router.get('/api/reports/team-hours', requireRole('employer')((req, res) => {
-    const period = (req.query?.period || 'month').toLowerCase();
-    if (!['today', 'week', 'month'].includes(period)) {
-      return res.badRequest("period must be 'today', 'week' or 'month'", { errorCode: 'invalid_value' });
+      period = resolvePeriod(type, anchor);
+    } catch {
+      res.badRequest('bad anchor', { errorCode: 'invalid_value' });
+      return null;
     }
 
-    const now = new Date();
-    const { from, to, label, weekdays } = computePeriod(period, now);
+    const isEmployer = req.user.role === 'employer';
+    const wantAll = q.scope === 'all';
+    if (wantAll && !isEmployer) {
+      res.forbidden('Employer only', { errorCode: 'forbidden' });
+      return null;
+    }
+    const scope = wantAll ? 'all' : 'me';
+    // Server-decided target: only an employer's explicit ?id is honored;
+    // everyone else is pinned to their own id regardless of ?id.
+    const targetId = scope === 'all'
+      ? null
+      : (isEmployer && q.id ? q.id : req.user.id);
+    if (targetId && !isUuid(targetId)) {
+      res.badRequest('bad id', { errorCode: 'invalid_value' });
+      return null;
+    }
+    return { period, scope, targetId, format: q.format };
+  }
 
-    // Build name + picture map by reading the employee profile list
-    // (encrypted; reads decrypt at this layer). Avoids leaking PII to
-    // employees because the route is employer-only above.
+  /** Employer-facing user list with display names, sorted by name. */
+  function employerUserList() {
     const profiles = new Map();
     if (employeesStore && typeof employeesStore.list === 'function') {
-      for (const e of employeesStore.list()) {
-        profiles.set(e.id, e);
+      for (const e of employeesStore.list()) profiles.set(e.id, e);
+    }
+    return usersStore.list()
+      .map((u) => ({ id: u.id, name: profiles.get(u.id)?.fullName || u.username }))
+      .sort((a, b) => (a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1));
+  }
+
+  /** Resolve a single user id to { user, name }, or null if unknown. */
+  function singleName(userId) {
+    const u = usersStore.findById(userId);
+    if (!u) return null;
+    const p = employeesStore && typeof employeesStore.list === 'function'
+      ? employeesStore.list().find((e) => e.id === userId)
+      : null;
+    return { user: u, name: p?.fullName || u.username };
+  }
+
+  // --------------------------------------------------------------------------
+  // Timesheets (hours)
+  // --------------------------------------------------------------------------
+  router.get('/api/reports/timesheets', requireAuth((req, res) => {
+    const c = parseCommon(req, res);
+    if (!c) return;
+    const { period, scope, targetId, format } = c;
+    const { from, to, bucketBy, label } = period;
+
+    if (scope === 'all') {
+      const m = hoursMatrix(punchesStore, employerUserList(), from, to, bucketBy);
+      if (format === 'csv') {
+        return sendCsv(res, `pica-timesheets-all-${label}.csv`,
+          timesheetMatrixCsv(m, { periodLabel: label }));
       }
+      return res.json({ scope, period, ...m });
     }
 
-    const rows = usersStore.list().map((u) => {
-      const profile = profiles.get(u.id);
-      const fullName = profile?.fullName ?? null;
-      const hasPicture = !!profile?.hasPicture;
-
-      // Worked hours via the existing helper. Total only — we don't
-      // need the per-bucket breakdown for this view.
-      let worked = 0;
-      try {
-        worked = hoursReport(punchesStore, u.id, from, to, 'day').totalHours;
-      } catch {
-        // Defensive: if a single user's punches can't be read, skip
-        // them rather than tanking the whole table.
-      }
-
-      // Scheduled hours from org settings (with per-user overrides).
-      const wt = orgSettingsStore?.resolveWorkingTimeFor
-        ? orgSettingsStore.resolveWorkingTimeFor(u.id)
-        : { dailyHours: 8, weeklyHours: 40 };
-      let scheduled;
-      if (period === 'today') scheduled = wt.dailyHours;
-      else if (period === 'week') scheduled = wt.weeklyHours;
-      else scheduled = round1(wt.dailyHours * weekdays);
-
-      return {
-        id: u.id,
-        username: u.username,
-        role: u.role,
-        fullName,
-        hasPicture,
-        scheduled,
-        worked,
-        // Raw scheduled-vs-worked shortfall. NOT adjusted for approved
-        // leaves — see employees.js summary endpoint comment for the
-        // same caveat.
-        missing: round1(Math.max(0, scheduled - worked)),
-      };
-    });
-
-    // Sort by name then username, alphabetical, for stable display.
-    rows.sort((a, b) => {
-      const an = (a.fullName || a.username).toLowerCase();
-      const bn = (b.fullName || b.username).toLowerCase();
-      return an < bn ? -1 : an > bn ? 1 : 0;
-    });
-
-    res.json({ period, label, from, to, rows });
+    const who = singleName(targetId);
+    if (!who) return res.notFound('Employee not found', { errorCode: 'not_found' });
+    let report;
+    try {
+      report = hoursReport(punchesStore, who.user.id, from, to, bucketBy);
+    } catch (e) {
+      return res.badRequest(e.message, { errorCode: 'invalid_value' });
+    }
+    if (format === 'csv') {
+      return sendCsv(res, `pica-timesheets-${who.user.username}-${label}.csv`,
+        timesheetSingleCsv(report, { employeeName: who.name, periodLabel: label }));
+    }
+    return res.json({ scope, period, employeeId: who.user.id, name: who.name, ...report });
   }));
 
   // --------------------------------------------------------------------------
-  // Query parsing helpers
+  // Leaves
   // --------------------------------------------------------------------------
+  router.get('/api/reports/leaves', requireAuth((req, res) => {
+    const c = parseCommon(req, res);
+    if (!c) return;
+    const { period, scope, targetId, format } = c;
+    const { from, to, bucketBy, label } = period;
 
-  function parseHoursQuery(q) {
-    return {
-      from:    q.from    || firstOfMonthYmd(),
-      to:      q.to      || todayYmd(),
-      groupBy: q.groupBy || 'day',
-    };
-  }
+    if (scope === 'all') {
+      const m = leavesMatrix(leavesStore, employerUserList(), from, to, bucketBy);
+      if (format === 'csv') {
+        return sendCsv(res, `pica-leaves-all-${label}.csv`,
+          leavesMatrixCsv(m, { periodLabel: label }));
+      }
+      return res.json({ scope, period, ...m });
+    }
 
-  function parseMonthQuery(q) {
-    const now = thisYearMonth();
-    const year  = q.year  ? Number(q.year)  : now.year;
-    const month = q.month ? Number(q.month) : now.month;
-    return { year, month };
-  }
-
-  // Mark unused hook as used to silence linters; kept for future per-route guards.
-  void requireAuth;
+    const who = singleName(targetId);
+    if (!who) return res.notFound('Employee not found', { errorCode: 'not_found' });
+    const report = leavesRangeReport(leavesStore, who.user.id, from, to);
+    if (format === 'csv') {
+      return sendCsv(res, `pica-leaves-${who.user.username}-${label}.csv`,
+        leavesSingleCsv(report, { employeeName: who.name, periodLabel: label }));
+    }
+    return res.json({ scope, period, employeeId: who.user.id, name: who.name, ...report });
+  }));
 }
-
-// ---- Local helpers -------------------------------------------------------
-
-function round1(h) { return Math.round(h * 10) / 10; }
