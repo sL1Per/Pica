@@ -17,7 +17,7 @@ import { createLeavesStore } from '../src/storage/leaves.js';
 import {
   hoursReport, leavesReport,
   hoursReportToCsv, leavesReportToCsv,
-  isoWeek,
+  isoWeek, bucketKeyFor,
 } from '../src/storage/reports.js';
 
 let passed = 0;
@@ -310,6 +310,17 @@ try {
     const csv = hoursReportToCsv(r);
     // The key "weird,key\"inside" must be quoted and the inner " doubled.
     assert.match(csv, /"weird,key""inside"/);
+  });
+
+  // -------------------------------------------------------------------------
+  console.log('\nbucketKeyFor');
+  // -------------------------------------------------------------------------
+
+  await test('bucketKeyFor: day/week/month key forms', () => {
+    const d = new Date(2026, 2, 9); // 2026-03-09, a Monday
+    assert.equal(bucketKeyFor(d, 'day'), '2026-03-09');
+    assert.equal(bucketKeyFor(d, 'month'), '2026-03');
+    assert.match(bucketKeyFor(d, 'week'), /^2026-W\d{2}$/);
   });
 
 } finally {

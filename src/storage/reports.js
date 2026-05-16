@@ -173,11 +173,12 @@ export function hoursReport(punchesStore, employeeId, from, to, groupBy = 'day',
   };
 }
 
-function keyFor(date, groupBy) {
+export function bucketKeyFor(date, groupBy) {
   if (groupBy === 'day')   return ymd(date);
   if (groupBy === 'week')  return isoWeek(date);
   return monthKey(date);
 }
+function keyFor(date, groupBy) { return bucketKeyFor(date, groupBy); }
 
 // ----------------------------------------------------------------------------
 // Leaves report
