@@ -53,7 +53,7 @@ async function fixture() {
   });
   return { dir, configPath, router, audited, serverState };
 }
-async function rotFixture() {
+async function rotFixture(rotateImpl) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-rot-'));
   const configPath = path.join(dir, 'config.json');
   const dataDir = path.join(dir, 'data');
@@ -65,7 +65,7 @@ async function rotFixture() {
   const config = { security: {} };
   setSlot(config.security, 'passphrase', kdf, wrapDek(dek, kek, 'passphrase'));
   writeConfigAtomic(configPath, config);
-  const serverState = { restoreCompleted: false };
+  const serverState = { rotateCompleted: false };
   const audited = [];
   const router = createRouter();
   registerSecurityRoutes(router, {
@@ -73,7 +73,7 @@ async function rotFixture() {
     requireAuth, requireRole,
     auditStore: { appendRecord: (r) => audited.push(r) },
     logger: { info() {}, warn() {}, error() {} },
-    rotate: async ({ stagingDir }) => { fs.mkdirSync(stagingDir, { recursive: true }); },
+    rotate: rotateImpl || (async ({ stagingDir }) => { fs.mkdirSync(stagingDir, { recursive: true }); }),
   });
   return { dir, configPath, dataDir, router, audited, serverState };
 }
@@ -240,7 +240,7 @@ await test('rotate: confirm required, then swaps dirs and locks down', async () 
     { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'current-pass', confirm: 'ROTATE' } });
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.restartRequired, true);
-  assert.equal(f.serverState.restoreCompleted, true);
+  assert.equal(f.serverState.rotateCompleted, true);
   const aside = fs.readdirSync(f.dir).filter((n) => n.startsWith('data.pre-rotate-'));
   assert.equal(aside.length, 1);
   assert.equal(fs.readFileSync(path.join(f.dir, aside[0], 'marker'), 'utf8'), 'x');
@@ -265,8 +265,22 @@ await test('rotate: employee forbidden; wrong/missing passphrase rejected', asyn
     { user: { id: 'm', role: 'employer' }, body: { currentPassphrase: 'WRONG', confirm: 'ROTATE' } });
   assert.equal(res.statusCode, 400);
   assert.equal(res.body.errorCode, 'wrong_passphrase');
-  assert.equal(f.serverState.restoreCompleted, false);
+  assert.equal(f.serverState.rotateCompleted, false);
   assert.equal(fs.readdirSync(f.dir).filter((n) => n.startsWith('data.pre-rotate-')).length, 0);
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
+await test('rotate: rotateData failure aborts cleanly (data intact, no lockdown)', async () => {
+  const f = await rotFixture(async () => { throw new Error('simulated disk error'); });
+  const res = await call(f.router, 'POST', '/api/security/rotate',
+    { user: { id: 'm', role: 'employer' },
+      body: { currentPassphrase: 'current-pass', confirm: 'ROTATE' } });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.errorCode, 'rotation_failed');
+  assert.equal(f.serverState.rotateCompleted, false);
+  assert.equal(fs.readdirSync(f.dir)
+    .filter((n) => n.startsWith('data.staging-') || n.startsWith('data.pre-rotate-')).length, 0);
+  assert.equal(fs.readFileSync(path.join(f.dataDir, 'marker'), 'utf8'), 'x');
   fs.rmSync(f.dir, { recursive: true, force: true });
 });
 

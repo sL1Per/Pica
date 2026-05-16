@@ -129,36 +129,61 @@ export function registerSecurityRoutes(router, deps) {
     const stagingDir = `${dataDir}.staging-${stamp}`;
     const preRotate = `${dataDir}.pre-rotate-${stamp}`;
     const newKey = randomBytes(32);
+    const cleanStaging = () => {
+      // stagingDir is a transient scratch sibling — NOT data/ or backups/.
+      try { if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true }); } catch { /* */ }
+    };
 
     try {
       await rotate({ dataDir, stagingDir, oldKey, newKey, logger });
     } catch (err) {
-      // stagingDir is a transient scratch sibling (NOT data/ or backups/);
-      // discarding it on abort mirrors the restore flow. data/ is untouched.
-      try { if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true }); } catch { /* */ }
+      cleanStaging();
       logger?.error(`Rotation aborted before swap: ${err.message}`);
       return res.badRequest('Rotation failed — data left unchanged', { errorCode: 'rotation_failed' });
     }
 
-    // Atomic swap: data/ is moved aside (NEVER deleted), staging becomes data/.
-    if (fs.existsSync(dataDir)) fs.renameSync(dataDir, preRotate);
-    fs.renameSync(stagingDir, dataDir);
-
-    // New DEK wrapped under the current passphrase; recovery slot dropped
-    // (it wrapped the OLD DEK — operator re-mints a code after restart).
+    // Write the new-DEK config BEFORE swapping data/. writeConfigAtomic is
+    // atomic (tmp+rename): a failure here leaves the OLD config AND the OLD
+    // data/ intact, so the operator can safely retry. Doing it AFTER the swap
+    // would risk data/=newKey while config=oldKey (operator locked out).
     const kdf = newKdf();
     const kek = await deriveKek(currentPassphrase, kdf);
     setSlot(config.security, 'passphrase', kdf, wrapDek(newKey, kek, 'passphrase'));
-    removeSlot(config.security, 'recovery');
-    writeConfigAtomic(configPath, config);
+    removeSlot(config.security, 'recovery'); // old code wrapped the OLD DEK
+    try {
+      writeConfigAtomic(configPath, config);
+    } catch (err) {
+      cleanStaging();
+      logger?.error(`Rotation aborted: config write failed: ${err.message}`);
+      return res.badRequest('Rotation failed — data left unchanged', { errorCode: 'rotation_failed' });
+    }
 
-    // Reuse the restore lockdown: subsequent API calls get 503 until restart.
-    if (serverState) serverState.restoreCompleted = true;
+    // Atomic swap, mirroring src/storage/backups.js restore (incl. best-effort
+    // rollback if the second rename fails mid-swap). data/ is NEVER deleted.
+    const dataExists = fs.existsSync(dataDir);
+    try {
+      if (dataExists) fs.renameSync(dataDir, preRotate);
+      fs.renameSync(stagingDir, dataDir);
+    } catch (err) {
+      try {
+        if (!fs.existsSync(dataDir) && fs.existsSync(preRotate)) {
+          fs.renameSync(preRotate, dataDir); // undo: restore original data/
+        }
+      } catch { /* */ }
+      cleanStaging();
+      // Residual disclosed window: config now wraps newKey but data/ may hold
+      // oldKey data (rollback restored it). Operator must restore from a
+      // pre-rotation backup. Surface as 500 — never a silent success.
+      logger?.error(`Rotation swap failed: ${err.message}`);
+      throw err;
+    }
+
+    if (serverState) serverState.rotateCompleted = true;
     auditStore?.appendRecord({
       ...auditContext(req), event: 'security.key_rotated', outcome: 'success',
       details: { preRotate },
     });
-    logger?.warn(`Key rotated. Old data preserved at ${preRotate}. Restart Pica.`);
+    logger?.warn(`Key rotated. Old data preserved at ${preRotate}. Restart Pica and set a new recovery code.`);
     res.json({ ok: true, restartRequired: true, preRotatePath: preRotate });
   }));
 }

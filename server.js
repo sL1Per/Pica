@@ -114,10 +114,12 @@ const auditStore = createAuditStore({
 // Process-wide lockdown flags.
 //   restoreCompleted: flips true after a restore; cleared ONLY by a process
 //     restart (the in-memory stores are stale until then).
+//   rotateCompleted: flips true after a key rotation; like restoreCompleted
+//     it requires a process restart (in-memory stores hold the old key).
 //   passphraseResetRequired: true when the server unlocked via the recovery
 //     code; the /api/security/passphrase handler clears it in-process once a
 //     new passphrase is set, so normal operation resumes without a restart.
-const serverState = { restoreCompleted: false, passphraseResetRequired: mustResetPassphrase };
+const serverState = { restoreCompleted: false, rotateCompleted: false, passphraseResetRequired: mustResetPassphrase };
 
 const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
 // Password operations (self-service change + employer-initiated reset).
@@ -284,6 +286,16 @@ async function handle(nodeReq, nodeRes) {
       return nodeRes.serviceUnavailable(
         'Restore is complete — please restart Pica to use the restored data.',
         { errorCode: 'restore_pending_restart' },
+      );
+    }
+  }
+
+  if (serverState.rotateCompleted && isApiEndpoint(nodeReq.path)) {
+    const allowed = nodeReq.path === '/api/logout';
+    if (!allowed) {
+      return nodeRes.serviceUnavailable(
+        'Key rotation complete — restart Pica, then set a new recovery code.',
+        { errorCode: 'rotate_pending_restart' },
       );
     }
   }
