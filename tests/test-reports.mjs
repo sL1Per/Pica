@@ -17,7 +17,7 @@ import { createLeavesStore } from '../src/storage/leaves.js';
 import {
   hoursReport, leavesReport, leavesRangeReport,
   hoursReportToCsv, leavesReportToCsv,
-  isoWeek, bucketKeyFor, hoursMatrix,
+  isoWeek, bucketKeyFor, hoursMatrix, leavesMatrix,
 } from '../src/storage/reports.js';
 
 let passed = 0;
@@ -390,6 +390,33 @@ try {
     assert.equal(ana.total, 8);
     assert.equal(m.bucketTotals['2026-03-03'], 4);
     assert.equal(m.grandTotal, 12);
+  });
+
+  // -------------------------------------------------------------------------
+  console.log('\nleavesMatrix');
+  // -------------------------------------------------------------------------
+
+  const LM_A = '11111111-1111-4111-8111-111111111111';
+  const LM_B = '22222222-2222-4222-8222-222222222222';
+
+  await test('leavesMatrix: per-day attribution + totals', () => {
+    const store = {
+      list: ({ employeeId }) => ({
+        [LM_A]: [{ id: 'a', employeeId: LM_A, type: 'vacation', unit: 'days',
+                start: '2026-03-30', end: '2026-04-02', status: 'approved' }],
+        [LM_B]: [{ id: 'b', employeeId: LM_B, type: 'sick', unit: 'hours',
+                start: '2026-04-15T09:00:00', end: '2026-04-15T17:00:00',
+                hours: 8, status: 'approved' }],
+      })[employeeId] || [],
+    };
+    const users = [{ id: LM_A, name: 'Ana' }, { id: LM_B, name: 'Beto' }];
+    // April only: Ana's leave contributes Apr-01 + Apr-02 = 2 days
+    const m = leavesMatrix(store, users, '2026-04-01', '2026-04-30', 'day');
+    assert.equal(m.buckets.length, 30);
+    assert.equal(m.rows.find((r) => r.id === LM_A).cells['2026-04-01'], 1);
+    assert.equal(m.rows.find((r) => r.id === LM_A).total, 2);
+    assert.equal(m.rows.find((r) => r.id === LM_B).cells['2026-04-15'], 1); // 8/8
+    assert.equal(m.grandTotal, 3);
   });
 
 } finally {

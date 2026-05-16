@@ -296,6 +296,68 @@ export function hoursMatrix(punchesStore, users, from, to, bucketBy, now = new D
 }
 
 // ----------------------------------------------------------------------------
+// Leaves matrix — employees × buckets
+// ----------------------------------------------------------------------------
+
+/**
+ * Build a cross-tabulation of approved days off for a set of employees over
+ * a date range.
+ *
+ * Days-unit leaves: each calendar day in [start..end] ∩ [from..to] contributes
+ * 1 to the bucket that contains it. Hours-unit leaves: the stored `hours` value
+ * divided by 8, attributed to the bucket containing the leave's start date,
+ * clipped to [from..to].
+ *
+ * @param {object} leavesStore  — must expose `.list({ employeeId })`
+ * @param {Array<{id, name}>} users
+ * @param {string} from         YYYY-MM-DD, inclusive
+ * @param {string} to           YYYY-MM-DD, inclusive
+ * @param {'day'|'week'|'month'} bucketBy
+ * @returns {{ from, to, bucketBy, buckets, rows, bucketTotals, grandTotal }}
+ */
+export function leavesMatrix(leavesStore, users, from, to, bucketBy) {
+  const buckets = enumerateBuckets(from, to, bucketBy);
+  const bucketTotals = Object.fromEntries(buckets.map((k) => [k, 0]));
+  let grandTotal = 0;
+
+  const rows = users.map((u) => {
+    const cells = {};
+    let total = 0;
+    const approved = leavesStore.list({ employeeId: u.id })
+      .filter((l) => l.status === 'approved');
+
+    for (const l of approved) {
+      if (l.unit === 'hours') {
+        const day = l.start.slice(0, 10);
+        if (day < from || day > to) continue;
+        const k = bucketKeyFor(parseYmd(day), bucketBy);
+        const v = typeof l.hours === 'number' ? l.hours / 8 : 0;
+        cells[k] = round1((cells[k] ?? 0) + v);
+        if (k in bucketTotals) bucketTotals[k] = round1(bucketTotals[k] + v);
+        total = round1(total + v);
+        continue;
+      }
+      // days unit: one day each, clipped to [from, to]
+      const s = l.start < from ? from : l.start;
+      const e = l.end   > to   ? to   : l.end;
+      if (s > e) continue;
+      const cur = parseYmd(s), end = parseYmd(e);
+      while (cur <= end) {
+        const k = bucketKeyFor(cur, bucketBy);
+        cells[k] = round1((cells[k] ?? 0) + 1);
+        if (k in bucketTotals) bucketTotals[k] = round1(bucketTotals[k] + 1);
+        total = round1(total + 1);
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    grandTotal = round1(grandTotal + total);
+    return { id: u.id, name: u.name, cells, total };
+  });
+
+  return { from, to, bucketBy, buckets, rows, bucketTotals, grandTotal };
+}
+
+// ----------------------------------------------------------------------------
 // CSV helpers
 // ----------------------------------------------------------------------------
 
