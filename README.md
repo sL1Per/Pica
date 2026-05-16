@@ -137,12 +137,10 @@ well over doing more poorly.
 
 ## Status
 
-Currently at **0.16.1** — Milestones 0 through 10 complete.
-Milestone 11 (Backups) is up next. See [roadmap.md](./docs/roadmap.md)
-for the full milestone status.
+See [roadmap.md](./docs/roadmap.md)
 
 ---
 
 ## License
 
-TBD.
+MIT
