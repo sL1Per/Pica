@@ -5,5 +5,56 @@
   "backupDir": "./backups",
   "maxBodyBytes": 5242880,
   "attachmentMaxBytes": 6291456,
-  "logLevel": "info"
+  "logLevel": "info",
+
+  "_security_help": [
+    "The 'security' block below is written automatically by the server on first run",
+    "and on the legacy-to-envelope migration. DO NOT hand-edit it.",
+    "",
+    "v2 envelope shape:",
+    "  version: 2",
+    "  wraps.passphrase — data key (DEK) wrapped by a key derived from the passphrase.",
+    "    kdf.algorithm : 'scrypt'",
+    "    kdf.salt      : hex string",
+    "    kdf.cost      : 131072",
+    "    kdf.blockSize : 8",
+    "    kdf.parallelization : 1",
+    "    wrapped       : base64 — the wrapped DEK; GCM auth tag acts as the verifier",
+    "                    (there is NO separate 'verifier' field in v2).",
+    "  wraps.recovery (optional) — same shape as wraps.passphrase, plus",
+    "    createdAt     : ISO 8601 timestamp.",
+    "    Present only after the operator generates a recovery code in Settings → Security.",
+    "",
+    "Legacy v1 installs (security.kdf + security.verifier) are migrated to v2",
+    "automatically on next server start. No data is re-encrypted during migration.",
+    "",
+    "WARNING: losing config.json makes all encrypted data unrecoverable.",
+    "The wrapped keys live here and are intentionally NOT restored from backups."
+  ],
+  "security": {
+    "version": 2,
+    "wraps": {
+      "passphrase": {
+        "kdf": {
+          "algorithm": "scrypt",
+          "salt": "<hex>",
+          "cost": 131072,
+          "blockSize": 8,
+          "parallelization": 1
+        },
+        "wrapped": "<base64>"
+      },
+      "recovery": {
+        "kdf": {
+          "algorithm": "scrypt",
+          "salt": "<hex>",
+          "cost": 131072,
+          "blockSize": 8,
+          "parallelization": 1
+        },
+        "wrapped": "<base64>",
+        "createdAt": "<ISO8601>"
+      }
+    }
+  }
 }
