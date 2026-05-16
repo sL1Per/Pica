@@ -3,3 +3,5 @@ data/
 backups/
 docs/superpowers/
 config.json
+CLAUDE.md
+.claude/
