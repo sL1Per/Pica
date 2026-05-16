@@ -172,14 +172,16 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-test-'));
 const tmpConfig = path.join(tmpDir, 'config.json');
 
 try {
-  await test('first run: creates salt + verifier and returns 32-byte key', async () => {
+  await test('first run: creates v2 envelope config and returns 32-byte DEK', async () => {
     process.env.PICA_PASSPHRASE = 'test-passphrase-for-unit-tests';
     const config = { host: '127.0.0.1', port: 8080 };
-    const key = await initMasterKey(config, tmpConfig, null);
-    assert.equal(key.length, 32);
+    const { masterKey, mustResetPassphrase } = await initMasterKey(config, tmpConfig, null);
+    assert.equal(masterKey.length, 32);
+    assert.equal(mustResetPassphrase, false);
     assert.ok(config.security);
-    assert.ok(config.security.kdf.salt);
-    assert.ok(config.security.verifier);
+    assert.equal(config.security.version, 2);
+    assert.ok(config.security.wraps.passphrase.kdf.salt);
+    assert.equal(config.security.verifier, undefined);
     assert.ok(fs.existsSync(tmpConfig));
   });
 
@@ -187,8 +189,8 @@ try {
     // Load the config written by the first run.
     const config = JSON.parse(fs.readFileSync(tmpConfig, 'utf8'));
     process.env.PICA_PASSPHRASE = 'test-passphrase-for-unit-tests';
-    const key = await initMasterKey(config, tmpConfig, null);
-    assert.equal(key.length, 32);
+    const { masterKey } = await initMasterKey(config, tmpConfig, null);
+    assert.equal(masterKey.length, 32);
   });
 
   await test('second run: wrong passphrase throws "Incorrect passphrase"', async () => {
@@ -203,11 +205,11 @@ try {
   await test('derived key can round-trip encrypted data across runs', async () => {
     const config = JSON.parse(fs.readFileSync(tmpConfig, 'utf8'));
     process.env.PICA_PASSPHRASE = 'test-passphrase-for-unit-tests';
-    const key1 = await initMasterKey(config, tmpConfig, null);
+    const { masterKey: key1 } = await initMasterKey(config, tmpConfig, null);
 
     const blob = encryptBlob(Buffer.from('cross-run secret'), key1);
 
-    const key2 = await initMasterKey(config, tmpConfig, null);
+    const { masterKey: key2 } = await initMasterKey(config, tmpConfig, null);
     assert.equal(decryptBlob(blob, key2).toString('utf8'), 'cross-run secret');
   });
 
