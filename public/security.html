@@ -31,9 +31,9 @@
     <section class="card">
       <h2 data-i18n="security.changePassTitle">Change passphrase</h2>
       <form id="pass-form">
-        <label data-i18n="security.currentPass">Current passphrase</label>
+        <label for="cp-current" data-i18n="security.currentPass">Current passphrase</label>
         <input type="password" id="cp-current" autocomplete="current-password" required>
-        <label data-i18n="security.newPass">New passphrase</label>
+        <label for="cp-new" data-i18n="security.newPass">New passphrase</label>
         <input type="password" id="cp-new" autocomplete="new-password" minlength="8" required>
         <button type="submit" data-i18n="security.changePassBtn">Change passphrase</button>
       </form>
@@ -43,10 +43,10 @@
       <h2 data-i18n="security.recoveryTitle">Recovery code</h2>
       <p data-i18n="security.recoveryIntro"></p>
       <form id="rec-form">
-        <label data-i18n="security.currentPass">Current passphrase</label>
+        <label for="rc-current" data-i18n="security.currentPass">Current passphrase</label>
         <input type="password" id="rc-current" autocomplete="current-password" required>
         <button type="submit" data-i18n="security.genRecoveryBtn">Generate recovery code</button>
-        <button type="button" id="rc-remove" class="danger" data-i18n="security.removeRecoveryBtn">Remove recovery code</button>
+        <button type="button" id="rc-remove" class="btn-danger" data-i18n="security.removeRecoveryBtn">Remove recovery code</button>
       </form>
       <pre id="rc-output" class="recovery-code" hidden></pre>
     </section>
@@ -55,11 +55,11 @@
       <h2 data-i18n="security.rotateTitle">Rotate encryption key</h2>
       <p data-i18n="security.rotateIntro"></p>
       <form id="rot-form">
-        <label data-i18n="security.currentPass">Current passphrase</label>
+        <label for="rot-current" data-i18n="security.currentPass">Current passphrase</label>
         <input type="password" id="rot-current" autocomplete="current-password" required>
-        <label data-i18n="security.rotateConfirm">Type ROTATE to confirm</label>
+        <label for="rot-confirm" data-i18n="security.rotateConfirm">Type ROTATE to confirm</label>
         <input type="text" id="rot-confirm" required>
-        <button type="submit" class="danger" data-i18n="security.rotateBtn">Rotate key</button>
+        <button type="submit" class="btn-danger" data-i18n="security.rotateBtn">Rotate key</button>
       </form>
     </section>
   </main>

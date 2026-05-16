@@ -807,7 +807,7 @@ export default {
   'security.recoveryShown': 'Anote este código agora. Não voltará a ser mostrado.',
   'security.recoveryRemoved': 'Código de recuperação removido.',
   'security.rotateTitle': 'Rodar chave de encriptação',
-  'security.rotateIntro': 'Gera uma nova chave e volta a encriptar todos os dados. Use apenas após suspeita de compromisso. As cópias de segurança antigas deixam de poder ser restauradas e o código de recuperação é apagado. Requer reinício e confirmação.',
+  'security.rotateIntro': 'Gera uma nova chave e volta a encriptar todos os dados. Utilize apenas após suspeita de compromisso. As cópias de segurança antigas deixam de poder ser restauradas e o código de recuperação é apagado. Requer reinício e confirmação.',
   'security.rotateConfirm': 'Escreva ROTATE para confirmar',
   'security.rotateBtn': 'Rodar chave',
   'security.rotateOk': 'Chave rodada. Reinicie o Pica agora e defina um novo código de recuperação. Os dados antigos foram preservados à parte.',
