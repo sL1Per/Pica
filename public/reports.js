@@ -114,7 +114,7 @@ function renderLeavesSingle(d, wrap, empty) {
     `<tr><td>${esc(t('leaves.type.' + l.type))}</td>` +
     `<td>${esc(l.start)}${l.end && l.end !== l.start ? ' → ' + esc(l.end) : ''}</td>` +
     `<td>${l.unit === 'hours' ? esc((l.hours ?? 0) + 'h') : ''}</td>` +
-    `<td>${esc(t('leaves.status.' + l.status))}</td></tr>`).join('');
+    `<td>${esc(t('status.' + l.status))}</td></tr>`).join('');
   wrap.innerHTML = grid +
     `<table class="report-table"><thead><tr>` +
     `<th>${esc(t('reports.headerLeaves'))}</th><th>${esc(t('reports.colWhen'))}</th>` +
