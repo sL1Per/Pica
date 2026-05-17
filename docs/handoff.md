@@ -12,12 +12,13 @@ _Last touched in 0.24.0._
 ## At a glance
 
 - **Latest version:** 0.24.0 (released 2026-05-17)
-- **Test count:** 705 across 33 suites, all green except 1
+- **Test count:** 34 suites, all green except 1
   pre-existing TZ-sensitive flake in `test-reports.mjs`
   `overnight split` bucket count (fails identically on the
-  pre-feature baseline — see notes.md). Net-zero new suites:
+  pre-feature baseline — see notes.md). Reports revamp:
   `test-reports-routes.mjs` added, `test-reports-team.mjs` removed
-  (deleted route), `test-period.mjs` (pre-existing) extended.
+  (deleted route), `test-period.mjs` (pre-existing) extended; a later
+  0.24.0 fix added `test-reports-nav.mjs` (TZ-safe client period nav).
 - **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
   is a feature drop on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)

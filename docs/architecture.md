@@ -167,6 +167,7 @@ pica/
 │   ├── test-frontend-imports.mjs   # static i18n-import audit
 │   ├── test-period.mjs             # period boundary helpers + presets
 │   ├── test-reports-routes.mjs     # /api/reports/timesheets|leaves routes
+│   ├── test-reports-nav.mjs        # client period-nav anchor stepping (TZ-safe)
 │   ├── test-employees-summary.mjs  # /api/employees/:id/summary route
 │   ├── test-error-codes.mjs        # static audit: every error response carries errorCode
 │   ├── test-backups.mjs            # backup archive format + storage
@@ -328,7 +329,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: 33 suites, 705 passing as of 0.24.0 (one pre-existing
+- Total: 34 suites, passing as of 0.24.0 (one pre-existing
   TZ-sensitive flake in `test-reports.mjs` overnight-split bucket
   count, unrelated to this feature — it fails identically on the
   pre-feature baseline). The 0.24.0 Reports revamp is net-zero new
@@ -336,7 +337,9 @@ corrupts an existing record) and gives us an audit log for free.
   was removed (it only tested the now-deleted team-hours route), and
   `test-period.mjs` (pre-existing) was extended for the period
   presets; `test-reports.mjs` gained matrix/CSV cases and dropped its
-  old-CSV-serializer tests.
+  old-CSV-serializer tests. A later 0.24.0 fix added
+  `test-reports-nav.mjs` (TZ-safe client period-nav anchor stepping),
+  bringing the total to 34.
 
 ---
 

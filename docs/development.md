@@ -31,7 +31,7 @@ to create the first employer.
 
 ### Running the test suite
 
-All 33 suites can be run with:
+All 34 suites can be run with:
 
 ```bash
 $ for f in tests/test-*.mjs; do printf '%s: ' "$f"; node "$f" 2>&1 | tail -1; done
@@ -455,4 +455,4 @@ losing them is how documentation rots.
 
 ---
 
-_Last touched in 0.23.0._
+_Last touched in 0.24.0._

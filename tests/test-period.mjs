@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
- * Period helpers — computePeriod() / ymdOf() / isWeekday().
- * Used by /api/reports/team-hours and /api/employees/:id/summary.
+ * Period helpers — computePeriod() / ymdOf() / isWeekday() plus the
+ * period-preset helpers (resolvePeriod / shiftPeriod / defaultAnchor /
+ * enumerateBuckets). computePeriod() is still used by
+ * src/routes/employees.js for the dashboard summary.
  *
  * Run:  node tests/test-period.mjs
  */
