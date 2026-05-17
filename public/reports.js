@@ -151,9 +151,18 @@ $('period-chips').addEventListener('click', (e) => {
 $('prev-period').addEventListener('click', () => step(-1));
 $('next-period').addEventListener('click', () => step(+1));
 function step(delta) {
-  // Mirror of server shiftPeriod: nudge the anchor by one unit; the
-  // server's resolvePeriod re-normalizes (e.g. week snaps to Monday).
-  const a = state.anchor ? new Date(state.anchor) : new Date();
+  // Mirror of server period.js parseYmd + shiftPeriod: parse the
+  // YYYY-MM-DD anchor from LOCAL components (not new Date(str), which
+  // parses as UTC midnight and lands a day early in negative-UTC zones),
+  // nudge by one unit; the server's resolvePeriod re-normalizes
+  // (e.g. week snaps to Monday).
+  let a;
+  if (state.anchor) {
+    const [y, m, d] = state.anchor.split('-').map(Number);
+    a = new Date(y, m - 1, d);
+  } else {
+    a = new Date();
+  }
   if (state.periodType === 'day') a.setDate(a.getDate() + delta);
   else if (state.periodType === 'week') a.setDate(a.getDate() + delta * 7);
   else if (state.periodType === 'month') { a.setDate(1); a.setMonth(a.getMonth() + delta); }
