@@ -31,7 +31,7 @@ app in a usable state.
 | M12.3     | Hardening — Drop 3 (audit log)            | ✅ 0.21.0     |
 | M12.4     | Hardening — Drop 4 (input validation + numfmt) | ✅ 0.22.0  |
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
-| M13       | Reports revamp                     | 📋 Planned    |
+| M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | 📋 Planned    |
 | M15       | Full UI revamp                     | 📋 Planned    |
 | M16       | E2E browser tests                  | 📋 Planned    |
@@ -286,7 +286,24 @@ drops; each is independently shippable.
   a significant architectural shift (first npm dependency, ~300 MB
   on disk); see M16 below.
 
-### Milestones 13–17 — planned 📋
+### Milestone 13 — Reports revamp ✅ 0.24.0
+
+Delivered in a single drop at 0.24.0. The Reports page is rebuilt
+around two report types — **Timesheets** and **Leaves** — each
+runnable for everyone (employer only) or one person, over Day / Week
+/ Month / Year period presets with ◀/▶ navigation. The combined view
+is a matrix (period buckets × employees + axis totals). Print-friendly
+(browser Print → "Save as PDF", landscape print stylesheet); CSV
+export for every shape; employee-isolation server-enforced.
+
+New endpoints `GET /api/reports/timesheets` and
+`GET /api/reports/leaves` (`scope=me|all`, `id`, `type`, `anchor`,
+`format=csv`) replaced the removed `/api/reports/summary`,
+`/api/reports/team-hours`, `/api/reports/hours/:id[.csv]` and
+`/api/reports/leaves/:id[.csv]` (now 404, no shim). See RELEASES.md
+0.24.0 for the full entry and Honest Disclosures.
+
+### Milestones 14–17 — planned 📋
 
 Titles are firm; detailed scope firms up when each milestone
 starts. The order is deliberate — the deployment guide ships last
@@ -294,7 +311,6 @@ so it documents the final security posture, not a moving target,
 and the E2E suite lands after the UI revamp so tests target the
 final UI rather than one about to change.
 
-- **M13 — Reports revamp.** Rework the reports pages.
 - **M14 — Add email notifications.** Password reset, password
   recovery, master-key recovery, approvals / rejections, and
   reminders (the backlog enumerated in `notes.md`). Unblocks the
@@ -329,4 +345,4 @@ final UI rather than one about to change.
 
 ---
 
-_Last touched in 0.23.1._
+_Last touched in 0.24.0._

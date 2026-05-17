@@ -14,6 +14,116 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.24.0] — 2026-05-17 — Reports revamp (M13)
+
+### What changed
+
+The Reports page is rebuilt around **two report types** —
+**Timesheets** and **Leaves** — each runnable for **everyone**
+(employer only) or for **one person**, over **Day / Week / Month /
+Year** period presets with ◀/▶ navigation to step through periods.
+
+The combined ("everyone") view is a **matrix**: period buckets down
+one axis, employees across the other, with row and column totals. The
+page is print-friendly — the browser's Print dialog → "Save as PDF"
+renders a landscape sheet via a print stylesheet — and every report
+shape exports to CSV.
+
+Visibility is **server-enforced**: an employer sees everyone; an
+employee only ever sees themselves. `scope=all` from a non-employer
+is refused at the route, not just hidden in the UI.
+
+### Endpoints
+
+New:
+
+- `GET /api/reports/timesheets` — query: `scope=me|all`, `id`,
+  `type=day|week|month|year`, `anchor` (a date inside the period),
+  optional `format=csv`.
+- `GET /api/reports/leaves` — same query shape.
+
+Removed (no redirect, no back-compat shim — these now 404):
+
+- `GET /api/reports/summary`
+- `GET /api/reports/team-hours`
+- `GET /api/reports/hours/:id` and its `.csv` variant
+- `GET /api/reports/leaves/:id` and its `.csv` variant
+
+### Files touched
+
+- `src/storage/period.js` — added period presets (Day/Week/Month/
+  Year resolution + navigation). Additive only: `computePeriod`,
+  `ymdOf`, `isWeekday` are unchanged and still power the dashboard
+  summary in `src/routes/employees.js`.
+- `src/storage/reports.js` — `bucketKeyFor`, `leavesRangeReport`,
+  `hoursMatrix`, `leavesMatrix`, and four new CSV serializers. The
+  old `hoursReportToCsv` / `leavesReportToCsv` serializers were
+  removed.
+- `src/routes/reports.js` — rewritten around the two new endpoints
+  and the server-side scope check; the four old handlers were
+  deleted.
+- `public/reports.html`, `public/reports.css`, `public/reports.js` —
+  rebuilt: type/scope/period controls, the matrix table, the
+  single-person itemised view, print stylesheet (`@page landscape`),
+  CSV download.
+- `public/locales/en-US.js`, `public/locales/pt-PT.js` — report
+  string keys synced for the new UI.
+- `public/sw.js` — `CACHE_VERSION` v41 → v42 (precached assets
+  changed).
+- Tests — `tests/test-reports-routes.mjs` added (new endpoints,
+  scope enforcement); `tests/test-reports-team.mjs` removed (it only
+  exercised the deleted team-hours route); `tests/test-period.mjs`
+  (pre-existing) extended for the presets; `tests/test-reports.mjs`
+  extended with matrix/CSV cases and its old-CSV tests removed.
+- `package.json` — 0.24.0.
+
+### Honest Disclosures
+
+- **No server-generated PDF.** "PDF" here means the browser's own
+  Print dialog → "Save as PDF" rendered against a print stylesheet
+  (`@page landscape`). A zero-dependency project ships no stdlib PDF
+  encoder and none was added. There is no server endpoint that
+  returns a `.pdf`.
+- **The old employer "Team overview" band is gone.** Its
+  scheduled-vs-worked-vs-missing math was removed together with
+  `/api/reports/summary` and `/api/reports/team-hours`. Any external
+  bookmark or integration hitting the four removed endpoints
+  (including the per-employee `/api/reports/hours/:id` /
+  `/api/reports/leaves/:id` and their `.csv` variants) now returns
+  404 — there is no redirect or compatibility shim. Scheduled-vs-
+  worked figures still exist in the dashboard widgets; only the
+  Reports-page band was removed.
+- **The combined Leaves matrix cell is approved days off only.**
+  Days are attributed per calendar day; an hours-unit leave
+  contributes `hours / 8` to the leave's start day. The matrix does
+  not break leaves down by type or status. The single-person Leaves
+  view still itemises every record and shows the per-status /
+  per-type summary — that detail was not lost, only the combined
+  view aggregates.
+- **Wide matrices rely on scrolling.** A Month bucketed by day across
+  many employees is wide; on screen it relies on horizontal scroll
+  and in print on landscape orientation. This is acceptable at the
+  documented ≤50-employee target scale and was not optimised beyond
+  it.
+- **`period.js` is unchanged where it mattered.** The extension is
+  strictly additive; `computePeriod` / `ymdOf` / `isWeekday` keep
+  their old behaviour and the dashboard summary in
+  `src/routes/employees.js` still uses them as before.
+- **One pre-existing flake is untouched.** `tests/test-reports.mjs` →
+  `overnight shift attributes hours to each day separately` is
+  sensitive to the host timezone, fails identically on the
+  pre-feature baseline, and is out of scope for this release. It is
+  the only failing case in the whole suite; everything else passes.
+- **A benign module import cycle exists.** `src/storage/period.js`
+  and `src/storage/reports.js` import each other, but each only
+  references the other inside function bodies — never at
+  module-evaluation time — so the cycle never deadlocks the loader.
+  It is covered by `tests/test-frontend-imports.mjs` and exercised
+  by the reports suites; flagged here so a future reader does not
+  "fix" it into a real problem.
+
+---
+
 ## [0.23.1] — 2026-05-16 — Security page reachable from Settings
 
 ### What changed

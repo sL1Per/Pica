@@ -97,8 +97,8 @@ pica/
 │   │   ├── punches.js       # NDJSON, encrypted comment + geo
 │   │   ├── leaves.js        # NDJSON, encrypted reason
 │   │   ├── corrections.js   # NDJSON, encrypted justification
-│   │   ├── reports.js       # aggregations over plaintext fields
-│   │   ├── period.js        # period boundary helpers (today/week/month)
+│   │   ├── reports.js       # aggregations + matrices + CSV serializers
+│   │   ├── period.js        # period boundary helpers + Day/Week/Month/Year presets
 │   │   ├── user-prefs.js    # locale + colorMode (plaintext)
 │   │   ├── org-settings.js  # leave allowances, working time targets
 │   │   ├── company-logo.js  # encrypted blob
@@ -165,8 +165,8 @@ pica/
 │   ├── test-corrections.mjs
 │   ├── test-i18n.mjs
 │   ├── test-frontend-imports.mjs   # static i18n-import audit
-│   ├── test-period.mjs             # period boundary helpers
-│   ├── test-reports-team.mjs       # /api/reports/team-hours route
+│   ├── test-period.mjs             # period boundary helpers + presets
+│   ├── test-reports-routes.mjs     # /api/reports/timesheets|leaves routes
 │   ├── test-employees-summary.mjs  # /api/employees/:id/summary route
 │   ├── test-error-codes.mjs        # static audit: every error response carries errorCode
 │   ├── test-backups.mjs            # backup archive format + storage
@@ -321,18 +321,22 @@ corrupts an existing record) and gives us an audit log for free.
 - The `error-codes` suite is a similar static check on the backend —
   every `res.notFound`/`res.forbidden`/etc. call must include an
   `errorCode` so the frontend's `translateError()` can localize.
-- Route-level tests (`reports-team`, `employees-summary`) register
+- Route-level tests (`reports-routes`, `employees-summary`) register
   their target route on a real router instance with mocked stores
   and call the resulting handler directly. Lighter than spinning up
   the full HTTP server, heavier than pure unit tests of the
   underlying primitives — the right granularity for testing
-  composition logic (period boundaries × scheduled-hours math ×
-  per-employee overrides ×  RBAC enforcement).
-- Total: 33 suites, 706 passing as of 0.23.0 (one pre-existing
+  composition logic (period boundaries × matrix bucketing ×
+  per-employee aggregation × scope/RBAC enforcement).
+- Total: 33 suites, 705 passing as of 0.24.0 (one pre-existing
   TZ-sensitive flake in `test-reports.mjs` overnight-split bucket
-  count, unrelated to recent changes). 5 new suites added in 0.23.0
-  (test-dek, test-keyring, test-rotate, test-masterkey-envelope,
-  test-security-routes); test-crypto.mjs migrated to the v2 contract.
+  count, unrelated to this feature — it fails identically on the
+  pre-feature baseline). The 0.24.0 Reports revamp is net-zero new
+  suites: `test-reports-routes.mjs` was added, `test-reports-team.mjs`
+  was removed (it only tested the now-deleted team-hours route), and
+  `test-period.mjs` (pre-existing) was extended for the period
+  presets; `test-reports.mjs` gained matrix/CSV cases and dropped its
+  old-CSV-serializer tests.
 
 ---
 
@@ -376,8 +380,11 @@ as uncredited hours owed) was removed in 0.22.8. Approved corrections
 still materialize as in/out punch records the same way; reports just
 read those punches like any other clock event. The new "missing hours"
 signal is computed on the fly by every consumer that needs it
-(employee summary endpoint, team-hours report) as
-`max(0, scheduled - worked)` for the relevant period. It is **not**
+(the employee summary endpoint behind the dashboard widgets) as
+`max(0, scheduled - worked)` for the relevant period. The old
+employer "team-hours report" that also surfaced this number was
+removed in 0.24.0 along with `/api/reports/summary` and
+`/api/reports/team-hours`. It is **not**
 adjusted for approved leaves — operators should cross-check the
 upcoming-leaves block when interpreting the number.
 
@@ -396,4 +403,4 @@ upcoming-leaves block when interpreting the number.
 
 ---
 
-_Last touched in 0.23.1._
+_Last touched in 0.24.0._

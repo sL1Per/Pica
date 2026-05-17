@@ -5,22 +5,46 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.23.1._
+_Last touched in 0.24.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.23.1 (released 2026-05-16)
-- **Test count:** 706 across 33 suites, all green (1 pre-existing
-  TZ-sensitive flake in `test-reports.mjs` `overnight split` bucket
-  count, unchanged by this release — see notes.md). 0.23.1 added no
-  tests (markup/locale/visibility only).
-- **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.23.1
-  is a UI-only point release on top)
+- **Latest version:** 0.24.0 (released 2026-05-17)
+- **Test count:** 705 across 33 suites, all green except 1
+  pre-existing TZ-sensitive flake in `test-reports.mjs`
+  `overnight split` bucket count (fails identically on the
+  pre-feature baseline — see notes.md). Net-zero new suites:
+  `test-reports-routes.mjs` added, `test-reports-team.mjs` removed
+  (deleted route), `test-period.mjs` (pre-existing) extended.
+- **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
+  is a feature drop on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
-- **Active milestone:** 0.23.1 shipped; M13 and M14 are next
+- **Active milestone:** M13 (Reports revamp) shipped at 0.24.0;
+  M14–M17 are next (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.24.0)
+
+**Reports revamp (M13).** The Reports page is rebuilt around two
+report types — **Timesheets** and **Leaves** — each runnable for
+**everyone** (employer only) or **one person**, over **Day / Week /
+Month / Year** period presets with ◀/▶ navigation. The combined view
+is a matrix (period buckets × employees + axis totals). Print-friendly
+(browser Print → "Save as PDF", landscape print stylesheet); CSV
+export for every shape. Employee-isolation is **server-enforced**:
+`scope=all` from a non-employer is refused at the route.
+
+New endpoints: `GET /api/reports/timesheets` and
+`GET /api/reports/leaves` (`scope=me|all`, `id`, `type`, `anchor`,
+`format=csv`). **Removed** (now 404, no shim): `/api/reports/summary`,
+`/api/reports/team-hours`, `/api/reports/hours/:id[.csv]`,
+`/api/reports/leaves/:id[.csv]`. `period.js` extended additively
+(`computePeriod`/`ymdOf`/`isWeekday` unchanged, still power the
+dashboard summary). CACHE_VERSION v41 → v42. See RELEASES.md 0.24.0.
 
 ---
 
@@ -515,14 +539,19 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Enforce no-concurrent-leave at booking   | ✅ 0.22.17 |
 | —     | Leave justification file attachments     | ✅ 0.22.18 |
 | —     | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
-| M13   | E2E browser tests (Playwright)           | 📋 planned |
-| M14   | Deployment guide + TLS samples           | 📋 planned |
+| M13   | Reports revamp                           | ✅ 0.24.0  |
+| M14   | Add email notifications                  | 📋 planned |
+| M15   | Full UI revamp                           | 📋 planned |
+| M16   | E2E browser tests (Playwright)           | 📋 planned |
+| M17   | Deployment guide + TLS samples           | 📋 planned |
 
-**Order matters.** M14 was deliberately pulled to last so that the
-deployment guide describes the final security posture rather than a
-moving target. M13 (Playwright E2E) introduces the project's first
-npm dependency, which is a significant architectural decision and
-should be discussed with the operator before starting.
+**Order matters.** M17 (deployment guide) is deliberately last so it
+describes the final security posture rather than a moving target.
+M16 (Playwright E2E) introduces the project's first npm dependency, a
+significant architectural decision to discuss with the operator
+before starting, and lands after M15 so it tests the post-revamp UI.
+(This table previously listed only M13/M14 with stale titles; it now
+matches the authoritative numbering in `docs/roadmap.md`.)
 
 **Deferred:** CSRF tokens. `SameSite=Lax` cookies already provide
 solid CSRF protection for this threat model. Documented in
