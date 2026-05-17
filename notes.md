@@ -2,7 +2,7 @@
 
 ### Roadmap
 
-- M13: Reports revamp
+- [**DONE**] M13: Reports revamp
 - M14: Add email notifications
 - M15: Full UI revamp
 - M16: E2E browser tests
