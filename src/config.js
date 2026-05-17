@@ -18,6 +18,30 @@ const DEFAULTS = {
 
 const VALID_LOG_LEVELS = new Set(['debug', 'info', 'warn', 'error']);
 
+/**
+ * Normalize the operator-supplied `mail` block into a guaranteed-safe shape.
+ * Exported so tests can exercise the normalisation logic without touching the
+ * filesystem (loadConfig requires a real file path).
+ *
+ * Design: never throws, never returns null. Every field has a safe default
+ * so callers can branch on cfg.mail.enabled / cfg.mailConfigured without
+ * null-guards. The operator can leave the block entirely absent and the
+ * server will simply not send mail.
+ */
+export function normalizeMail(m = {}) {
+  // Treat non-object inputs the same as an absent block — safe defaults.
+  if (!m || typeof m !== 'object' || Array.isArray(m)) m = {};
+  return {
+    enabled: m.enabled === true,
+    host:    typeof m.host === 'string' ? m.host.trim() : '',
+    port:    Number.isInteger(m.port)   ? m.port        : 465,
+    secure:  m.secure !== false,                   // default implicit TLS (port 465)
+    user:    typeof m.user === 'string' ? m.user   : '',
+    pass:    typeof m.pass === 'string' ? m.pass   : '',
+    from:    typeof m.from === 'string' ? m.from.trim() : '',
+  };
+}
+
 export function loadConfig(configPath) {
   let user = {};
   if (fs.existsSync(configPath)) {
@@ -50,8 +74,20 @@ export function loadConfig(configPath) {
   // Resolve relative paths against the config file's directory so the
   // server can be launched from anywhere.
   const baseDir = path.dirname(path.resolve(configPath));
-  merged.dataDir = path.resolve(baseDir, merged.dataDir);
+  merged.dataDir  = path.resolve(baseDir, merged.dataDir);
   merged.backupDir = path.resolve(baseDir, merged.backupDir);
+
+  // Mail — normalise and derive the readiness flag.
+  // mailConfigured is intentionally separate from mail.enabled so callers
+  // can warn the operator about an incomplete config without crashing.
+  merged.mail = normalizeMail(user.mail);
+  merged.mailConfigured = merged.mail.enabled &&
+    !!(merged.mail.host && merged.mail.user && merged.mail.pass && merged.mail.from);
+
+  if (merged.mail.enabled && !merged.mailConfigured) {
+    // TODO startup warn: replace with logger?.warn once a logger is in scope here.
+    // For now the caller (server.js Task 9) should emit the startup warning.
+  }
 
   return merged;
 }
