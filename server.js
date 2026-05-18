@@ -241,6 +241,8 @@ registerSettingsRoutes(router, {
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
   auditStore,
+  // Expose only the safe boolean — never the mail config object or credentials.
+  mailConfigured: config.mailConfigured === true,
 });
 registerBackupRoutes(router, {
   backupsStore,

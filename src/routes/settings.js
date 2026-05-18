@@ -27,6 +27,11 @@ export function registerSettingsRoutes(router, {
   requireAuth,
   requireRole,
   auditStore = null,
+  // Safe boolean: true iff SMTP is fully configured. Exposed in GET
+  // /api/settings/org so the employer UI can show "SMTP configured ✓"
+  // without revealing host/user/pass/from. Default false so tests and
+  // callers that don't pass this field stay safe.
+  mailConfigured = false,
 }) {
 
   // --- Per-user preferences ------------------------------------------------
@@ -48,7 +53,9 @@ export function registerSettingsRoutes(router, {
   // --- Organization settings (employer only) -------------------------------
 
   router.get('/api/settings/org', requireRole('employer')((req, res) => {
-    res.json({ settings: orgSettingsStore.get() });
+    // mailConfigured is included as a safe boolean so the UI can show
+    // SMTP status without the server ever returning credentials.
+    res.json({ settings: orgSettingsStore.get(), mailConfigured });
   }));
 
   // Working-time targets are needed on the punch page for both roles, so

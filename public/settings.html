@@ -36,6 +36,7 @@
       <a href="#organization" id="nav-org" hidden data-i18n="settings.nav.org">Organization</a>
       <a href="#backups" id="nav-bak" hidden data-i18n="settings.nav.backups">Backups</a>
       <a href="#security" id="nav-sec" hidden data-i18n="settings.nav.security">Security</a>
+      <a href="#notifications" id="nav-notif" hidden data-i18n="settings.nav.notifications">Email notifications</a>
     </nav>
 
     <div id="message" class="message"></div>
@@ -232,6 +233,37 @@
       <h2 data-i18n="settings.securityHeading">Security</h2>
       <p class="subtle" data-i18n="settings.securitySubtitle">Passphrase, recovery code, and encryption-key rotation. Employer only.</p>
       <a href="/security" class="btn btn-primary block" data-i18n="settings.securityOpenBtn">Open security settings</a>
+    </section>
+
+    <!-- Email notifications section (employer only) — controls which
+         automated email events are enabled. The SMTP status line reads
+         from the safe mailConfigured boolean (never exposes credentials).
+         This section is employer-only because notification preferences
+         are org-wide policy, not per-employee. -->
+    <section id="notifications" class="card" hidden>
+      <h2 data-i18n="settings.notifications.title">Email notifications</h2>
+      <p class="subtle" data-i18n="settings.notifications.subtitle">Employer only. Controls which events trigger an email.</p>
+
+      <p id="notif-smtp-status" class="subtle"></p>
+
+      <form id="notifications-form" autocomplete="off">
+        <label class="checkbox">
+          <input type="checkbox" id="notif-leave-decision">
+          <span data-i18n="settings.notifications.leaveDecision">Notify employees when a leave request is approved or rejected</span>
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" id="notif-correction-decision">
+          <span data-i18n="settings.notifications.correctionDecision">Notify employees when a correction request is approved or rejected</span>
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" id="notif-leave-reminder">
+          <span data-i18n="settings.notifications.leaveReminder">Send a daily reminder to the employer for pending leave requests</span>
+        </label>
+
+        <button type="submit" class="block" data-i18n="settings.notifications.save">Save notification settings</button>
+      </form>
     </section>
   </main>
 

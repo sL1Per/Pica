@@ -13,6 +13,7 @@ const navOrg = $('nav-org');
 const navBak = $('nav-bak');
 const navCompany = $('nav-company');
 const navSec = $('nav-sec');
+const navNotif = $('nav-notif');
 
 // Account form
 // Company form
@@ -41,6 +42,14 @@ const blockedAddBtn = $('blocked-add');
 // Security section — just an entry point to the standalone /security
 // page; no forms or handlers live here.
 const securitySection = $('security');
+
+// Notifications section (employer only).
+const notifSection          = $('notifications');
+const notifSmtpStatus       = $('notif-smtp-status');
+const notifLeaveDecision    = $('notif-leave-decision');
+const notifCorrectionDecision = $('notif-correction-decision');
+const notifLeaveReminder    = $('notif-leave-reminder');
+const notifForm             = $('notifications-form');
 
 // Backups form
 const backupsSection = $('backups');
@@ -376,6 +385,60 @@ if (workingTimeForm) {
   });
 }
 
+// ---- Notifications section: render + save handler -----------------------
+
+/**
+ * Populate the notifications checkboxes from org settings and show the
+ * SMTP status line. mailConfigured is a safe boolean from the server — it
+ * is never the credential itself (see src/routes/settings.js).
+ */
+function renderNotifications(notifications, mailConfigured) {
+  notifLeaveDecision.checked        = notifications?.leaveDecision !== false;
+  notifCorrectionDecision.checked   = notifications?.correctionDecision !== false;
+  notifLeaveReminder.checked        = notifications?.leaveReminder !== false;
+
+  // Status line: read the safe boolean only. Never branch on host/user/pass.
+  notifSmtpStatus.setAttribute('data-i18n',
+    mailConfigured
+      ? 'settings.notifications.smtpConfigured'
+      : 'settings.notifications.smtpNotConfigured');
+  notifSmtpStatus.textContent = mailConfigured
+    ? t('settings.notifications.smtpConfigured')
+    : t('settings.notifications.smtpNotConfigured');
+}
+
+if (notifForm) {
+  notifForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showMessage(messageEl, '');
+    const btn = notifForm.querySelector('button[type="submit"]');
+    setBusy(btn, true, 'Saving…');
+
+    const patch = {
+      notifications: {
+        leaveDecision:       notifLeaveDecision.checked,
+        correctionDecision:  notifCorrectionDecision.checked,
+        leaveReminder:       notifLeaveReminder.checked,
+      },
+    };
+
+    try {
+      const res = await fetch('/api/settings/org', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t('settings.failedToSave'));
+      showMessage(messageEl, t('settings.notifications.saved'), 'success');
+    } catch (err) {
+      showMessage(messageEl, err.message, 'error');
+    }
+    setBusy(btn, false);
+  });
+}
+
 // ---- Bootstrap ------------------------------------------------------------
 
 (async () => {
@@ -390,10 +453,12 @@ if (workingTimeForm) {
     navOrg.hidden = false;
     navBak.hidden = false;
     navSec.hidden = false;
+    navNotif.hidden = false;
     companySection.hidden = false;
     orgSection.hidden = false;
     backupsSection.hidden = false;
     securitySection.hidden = false;
+    notifSection.hidden = false;
 
     // Load employees for the overrides table and the org settings.
     const [empRes, orgRes, brandRes] = await Promise.all([
@@ -408,6 +473,9 @@ if (workingTimeForm) {
     renderOrg(orgData.settings);
     renderCompany(orgData.settings.company, brandData.hasLogo);
     renderBackupsForm(orgData.settings.backups);
+    // mailConfigured comes from GET /api/settings/org — a safe boolean
+    // indicating whether SMTP is fully configured. Never exposes credentials.
+    renderNotifications(orgData.settings.notifications, orgData.mailConfigured === true);
 
     // Drop 2: check whether the server is in post-restore lockdown.
     // If so, the banner shows and controls are disabled; no point
