@@ -772,6 +772,73 @@ await test('userPrefsStore.get throws → notify resolves (never rejects)', asyn
 });
 
 // ---------------------------------------------------------------------------
+// testEmail — bypasses org+user, still gated by mail_disabled and no_address
+// ---------------------------------------------------------------------------
+console.log('\ntestEmail — bypasses org+user gating');
+
+await test('testEmail sends even when org notifications all false', async () => {
+  let sent = false;
+  const mailer = makeMailer({
+    ...makeStores({
+      orgSettingsStore: {
+        get: () => ({ notifications: { leaveDecision: false, correctionDecision: false, leaveReminder: false } }),
+      },
+    }),
+    config: makeConfig(),
+    logger: makeLogger(),
+    audit: makeAudit(),
+    sendMail: async () => { sent = true; },
+  });
+  const result = await mailer.notify('testEmail', { recipientUserId: RECIPIENT_ID, vars: {} });
+  assert.deepEqual(result, { sent: true });
+  assert.ok(sent, 'sendMail must be called for testEmail even with org flags off');
+});
+
+await test('testEmail sends even when user email.notifications AND reminders are false', async () => {
+  let sent = false;
+  const mailer = makeMailer({
+    ...makeStores({
+      userPrefsStore: {
+        get: (id) => ({ locale: 'en-US', colorMode: 'system', email: { notifications: false, reminders: false } }),
+      },
+    }),
+    config: makeConfig(),
+    logger: makeLogger(),
+    audit: makeAudit(),
+    sendMail: async () => { sent = true; },
+  });
+  const result = await mailer.notify('testEmail', { recipientUserId: RECIPIENT_ID, vars: {} });
+  assert.deepEqual(result, { sent: true });
+  assert.ok(sent, 'sendMail must be called for testEmail even when user opts-out of all notifications');
+});
+
+await test('testEmail still blocked by mail_disabled', async () => {
+  const mailer = makeMailer({
+    ...makeStores(),
+    config: makeConfig({ mail: { enabled: false } }),
+    logger: makeLogger(),
+    audit: makeAudit(),
+    sendMail: async () => { throw new Error('should not be called'); },
+  });
+  const result = await mailer.notify('testEmail', { recipientUserId: RECIPIENT_ID, vars: {} });
+  assert.deepEqual(result, { sent: false, reason: 'mail_disabled' });
+});
+
+await test('testEmail still blocked by no_address', async () => {
+  const mailer = makeMailer({
+    ...makeStores({
+      employeesStore: { readProfile: () => ({ id: RECIPIENT_ID, contactEmail: '' }) },
+    }),
+    config: makeConfig(),
+    logger: makeLogger(),
+    audit: makeAudit(),
+    sendMail: async () => { throw new Error('should not be called'); },
+  });
+  const result = await mailer.notify('testEmail', { recipientUserId: RECIPIENT_ID, vars: {} });
+  assert.deepEqual(result, { sent: false, reason: 'no_address' });
+});
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);

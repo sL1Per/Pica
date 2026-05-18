@@ -32,7 +32,10 @@ import { sendMail as defaultSendMail } from './smtp.js';
 import { renderEmail } from './templates.js';
 
 // Categories that bypass the org + user gating layers entirely.
-const BYPASS_ORG_USER = new Set(['passwordResetNotice']);
+// passwordResetNotice: a security action that must reach the user regardless of their prefs.
+// testEmail: a config probe sent to the employer's own address — not a user notification,
+//   so org/user toggles are irrelevant; only mail.enabled and a valid address are required.
+const BYPASS_ORG_USER = new Set(['passwordResetNotice', 'testEmail']);
 
 // Maps category → org notifications key (for the org-layer check).
 const ORG_KEY = {

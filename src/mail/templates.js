@@ -148,6 +148,25 @@ const T = {
   },
 
   // --------------------------------------------------------------------------
+  // No vars; a fixed probe message confirming SMTP delivery works.
+  // Used exclusively by POST /api/mail/test (Task 8) — not a user-facing
+  // notification, so it carries no personal or account-specific content.
+  testEmail: {
+    'en-US': () => ({
+      subject: 'Pica email configuration test',
+      text:
+        'This message confirms that Pica can reach your SMTP server.\n\n' +
+        'If you received it, your email configuration is working correctly.',
+    }),
+    'pt-PT': () => ({
+      subject: 'Teste de configuração de correio eletrónico do Pica',
+      text:
+        'Esta mensagem confirma que o Pica consegue comunicar com o seu servidor SMTP.\n\n' +
+        'Se a recebeu, a configuração de correio eletrónico está a funcionar corretamente.',
+    }),
+  },
+
+  // --------------------------------------------------------------------------
   // No vars; purely informational.  No token, no link, no new password.
   passwordResetNotice: {
     'en-US': () => ({

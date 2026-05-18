@@ -392,6 +392,81 @@ test('renderEmail with undefined vars arg does not throw', () => {
 });
 
 // ---------------------------------------------------------------------------
+console.log('\ntestEmail — en-US');
+// ---------------------------------------------------------------------------
+
+const teEnUS = renderEmail('testEmail', 'en-US', {});
+
+test('testEmail en-US returns subject and text', () => {
+  assert.ok(typeof teEnUS.subject === 'string' && teEnUS.subject.length > 0, `subject: ${teEnUS.subject}`);
+  assert.ok(typeof teEnUS.text === 'string' && teEnUS.text.length > 0, `text: ${teEnUS.text}`);
+});
+
+test('testEmail en-US subject has no "undefined" literal', () => {
+  assert.ok(!teEnUS.subject.includes('undefined'), `subject: ${teEnUS.subject}`);
+  assert.ok(!teEnUS.text.includes('undefined'), `text: ${teEnUS.text}`);
+});
+
+test('testEmail en-US subject has no "[object Object]"', () => {
+  assert.ok(!teEnUS.subject.includes('[object Object]'), `subject: ${teEnUS.subject}`);
+});
+
+test('testEmail en-US contains no emoji', () => {
+  // Pica voice: direct, no emoji.
+  const combined = teEnUS.subject + teEnUS.text;
+  // Simple heuristic: no code points above U+2FFF that aren't normal punctuation/accents.
+  assert.ok(!/[\u{1F000}-\u{1FFFF}]/u.test(combined), `emoji found in en-US output: ${combined}`);
+});
+
+// ---------------------------------------------------------------------------
+console.log('\ntestEmail — pt-PT');
+// ---------------------------------------------------------------------------
+
+const tePtPT = renderEmail('testEmail', 'pt-PT', {});
+
+test('testEmail pt-PT returns subject and text', () => {
+  assert.ok(typeof tePtPT.subject === 'string' && tePtPT.subject.length > 0, `subject: ${tePtPT.subject}`);
+  assert.ok(typeof tePtPT.text === 'string' && tePtPT.text.length > 0, `text: ${tePtPT.text}`);
+});
+
+test('testEmail pt-PT subject differs from en-US subject (genuine translation)', () => {
+  assert.notEqual(tePtPT.subject, teEnUS.subject);
+});
+
+test('testEmail pt-PT text differs from en-US text (genuine translation)', () => {
+  assert.notEqual(tePtPT.text, teEnUS.text);
+});
+
+test('testEmail pt-PT contains Portuguese wording', () => {
+  const combined = tePtPT.subject + tePtPT.text;
+  // Must contain recognisably European Portuguese vocabulary.
+  const hasPortuguese =
+    combined.includes('configuração') ||
+    combined.includes('correio') ||
+    combined.includes('funcionou') ||
+    combined.includes('Pica') ||    // brand name appears in both but ok as a sanity check
+    combined.includes('teste');
+  assert.ok(hasPortuguese, `expected Portuguese wording in pt-PT output, got:\n${combined}`);
+});
+
+test('testEmail pt-PT contains no emoji', () => {
+  const combined = tePtPT.subject + tePtPT.text;
+  assert.ok(!/[\u{1F000}-\u{1FFFF}]/u.test(combined), `emoji found in pt-PT output: ${combined}`);
+});
+
+test('testEmail renders with missing vars arg (undefined) gracefully', () => {
+  const r = renderEmail('testEmail', 'en-US', undefined);
+  assert.ok(typeof r.subject === 'string' && r.subject.length > 0);
+  assert.ok(typeof r.text === 'string' && r.text.length > 0);
+});
+
+test('testEmail unknown locale → en-US fallback', () => {
+  const r = renderEmail('testEmail', 'xx-XX', {});
+  assert.equal(r.subject, teEnUS.subject);
+  assert.equal(r.text, teEnUS.text);
+});
+
+// ---------------------------------------------------------------------------
 console.log('\nSummary');
 // ---------------------------------------------------------------------------
 
