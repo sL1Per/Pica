@@ -219,6 +219,211 @@ try {
   });
 
   // ---------------------------------------------------------------------------
+  console.log('\nEmail notification prefs (M14 §3.5)');
+  // ---------------------------------------------------------------------------
+
+  await test('DEFAULT_PREFS includes email:{notifications:true,reminders:true}', () => {
+    assert.deepEqual(DEFAULT_PREFS.email, { notifications: true, reminders: true });
+  });
+
+  await test('get() returns email defaults for a user with no stored prefs', () => {
+    const p = store.get('brand-new-user-1111-111111111111');
+    assert.deepEqual(p.email, { notifications: true, reminders: true });
+  });
+
+  await test('email prefs backfill for old stored file with no email key', () => {
+    // Simulate a pre-M14 stored file: has locale/colorMode but no email key.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-prefs-email-backfill-'));
+    try {
+      const filePath = path.join(dir, 'user-prefs.json');
+      fs.writeFileSync(filePath, JSON.stringify({
+        prefs: { 'old-user-1111-1111-1111-111111111111': { locale: 'pt-PT', colorMode: 'dark' } },
+      }));
+      const s = createUserPrefsStore(dir);
+      const p = s.get('old-user-1111-1111-1111-111111111111');
+      // Old prefs still intact
+      assert.equal(p.locale, 'pt-PT');
+      assert.equal(p.colorMode, 'dark');
+      // email backfilled from defaults — all true
+      assert.deepEqual(p.email, { notifications: true, reminders: true });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('update() with {email:{reminders:false}} persists and keeps notifications:true', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-prefs-email-partial-'));
+    try {
+      const s = createUserPrefsStore(dir);
+      const uid = 'test-user-1111-1111-1111-111111111111';
+      const p = s.update(uid, { email: { reminders: false } });
+      assert.equal(p.email.reminders, false);
+      assert.equal(p.email.notifications, true); // sibling preserved
+
+      // Reload from disk — round-trips through real save/load.
+      s.invalidate();
+      const reloaded = s.get(uid);
+      assert.equal(reloaded.email.reminders, false);
+      assert.equal(reloaded.email.notifications, true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('update() with {email:{notifications:false}} persists and keeps reminders:true', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-prefs-email-notif-'));
+    try {
+      const s = createUserPrefsStore(dir);
+      const uid = 'notif-user-1111-1111-1111-111111111111';
+      const p = s.update(uid, { email: { notifications: false } });
+      assert.equal(p.email.notifications, false);
+      assert.equal(p.email.reminders, true);
+
+      s.invalidate();
+      const reloaded = s.get(uid);
+      assert.equal(reloaded.email.notifications, false);
+      assert.equal(reloaded.email.reminders, true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('non-boolean email values are dropped (not coerced)', () => {
+    // Strict boolean acceptance: only true/false; strings, numbers, null dropped.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-prefs-email-nonbool-'));
+    try {
+      const s = createUserPrefsStore(dir);
+      const uid = 'nonbool-user-111-1111-1111-111111111111';
+      const p = s.update(uid, { email: { notifications: 'yes', reminders: 1 } });
+      // Non-boolean values are dropped; defaults remain.
+      assert.equal(p.email.notifications, true);
+      assert.equal(p.email.reminders, true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('unknown sub-keys under email are silently dropped', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-prefs-email-unknown-'));
+    try {
+      const s = createUserPrefsStore(dir);
+      const uid = 'unknown-sub-1111-1111-1111-111111111111';
+      const p = s.update(uid, { email: { notifications: false, marketing: false, foo: true } });
+      assert.equal(p.email.notifications, false);
+      assert.equal(p.email.reminders, true); // default
+      // Unknown sub-keys are not stored.
+      assert.equal(p.email.marketing, undefined);
+      assert.equal(p.email.foo, undefined);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('both employer and employee users get the same email prefs shape', () => {
+    // The prefs store is role-agnostic; shape depends only on the user id.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-prefs-email-roles-'));
+    try {
+      const s = createUserPrefsStore(dir);
+      const employerId = 'employer-uuid-111-1111-1111-111111111111';
+      const employeeId = 'employee-uuid-111-1111-1111-111111111111';
+      const ep = s.get(employerId);
+      const sp = s.get(employeeId);
+      assert.deepEqual(ep.email, { notifications: true, reminders: true });
+      assert.deepEqual(sp.email, { notifications: true, reminders: true });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('patch {email:{}} (empty object) changes nothing', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-prefs-email-empty-'));
+    try {
+      const s = createUserPrefsStore(dir);
+      const uid = 'empty-email-11111-1111-1111-111111111111';
+      // First set reminders to false
+      s.update(uid, { email: { reminders: false } });
+      // Then patch with empty email object — should not change anything
+      const p = s.update(uid, { email: {} });
+      assert.equal(p.email.reminders, false); // preserved
+      assert.equal(p.email.notifications, true); // preserved
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Garbage `email` value resilience (hand-edited file defence)
+  // Parallel to Task 5 org-settings garbage-type guard test. A hand-edited
+  // prefs file could set `email` to a string, array, or other non-plain-object.
+  // withEmailDefaults() must absorb the garbage; no indexed keys (0,1,2…) must
+  // ever leak out of get() or be persisted by update().
+  // ---------------------------------------------------------------------------
+  console.log('\nGarbage email field resilience');
+
+  await test('get() with stored email:"yes" returns all-true defaults (no indexed keys)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-prefs-garbage-str-'));
+    try {
+      const filePath = path.join(dir, 'user-prefs.json');
+      // Simulate a hand-edited file where `email` is a string, not an object.
+      fs.writeFileSync(filePath, JSON.stringify({
+        prefs: { 'garbage-user': { locale: 'en-US', email: 'yes' } },
+      }));
+      const s = createUserPrefsStore(dir);
+      const p = s.get('garbage-user');
+      // Must return the all-true defaults — not indexed keys from spreading a string.
+      assert.deepEqual(p.email, { notifications: true, reminders: true });
+      assert.deepEqual(Object.keys(p.email).sort(), ['notifications', 'reminders']);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('get() with stored email:[] returns all-true defaults (no indexed keys)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-prefs-garbage-arr-'));
+    try {
+      const filePath = path.join(dir, 'user-prefs.json');
+      fs.writeFileSync(filePath, JSON.stringify({
+        prefs: { 'garbage-user': { locale: 'en-US', email: [] } },
+      }));
+      const s = createUserPrefsStore(dir);
+      const p = s.get('garbage-user');
+      assert.deepEqual(p.email, { notifications: true, reminders: true });
+      assert.deepEqual(Object.keys(p.email).sort(), ['notifications', 'reminders']);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('update() with garbage email:"yes" on disk persists clean object (no indexed keys)', () => {
+    // Disk: email:"yes"  → update({email:{reminders:false}}) → persisted: {notifications:true,reminders:false}
+    // This locks the "persist-garbage" fix: withEmailDefaults() is used as the
+    // merge base so {0:'y',1:'e',2:'s'} can never reach the write path.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-prefs-garbage-upd-'));
+    try {
+      const filePath = path.join(dir, 'user-prefs.json');
+      fs.writeFileSync(filePath, JSON.stringify({
+        prefs: { 'garbage-user': { locale: 'en-US', email: 'yes' } },
+      }));
+      const s = createUserPrefsStore(dir);
+      const returned = s.update('garbage-user', { email: { reminders: false } });
+      // Returned value must be clean.
+      assert.equal(returned.email.notifications, true);
+      assert.equal(returned.email.reminders, false);
+      assert.deepEqual(Object.keys(returned.email).sort(), ['notifications', 'reminders']);
+
+      // Reload from disk via a fresh store to confirm persisted value is clean.
+      const s2 = createUserPrefsStore(dir);
+      const reloaded = s2.get('garbage-user');
+      assert.equal(reloaded.email.notifications, true);
+      assert.equal(reloaded.email.reminders, false);
+      // The critical assertion: only the two known keys exist — no indexed garbage.
+      assert.deepEqual(Object.keys(reloaded.email).sort(), ['notifications', 'reminders']);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
   console.log('\nCorrupt file recovery');
   // ---------------------------------------------------------------------------
 
