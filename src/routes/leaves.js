@@ -76,6 +76,7 @@ export function registerLeaveRoutes(router, {
   requireAuth,
   requireRole,
   auditStore = null,
+  mailer = null,
 }) {
 
   /** Return a Map(userId → fullName|null) by scanning employee profiles. */
@@ -475,6 +476,11 @@ export function registerLeaveRoutes(router, {
         details: { decision: 'approved', type: leave.type, start: leave.start, end: leave.end },
       });
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
+      // Fire-and-forget — response is already sent; notify never rejects.
+      if (mailer) void mailer.notify('leaveDecision', {
+        recipientUserId: leave.employeeId,
+        vars: { status: 'approved', type: leave.type, start: leave.start, end: leave.end, unit: leave.unit },
+      });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
@@ -494,6 +500,11 @@ export function registerLeaveRoutes(router, {
         details: { decision: 'rejected', type: leave.type, hasNotes: !!notes },
       });
       res.json({ ok: true, leave: enrich(leave, usersByIdMap(), fullNameMap()) });
+      // Fire-and-forget — response is already sent; notify never rejects.
+      if (mailer) void mailer.notify('leaveDecision', {
+        recipientUserId: leave.employeeId,
+        vars: { status: 'rejected', type: leave.type, start: leave.start, end: leave.end, unit: leave.unit },
+      });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }

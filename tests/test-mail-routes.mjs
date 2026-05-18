@@ -14,6 +14,9 @@
 import assert from 'node:assert/strict';
 import { createRouter } from '../src/router.js';
 import { registerMailRoutes } from '../src/routes/mail.js';
+import { registerLeaveRoutes } from '../src/routes/leaves.js';
+import { registerCorrectionRoutes } from '../src/routes/corrections.js';
+import { registerEmployeeRoutes } from '../src/routes/employees.js';
 
 let passed = 0;
 let failed = 0;
@@ -48,6 +51,10 @@ function mockRes() {
     },
     unauthorized(m, o) {
       r.statusCode = 401;
+      r.body = { error: m, ...(o?.errorCode && { errorCode: o.errorCode }) };
+    },
+    notFound(m, o) {
+      r.statusCode = 404;
       r.body = { error: m, ...(o?.errorCode && { errorCode: o.errorCode }) };
     },
   };
@@ -276,6 +283,229 @@ await test('mailer.notify return value drives response (sent:false, reason forwa
   });
   assert.equal(res.body.ok, false);
   assert.equal(res.body.reason, 'no_address');
+});
+
+// ---------------------------------------------------------------------------
+// Decision-route resilience: a broken/failing mailer must NOT 500 or
+// block the leave/correction decision response.
+//
+// Since notify() is always `void`-ed and never awaited, even a mailer
+// whose notify() throws synchronously (which real notify never does, but
+// we test the contract) or returns a rejected promise cannot affect the
+// HTTP response. The handler already sent res.json() before calling
+// void mailer.notify(), so the response is unaffected either way.
+// ---------------------------------------------------------------------------
+
+const LEAVE_ID      = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const EMPLOYEE_ID2  = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+const EMPLOYER_ID2  = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+const CORRECTION_ID = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+
+function buildLeaveFixture(mailerOverride) {
+  const router = createRouter();
+  const leave = {
+    id: LEAVE_ID, employeeId: EMPLOYEE_ID2, type: 'vacation', status: 'pending',
+    unit: 'days', start: '2026-07-01', end: '2026-07-05',
+  };
+  const leavesStore = {
+    findById: () => leave,
+    approve: () => ({ ...leave, status: 'approved' }),
+    reject: (id, actorId, notes) => ({ ...leave, status: 'rejected', notes }),
+    list: () => [leave],
+    computeBalances: () => [],
+    wouldExceedCap: () => ({ exceeds: false }),
+  };
+  const usersStore = {
+    list: () => [
+      { id: EMPLOYEE_ID2, username: 'emp', role: 'employee' },
+      { id: EMPLOYER_ID2, username: 'boss', role: 'employer' },
+    ],
+  };
+  const employeesStore = { list: () => [] };
+  const orgSettingsStore = { get: () => ({ leaves: { blockedRanges: [], concurrentAllowed: true } }) };
+  registerLeaveRoutes(router, {
+    leavesStore, usersStore, employeesStore, orgSettingsStore,
+    leaveTypes: ['vacation', 'sick', 'appointment', 'other'],
+    daysOf: () => 1, requireAuth, requireRole,
+    mailer: mailerOverride,
+  });
+  return router;
+}
+
+function buildCorrectionFixture(mailerOverride) {
+  const router = createRouter();
+  const correction = {
+    id: CORRECTION_ID, employeeId: EMPLOYEE_ID2, status: 'pending',
+    kind: 'both', start: '2026-06-10T09:00:00Z', end: '2026-06-10T17:00:00Z',
+    hours: 8, isJustified: true, justification: 'test',
+  };
+  const correctionsStore = {
+    findById: () => correction,
+    approve: () => ({ ...correction, status: 'approved' }),
+    reject: () => ({ ...correction, status: 'rejected' }),
+    list: () => [correction],
+  };
+  const punchesStore = {
+    findByClientId: () => null,
+    append: () => {},
+  };
+  const usersStore = {
+    list: () => [
+      { id: EMPLOYEE_ID2, username: 'emp', role: 'employee' },
+      { id: EMPLOYER_ID2, username: 'boss', role: 'employer' },
+    ],
+  };
+  const employeesStore = { list: () => [] };
+  registerCorrectionRoutes(router, {
+    correctionsStore, punchesStore, usersStore, employeesStore,
+    requireAuth, requireRole,
+    mailer: mailerOverride,
+  });
+  return router;
+}
+
+console.log('\nDecision-route resilience — failing mailer must not break the response');
+
+await test('leave approve returns 200 when mailer.notify resolves {sent:false}', async () => {
+  const failingMailer = { notify: async () => ({ sent: false, reason: 'mail_disabled' }) };
+  const router = buildLeaveFixture(failingMailer);
+  const res = await call(router, 'POST', `/api/leaves/${LEAVE_ID}/approve`, {
+    user: { id: EMPLOYER_ID2, role: 'employer' },
+  });
+  assert.equal(res.statusCode, 200, `expected 200, got ${res.statusCode}`);
+  assert.equal(res.body.ok, true);
+});
+
+await test('leave reject returns 200 when mailer.notify resolves {sent:false}', async () => {
+  const failingMailer = { notify: async () => ({ sent: false, reason: 'no_address' }) };
+  const router = buildLeaveFixture(failingMailer);
+  const res = await call(router, 'POST', `/api/leaves/${LEAVE_ID}/reject`, {
+    user: { id: EMPLOYER_ID2, role: 'employer' },
+    body: { notes: null },
+  });
+  assert.equal(res.statusCode, 200, `expected 200, got ${res.statusCode}`);
+  assert.equal(res.body.ok, true);
+});
+
+await test('leave approve returns 200 with null mailer (no mailer injected)', async () => {
+  const router = buildLeaveFixture(null);
+  const res = await call(router, 'POST', `/api/leaves/${LEAVE_ID}/approve`, {
+    user: { id: EMPLOYER_ID2, role: 'employer' },
+  });
+  assert.equal(res.statusCode, 200, `expected 200, got ${res.statusCode}`);
+  assert.equal(res.body.ok, true);
+});
+
+await test('correction approve returns 200 when mailer.notify resolves {sent:false}', async () => {
+  const failingMailer = { notify: async () => ({ sent: false, reason: 'mail_disabled' }) };
+  const router = buildCorrectionFixture(failingMailer);
+  const res = await call(router, 'POST', `/api/corrections/${CORRECTION_ID}/approve`, {
+    user: { id: EMPLOYER_ID2, role: 'employer' },
+  });
+  assert.equal(res.statusCode, 200, `expected 200, got ${res.statusCode}`);
+  assert.equal(res.body.ok, true);
+});
+
+await test('correction reject returns 200 when mailer.notify resolves {sent:false}', async () => {
+  const failingMailer = { notify: async () => ({ sent: false, reason: 'no_address' }) };
+  const router = buildCorrectionFixture(failingMailer);
+  const res = await call(router, 'POST', `/api/corrections/${CORRECTION_ID}/reject`, {
+    user: { id: EMPLOYER_ID2, role: 'employer' },
+  });
+  assert.equal(res.statusCode, 200, `expected 200, got ${res.statusCode}`);
+  assert.equal(res.body.ok, true);
+});
+
+await test('correction approve returns 200 with null mailer (no mailer injected)', async () => {
+  const router = buildCorrectionFixture(null);
+  const res = await call(router, 'POST', `/api/corrections/${CORRECTION_ID}/approve`, {
+    user: { id: EMPLOYER_ID2, role: 'employer' },
+  });
+  assert.equal(res.statusCode, 200, `expected 200, got ${res.statusCode}`);
+  assert.equal(res.body.ok, true);
+});
+
+// ---------------------------------------------------------------------------
+// Decision-route resilience — password-reset: notify is fire-and-forget;
+// a soft-failing or absent mailer must NOT prevent the reset from succeeding.
+//
+// Mirrors the leave/correction resilience fixtures above. The key invariant:
+//   1. The reset itself (setPassword/mustChange) completes regardless of mailer.
+//   2. res.json({ok:true}) is sent before notify() is called (fire-and-forget).
+//   3. A null mailer (mailer not configured) is also safe.
+// ---------------------------------------------------------------------------
+
+const RESET_EMPLOYER_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+const RESET_TARGET_ID   = '11111111-1111-4111-8111-111111111111';
+
+function buildPasswordResetFixture(mailerOverride) {
+  const router = createRouter();
+
+  const setPasswordCalls = [];
+  const usersStore = {
+    list: () => [
+      { id: RESET_EMPLOYER_ID, username: 'boss', role: 'employer' },
+      { id: RESET_TARGET_ID,   username: 'emp',  role: 'employee' },
+    ],
+    findById: (id) => {
+      if (id === RESET_TARGET_ID) return { id: RESET_TARGET_ID, username: 'emp', role: 'employee' };
+      if (id === RESET_EMPLOYER_ID) return { id: RESET_EMPLOYER_ID, username: 'boss', role: 'employer' };
+      return null;
+    },
+    setPassword: async (id, pass, opts) => { setPasswordCalls.push({ id, pass, opts }); },
+  };
+
+  const employeesStore  = { list: () => [] };
+  const punchesStore    = { list: () => [] };
+  const leavesStore     = { list: () => [] };
+  const correctionsStore = { list: () => [] };
+  const orgSettingsStore = { get: () => ({}) };
+  // null passwordLimiter → allow() branch is skipped (same as production with unlimited config)
+  const passwordLimiter = { allow: () => true };
+
+  // requireOwnerOrEmployer is curried: requireOwnerOrEmployer(idExtractor)(handler).
+  const requireOwnerOrEmployer = (_idExtractor) => (h) => async (req, res) => h(req, res);
+
+  registerEmployeeRoutes(router, {
+    usersStore, employeesStore, punchesStore, leavesStore, correctionsStore,
+    orgSettingsStore, passwordLimiter,
+    requireAuth, requireRole, requireOwnerOrEmployer,
+    auditStore: null,
+    mailer: mailerOverride,
+  });
+
+  return { router, setPasswordCalls };
+}
+
+console.log('\nDecision-route resilience — password-reset notify must not block the reset');
+
+await test('password-reset returns 200 {ok:true} when mailer.notify resolves {sent:false}', async () => {
+  const failingMailer = { notify: async () => ({ sent: false, reason: 'mail_disabled' }) };
+  const { router, setPasswordCalls } = buildPasswordResetFixture(failingMailer);
+  const res = await call(router, 'POST', `/api/employees/${RESET_TARGET_ID}/password-reset`, {
+    user: { id: RESET_EMPLOYER_ID, role: 'employer' },
+    body: { newPassword: 'Temp@Pass1!' },
+  });
+  assert.equal(res.statusCode, 200, `expected 200, got ${res.statusCode}`);
+  assert.equal(res.body.ok, true);
+  // Assert the reset itself completed regardless of mailer result.
+  assert.equal(setPasswordCalls.length, 1, 'setPassword must be called even when mailer soft-fails');
+  assert.equal(setPasswordCalls[0].id, RESET_TARGET_ID);
+  assert.equal(setPasswordCalls[0].opts?.mustChange, true);
+});
+
+await test('password-reset returns 200 {ok:true} with null mailer (no mailer injected)', async () => {
+  const { router, setPasswordCalls } = buildPasswordResetFixture(null);
+  const res = await call(router, 'POST', `/api/employees/${RESET_TARGET_ID}/password-reset`, {
+    user: { id: RESET_EMPLOYER_ID, role: 'employer' },
+    body: { newPassword: 'Temp@Pass1!' },
+  });
+  assert.equal(res.statusCode, 200, `expected 200, got ${res.statusCode}`);
+  assert.equal(res.body.ok, true);
+  // Assert the reset itself completed even with no mailer.
+  assert.equal(setPasswordCalls.length, 1, 'setPassword must be called even when mailer is null');
+  assert.equal(setPasswordCalls[0].id, RESET_TARGET_ID);
+  assert.equal(setPasswordCalls[0].opts?.mustChange, true);
 });
 
 // ---------------------------------------------------------------------------

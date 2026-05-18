@@ -34,6 +34,7 @@ export function registerCorrectionRoutes(router, {
   requireAuth,
   requireRole,
   auditStore = null,
+  mailer = null,
 }) {
 
   function fullNameMap() {
@@ -168,6 +169,12 @@ export function registerCorrectionRoutes(router, {
         },
       });
       res.json({ ok: true, correction: enrich(correction, usersByIdMap(), fullNameMap()) });
+      // Fire-and-forget — response is already sent; notify never rejects.
+      // date = YYYY-MM-DD of the corrected day (slice the ISO start timestamp).
+      if (mailer) void mailer.notify('correctionDecision', {
+        recipientUserId: correction.employeeId,
+        vars: { status: 'approved', date: (correction.start ?? correction.end ?? '').slice(0, 10) },
+      });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
@@ -189,6 +196,12 @@ export function registerCorrectionRoutes(router, {
         details: { decision: 'rejected', kind: correction.kind, hasNotes: !!req.body?.notes },
       });
       res.json({ ok: true, correction: enrich(correction, usersByIdMap(), fullNameMap()) });
+      // Fire-and-forget — response is already sent; notify never rejects.
+      // date = YYYY-MM-DD of the corrected day (slice the ISO start timestamp).
+      if (mailer) void mailer.notify('correctionDecision', {
+        recipientUserId: correction.employeeId,
+        vars: { status: 'rejected', date: (correction.start ?? correction.end ?? '').slice(0, 10) },
+      });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }

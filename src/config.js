@@ -84,10 +84,5 @@ export function loadConfig(configPath) {
   merged.mailConfigured = merged.mail.enabled &&
     !!(merged.mail.host && merged.mail.user && merged.mail.pass && merged.mail.from);
 
-  if (merged.mail.enabled && !merged.mailConfigured) {
-    // TODO startup warn: replace with logger?.warn once a logger is in scope here.
-    // For now the caller (server.js Task 9) should emit the startup warning.
-  }
-
   return merged;
 }

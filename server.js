@@ -37,7 +37,10 @@ import { approxDaysOff } from './src/storage/reports.js';
 import { registerSettingsRoutes } from './src/routes/settings.js';
 import { registerBackupRoutes } from './src/routes/backups.js';
 import { registerSecurityRoutes } from './src/routes/security.js';
+import { registerMailRoutes } from './src/routes/mail.js';
+import { makeMailer } from './src/mail/mailer.js';
 import { startBackupScheduler } from './src/scheduler/backup-scheduler.js';
+import { makeReminderScheduler } from './src/scheduler/reminder-scheduler.js';
 import { createEmployeesStore } from './src/storage/employees.js';
 import { createPunchesStore } from './src/storage/punches.js';
 import { createLeavesStore, LEAVE_TYPES_LIST } from './src/storage/leaves.js';
@@ -112,6 +115,22 @@ const auditStore = createAuditStore({
   logger: log,
 });
 
+// Email mailer — M14. Constructed after all stores it depends on exist.
+// notify() never throws, never rejects. Callers use `void mailer.notify(...)`.
+// Warn once at startup when mail is enabled but SMTP is not fully configured (mail then stays disabled).
+const mailer = makeMailer({
+  config,
+  logger: log,
+  audit: auditStore,
+  usersStore,
+  employeesStore,
+  userPrefsStore,
+  orgSettingsStore,
+});
+if (config.mail?.enabled && !config.mailConfigured) {
+  log.warn('mail enabled but incomplete config — mail delivery disabled until host/user/pass/from are set');
+}
+
 // Process-wide lockdown flags.
 //   restoreCompleted: flips true after a restore; cleared ONLY by a process
 //     restart (the in-memory stores are stale until then).
@@ -175,6 +194,7 @@ registerEmployeeRoutes(router, {
   requireRole: rbac.requireRole,
   requireOwnerOrEmployer: rbac.requireOwnerOrEmployer,
   auditStore,
+  mailer,
 });
 registerPunchRoutes(router, {
   punchesStore,
@@ -192,6 +212,7 @@ registerLeaveRoutes(router, {
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
   auditStore,
+  mailer,
 });
 registerCorrectionRoutes(router, {
   correctionsStore,
@@ -201,6 +222,7 @@ registerCorrectionRoutes(router, {
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
   auditStore,
+  mailer,
 });
 registerReportRoutes(router, {
   punchesStore,
@@ -237,6 +259,13 @@ registerSecurityRoutes(router, {
   auditStore,
   logger: log,
 });
+// Mail routes — employer-only config probe (POST /api/mail/test).
+// Registered after all other /api/* routes; before page routes (first-match-wins).
+registerMailRoutes(router, {
+  mailer,
+  requireRole: rbac.requireRole,
+});
+
 registerPageRoutes(router, {
   publicDir,
   usersStore,
@@ -255,6 +284,12 @@ startBackupScheduler({
   serverState,
   logger: log,
 });
+
+// Start the reminder scheduler — M14. Every 5 minutes, finds approved
+// leaves within 24 h of their start and fires a leaveReminder notification.
+// One reminder per leave ever (persisted via leavesStore.markReminderSent).
+// Like the backup scheduler, the stop() handle is unused — SIGINT is enough.
+makeReminderScheduler({ leavesStore, mailer, logger: log }).start();
 
 // ----------------------------------------------------------------------------
 // Request handler

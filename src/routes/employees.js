@@ -28,6 +28,7 @@ export function registerEmployeeRoutes(router, {
   requireRole,
   requireOwnerOrEmployer,
   auditStore = null,
+  mailer = null,
 }) {
   const MAX_PICTURE_BYTES = 2 * 1024 * 1024; // 2 MB — client should resize first
 
@@ -450,6 +451,12 @@ export function registerEmployeeRoutes(router, {
     });
 
     res.json({ ok: true });
+    // Fire-and-forget — response is already sent; notify never rejects.
+    // passwordResetNotice bypasses org + user gating (it is a security notice).
+    if (mailer) void mailer.notify('passwordResetNotice', {
+      recipientUserId: targetId,
+      vars: {},
+    });
   }));
 
   // Unused imports suppressed:
