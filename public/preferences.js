@@ -10,19 +10,24 @@ const messageEl       = $('message');
 const form            = $('prefs-form');
 const localeEl        = $('locale');
 const colorModeRadios = document.querySelectorAll('input[name="colorMode"]');
+const emailNotifEl    = $('email-notifications');
+const emailRemEl      = $('email-reminders');
 
 // Translate the static labels on this page.
 function applyTranslations() {
   const setText = (id, key) => { const el = $(id); if (el) el.textContent = t(key); };
-  setText('page-title',     'prefs.title');
-  setText('page-subtitle',  'prefs.subtitle');
-  setText('label-language', 'prefs.language');
-  setText('hint-language',  'prefs.languageHint');
-  setText('label-colormode','prefs.colorMode');
-  setText('label-system',   'prefs.colorModeSystem');
-  setText('label-light',    'prefs.colorModeLight');
-  setText('label-dark',     'prefs.colorModeDark');
-  setText('save-btn',       'prefs.save');
+  setText('page-title',             'prefs.title');
+  setText('page-subtitle',          'prefs.subtitle');
+  setText('label-language',         'prefs.language');
+  setText('hint-language',          'prefs.languageHint');
+  setText('label-colormode',        'prefs.colorMode');
+  setText('label-system',           'prefs.colorModeSystem');
+  setText('label-light',            'prefs.colorModeLight');
+  setText('label-dark',             'prefs.colorModeDark');
+  setText('label-email-section',    'prefs.emailTitle');
+  setText('label-email-notifications', 'prefs.emailNotifications');
+  setText('label-email-reminders',  'prefs.emailReminders');
+  setText('save-btn',               'prefs.save');
 }
 
 function applyColorMode(mode) {
@@ -42,6 +47,9 @@ function render(prefs) {
     r.checked = r.value === prefs.colorMode;
   }
   applyColorMode(prefs.colorMode);
+  // Treat absent email prefs as enabled (matches Task 6 store defaults).
+  emailNotifEl.checked = prefs.email?.notifications !== false;
+  emailRemEl.checked   = prefs.email?.reminders     !== false;
 }
 
 form.addEventListener('submit', async (e) => {
@@ -51,7 +59,11 @@ form.addEventListener('submit', async (e) => {
   setBusy(btn, true, t('prefs.saving'));
 
   const colorMode = [...colorModeRadios].find((r) => r.checked)?.value;
-  const patch = { locale: localeEl.value, colorMode };
+  const patch = {
+    locale: localeEl.value,
+    colorMode,
+    email: { notifications: emailNotifEl.checked, reminders: emailRemEl.checked },
+  };
   // Note whether the language changed — a change requires a reload so the
   // server-rendered <html lang> + meta tag pick up the new locale and
   // every page on the site re-bootstraps with the new strings.
