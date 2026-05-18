@@ -5,26 +5,61 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.24.0._
+_Last touched in 0.25.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.24.0 (released 2026-05-17)
-- **Test count:** 34 suites, all green except 1
-  pre-existing TZ-sensitive flake in `test-reports.mjs`
-  `overnight split` bucket count (fails identically on the
-  pre-feature baseline — see notes.md). Reports revamp:
-  `test-reports-routes.mjs` added, `test-reports-team.mjs` removed
-  (deleted route), `test-period.mjs` (pre-existing) extended; a later
-  0.24.0 fix added `test-reports-nav.mjs` (TZ-safe client period nav).
+- **Latest version:** 0.25.0 (released 2026-05-18)
+- **Test count:** 40 suites, all green except **two** pre-existing
+  flakes unrelated to recent work, both failing identically on the
+  pre-feature baseline (see notes.md): `test-reports.mjs`
+  `overnight split` bucket count (host-timezone sensitive) and
+  `test-auth.mjs` (~1/64 probabilistic — a base64url last-character
+  signature-tamper artifact in the test itself, not the auth code;
+  if it reds, re-run `node tests/test-auth.mjs` alone 2–3× to
+  confirm intermittence before suspecting a regression). M14 email
+  notifications added 6 suites (`test-config-mail`, `test-mail-smtp`,
+  `test-mail-templates`, `test-mail-mailer`,
+  `test-reminder-scheduler`, `test-mail-routes`) and extended
+  `test-org-settings` / `test-user-prefs` (pre-existing); 34 → 40.
 - **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
-  is a feature drop on top; no new zip cut yet)
+  and 0.25.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
-- **Active milestone:** M13 (Reports revamp) shipped at 0.24.0;
-  M14–M17 are next (M17 deployment guide ships last)
+- **Active milestone:** M14 (Email notifications) shipped at 0.25.0;
+  M15–M17 are next (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.25.0)
+
+**Email notifications (M14).** Pica can now send plain-text
+notification emails through the operator's own authenticated SMTP
+relay over TLS via a new in-house, dependency-free submission client
+(`src/mail/smtp.js`) — Pica only *submits*, it never receives mail.
+Three notification categories — **leave decision**, **correction
+decision**, **24h-before-leave reminder** — plus an informational
+**password-reset notice**.
+
+Delivery is gated by **org-level master switches** (employer /
+Settings → Email notifications) AND **per-user opt-outs** (both roles
+/ Preferences). The password-reset notice deliberately bypasses both
+layers (a user must learn their password changed) and is gated only
+by `config.mail.enabled` + a recipient address.
+
+Mail is **off until the operator opts in**: a new optional `mail`
+block in `config.json` (absent / `enabled:false` → no mail, no
+behaviour change). New `POST /api/mail/test` (employer-only config
+probe); `GET /api/settings/org` now also returns a safe
+`mailConfigured` boolean. A reminder scheduler scans approved leaves
+and stamps a `reminder_sent` leaves event (via `markReminderSent`) so
+it never double-sends. Best-effort throughout — a failed send is
+logged and swallowed; the in-app state + audit log are authoritative.
+CACHE_VERSION v42 → v43. See RELEASES.md 0.25.0 for the full Honest
+Disclosures (no retry/queue, App-Password-only auth, plaintext SMTP
+creds in config.json, no MTA-STS/DANE, etc.).
 
 ---
 
@@ -541,7 +576,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Leave justification file attachments     | ✅ 0.22.18 |
 | —     | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13   | Reports revamp                           | ✅ 0.24.0  |
-| M14   | Add email notifications                  | 📋 planned |
+| M14   | Add email notifications                  | ✅ 0.25.0  |
 | M15   | Full UI revamp                           | 📋 planned |
 | M16   | E2E browser tests (Playwright)           | 📋 planned |
 | M17   | Deployment guide + TLS samples           | 📋 planned |
@@ -617,9 +652,10 @@ of the app handles missing data. A future drop could add explicit
   `node tests/test-X.mjs` per suite. There's no `npm test` because
   there's no `npm`. Adding CI is fine; pick GitHub Actions or
   whatever the operator prefers.
-- **No production deployment guide yet.** That's M14. Currently the
-  operator runs `node server.js` directly and points a reverse proxy
-  at it for TLS. M14 will document this properly.
+- **No production deployment guide yet.** That's M17 (ships last, so
+  it documents the final security posture). Currently the operator
+  runs `node server.js` directly and points a reverse proxy at it for
+  TLS. M17 will document this properly.
 - **No automated dependency update flow.** There are no
   dependencies, so this is a non-issue.
 - **No formal release process script.** Bumping the version is a

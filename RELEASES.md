@@ -14,6 +14,186 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.25.0] — 2026-05-18 — Email notifications (M14)
+
+### What changed
+
+Pica can now **send notification emails**. A new in-house,
+dependency-free SMTP submission client (`src/mail/smtp.js`) submits
+mail through the operator's own authenticated relay over TLS. There
+are **three notification categories** plus one informational notice:
+
+- **Leave decision** — the requesting employee is emailed when their
+  leave is approved or rejected.
+- **Correction decision** — the requesting employee is emailed when
+  their time correction is approved or rejected.
+- **Leave reminder** — the employee is emailed roughly **24 hours
+  before** an approved leave starts (a background scheduler).
+- **Password-reset notice** — when an employer resets a user's
+  password, that user is emailed an informational notice (no token,
+  no link, no credential — just "your password was reset, contact
+  your administrator").
+
+Delivery is gated by two independent layers. **Org-level master
+switches** (employer-managed, on Settings → Email notifications) turn
+each category on or off org-wide. **Per-user opt-outs** (both roles,
+on Preferences) let each user silence the categories they receive.
+The password-reset notice deliberately bypasses both layers — a user
+must learn their password changed — and is gated only by
+`config.mail.enabled` plus a recipient address.
+
+Mail is **off until the operator opts in**: a new optional `mail`
+block in `config.json` (absent or `enabled:false` → no mail, no
+behaviour change). The block is entirely operator-managed; the server
+never writes or auto-populates it.
+
+`CACHE_VERSION` v42 → v43 (Preferences/Settings/locale assets
+changed).
+
+### Endpoints
+
+New:
+
+- `POST /api/mail/test` — employer-only. Sends a fixed test message
+  to the configured `from`/`user` address so the operator can verify
+  SMTP settings without waiting for a real notification. Gated by
+  `config.mail.enabled` and a usable recipient; bypasses the org/user
+  opt-out layers (it is a config probe, not a notification).
+
+Changed:
+
+- `GET /api/settings/org` now also returns a safe boolean
+  `mailConfigured` (whether a usable `mail` block is present and
+  enabled). No credentials or host details are exposed — just the
+  boolean, so the Settings UI can show the switches as live or inert.
+
+Config / storage:
+
+- New optional `config.json` `mail` block
+  (`enabled`, `host`, `port`, `secure`, `user`, `pass`, `from`) plus
+  a commented `_mail_help` array in `config.json.example`. Normalized
+  and validated in `src/config.js`; an invalid/partial block disables
+  mail rather than crashing the server.
+- New event-sourced leaves event `reminder_sent`, appended via
+  `markReminderSent(id)` on the leaves store, so the reminder
+  scheduler never double-sends a reminder for the same leave.
+
+### Files touched
+
+- `src/mail/smtp.js` — minimal SMTP submission client: EHLO,
+  STARTTLS (when `secure:false`), `AUTH LOGIN`, `MAIL FROM`/`RCPT
+  TO`/`DATA`. TLS certificate verified (`rejectUnauthorized` default
+  true).
+- `src/mail/templates.js` — server-side plain-text templates for the
+  four message kinds, localized en-US / pt-PT.
+- `src/mail/mailer.js` — the gating + best-effort boundary: resolves
+  org switch × per-user opt-out × `config.mail.enabled`, builds the
+  message from a template, hands it to the SMTP client, never throws
+  into the caller.
+- `src/routes/mail.js` — `POST /api/mail/test` (employer-only).
+- `src/scheduler/reminder-scheduler.js` — periodic scan of approved
+  leaves; sends the 24h-before reminder once per leave (idempotent
+  via `reminder_sent`).
+- `src/config.js` — `mail` block normalization/validation.
+- `src/storage/org-settings.js` — org-level notification switches
+  (validated, defaulted).
+- `src/storage/user-prefs.js` — per-user email notification opt-outs.
+- `src/storage/leaves.js` — `reminder_sent` event + `markReminderSent`.
+- `src/routes/settings.js` — `mailConfigured` boolean on
+  `GET /api/settings/org`; org switch read/write.
+- `src/routes/leaves.js`, `src/routes/corrections.js`,
+  `src/routes/employees.js` — fire the decision / password-reset
+  notifications (best-effort; the in-app state + audit log remain
+  authoritative).
+- `server.js` — wires the mailer, registers the mail route, starts
+  the reminder scheduler.
+- `public/settings.{html,js}` — employer "Email notifications"
+  section (org switches + a "Send test email" button).
+- `public/preferences.{html,js}` — per-user email notification
+  toggles.
+- `public/locales/en-US.js`, `public/locales/pt-PT.js` — new strings
+  for both UIs.
+- `public/sw.js` — `CACHE_VERSION` v42 → v43.
+- `config.json.example` — the new `mail` block + `_mail_help`.
+- Tests — six new suites: `tests/test-config-mail.mjs`,
+  `tests/test-mail-smtp.mjs`, `tests/test-mail-templates.mjs`,
+  `tests/test-mail-mailer.mjs`, `tests/test-reminder-scheduler.mjs`,
+  `tests/test-mail-routes.mjs`. `tests/test-org-settings.mjs` and
+  `tests/test-user-prefs.mjs` (pre-existing) extended for the new
+  switches/opt-outs. Total: 40 suites.
+- `package.json` — 0.25.0.
+
+### Honest Disclosures
+
+- **Best-effort, no retry or queue.** A transient send failure loses
+  that one email. There is no retry, no outbox, no dead-letter
+  queue. The in-app state (the leave/correction decision itself) and
+  the audit log are authoritative; email is a courtesy on top. A
+  failed send is logged via the regular logger and otherwise
+  swallowed — it never fails the user-facing request.
+- **Pica is not an MTA and not an SMTP server.** It only *submits*
+  outbound mail through the operator's own authenticated relay. It
+  never listens for, receives, or routes inbound mail. There is no
+  bounce handling.
+- **App Password only — no OAuth2 / XOAUTH2.** Gmail / Google
+  Workspace requires a 2-Step-Verification account with an App
+  Password used as `pass`. Pica authenticates with plain
+  `AUTH LOGIN` over TLS only; it does not implement OAuth2 token
+  flows.
+- **No MTA-STS, no DANE.** The TLS certificate **is** verified
+  (`rejectUnauthorized` defaults to true) and STARTTLS is **required**
+  when `secure:false` (it is not silently downgraded to plaintext if
+  the server omits STARTTLS). But there is no SMTP policy discovery
+  beyond that — no MTA-STS policy fetch, no DANE/TLSA validation.
+- **SMTP credentials sit in plaintext in `config.json`.** This is the
+  same trust boundary as the already-present wrapped DEK: anyone who
+  can read `config.json` already holds the keys to the install.
+  `config.json` is gitignored and is **not** included in Pica
+  backups. Use a dedicated send-only account with an App Password,
+  never a primary credential.
+- **The password-reset notice is informational only and is not
+  user-opt-outable.** It carries no token, link, or credential — it
+  only tells the user their password was reset and to contact their
+  administrator. It deliberately ignores the org switch and the
+  per-user opt-out (a user must learn their password changed); it is
+  gated solely by `config.mail.enabled` plus a recipient address.
+- **No self-service password recovery, no email-KEK master-key
+  recovery, no HTML email, no per-event employer digest.** This
+  release sends plain-text notifications only. The reserved email
+  KEK recovery slot from 0.23.0 is **not** unblocked here; the
+  offline recovery code remains the master-key recovery path. These
+  are out of scope or later milestones.
+- **The SMTP reply parser treats a leading `2` or `3` as success.**
+  This matches the design's reply model for submission to a known
+  relay. A non-conforming relay that returned a 3xx where a 2xx is
+  expected would be treated as success. Bounded: this only affects a
+  misbehaving relay the operator themselves chose to point Pica at.
+- **The reminder scheduler scans all approved leaves each tick** with
+  no month pre-filter. This is deliberate: at the ≤50-employee target
+  scale the scan is negligible, and a month-window optimisation could
+  drop a leave that falls due exactly at a month boundary. The
+  `reminder_sent` event is written as an **unencrypted** event line —
+  it carries only a timestamp and the already-non-secret leave id; no
+  PII is added.
+- **A correction with neither an in nor an out timestamp would render
+  a blank date in its decision email.** This shape is structurally
+  prevented at correction creation, so the path is unreachable in
+  normal operation; noted for completeness.
+- **`POST /api/mail/test` bypasses the org/user opt-out layers** (it
+  is a configuration probe, like the password-reset notice is a
+  mandatory security notice). Both are still gated by `mail.enabled`
+  plus a recipient address.
+- **Two pre-existing test flakes are unrelated to M14 and untouched.**
+  `tests/test-reports.mjs` → `overnight shift attributes hours to
+  each day separately` is host-timezone sensitive. `tests/test-auth.mjs`
+  has a ~1/64 probabilistic case (a base64url last-character
+  signature-tamper artifact in the test itself, not the auth code).
+  Both fail identically on the pre-M14 baseline; if `test-auth.mjs`
+  reds, re-run it alone to confirm it is the intermittent
+  pre-existing issue, not a regression.
+
+---
+
 ## [0.24.0] — 2026-05-17 — Reports revamp (M13)
 
 ### What changed

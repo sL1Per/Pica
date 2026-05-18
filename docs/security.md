@@ -146,7 +146,7 @@ when stored as a string field.
 | `users.json` (usernames, password hashes, roles)      | No         | Hashes are already one-way; plaintext so the server can authenticate before deriving the master key. |
 | `user-prefs.json` (locale, colorMode)                 | No         | Used on every page render before auth completes; not sensitive. |
 | `org-settings.json`                                   | No         | Org-wide policy, not personal data.                    |
-| `config.json` (KDF salt, verifier, port)              | No         | Read at startup before the master key exists.          |
+| `config.json` (KDF salt, wrapped DEK, port, optional SMTP creds) | No   | Read at startup before the master key exists; install-specific, never restored from backups. |
 
 This is **pragmatic encryption**, not full-disk encryption. It
 protects the data that actually hurts if it leaks (PII, photos,
@@ -399,6 +399,47 @@ When backups land:
 The KDF salt is in the archive header so you can restore on a
 different machine — but the passphrase still has to be known
 out-of-band. There's no "key in the archive" backdoor.
+
+---
+
+## Outbound email (M14, 0.25.0)
+
+From 0.25.0 Pica can send plain-text notification emails. It only
+**submits** mail through the operator's own authenticated relay; it
+never receives mail and is not an MTA.
+
+- **SMTP credentials are stored in plaintext** in the optional
+  `mail` block of `config.json`. This is the **same trust boundary
+  as the already-present wrapped DEK** — anyone who can read
+  `config.json` already holds the keys to the install. `config.json`
+  is gitignored and is **not** included in Pica backups, so the
+  credential does not travel inside an archive. Use a **dedicated
+  send-only account with an App Password** (Gmail / Workspace
+  requires 2-Step Verification + an App Password), never a primary
+  credential. Mail is off until the operator adds an enabled `mail`
+  block.
+- **TLS is enforced.** The certificate is verified
+  (`rejectUnauthorized` defaults to true). When `secure:false`,
+  STARTTLS is **required** and is not silently downgraded to a
+  plaintext session if the relay omits it. There is no MTA-STS
+  policy fetch and no DANE/TLSA validation beyond standard
+  certificate verification.
+- **Authentication is `AUTH LOGIN` over TLS only** — no OAuth2 /
+  XOAUTH2 token flow.
+- Delivery is **best-effort**: a failed send is logged and swallowed,
+  never failing the user-facing request. The in-app state and the
+  audit log remain authoritative. There is no retry, outbox, or
+  bounce handling.
+- The password-reset notice is **informational only** (no token,
+  link, or credential) and is intentionally **not** user-opt-outable
+  — a user must learn their password was reset. It and the
+  employer-only `POST /api/mail/test` config probe bypass the
+  org/user opt-out layers but remain gated by `config.mail.enabled`
+  plus a recipient address.
+- This release does **not** unblock the email-based KEK master-key
+  recovery slot reserved in 0.23.0; the offline recovery code remains
+  the master-key recovery path. There is still no self-service
+  password recovery (see "Known limitations" below).
 
 ---
 
@@ -721,4 +762,4 @@ patch.
 
 ---
 
-_Last touched in 0.23.1._
+_Last touched in 0.25.0._

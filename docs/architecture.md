@@ -115,9 +115,15 @@ pica/
 │       ├── settings.js      # /api/settings/* (org, working-time, branding)
 │       ├── backups.js       # /api/backups (list, create, download, delete, restore, status)
 │       ├── security.js      # /api/security/* (passphrase, recovery-code, rotate) (0.23.0)
+│       ├── mail.js          # POST /api/mail/test — employer-only SMTP config probe (0.25.0)
 │       └── pages.js         # GET / GET /punch / etc. — serves HTML with i18n meta injection
+│   ├── mail/                # outbound email (0.25.0, M14) — stdlib only
+│   │   ├── smtp.js          # minimal SMTP submission client (EHLO/STARTTLS/AUTH LOGIN/DATA)
+│   │   ├── templates.js     # plain-text message templates, localized en-US / pt-PT
+│   │   └── mailer.js        # gating (org switch × user opt-out × config) + best-effort send
 │   ├── scheduler/           # background timers
-│   │   └── backup-scheduler.js # periodic check; makes a backup if due
+│   │   ├── backup-scheduler.js # periodic check; makes a backup if due
+│   │   └── reminder-scheduler.js # 24h-before-leave reminder scan; idempotent via reminder_sent (0.25.0)
 ├── public/                  # everything served as static assets
 │   ├── app.css              # global tokens + layout primitives
 │   ├── app.js               # shared utilities (postJson, showMessage, toast…)
@@ -186,7 +192,13 @@ pica/
 │   ├── test-keyring.mjs            # multi-slot keyring operations (0.23.0)
 │   ├── test-rotate.mjs             # key rotation staged swap (0.23.0)
 │   ├── test-masterkey-envelope.mjs # envelope encryption end-to-end (0.23.0)
-│   └── test-security-routes.mjs    # security HTTP endpoints: passphrase, recovery code, rotate (0.23.0)
+│   ├── test-security-routes.mjs    # security HTTP endpoints: passphrase, recovery code, rotate (0.23.0)
+│   ├── test-config-mail.mjs        # config.json mail block normalization/validation (0.25.0)
+│   ├── test-mail-smtp.mjs          # SMTP submission client: EHLO/STARTTLS/AUTH/DATA (0.25.0)
+│   ├── test-mail-templates.mjs     # plain-text templates, en-US / pt-PT (0.25.0)
+│   ├── test-mail-mailer.mjs        # gating boundary: org × user × config, best-effort (0.25.0)
+│   ├── test-reminder-scheduler.mjs # 24h-before-leave reminder scan + idempotence (0.25.0)
+│   └── test-mail-routes.mjs        # POST /api/mail/test route (employer-only) (0.25.0)
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -236,9 +248,9 @@ based on the user's stored locale, and writes the response.
 | File                  | Contents                                              | Why plaintext |
 |-----------------------|-------------------------------------------------------|---------------|
 | `users.json`          | username, password hash, role, createdAt              | The server needs to authenticate before it can derive the master key |
-| `config.json`         | port, dataDir, KDF salt, master-key verifier          | Read at startup before the master key exists |
-| `user-prefs.json`     | per-user `locale` and `colorMode`                     | Used by the locale meta-injection on every served HTML; not sensitive |
-| `org-settings.json`   | leave allowances, concurrent-leaves flag, working-time targets | Org-wide policy; not personal |
+| `config.json`         | port, dataDir, KDF salt, wrapped DEK, optional `mail` block (SMTP host/user/pass) | Read at startup before the master key exists; install-specific, never in backups |
+| `user-prefs.json`     | per-user `locale`, `colorMode`, email-notification opt-outs | Used by the locale meta-injection on every served HTML; not sensitive |
+| `org-settings.json`   | leave allowances, concurrent-leaves flag, working-time targets, email-notification org switches | Org-wide policy; not personal |
 
 ### Encrypted blobs
 
@@ -256,7 +268,7 @@ Helpers live in `src/crypto/aes.js`.
 | Path                                | Per-line shape                                            |
 |-------------------------------------|-----------------------------------------------------------|
 | `punches/<yyyy>/<mm>.ndjson`        | `{ id, type, employeeId, ts, comment_enc?, geo_enc? }`    |
-| `leaves/<yyyy>/<mm>.ndjson`         | `{ id, employeeId, type, status, start, end, reason_enc?, …events }` |
+| `leaves/<yyyy>/<mm>.ndjson`         | `{ id, employeeId, type, status, start, end, reason_enc?, …events }` (incl. a `reminder_sent` event line — timestamp + leave id only, unencrypted — once the 24h reminder fires) |
 | `corrections/<yyyy>/<mm>.ndjson`    | `{ id, employeeId, kind, status, start, end, hours, justification_enc? }` |
 
 Each `*_enc` field is a base64-encoded encrypted blob of just that
@@ -329,17 +341,18 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: 34 suites, passing as of 0.24.0 (one pre-existing
-  TZ-sensitive flake in `test-reports.mjs` overnight-split bucket
-  count, unrelated to this feature — it fails identically on the
-  pre-feature baseline). The 0.24.0 Reports revamp is net-zero new
-  suites: `test-reports-routes.mjs` was added, `test-reports-team.mjs`
-  was removed (it only tested the now-deleted team-hours route), and
-  `test-period.mjs` (pre-existing) was extended for the period
-  presets; `test-reports.mjs` gained matrix/CSV cases and dropped its
-  old-CSV-serializer tests. A later 0.24.0 fix added
-  `test-reports-nav.mjs` (TZ-safe client period-nav anchor stepping),
-  bringing the total to 34.
+- Total: **40 suites**, passing as of 0.25.0 except two pre-existing
+  flakes unrelated to any recent feature, both failing identically on
+  the pre-feature baseline: `test-reports.mjs` overnight-split bucket
+  count (host-timezone sensitive) and `test-auth.mjs` (~1/64
+  probabilistic — a base64url last-character signature-tamper
+  artifact in the test itself, not the auth code). The 0.25.0 email
+  notifications work (M14) added six suites — `test-config-mail.mjs`,
+  `test-mail-smtp.mjs`, `test-mail-templates.mjs`,
+  `test-mail-mailer.mjs`, `test-reminder-scheduler.mjs`,
+  `test-mail-routes.mjs` — and extended `test-org-settings.mjs` /
+  `test-user-prefs.mjs` (pre-existing) for the new org switches and
+  per-user opt-outs, bringing the total from 34 to 40.
 
 ---
 
@@ -391,6 +404,27 @@ removed in 0.24.0 along with `/api/reports/summary` and
 adjusted for approved leaves — operators should cross-check the
 upcoming-leaves block when interpreting the number.
 
+### Outbound email (0.25.0, M14)
+`src/mail/` is the only outbound side-channel. `smtp.js` is a
+minimal, stdlib-only SMTP **submission** client (EHLO, STARTTLS when
+`secure:false`, `AUTH LOGIN`, `DATA`) — Pica never receives mail.
+`templates.js` renders four plain-text message kinds (leave decision,
+correction decision, 24h leave reminder, password-reset notice),
+localized en-US / pt-PT. `mailer.js` is the gating + best-effort
+boundary: it resolves the org master switch (`org-settings.json`) ×
+the per-user opt-out (`user-prefs.json`) × `config.mail.enabled`,
+builds the message, and hands it to the SMTP client, never throwing
+into the calling route. The whole subsystem is inert unless the
+operator adds an enabled `mail` block to `config.json`. The
+password-reset notice and `POST /api/mail/test` deliberately bypass
+the org/user opt-out layers (a mandatory security notice and a
+config probe respectively) — still gated by `mail.enabled` + a
+recipient. `src/scheduler/reminder-scheduler.js` periodically scans
+all approved leaves and sends each one's 24h-before reminder once,
+recording a `reminder_sent` event on the leave so it never
+double-sends. A send failure is logged and swallowed; the in-app
+state and audit log are authoritative.
+
 ---
 
 ## What's *not* in this doc
@@ -406,4 +440,4 @@ upcoming-leaves block when interpreting the number.
 
 ---
 
-_Last touched in 0.24.0._
+_Last touched in 0.25.0._

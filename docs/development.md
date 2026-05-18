@@ -31,7 +31,7 @@ to create the first employer.
 
 ### Running the test suite
 
-All 34 suites can be run with:
+All 40 suites can be run with:
 
 ```bash
 $ for f in tests/test-*.mjs; do printf '%s: ' "$f"; node "$f" 2>&1 | tail -1; done
@@ -45,7 +45,21 @@ $ node tests/test-keyring.mjs
 $ node tests/test-rotate.mjs
 $ node tests/test-masterkey-envelope.mjs
 $ node tests/test-security-routes.mjs
+$ node tests/test-config-mail.mjs        # 0.25.0 — config mail block
+$ node tests/test-mail-smtp.mjs          # 0.25.0 — SMTP submission client
+$ node tests/test-mail-templates.mjs     # 0.25.0 — message templates
+$ node tests/test-mail-mailer.mjs        # 0.25.0 — gating + best-effort
+$ node tests/test-reminder-scheduler.mjs # 0.25.0 — 24h leave reminder
+$ node tests/test-mail-routes.mjs        # 0.25.0 — POST /api/mail/test
 ```
+
+Two suites carry a pre-existing flake unrelated to any recent
+feature (both fail identically on the pre-feature baseline):
+`test-reports.mjs` `overnight shift attributes hours to each day
+separately` (host-timezone sensitive) and `test-auth.mjs` (~1/64
+probabilistic — a base64url last-character signature-tamper artifact
+in the test itself, not the auth code; re-run it alone 2–3× to
+confirm intermittence before treating a red as a regression).
 
 Each suite is independent; it creates its own temp directories and
 cleans up after itself. The suites **never touch** `./data`,
@@ -455,4 +469,4 @@ losing them is how documentation rots.
 
 ---
 
-_Last touched in 0.24.0._
+_Last touched in 0.25.0._

@@ -32,7 +32,7 @@ app in a usable state.
 | M12.4     | Hardening — Drop 4 (input validation + numfmt) | ✅ 0.22.0  |
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13       | Reports revamp                     | ✅ 0.24.0     |
-| M14       | Add email notifications            | 📋 Planned    |
+| M14       | Add email notifications            | ✅ 0.25.0     |
 | M15       | Full UI revamp                     | 📋 Planned    |
 | M16       | E2E browser tests                  | 📋 Planned    |
 | M17       | Deployment guide + TLS samples     | 📋 Planned    |
@@ -303,7 +303,33 @@ New endpoints `GET /api/reports/timesheets` and
 `/api/reports/leaves/:id[.csv]` (now 404, no shim). See RELEASES.md
 0.24.0 for the full entry and Honest Disclosures.
 
-### Milestones 14–17 — planned 📋
+### Milestone 14 — Add email notifications ✅ 0.25.0
+
+Delivered in a single drop at 0.25.0. A new in-house,
+dependency-free SMTP **submission** client (`src/mail/smtp.js`) sends
+plain-text notifications through the operator's own authenticated
+relay over TLS — Pica never receives mail. Three notification
+categories (leave decision, correction decision, 24h-before-leave
+reminder) plus an informational password-reset notice. Org-level
+master switches (employer / Settings) and per-user opt-outs (both
+roles / Preferences) gate the three categories; the password-reset
+notice deliberately bypasses both (a user must learn their password
+changed) and is gated only by `config.mail.enabled` + a recipient.
+
+Mail is off until the operator adds an enabled `mail` block to
+`config.json`. New `POST /api/mail/test` (employer-only config probe);
+`GET /api/settings/org` now also returns a safe `mailConfigured`
+boolean; a reminder scheduler scans approved leaves and stamps a
+`reminder_sent` event so it never double-sends. CACHE_VERSION v42 →
+v43. See RELEASES.md 0.25.0 for the full entry and Honest
+Disclosures.
+
+This does **not** unblock the email-based KEK master-key recovery
+slot reserved in 0.23.0 — the offline recovery code remains the
+master-key recovery path. Self-service password recovery, HTML
+email, and per-event employer digests are out of scope / later.
+
+### Milestones 15–17 — planned 📋
 
 Titles are firm; detailed scope firms up when each milestone
 starts. The order is deliberate — the deployment guide ships last
@@ -311,11 +337,6 @@ so it documents the final security posture, not a moving target,
 and the E2E suite lands after the UI revamp so tests target the
 final UI rather than one about to change.
 
-- **M14 — Add email notifications.** Password reset, password
-  recovery, master-key recovery, approvals / rejections, and
-  reminders (the backlog enumerated in `notes.md`). Unblocks the
-  email-based KEK recovery slot reserved in 0.23.0 — the offline
-  recovery code is the equivalent shipped then.
 - **M15 — Full UI revamp.** End-to-end visual and interaction pass
   across every page.
 - **M16 — E2E browser tests.** Playwright — the project's first
@@ -345,4 +366,4 @@ final UI rather than one about to change.
 
 ---
 
-_Last touched in 0.24.0._
+_Last touched in 0.25.0._
