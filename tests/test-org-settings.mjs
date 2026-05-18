@@ -513,6 +513,92 @@ try {
     assert.equal(r.weeklyHours, 40);  // falls back to default
   });
 
+  // ---------------------------------------------------------------------------
+  console.log('\nnotifications section (M14)');
+  // ---------------------------------------------------------------------------
+
+  await test('defaults include notifications with all three keys = true', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-org-notif1-')));
+    const s = fresh.get();
+    assert.deepEqual(s.notifications, {
+      leaveDecision: true,
+      correctionDecision: true,
+      leaveReminder: true,
+    });
+  });
+
+  await test('partial update: set leaveDecision=false, others stay true', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-org-notif2-')));
+    const s = fresh.update({ notifications: { leaveDecision: false } });
+    assert.equal(s.notifications.leaveDecision, false);
+    assert.equal(s.notifications.correctionDecision, true);
+    assert.equal(s.notifications.leaveReminder, true);
+  });
+
+  await test('notifications: explicit false round-trips as false after reload', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-org-notif3-'));
+    try {
+      const s1 = createOrgSettingsStore(dir);
+      s1.update({ notifications: { correctionDecision: false } });
+      // Create a second instance to force a fresh read from disk.
+      const s2 = createOrgSettingsStore(dir);
+      const loaded = s2.get();
+      assert.equal(loaded.notifications.correctionDecision, false);
+      assert.equal(loaded.notifications.leaveDecision, true);
+      assert.equal(loaded.notifications.leaveReminder, true);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('notifications: non-boolean sub-key value is ignored, not stored raw', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-org-notif4-')));
+    // 'yes' is truthy but not a boolean — must be ignored, leaving the default true.
+    const s = fresh.update({ notifications: { leaveDecision: 'yes' } });
+    // The value must be a strict boolean true (the default), NOT the string 'yes'.
+    assert.strictEqual(s.notifications.leaveDecision, true);
+    assert.equal(typeof s.notifications.leaveDecision, 'boolean');
+  });
+
+  await test('notifications: unknown sub-key is dropped, not stored', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-org-notif5-')));
+    const s = fresh.update({ notifications: { unknownKey: true, leaveDecision: false } });
+    assert.equal(s.notifications.unknownKey, undefined);
+    assert.equal(s.notifications.leaveDecision, false);
+  });
+
+  await test('notifications patch does not disturb other sections', () => {
+    const fresh = createOrgSettingsStore(fs.mkdtempSync(path.join(os.tmpdir(), 'pica-org-notif6-')));
+    fresh.update({ backups: { enabled: true, schedule: 'weekly', retention: 14 } });
+    const s = fresh.update({ notifications: { leaveReminder: false } });
+    assert.equal(s.notifications.leaveReminder, false);
+    // Other sections must be untouched.
+    assert.equal(s.backups.enabled, true);
+    assert.equal(s.backups.schedule, 'weekly');
+    assert.equal(s.backups.retention, 14);
+  });
+
+  await test('hand-edited file: garbage notifications type falls back to all-true defaults', () => {
+    // Mirrors the blockedRanges resilience test: seed a file whose stored
+    // `notifications` value is a non-object type (array), then verify the
+    // per-key boolean guard makes the store fall back to the all-true default
+    // rather than crashing or surfacing the garbage value.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-org-notif-bad-'));
+    try {
+      fs.writeFileSync(path.join(dir, 'org-settings.json'), JSON.stringify({
+        notifications: [],  // garbage: array instead of object
+      }));
+      const fresh = createOrgSettingsStore(dir);
+      assert.deepEqual(fresh.get().notifications, {
+        leaveDecision: true,
+        correctionDecision: true,
+        leaveReminder: true,
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

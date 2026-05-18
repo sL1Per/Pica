@@ -120,6 +120,15 @@ export const DEFAULT_ORG_SETTINGS = Object.freeze({
     // Mirrors the leaves.perEmployeeOverrides pattern.
     perEmployeeOverrides: {},
   },
+  notifications: {
+    // M14: org-level switches for email notification categories.
+    // All default to true (send notifications). Setting a key to false
+    // blocks all outgoing mail for that category regardless of user prefs.
+    // The mailer gates on strictly === false so a missing key is treated as on.
+    leaveDecision:      true,   // notify employee when a leave is approved/rejected
+    correctionDecision: true,   // notify employee when a correction is approved/rejected
+    leaveReminder:      true,   // send upcoming-leave reminder emails
+  },
 });
 
 function atomicWrite(filePath, contents) {
@@ -209,6 +218,15 @@ export function createOrgSettingsStore(dataDir) {
     }
     if (stored?.workingTime) {
       defaults.workingTime = deepMerge(defaults.workingTime, stored.workingTime);
+    }
+    if (stored?.notifications) {
+      // Only accept the three known boolean keys; unknown keys are dropped so
+      // a hand-edited file can't inject arbitrary data into the notifications object.
+      for (const key of ['leaveDecision', 'correctionDecision', 'leaveReminder']) {
+        if (typeof stored.notifications[key] === 'boolean') {
+          defaults.notifications[key] = stored.notifications[key];
+        }
+      }
     }
     return defaults;
   }
@@ -391,6 +409,19 @@ export function createOrgSettingsStore(dataDir) {
     return out;
   }
 
+  function cleanNotificationsPatch(patch) {
+    const out = {};
+    // Only the three known keys are accepted; non-boolean values for a known
+    // key are silently ignored (not coerced) so that a stray truthy string
+    // doesn't override a default-on switch in unexpected ways.
+    for (const key of ['leaveDecision', 'correctionDecision', 'leaveReminder']) {
+      if (key in patch && (patch[key] === true || patch[key] === false)) {
+        out[key] = patch[key];
+      }
+    }
+    return out;
+  }
+
   function cleanCompanyPatch(patch) {
     const out = {};
     if ('name' in patch) {
@@ -432,8 +463,9 @@ export function createOrgSettingsStore(dataDir) {
     },
 
     /**
-     * Partial update. Accepts a patch that may contain `company`, `leaves`
-     * and/or `backups` sub-objects; only known keys are persisted.
+     * Partial update. Accepts a patch that may contain `company`, `leaves`,
+     * `workingTime`, `backups`, and/or `notifications` sub-objects; only
+     * known keys are persisted.
      */
     update(patch) {
       if (!patch || typeof patch !== 'object') throw new Error('patch must be an object');
@@ -458,6 +490,7 @@ export function createOrgSettingsStore(dataDir) {
       }
       if (patch.backups) next.backups = { ...next.backups, ...cleanBackupsPatch(patch.backups) };
       if (patch.workingTime) next.workingTime = { ...next.workingTime, ...cleanWorkingTimePatch(patch.workingTime) };
+      if (patch.notifications) next.notifications = { ...next.notifications, ...cleanNotificationsPatch(patch.notifications) };
       saveAll(next);
       return JSON.parse(JSON.stringify(next));
     },
