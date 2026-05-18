@@ -38,6 +38,11 @@ const LEAVE_UNITS = Object.freeze(['days', 'hours']);
 const LEAVE_EVENTS = Object.freeze([
   'created', 'approved', 'rejected', 'cancelled',
   'attachment_set', 'attachment_removed',
+  // reminder_sent is appended by the reminder scheduler (Task 7 / M14).
+  // It carries no encrypted payload — the timestamp is the only datum and
+  // is not sensitive. The event is what makes the one-reminder-ever
+  // idempotency restart-safe: the flag survives process restart on disk.
+  'reminder_sent',
 ]);
 
 function padMonth(m) { return String(m).padStart(2, '0'); }
@@ -205,6 +210,10 @@ export function createLeavesStore(dataDir, masterKey) {
           decidedAt: null,
           cancelledBy: null,
           cancelledAt: null,
+          // Stamped by the reminder scheduler when it successfully sends the
+          // 24h-before notification. Null until then; once set, the scheduler
+          // skips this leave forever (one reminder per leave, ever).
+          reminderSentAt: null,
         };
       } else if (!state) {
         continue; // orphan event (e.g. approved without created) — ignore
@@ -235,6 +244,10 @@ export function createLeavesStore(dataDir, masterKey) {
         state.attachment = meta;
       } else if (ev.event === 'attachment_removed') {
         state.attachment = null;
+      } else if (ev.event === 'reminder_sent') {
+        // Record the wall-clock instant the reminder was dispatched.
+        // ev.ts is the scheduler's new Date().toISOString() at send time.
+        state.reminderSentAt = ev.ts;
       }
     }
     return state;
@@ -476,6 +489,39 @@ export function createLeavesStore(dataDir, masterKey) {
   function reject(id, actorId, notes)   { return transition(id, actorId, 'rejected', { notes }); }
   function cancel(id, actorId)          { return transition(id, actorId, 'cancelled'); }
 
+  /**
+   * Stamp a `reminder_sent` event on an approved leave after the mailer
+   * successfully dispatches the 24h-before notification.
+   *
+   * This is NOT routed through transition() because reminder_sent is not a
+   * status-changing workflow event — it only sets reminderSentAt on the
+   * projection. It bypasses the status-based transition validator intentionally.
+   *
+   * The event is appended to the same partition as the `created` event
+   * (same convention as approved/rejected/cancelled). No encrypted payload
+   * needed: the timestamp is the only datum and carries no PII.
+   *
+   * Idempotency: once the event is on disk, list() will project
+   * reminderSentAt as truthy, and the scheduler will skip this leave
+   * forever — even across process restarts.
+   */
+  function markReminderSent(id) {
+    safeLeaveId(id);                    // validate UUID format before touching disk
+    const current = findById(id);
+    if (!current) throw new Error(`Leave not found: ${id}`);
+    // Idempotency guard: if reminderSentAt is already set, the event was
+    // already appended (possibly by a concurrent tick before the re-entry
+    // guard could prevent it, or after a persist failure on a prior run).
+    // Don't double-append — the reducer already converges, but redundant
+    // event lines add log noise without benefit.
+    if (current.reminderSentAt) return findById(id); // already stamped; idempotent
+    const ts = new Date().toISOString();
+    const { year, month } = current._partition;
+    appendEvent(year, month, { id, ts, event: 'reminder_sent' });
+    // Return value not used by the scheduler but handy for tests/debugging.
+    return findById(id);
+  }
+
   // --------------------------------------------------------------------------
   // Attachment (single justification file per leave). Only mutable while
   // the leave is pending — once decided/cancelled the attachment is
@@ -601,6 +647,7 @@ export function createLeavesStore(dataDir, masterKey) {
     approve,
     reject,
     cancel,
+    markReminderSent,
     setAttachment,
     removeAttachment,
     readAttachment,
