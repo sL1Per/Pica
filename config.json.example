@@ -7,38 +7,8 @@
   "attachmentMaxBytes": 6291456,
   "logLevel": "info",
 
-  "_mail_help": [
-    "The 'mail' block below is OPTIONAL and entirely operator-managed.",
-    "The server never writes or auto-populates it.",
-    "",
-    "To enable outgoing mail, add the block with enabled:true and fill in all fields.",
-    "Leave the block absent (or set enabled:false) to run Pica without mail notifications.",
-    "",
-    "Gmail / Google Workspace — recommended setup:",
-    "  1. Enable 2-Step Verification on the sending account.",
-    "  2. Create an App Password (Google Account → Security → App Passwords).",
-    "  3. Use the App Password as 'pass' — NOT your regular account password.",
-    "  4. Use a dedicated send-only account (e.g. notifications@yourco.com).",
-    "",
-    "Port / TLS options:",
-    "  port 465 + secure:true  — Implicit TLS (recommended, default).",
-    "  port 587 + secure:false — STARTTLS.  Most providers support both.",
-    "",
-    "Security note:",
-    "  'pass' is stored in plaintext in this file.",
-    "  Use a dedicated send-only account with an App Password, not your main credential.",
-    "  config.json is gitignored and is NOT included in Pica backups — keep it safe separately."
-  ],
-
-  "mail": {
-    "enabled": false,
-    "host": "smtp.gmail.com",
-    "port": 465,
-    "secure": true,
-    "user": "notifications@yourco.com",
-    "pass": "<gmail-app-password>",
-    "from": "Pica <notifications@yourco.com>"
-  },
+  // Email/SMTP is configured in the app: Settings → Email notifications.
+  // Credentials are stored AES-256-GCM-encrypted in this file (mail.enc).
 
   "_security_help": [
     "The 'security' block below is written automatically by the server on first run",

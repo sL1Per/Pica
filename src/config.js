@@ -18,30 +18,6 @@ const DEFAULTS = {
 
 const VALID_LOG_LEVELS = new Set(['debug', 'info', 'warn', 'error']);
 
-/**
- * Normalize the operator-supplied `mail` block into a guaranteed-safe shape.
- * Exported so tests can exercise the normalisation logic without touching the
- * filesystem (loadConfig requires a real file path).
- *
- * Design: never throws, never returns null. Every field has a safe default
- * so callers can branch on cfg.mail.enabled / cfg.mailConfigured without
- * null-guards. The operator can leave the block entirely absent and the
- * server will simply not send mail.
- */
-export function normalizeMail(m = {}) {
-  // Treat non-object inputs the same as an absent block — safe defaults.
-  if (!m || typeof m !== 'object' || Array.isArray(m)) m = {};
-  return {
-    enabled: m.enabled === true,
-    host:    typeof m.host === 'string' ? m.host.trim() : '',
-    port:    Number.isInteger(m.port)   ? m.port        : 465,
-    secure:  m.secure !== false,                   // default implicit TLS (port 465)
-    user:    typeof m.user === 'string' ? m.user   : '',
-    pass:    typeof m.pass === 'string' ? m.pass   : '',
-    from:    typeof m.from === 'string' ? m.from.trim() : '',
-  };
-}
-
 export function loadConfig(configPath) {
   let user = {};
   if (fs.existsSync(configPath)) {
@@ -77,12 +53,10 @@ export function loadConfig(configPath) {
   merged.dataDir  = path.resolve(baseDir, merged.dataDir);
   merged.backupDir = path.resolve(baseDir, merged.backupDir);
 
-  // Mail — normalise and derive the readiness flag.
-  // mailConfigured is intentionally separate from mail.enabled so callers
-  // can warn the operator about an incomplete config without crashing.
-  merged.mail = normalizeMail(user.mail);
-  merged.mailConfigured = merged.mail.enabled &&
-    !!(merged.mail.host && merged.mail.user && merged.mail.pass && merged.mail.from);
+  // Mail is now an opaque AES-GCM blob ({ enc }) decrypted post-boot by
+  // src/storage/mail-config.js (the master key isn't available here).
+  // Pass it through untouched; never derive/normalise/throw on it.
+  merged.mail = user.mail;
 
   return merged;
 }
