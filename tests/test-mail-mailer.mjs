@@ -39,21 +39,25 @@ const RECIPIENT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const CONTACT_EMAIL = 'alice@example.com';
 const SENTINEL_PASS = 'S3cretPass!';
 
-// Base config with mail enabled and a sentinel password.
-function makeConfig(overrides = {}) {
+// Base SMTP credentials used by the store double.
+// Matches the shape that the real mailConfigStore.read() returns.
+const SMTP_CREDS = {
+  enabled: true,
+  host: 'h',
+  port: 465,
+  secure: true,
+  user: 'u',
+  pass: SENTINEL_PASS,
+  from: 'F <f@x>',
+};
+
+// Store double mirroring the real mailConfigStore interface ({read, isConfigured}).
+// overrides are merged into the creds object so callers can disable or blank fields.
+function makeStore(over = {}) {
+  const creds = { ...SMTP_CREDS, ...over };
   return {
-    mail: {
-      enabled: true,
-      host: 'smtp.example.com',
-      port: 587,
-      secure: false,
-      user: 'mailuser',
-      pass: SENTINEL_PASS,
-      from: '"Pica" <no-reply@example.com>',
-      ...overrides.mail,
-    },
-    mailConfigured: true,
-    ...overrides,
+    read: () => ({ ...creds }),
+    isConfigured: () => creds.enabled === true && !!(creds.host && creds.user && creds.pass && creds.from),
   };
 }
 
@@ -116,7 +120,7 @@ function makeAudit() {
 const LEAVE_VARS = { status: 'approved', type: 'vacation', start: '2026-06-01', end: '2026-06-05', unit: 'days' };
 
 // ---------------------------------------------------------------------------
-// Layer 1: config.mail.enabled !== true
+// Layer 1: mailConfigStore.isConfigured() === false
 // ---------------------------------------------------------------------------
 console.log('\nGating layer 1 — mail disabled');
 
@@ -124,7 +128,7 @@ await test('mail disabled → {sent:false, reason:"mail_disabled"}, sendMail not
   const sendMailSpy = async () => { throw new Error('should not be called'); };
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig({ mail: { enabled: false } }),
+    mailConfigStore: makeStore({ enabled: false }),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: sendMailSpy,
@@ -133,12 +137,60 @@ await test('mail disabled → {sent:false, reason:"mail_disabled"}, sendMail not
   assert.deepEqual(result, { sent: false, reason: 'mail_disabled' });
 });
 
-await test('mail.enabled missing → mail_disabled', async () => {
-  const config = makeConfig();
-  delete config.mail.enabled;
+await test('mail.enabled missing → mail_disabled (isConfigured() returns false)', async () => {
   const mailer = makeMailer({
     ...makeStores(),
-    config,
+    // enabled:undefined makes isConfigured() === false
+    mailConfigStore: makeStore({ enabled: undefined }),
+    logger: makeLogger(),
+    audit: makeAudit(),
+    sendMail: async () => { throw new Error('should not be called'); },
+  });
+  const result = await mailer.notify('leaveDecision', { recipientUserId: RECIPIENT_ID, vars: LEAVE_VARS });
+  assert.deepEqual(result, { sent: false, reason: 'mail_disabled' });
+});
+
+await test('enabled:true but pass missing → mail_disabled (isConfigured() requires all fields)', async () => {
+  const mailer = makeMailer({
+    ...makeStores(),
+    // enabled=true but pass blank — proves Layer 1 covers enabled+complete in one call
+    mailConfigStore: makeStore({ pass: '' }),
+    logger: makeLogger(),
+    audit: makeAudit(),
+    sendMail: async () => { throw new Error('should not be called'); },
+  });
+  const result = await mailer.notify('leaveDecision', { recipientUserId: RECIPIENT_ID, vars: LEAVE_VARS });
+  assert.deepEqual(result, { sent: false, reason: 'mail_disabled' });
+});
+
+await test('enabled:true but host missing → mail_disabled (isConfigured() requires all fields)', async () => {
+  const mailer = makeMailer({
+    ...makeStores(),
+    mailConfigStore: makeStore({ host: '' }),
+    logger: makeLogger(),
+    audit: makeAudit(),
+    sendMail: async () => { throw new Error('should not be called'); },
+  });
+  const result = await mailer.notify('leaveDecision', { recipientUserId: RECIPIENT_ID, vars: LEAVE_VARS });
+  assert.deepEqual(result, { sent: false, reason: 'mail_disabled' });
+});
+
+await test('enabled:true but user missing → mail_disabled (isConfigured() requires all fields)', async () => {
+  const mailer = makeMailer({
+    ...makeStores(),
+    mailConfigStore: makeStore({ user: '' }),
+    logger: makeLogger(),
+    audit: makeAudit(),
+    sendMail: async () => { throw new Error('should not be called'); },
+  });
+  const result = await mailer.notify('leaveDecision', { recipientUserId: RECIPIENT_ID, vars: LEAVE_VARS });
+  assert.deepEqual(result, { sent: false, reason: 'mail_disabled' });
+});
+
+await test('enabled:true but from missing → mail_disabled (isConfigured() requires all fields)', async () => {
+  const mailer = makeMailer({
+    ...makeStores(),
+    mailConfigStore: makeStore({ from: '' }),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -159,7 +211,7 @@ await test('org notifications.leaveDecision:false → {sent:false, reason:"org_d
         get: () => ({ notifications: { leaveDecision: false, correctionDecision: true, leaveReminder: true } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -175,7 +227,7 @@ await test('org notifications.correctionDecision:false → org_disabled for corr
         get: () => ({ notifications: { leaveDecision: true, correctionDecision: false, leaveReminder: true } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -194,7 +246,7 @@ await test('org notifications.leaveReminder:false → org_disabled for leaveRemi
         get: () => ({ notifications: { leaveDecision: true, correctionDecision: true, leaveReminder: false } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -212,7 +264,7 @@ await test('org notifications absent (Task 5 not yet done) → defaults to on (p
     ...makeStores({
       orgSettingsStore: { get: () => ({}) }, // no notifications key
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('forced failure'); },
@@ -234,7 +286,7 @@ await test('user email.notifications:false → user_opted_out for leaveDecision'
         get: (id) => ({ locale: 'en-US', colorMode: 'system', email: { notifications: false, reminders: true } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -250,7 +302,7 @@ await test('user email.notifications:false → user_opted_out for correctionDeci
         get: (id) => ({ locale: 'en-US', colorMode: 'system', email: { notifications: false, reminders: true } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -269,7 +321,7 @@ await test('user email.reminders:false → user_opted_out for leaveReminder', as
         get: (id) => ({ locale: 'en-US', colorMode: 'system', email: { notifications: true, reminders: false } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -290,7 +342,7 @@ await test('user email.reminders:false does NOT block leaveDecision (different t
         get: (id) => ({ locale: 'en-US', colorMode: 'system', email: { notifications: true, reminders: false } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('forced'); },
@@ -307,7 +359,7 @@ await test('user email sub-object absent (Task 6 not done) → defaults to on (p
         get: (id) => ({ locale: 'en-US', colorMode: 'system' }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('forced failure'); },
@@ -328,7 +380,7 @@ await test('contactEmail empty string → {sent:false, reason:"no_address"}', as
         readProfile: (id) => ({ id, fullName: 'Alice', contactEmail: '' }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -344,7 +396,7 @@ await test('contactEmail null → no_address', async () => {
         readProfile: (id) => ({ id, fullName: 'Alice', contactEmail: null }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -360,7 +412,7 @@ await test('employee profile not found → no_address', async () => {
         readProfile: (id) => null,
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -376,7 +428,7 @@ await test('contactEmail whitespace-only → no_address (exercises the .trim() =
         readProfile: (id) => ({ id, contactEmail: '   ' }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -396,7 +448,7 @@ await test('all-on: calls sendMail once with correct args, returns {sent:true}, 
   const sendMailCalls = [];
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger,
     audit,
     sendMail: async (args) => { sendMailCalls.push(args); },
@@ -407,12 +459,13 @@ await test('all-on: calls sendMail once with correct args, returns {sent:true}, 
   assert.equal(sendMailCalls.length, 1, 'sendMail called exactly once');
 
   const call = sendMailCalls[0];
-  // Must pass config.mail creds
-  assert.equal(call.host, 'smtp.example.com');
-  assert.equal(call.port, 587);
-  assert.equal(call.user, 'mailuser');
+  // Must pass EXACTLY the creds from mailConfigStore.read()
+  assert.equal(call.host, 'h');
+  assert.equal(call.port, 465);
+  assert.equal(call.secure, true);
+  assert.equal(call.user, 'u');
   assert.equal(call.pass, SENTINEL_PASS);
-  assert.equal(call.from, '"Pica" <no-reply@example.com>');
+  assert.equal(call.from, 'F <f@x>');
   // Must pass resolved recipient address
   assert.equal(call.to, CONTACT_EMAIL);
   // Must pass rendered subject and text
@@ -432,7 +485,7 @@ await test('sendMail called once (not multiple times)', async () => {
   let count = 0;
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { count++; },
@@ -453,7 +506,7 @@ await test('sendMail throws → resolves {sent:false, reason:"send_error"} (neve
   const audit = makeAudit();
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger,
     audit,
     sendMail: async () => { throw errWithCode; },
@@ -466,7 +519,7 @@ await test('on send error: logger.warn is called', async () => {
   const logger = makeLogger();
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger,
     audit: makeAudit(),
     sendMail: async () => { throw new Error('boom'); },
@@ -479,7 +532,7 @@ await test('on send error: audit mail.send_failed recorded with category + recip
   const audit = makeAudit();
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit,
     sendMail: async () => { throw new Error('boom'); },
@@ -497,7 +550,7 @@ await test('on send error: smtpCode in audit when present on error', async () =>
   err.smtpCode = 421;
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit,
     sendMail: async () => { throw err; },
@@ -513,7 +566,7 @@ await test('CRITICAL: pass sentinel never appears in any logger or audit arg on 
   const audit = makeAudit();
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger,
     audit,
     sendMail: async () => { throw new Error('SMTP error ' + SENTINEL_PASS); },
@@ -541,7 +594,7 @@ await test('CRITICAL: contactEmail never appears in audit records or logger call
   const audit = makeAudit();
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger,
     audit,
     sendMail: async () => {},
@@ -579,7 +632,7 @@ await test('passwordResetNotice sends even when org notifications all false', as
         get: () => ({ notifications: { leaveDecision: false, correctionDecision: false, leaveReminder: false } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { sent = true; },
@@ -597,7 +650,7 @@ await test('passwordResetNotice sends even when user email.notifications AND rem
         get: (id) => ({ locale: 'en-US', colorMode: 'system', email: { notifications: false, reminders: false } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { sent = true; },
@@ -610,7 +663,7 @@ await test('passwordResetNotice sends even when user email.notifications AND rem
 await test('passwordResetNotice still blocked by mail_disabled', async () => {
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig({ mail: { enabled: false } }),
+    mailConfigStore: makeStore({ enabled: false }),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -624,7 +677,7 @@ await test('passwordResetNotice still blocked by no_address', async () => {
     ...makeStores({
       employeesStore: { readProfile: () => ({ id: RECIPIENT_ID, contactEmail: '' }) },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -646,7 +699,7 @@ await test('userPrefsStore returns pt-PT → sendMail called with pt-PT rendered
         get: (id) => ({ locale: 'pt-PT', colorMode: 'system' }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async (args) => { sendMailCalls.push(args); },
@@ -670,7 +723,7 @@ await test('unknown locale → falls back to en-US (no throw)', async () => {
         get: (id) => ({ locale: 'xx-XX', colorMode: 'system' }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async (args) => { sendMailCalls.push(args); },
@@ -690,7 +743,7 @@ await test('userPrefsStore locale absent → defaults to en-US', async () => {
         get: (id) => ({ colorMode: 'system' }), // no locale field
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async (args) => { sendMailCalls.push(args); },
@@ -708,7 +761,7 @@ console.log('\nUnknown category — programmer error containment');
 await test('unknown category → resolves (does not throw), returns sent:false', async () => {
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => {},
@@ -730,7 +783,7 @@ await test('employeesStore.readProfile throws → notify resolves (never rejects
         readProfile: () => { throw new Error('disk error'); },
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => {},
@@ -746,7 +799,7 @@ await test('orgSettingsStore.get throws → notify resolves (never rejects)', as
         get: () => { throw new Error('store error'); },
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => {},
@@ -762,7 +815,7 @@ await test('userPrefsStore.get throws → notify resolves (never rejects)', asyn
         get: () => { throw new Error('prefs error'); },
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => {},
@@ -784,7 +837,7 @@ await test('testEmail sends even when org notifications all false', async () => 
         get: () => ({ notifications: { leaveDecision: false, correctionDecision: false, leaveReminder: false } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { sent = true; },
@@ -802,7 +855,7 @@ await test('testEmail sends even when user email.notifications AND reminders are
         get: (id) => ({ locale: 'en-US', colorMode: 'system', email: { notifications: false, reminders: false } }),
       },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { sent = true; },
@@ -815,7 +868,7 @@ await test('testEmail sends even when user email.notifications AND reminders are
 await test('testEmail still blocked by mail_disabled', async () => {
   const mailer = makeMailer({
     ...makeStores(),
-    config: makeConfig({ mail: { enabled: false } }),
+    mailConfigStore: makeStore({ enabled: false }),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },
@@ -829,7 +882,7 @@ await test('testEmail still blocked by no_address', async () => {
     ...makeStores({
       employeesStore: { readProfile: () => ({ id: RECIPIENT_ID, contactEmail: '' }) },
     }),
-    config: makeConfig(),
+    mailConfigStore: makeStore(),
     logger: makeLogger(),
     audit: makeAudit(),
     sendMail: async () => { throw new Error('should not be called'); },

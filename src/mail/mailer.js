@@ -11,7 +11,7 @@
  *   - No password / email address / body ever enters logger or audit records.
  *
  * Gating order (§3.3):
- *   1. config.mail.enabled !== true  → 'mail_disabled'
+ *   1. mailConfigStore.isConfigured() === false → 'mail_disabled'
  *   2. org notifications.<category> off → 'org_disabled'
  *      (passwordResetNotice skips this layer)
  *   3. user per-category switch off  → 'user_opted_out'
@@ -52,7 +52,7 @@ const USER_KEY = {
 };
 
 export function makeMailer({
-  config,
+  mailConfigStore,
   logger,
   audit,
   usersStore,      // reserved for Task 9 if needed; not used in this layer
@@ -83,11 +83,11 @@ export function makeMailer({
     async notify(category, { recipientUserId, vars } = {}) {
       try {
         // ----------------------------------------------------------------
-        // Layer 1: mail must be explicitly enabled in config.
-        // Optional-chain so a missing config.mail object yields
-        // mail_disabled instead of a TypeError bubbling to send_error.
+        // Layer 1: SMTP must be enabled AND complete.  The encrypted
+        // mail-config store is the single source of readiness; a
+        // missing/garbage/undecryptable blob reads as not configured.
         // ----------------------------------------------------------------
-        if (config.mail?.enabled !== true) {
+        if (!mailConfigStore.isConfigured()) {
           return { sent: false, reason: 'mail_disabled' };
         }
 
@@ -158,15 +158,18 @@ export function makeMailer({
         // ----------------------------------------------------------------
         // Send — nested try/catch so we can capture smtpCode for audit
         // without rethrowing.  NEVER log pass/address/body.
+        // Read creds from the store immediately before use; do NOT
+        // cache across calls so a config update takes effect promptly.
         // ----------------------------------------------------------------
+        const mc = mailConfigStore.read();
         try {
           await sendMail({
-            host:   config.mail.host,
-            port:   config.mail.port,
-            secure: config.mail.secure,
-            user:   config.mail.user,
-            pass:   config.mail.pass,
-            from:   config.mail.from,
+            host:   mc.host,
+            port:   mc.port,
+            secure: mc.secure,
+            user:   mc.user,
+            pass:   mc.pass,
+            from:   mc.from,
             to,
             subject,
             text,
@@ -199,11 +202,12 @@ export function makeMailer({
         return { sent: true };
 
       } catch (unexpectedErr) {
-        // Outer catch: store I/O errors, renderEmail unknown-category throw,
-        // or anything else not covered by the sendMail nested catch above.
-        // The sendMail inner catch always `return`s before this point is
-        // reachable, so no sentinel guard is needed — every error here is
-        // genuinely unexpected.  Never propagate; never log pass or address.
+        // Outer catch — reached only by store/renderEmail errors (sendMail failures
+        // hit the inner catch and return before this). We log unexpectedErr.message
+        // here for diagnostics; it must NOT contain credentials in any normal path
+        // (SMTP creds are read only inside the inner-catch scope and the store
+        // methods never embed them in their throws). pass / address / body are
+        // guaranteed absent from the structured fields we log/audit below.
         logger.warn('mail.notify_error', {
           category,
           recipientId: recipientUserId,
