@@ -674,6 +674,24 @@ await test('PUT /api/settings/mail response is publicView() (never pass)', async
     '"pass" key must not appear anywhere in the serialised response body');
 });
 
+await test('PUT /api/settings/mail response includes mailConfigured from isConfigured() (no pass)', async () => {
+  const { router, fakeMailConfigStore } = buildSettingsFixture();
+  const res = await call(router, 'PUT', '/api/settings/mail', {
+    user: { id: EMPLOYER_ID, role: 'employer' },
+    body: { enabled: true, host: 'h2', port: 587, secure: false, user: 'u', pass: 'p', from: 'F <f@x>' },
+  });
+  assert.equal(res.statusCode, 200);
+  // The status line on the client is driven by this server-authoritative
+  // boolean, so the PUT response must carry isConfigured()'s result — not a
+  // 2-field client-side derivation that transiently lies during partial saves.
+  assert.equal(res.body.mailConfigured, fakeMailConfigStore.isConfigured(),
+    'response.mailConfigured must equal the store isConfigured() result');
+  // Re-assert the no-pass invariant: mailConfigured is a plain boolean and
+  // must not have widened the response to leak credentials.
+  assert.ok(!JSON.stringify(res.body).includes('"pass"'),
+    '"pass" key must not appear anywhere in the serialised response body');
+});
+
 await test('PUT /api/settings/mail body without pass → 200, write called with patch lacking pass', async () => {
   const { router, writeCalls } = buildSettingsFixture();
   // Route MUST NOT inject/echo pass; it passes req.body untouched.

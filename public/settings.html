@@ -34,9 +34,9 @@
     <nav class="section-nav">
       <a href="#company" id="nav-company" hidden data-i18n="settings.nav.company">Company</a>
       <a href="#organization" id="nav-org" hidden data-i18n="settings.nav.org">Organization</a>
+      <a href="#notifications" id="nav-notif" hidden data-i18n="settings.nav.notifications">Email notifications</a>
       <a href="#backups" id="nav-bak" hidden data-i18n="settings.nav.backups">Backups</a>
       <a href="#security" id="nav-sec" hidden data-i18n="settings.nav.security">Security</a>
-      <a href="#notifications" id="nav-notif" hidden data-i18n="settings.nav.notifications">Email notifications</a>
     </nav>
 
     <div id="message" class="message"></div>
@@ -144,6 +144,79 @@
       </form>
     </section>
 
+    <!-- Email notifications section (employer only) — controls which
+         automated email events are enabled. The SMTP editor lives above
+         the notification-switch checkboxes so operators configure the
+         transport first, then turn events on. The status line reads from
+         the safe mailConfigured boolean (never exposes credentials).
+         This section is employer-only; moved before Backups in 0.26.0. -->
+    <section id="notifications" class="card" hidden>
+      <h2 data-i18n="settings.notifications.title">Email notifications</h2>
+      <p class="subtle" data-i18n="settings.notifications.subtitle">Employer only. Controls which events trigger an email.</p>
+
+      <p id="notif-smtp-status" class="subtle"></p>
+
+      <h3 data-i18n="settings.notifications.smtp.title">SMTP server</h3>
+      <p class="subtle" data-i18n="settings.notifications.smtp.subtitle">Connection details for outgoing email. Stored encrypted. Leave password blank to keep the saved value.</p>
+
+      <!-- smtp-pass is type="password" and intentionally left blank on load.
+           The server never returns the password (write-only). The JS save
+           handler only includes "pass" in the PUT body when the field is
+           non-empty, so a blank submission preserves the stored password. -->
+      <form id="smtp-form" autocomplete="off">
+        <label class="checkbox">
+          <input type="checkbox" id="smtp-enabled">
+          <span data-i18n="settings.notifications.smtp.enabled">Enable SMTP (send emails)</span>
+        </label>
+
+        <label for="smtp-host" data-i18n="settings.notifications.smtp.host">SMTP server hostname</label>
+        <input type="text" id="smtp-host" maxlength="253" placeholder="smtp.example.com">
+
+        <label for="smtp-port" data-i18n="settings.notifications.smtp.port">Port</label>
+        <input type="number" id="smtp-port" min="1" max="65535" placeholder="465">
+
+        <label class="checkbox">
+          <input type="checkbox" id="smtp-secure">
+          <span data-i18n="settings.notifications.smtp.secure">Use implicit TLS (port 465) — uncheck for STARTTLS (port 587)</span>
+        </label>
+
+        <label for="smtp-user" data-i18n="settings.notifications.smtp.user">SMTP username</label>
+        <input type="text" id="smtp-user" maxlength="254" placeholder="user@example.com" autocomplete="off">
+
+        <label for="smtp-pass" data-i18n="settings.notifications.smtp.password">SMTP password</label>
+        <input type="password" id="smtp-pass" maxlength="500" autocomplete="new-password">
+        <p id="smtp-pass-hint" class="subtle" data-i18n="settings.notifications.smtp.passwordHint" hidden>A password is already saved — leave blank to keep it.</p>
+
+        <label for="smtp-from" data-i18n="settings.notifications.smtp.from">From address</label>
+        <input type="text" id="smtp-from" maxlength="254" placeholder="Pica &lt;pica@example.com&gt;">
+
+        <button type="submit" id="smtp-save-btn" class="block" data-i18n="settings.notifications.smtp.save">Save SMTP settings</button>
+      </form>
+
+      <hr class="section-divider">
+
+      <h3 data-i18n="settings.notifications.eventsHeading">Notification events</h3>
+
+      <form id="notifications-form" autocomplete="off">
+        <label class="checkbox">
+          <input type="checkbox" id="notif-leave-decision">
+          <span data-i18n="settings.notifications.leaveDecision">Notify employees when a leave request is approved or rejected</span>
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" id="notif-correction-decision">
+          <span data-i18n="settings.notifications.correctionDecision">Notify employees when a correction request is approved or rejected</span>
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" id="notif-leave-reminder">
+          <span data-i18n="settings.notifications.leaveReminder">Send a daily reminder to the employer for pending leave requests</span>
+        </label>
+
+        <button type="submit" class="block" data-i18n="settings.notifications.save">Save notification settings</button>
+      </form>
+    </section>
+
     <!-- Backups section (employer only) -->
     <section id="backups" class="card" hidden>
       <h2 data-i18n="settings.backupsHeading">Backups</h2>
@@ -235,36 +308,6 @@
       <a href="/security" class="btn btn-primary block" data-i18n="settings.securityOpenBtn">Open security settings</a>
     </section>
 
-    <!-- Email notifications section (employer only) — controls which
-         automated email events are enabled. The SMTP status line reads
-         from the safe mailConfigured boolean (never exposes credentials).
-         This section is employer-only because notification preferences
-         are org-wide policy, not per-employee. -->
-    <section id="notifications" class="card" hidden>
-      <h2 data-i18n="settings.notifications.title">Email notifications</h2>
-      <p class="subtle" data-i18n="settings.notifications.subtitle">Employer only. Controls which events trigger an email.</p>
-
-      <p id="notif-smtp-status" class="subtle"></p>
-
-      <form id="notifications-form" autocomplete="off">
-        <label class="checkbox">
-          <input type="checkbox" id="notif-leave-decision">
-          <span data-i18n="settings.notifications.leaveDecision">Notify employees when a leave request is approved or rejected</span>
-        </label>
-
-        <label class="checkbox">
-          <input type="checkbox" id="notif-correction-decision">
-          <span data-i18n="settings.notifications.correctionDecision">Notify employees when a correction request is approved or rejected</span>
-        </label>
-
-        <label class="checkbox">
-          <input type="checkbox" id="notif-leave-reminder">
-          <span data-i18n="settings.notifications.leaveReminder">Send a daily reminder to the employer for pending leave requests</span>
-        </label>
-
-        <button type="submit" class="block" data-i18n="settings.notifications.save">Save notification settings</button>
-      </form>
-    </section>
   </main>
 
   <script type="module" src="/settings.js"></script>

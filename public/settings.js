@@ -51,6 +51,18 @@ const notifCorrectionDecision = $('notif-correction-decision');
 const notifLeaveReminder    = $('notif-leave-reminder');
 const notifForm             = $('notifications-form');
 
+// SMTP editor — inside the notifications section.
+const smtpForm     = $('smtp-form');
+const smtpEnabled  = $('smtp-enabled');
+const smtpHost     = $('smtp-host');
+const smtpPort     = $('smtp-port');
+const smtpSecure   = $('smtp-secure');
+const smtpUser     = $('smtp-user');
+const smtpPass     = $('smtp-pass');   // always blank on load — write-only
+const smtpFrom     = $('smtp-from');
+const smtpPassHint = $('smtp-pass-hint');
+const smtpSaveBtn  = $('smtp-save-btn');
+
 // Backups form
 const backupsSection = $('backups');
 const backupEnabled   = $('backup-enabled');
@@ -407,6 +419,83 @@ function renderNotifications(notifications, mailConfigured) {
     : t('settings.notifications.smtpNotConfigured');
 }
 
+/**
+ * Populate the SMTP editor fields from the publicView returned by
+ * GET /api/settings/org (orgData.mail) or PUT /api/settings/mail.
+ * `mail` shape: { enabled, host, port, secure, user, from, hasPassword }.
+ * The password field is ALWAYS left blank — the server never returns it.
+ * hasPassword drives the hint that tells the operator a password is stored.
+ */
+function renderSmtp(mail) {
+  if (!mail) return;
+  smtpEnabled.checked = !!mail.enabled;
+  smtpHost.value      = mail.host  ?? '';
+  smtpPort.value      = mail.port  ?? 465;
+  smtpSecure.checked  = mail.secure !== false;
+  smtpUser.value      = mail.user  ?? '';
+  smtpFrom.value      = mail.from  ?? '';
+  // Password is write-only: never populate from server — show hint instead.
+  smtpPass.value      = '';
+  smtpPassHint.hidden = !mail.hasPassword;
+}
+
+if (smtpForm) {
+  smtpForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showMessage(messageEl, '');
+    setBusy(smtpSaveBtn, true, t('settings.notifications.smtp.saving'));
+
+    // Build the patch. Pass is write-only: only include it when the field
+    // is non-empty, so a blank submission keeps the stored password intact.
+    const patch = {
+      enabled: smtpEnabled.checked,
+      host:    smtpHost.value.trim(),
+      port:    Number(smtpPort.value) || 465,
+      secure:  smtpSecure.checked,
+      user:    smtpUser.value.trim(),
+      from:    smtpFrom.value.trim(),
+    };
+    if (smtpPass.value !== '') patch.pass = smtpPass.value;
+
+    try {
+      const res = await fetch('/api/settings/mail', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(patch),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data.errorCode
+          ? (t('errors.' + data.errorCode) === '[errors.' + data.errorCode + ']'
+              ? (data.error || t('settings.failedToSave'))
+              : t('errors.' + data.errorCode))
+          : (data.error || t('settings.failedToSave'));
+        throw new Error(msg);
+      }
+      // Re-render from the PUT response to refresh hasPassword hint. Also
+      // refresh the SMTP status line from the server's authoritative
+      // mailConfigured boolean (true only when all five fields are ready) —
+      // the same value the GET path uses, so the status line never transiently
+      // lies during incremental setup. We don't reload the notification
+      // switches — they haven't changed.
+      renderSmtp(data.mail);
+      const nowConfigured = data.mailConfigured === true;
+      notifSmtpStatus.setAttribute('data-i18n',
+        nowConfigured
+          ? 'settings.notifications.smtpConfigured'
+          : 'settings.notifications.smtpNotConfigured');
+      notifSmtpStatus.textContent = nowConfigured
+        ? t('settings.notifications.smtpConfigured')
+        : t('settings.notifications.smtpNotConfigured');
+      showMessage(messageEl, t('settings.notifications.smtp.saved'), 'success');
+    } catch (err) {
+      showMessage(messageEl, err.message, 'error');
+    }
+    setBusy(smtpSaveBtn, false);
+  });
+}
+
 if (notifForm) {
   notifForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -476,6 +565,9 @@ if (notifForm) {
     // mailConfigured comes from GET /api/settings/org — a safe boolean
     // indicating whether SMTP is fully configured. Never exposes credentials.
     renderNotifications(orgData.settings.notifications, orgData.mailConfigured === true);
+    // orgData.mail is the publicView: { enabled, host, port, secure, user,
+    // from, hasPassword }. The password itself is never returned by the server.
+    renderSmtp(orgData.mail);
 
     // Drop 2: check whether the server is in post-restore lockdown.
     // If so, the banner shows and controls are disabled; no point

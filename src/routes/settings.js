@@ -118,7 +118,9 @@ export function registerSettingsRoutes(router, {
         ...auditContext(req),
         event: 'settings.mail_updated',
       });
-      res.json({ ok: true, mail: view });  // view is publicView() — never contains pass
+      // mailConfigured reflects the just-written cache (all five fields ready).
+      // It's a plain boolean; view is publicView() — neither contains pass.
+      res.json({ ok: true, mail: view, mailConfigured: mailConfigStore.isConfigured() });
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }
