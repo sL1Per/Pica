@@ -50,6 +50,7 @@ import { createOrgSettingsStore } from './src/storage/org-settings.js';
 import { createCompanyLogoStore } from './src/storage/company-logo.js';
 import { createBackupsStore } from './src/storage/backups.js';
 import { createAuditStore } from './src/storage/audit.js';
+import { createMailConfigStore } from './src/storage/mail-config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -115,11 +116,22 @@ const auditStore = createAuditStore({
   logger: log,
 });
 
+// SMTP config: AES-256-GCM blob in config.json, decrypted with the DEK.
+// Lives in config.json (not data/) so it stays out of backups; reads/writes
+// atomically via writeConfigAtomic. Never throws on absent/garbage blob.
+const mailConfigStore = createMailConfigStore(configPath, masterKey, log);
+
+// Warn once at startup when mail is enabled but the SMTP config is
+// incomplete (e.g. operator flipped enabled:true via Settings but left
+// host/user/pass/from blank). Mail then stays disabled — non-fatal.
+if (mailConfigStore.read().enabled && !mailConfigStore.isConfigured()) {
+  log.warn('mail enabled but SMTP config is incomplete; mail disabled');
+}
+
 // Email mailer — M14. Constructed after all stores it depends on exist.
 // notify() never throws, never rejects. Callers use `void mailer.notify(...)`.
-// Warn once at startup when mail is enabled but SMTP is not fully configured (mail then stays disabled).
 const mailer = makeMailer({
-  config,
+  mailConfigStore,
   logger: log,
   audit: auditStore,
   usersStore,
@@ -127,9 +139,6 @@ const mailer = makeMailer({
   userPrefsStore,
   orgSettingsStore,
 });
-if (config.mail?.enabled && !config.mailConfigured) {
-  log.warn('mail enabled but incomplete config — mail delivery disabled until host/user/pass/from are set');
-}
 
 // Process-wide lockdown flags.
 //   restoreCompleted: flips true after a restore; cleared ONLY by a process
@@ -241,8 +250,7 @@ registerSettingsRoutes(router, {
   requireAuth: rbac.requireAuth,
   requireRole: rbac.requireRole,
   auditStore,
-  // Expose only the safe boolean — never the mail config object or credentials.
-  mailConfigured: config.mailConfigured === true,
+  mailConfigStore,
 });
 registerBackupRoutes(router, {
   backupsStore,
