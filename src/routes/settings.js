@@ -27,11 +27,13 @@ export function registerSettingsRoutes(router, {
   requireAuth,
   requireRole,
   auditStore = null,
-  // Safe boolean: true iff SMTP is fully configured. Exposed in GET
-  // /api/settings/org so the employer UI can show "SMTP configured ✓"
-  // without revealing host/user/pass/from. Default false so tests and
-  // callers that don't pass this field stay safe.
-  mailConfigured = false,
+  // Mail config store (T1/T4 — encrypted, settings-managed SMTP config).
+  // null is the safe default: callers that haven't been updated yet stay
+  // harmless, and the GET handler falls back to a "not configured" view.
+  // The old `mailConfigured = false` scalar (M14) is replaced here because
+  // the store can derive both isConfigured() AND the sanitized publicView()
+  // in one injection, rather than passing two separate deps.
+  mailConfigStore = null,
 }) {
 
   // --- Per-user preferences ------------------------------------------------
@@ -53,9 +55,18 @@ export function registerSettingsRoutes(router, {
   // --- Organization settings (employer only) -------------------------------
 
   router.get('/api/settings/org', requireRole('employer')((req, res) => {
-    // mailConfigured is included as a safe boolean so the UI can show
-    // SMTP status without the server ever returning credentials.
-    res.json({ settings: orgSettingsStore.get(), mailConfigured });
+    // Both `mailConfigured` (legacy boolean — kept so existing UI consumers
+    // don't break: settings.js calls renderNotifications(…, mailConfigured))
+    // and `mail` (sanitized publicView — drives the new SMTP form) are included.
+    // Neither path ever returns the raw password; publicView() is the store's
+    // credential-scrubbed projection.
+    res.json({
+      settings: orgSettingsStore.get(),
+      mailConfigured: mailConfigStore ? mailConfigStore.isConfigured() : false,
+      mail: mailConfigStore
+        ? mailConfigStore.publicView()
+        : { enabled: false, host: '', port: 465, secure: true, user: '', from: '', hasPassword: false },
+    });
   }));
 
   // Working-time targets are needed on the punch page for both roles, so
@@ -82,6 +93,32 @@ export function registerSettingsRoutes(router, {
         details: { changedKeys },
       });
       res.json({ ok: true, settings });
+    } catch (err) {
+      return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
+    }
+  }));
+
+  // PUT /api/settings/mail — update SMTP configuration (employer only).
+  //
+  // This route is intentionally thin: it forwards req.body untouched to
+  // mailConfigStore.write() and returns the store's publicView() projection.
+  // The store owns all write-only semantics (e.g. omitting `pass` means
+  // "keep existing password"; the route must NOT inject or echo pass).
+  // publicView() never contains `pass` — that invariant lives in the store.
+  router.put('/api/settings/mail', requireRole('employer')((req, res) => {
+    if (!mailConfigStore) return res.json({ ok: false });
+    try {
+      const view = mailConfigStore.write(req.body ?? {});
+      // Audit the credential-mutation event. No `details` payload is emitted:
+      // req.body contains `pass` and any derived fields — including them in the
+      // audit record would write SMTP credentials to the append-only audit log,
+      // which is never acceptable even under encryption. The actor + timestamp
+      // from auditContext() are enough for forensics (who changed it, when).
+      auditStore?.appendRecord({
+        ...auditContext(req),
+        event: 'settings.mail_updated',
+      });
+      res.json({ ok: true, mail: view });  // view is publicView() — never contains pass
     } catch (err) {
       return res.badRequest(err.message, { errorCode: err.code || 'invalid_value' });
     }

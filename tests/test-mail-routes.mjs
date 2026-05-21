@@ -17,6 +17,7 @@ import { registerMailRoutes } from '../src/routes/mail.js';
 import { registerLeaveRoutes } from '../src/routes/leaves.js';
 import { registerCorrectionRoutes } from '../src/routes/corrections.js';
 import { registerEmployeeRoutes } from '../src/routes/employees.js';
+import { registerSettingsRoutes } from '../src/routes/settings.js';
 
 let passed = 0;
 let failed = 0;
@@ -506,6 +507,328 @@ await test('password-reset returns 200 {ok:true} with null mailer (no mailer inj
   assert.equal(setPasswordCalls.length, 1, 'setPassword must be called even when mailer is null');
   assert.equal(setPasswordCalls[0].id, RESET_TARGET_ID);
   assert.equal(setPasswordCalls[0].opts?.mustChange, true);
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/settings/org + PUT /api/settings/mail — Settings API
+//
+// These routes live in src/routes/settings.js. We build a minimal router
+// with registerSettingsRoutes injected with a fake mailConfigStore and fake
+// orgSettingsStore, then assert:
+//   - GET returns mailConfigured (bool from isConfigured()) + mail (publicView())
+//   - GET never returns pass
+//   - GET is employer-only (employee 403, unauth 401)
+//   - PUT /api/settings/mail is employer-only (employee 403, unauth 401)
+//   - PUT forwards req.body untouched to write(); response is publicView(), never pass
+//   - PUT with a body lacking `pass` still works (store owns write-only semantics)
+// ---------------------------------------------------------------------------
+
+console.log('\nGET /api/settings/org + PUT /api/settings/mail — Settings API');
+
+function buildSettingsFixture() {
+  let writeCalls = [];
+  const fakeMailConfigStore = {
+    isConfigured: () => true,
+    publicView: () => ({
+      enabled: true, host: 'h', port: 465, secure: true,
+      user: 'u', from: 'F <f@x>', hasPassword: true,
+    }),
+    write: (patch) => {
+      writeCalls.push(patch);
+      // Return a slightly different publicView (simulating a host update).
+      // NOTE: write() returns publicView() — never a raw config with pass.
+      return {
+        enabled: true, host: 'h2', port: 587, secure: false,
+        user: 'u', from: 'F <f@x>', hasPassword: true,
+      };
+    },
+    // read() is not used by the route; included for shape parity with the real store.
+    read: () => ({}),
+  };
+
+  // Minimal orgSettingsStore matching what GET /api/settings/org reads.
+  const fakeOrgSettingsStore = {
+    get: () => ({
+      notifications: { leaveDecision: true, correctionDecision: true, leaveReminder: true },
+      leaves: { blockedRanges: [], concurrentAllowed: true },
+    }),
+    resolveWorkingTimeFor: () => ({}),
+    update: () => ({}),
+  };
+
+  // Minimal stubs for the other deps registerSettingsRoutes expects.
+  const fakeUserPrefsStore = { get: () => ({}), update: () => ({}) };
+  const fakeCompanyLogoStore = { exists: () => false, read: () => Buffer.alloc(0), write: () => {}, remove: () => {} };
+
+  const router = createRouter();
+  registerSettingsRoutes(router, {
+    userPrefsStore: fakeUserPrefsStore,
+    orgSettingsStore: fakeOrgSettingsStore,
+    companyLogoStore: fakeCompanyLogoStore,
+    requireAuth,
+    requireRole,
+    auditStore: null,
+    mailConfigStore: fakeMailConfigStore,
+  });
+
+  return { router, writeCalls, fakeMailConfigStore };
+}
+
+// --- GET /api/settings/org — role guard ---
+
+await test('GET /api/settings/org unauthenticated → 401', async () => {
+  const { router } = buildSettingsFixture();
+  const res = await call(router, 'GET', '/api/settings/org', { user: null });
+  assert.equal(res.statusCode, 401);
+});
+
+await test('GET /api/settings/org as employee → 403', async () => {
+  const { router } = buildSettingsFixture();
+  const res = await call(router, 'GET', '/api/settings/org', {
+    user: { id: EMPLOYEE_ID, role: 'employee' },
+  });
+  assert.equal(res.statusCode, 403);
+});
+
+// --- GET /api/settings/org — response shape ---
+
+await test('GET /api/settings/org as employer → 200 with mailConfigured=true from isConfigured()', async () => {
+  const { router } = buildSettingsFixture();
+  const res = await call(router, 'GET', '/api/settings/org', {
+    user: { id: EMPLOYER_ID, role: 'employer' },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.mailConfigured, true,
+    'mailConfigured must be isConfigured() result, not a hardcoded boolean');
+});
+
+await test('GET /api/settings/org body.mail deep-equals publicView() (7-key view, no pass)', async () => {
+  const { router, fakeMailConfigStore } = buildSettingsFixture();
+  const res = await call(router, 'GET', '/api/settings/org', {
+    user: { id: EMPLOYER_ID, role: 'employer' },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body.mail, fakeMailConfigStore.publicView(),
+    'body.mail must exactly match publicView()');
+});
+
+await test('CRITICAL: GET /api/settings/org — pass never appears in response (key check)', async () => {
+  const { router } = buildSettingsFixture();
+  const res = await call(router, 'GET', '/api/settings/org', {
+    user: { id: EMPLOYER_ID, role: 'employer' },
+  });
+  assert.ok(!('pass' in res.body.mail),
+    '"pass" key must not be present in body.mail');
+  // Also check the full serialised body — ensures no nested object leaks it.
+  assert.ok(!JSON.stringify(res.body).includes('"pass"'),
+    '"pass" key must not appear anywhere in the serialised response body');
+});
+
+// --- PUT /api/settings/mail — role guard ---
+
+await test('PUT /api/settings/mail unauthenticated → 401', async () => {
+  const { router, writeCalls } = buildSettingsFixture();
+  const res = await call(router, 'PUT', '/api/settings/mail', { user: null });
+  assert.equal(res.statusCode, 401);
+  assert.equal(writeCalls.length, 0, 'write must not be called when unauthenticated');
+});
+
+await test('PUT /api/settings/mail as employee → 403, write not called', async () => {
+  const { router, writeCalls } = buildSettingsFixture();
+  const res = await call(router, 'PUT', '/api/settings/mail', {
+    user: { id: EMPLOYEE_ID, role: 'employee' },
+    body: { enabled: true, host: 'h', port: 465, secure: true, user: 'u', pass: 'p', from: 'F <f@x>' },
+  });
+  assert.equal(res.statusCode, 403);
+  assert.equal(writeCalls.length, 0, 'write must not be called when role guard rejects');
+});
+
+// --- PUT /api/settings/mail — employer happy path ---
+
+await test('PUT /api/settings/mail as employer → 200, write called once with exact body', async () => {
+  const { router, writeCalls } = buildSettingsFixture();
+  const body = { enabled: true, host: 'h2', port: 587, secure: false, user: 'u', pass: 'p', from: 'F <f@x>' };
+  const res = await call(router, 'PUT', '/api/settings/mail', {
+    user: { id: EMPLOYER_ID, role: 'employer' },
+    body,
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(writeCalls.length, 1, 'write must be called exactly once');
+  // Route MUST NOT shape-massage the body — forward it untouched; store owns semantics.
+  assert.deepEqual(writeCalls[0], body, 'write must receive req.body untouched');
+});
+
+await test('PUT /api/settings/mail response is publicView() (never pass)', async () => {
+  const { router } = buildSettingsFixture();
+  const res = await call(router, 'PUT', '/api/settings/mail', {
+    user: { id: EMPLOYER_ID, role: 'employer' },
+    body: { enabled: true, host: 'h2', port: 587, secure: false, user: 'u', pass: 'p', from: 'F <f@x>' },
+  });
+  assert.equal(res.statusCode, 200);
+  // The response wraps the store's return value as { ok, mail }.
+  assert.ok(res.body.ok, 'response must have ok:true');
+  assert.ok(res.body.mail, 'response must have a mail field');
+  assert.ok(!('pass' in res.body.mail),
+    '"pass" key must not be present in response.mail');
+  assert.ok(!JSON.stringify(res.body).includes('"pass"'),
+    '"pass" key must not appear anywhere in the serialised response body');
+});
+
+await test('PUT /api/settings/mail body without pass → 200, write called with patch lacking pass', async () => {
+  const { router, writeCalls } = buildSettingsFixture();
+  // Route MUST NOT inject/echo pass; it passes req.body untouched.
+  const body = { enabled: true, host: 'h2', port: 587, secure: false, user: 'u', from: 'F <f@x>' };
+  const res = await call(router, 'PUT', '/api/settings/mail', {
+    user: { id: EMPLOYER_ID, role: 'employer' },
+    body,
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(writeCalls.length, 1);
+  // The forwarded patch must not have a pass key (route didn't inject one).
+  assert.ok(!('pass' in writeCalls[0]),
+    'route must not inject pass into the forwarded patch');
+  assert.deepEqual(writeCalls[0], body, 'patch must match the body exactly (no additions)');
+});
+
+// --- PUT /api/settings/mail — store throws → 400 ---
+
+await test('PUT /api/settings/mail store throws → 400 with mapped errorCode', async () => {
+  // A mailConfigStore whose write() throws with err.code = 'invalid_shape'.
+  // The route must catch and map to badRequest; the 500 must not escape.
+  const router = createRouter();
+  const throwingMailConfigStore = {
+    isConfigured: () => true,
+    publicView: () => ({ enabled: false, host: '', port: 465, secure: true, user: '', from: '', hasPassword: false }),
+    write: () => { const e = new Error('bad shape'); e.code = 'invalid_shape'; throw e; },
+    read: () => ({}),
+  };
+  const fakeOrgSettingsStore = {
+    get: () => ({}),
+    resolveWorkingTimeFor: () => ({}),
+    update: () => ({}),
+  };
+  const fakeUserPrefsStore = { get: () => ({}), update: () => ({}) };
+  const fakeCompanyLogoStore = { exists: () => false, read: () => Buffer.alloc(0), write: () => {}, remove: () => {} };
+  registerSettingsRoutes(router, {
+    userPrefsStore: fakeUserPrefsStore,
+    orgSettingsStore: fakeOrgSettingsStore,
+    companyLogoStore: fakeCompanyLogoStore,
+    requireAuth,
+    requireRole,
+    auditStore: null,
+    mailConfigStore: throwingMailConfigStore,
+  });
+  const res = await call(router, 'PUT', '/api/settings/mail', {
+    user: { id: EMPLOYER_ID, role: 'employer' },
+    body: { enabled: true, host: 'h', port: 465, secure: true, user: 'u', pass: 'p', from: 'F <f@x>' },
+  });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.errorCode, 'invalid_shape',
+    'errorCode from err.code must be forwarded via badRequest');
+});
+
+// --- GET /api/settings/org — mailConfigStore.isConfigured() = false ---
+
+await test('GET /api/settings/org reflects isConfigured:false → body.mailConfigured===false, mail present, no pass', async () => {
+  const router = createRouter();
+  const unconfiguredMailStore = {
+    isConfigured: () => false,
+    // publicView() returns the inert-default shape; the key assertion is the boolean.
+    publicView: () => ({ enabled: false, host: '', port: 465, secure: true, user: '', from: '', hasPassword: false }),
+    read: () => ({}),
+    write: () => ({}),
+  };
+  const fakeOrgSettingsStore = {
+    get: () => ({}),
+    resolveWorkingTimeFor: () => ({}),
+    update: () => ({}),
+  };
+  const fakeUserPrefsStore = { get: () => ({}), update: () => ({}) };
+  const fakeCompanyLogoStore = { exists: () => false, read: () => Buffer.alloc(0), write: () => {}, remove: () => {} };
+  registerSettingsRoutes(router, {
+    userPrefsStore: fakeUserPrefsStore,
+    orgSettingsStore: fakeOrgSettingsStore,
+    companyLogoStore: fakeCompanyLogoStore,
+    requireAuth,
+    requireRole,
+    auditStore: null,
+    mailConfigStore: unconfiguredMailStore,
+  });
+  const res = await call(router, 'GET', '/api/settings/org', {
+    user: { id: EMPLOYER_ID, role: 'employer' },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.mailConfigured, false,
+    'mailConfigured must be false when isConfigured() returns false');
+  assert.ok(res.body.mail !== undefined, 'body.mail must still be present when unconfigured');
+  assert.ok(!('pass' in res.body.mail),
+    '"pass" key must not be present in body.mail even when unconfigured');
+  assert.ok(!JSON.stringify(res.body).includes('"pass"'),
+    '"pass" key must not appear anywhere in the serialised response');
+});
+
+// --- PUT /api/settings/mail — audit record emitted, no pass leak in audit ---
+
+await test('CRITICAL: PUT /api/settings/mail — audit called once with event=settings.mail_updated, no pass in record', async () => {
+  // Use a sentinel password so we can confirm it never enters the audit record.
+  const AUDIT_PASS_SENTINEL = 'P@ssWord!';
+
+  const auditCalls = [];
+  const fakeAuditStore = {
+    appendRecord: (rec) => { auditCalls.push(rec); },
+  };
+
+  const router = createRouter();
+  const fakeMailConfigStore = {
+    isConfigured: () => true,
+    publicView: () => ({ enabled: true, host: 'h', port: 465, secure: true, user: 'u', from: 'F <f@x>', hasPassword: true }),
+    write: () => ({ enabled: true, host: 'h', port: 465, secure: true, user: 'u', from: 'F <f@x>', hasPassword: true }),
+    read: () => ({}),
+  };
+  const fakeOrgSettingsStore = {
+    get: () => ({}),
+    resolveWorkingTimeFor: () => ({}),
+    update: () => ({}),
+  };
+  const fakeUserPrefsStore = { get: () => ({}), update: () => ({}) };
+  const fakeCompanyLogoStore = { exists: () => false, read: () => Buffer.alloc(0), write: () => {}, remove: () => {} };
+  registerSettingsRoutes(router, {
+    userPrefsStore: fakeUserPrefsStore,
+    orgSettingsStore: fakeOrgSettingsStore,
+    companyLogoStore: fakeCompanyLogoStore,
+    requireAuth,
+    requireRole,
+    auditStore: fakeAuditStore,
+    mailConfigStore: fakeMailConfigStore,
+  });
+
+  // Unauthenticated request — must NOT trigger audit.
+  await call(router, 'PUT', '/api/settings/mail', { user: null });
+  assert.equal(auditCalls.length, 0, 'audit must not be called on unauthenticated request');
+
+  // Employee request — role guard rejects before handler; must NOT trigger audit.
+  await call(router, 'PUT', '/api/settings/mail', {
+    user: { id: EMPLOYEE_ID, role: 'employee' },
+    body: { enabled: true, host: 'h', port: 465, secure: true, user: 'u', pass: AUDIT_PASS_SENTINEL, from: 'F <f@x>' },
+  });
+  assert.equal(auditCalls.length, 0, 'audit must not be called when role guard rejects');
+
+  // Employer happy-path — must emit exactly one audit record.
+  const res = await call(router, 'PUT', '/api/settings/mail', {
+    user: { id: EMPLOYER_ID, role: 'employer', username: 'boss' },
+    body: { enabled: true, host: 'h', port: 465, secure: true, user: 'u', pass: AUDIT_PASS_SENTINEL, from: 'F <f@x>' },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(auditCalls.length, 1, 'audit must be called exactly once on successful PUT');
+  assert.equal(auditCalls[0].event, 'settings.mail_updated',
+    'audit event must be settings.mail_updated');
+
+  // CRITICAL: the audit record must contain no trace of the password.
+  const serialised = JSON.stringify(auditCalls[0]);
+  assert.ok(!serialised.includes('pass'),
+    `"pass" must not appear anywhere in the audit record: ${serialised}`);
+  assert.ok(!serialised.includes(AUDIT_PASS_SENTINEL),
+    `sentinel password must not appear in the audit record: ${serialised}`);
 });
 
 // ---------------------------------------------------------------------------
