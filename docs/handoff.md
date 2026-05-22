@@ -5,14 +5,14 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.25.0._
+_Last touched in 0.26.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.25.0 (released 2026-05-18)
-- **Test count:** 40 suites, all green except **two** pre-existing
+- **Latest version:** 0.26.0 (released 2026-05-22)
+- **Test count:** 41 suites, all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
   pre-feature baseline (see notes.md): `test-reports.mjs`
   `overnight split` bucket count (host-timezone sensitive) and
@@ -23,13 +23,48 @@ _Last touched in 0.25.0._
   notifications added 6 suites (`test-config-mail`, `test-mail-smtp`,
   `test-mail-templates`, `test-mail-mailer`,
   `test-reminder-scheduler`, `test-mail-routes`) and extended
-  `test-org-settings` / `test-user-prefs` (pre-existing); 34 → 40.
+  `test-org-settings` / `test-user-prefs` (pre-existing): 34 → 40.
+  The 0.26.0 encrypted settings-managed SMTP config added one more,
+  `test-mail-config-store`: 40 → 41.
 - **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
   and 0.25.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M14 (Email notifications) shipped at 0.25.0;
-  M15–M17 are next (M17 deployment guide ships last)
+  0.26.0 followed up by moving SMTP config out of plaintext
+  `config.json` into an encrypted, settings-managed blob; M15–M17 are
+  next (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.26.0)
+
+**Encrypted settings-managed SMTP config.** SMTP credentials moved out
+of the plaintext `mail` block in `config.json` (the unpushed 0.25.0
+design) into a single **AES-256-GCM-encrypted blob** keyed by the DEK
+(`config.json` `"mail": { "enc": "<base64>" }`, AAD
+`pica-mail-config-v1`). The app password no longer sits in plaintext on
+disk. Credentials are now edited from **Settings → Email
+notifications**, which gained an SMTP editor form and was reordered to
+sit **before** Backups (company → organization → notifications →
+backups → security).
+
+New `src/storage/mail-config.js` owns the blob (decrypt-on-construct,
+in-memory cache, **never throws**, `pass` **write-only**, `write()` is
+**abort-not-clobber** so a transient read failure cannot destroy
+`security.wraps`). `src/config.js` no longer parses mail
+(`normalizeMail` / `config.mailConfigured` removed; `config.mail` is a
+raw passthrough). The mailer reads creds from the store
+(`isConfigured()` is its Layer-1 gate). New employer-only
+`PUT /api/settings/mail` (audited `settings.mail_updated`, no details);
+`GET /api/settings/org` returns a sanitized `mail` publicView
+(`{enabled,host,port,secure,user,from,hasPassword}` — never `pass`) +
+`mailConfigured`. CACHE_VERSION v43 → v44; 15 new i18n keys per locale;
+one new suite (`test-mail-config-store`). 0.25.0 stays in history
+unchanged; **no migration** from the never-shipped plaintext block. See
+RELEASES.md 0.26.0 for the full Honest Disclosures (not in backups,
+unavailable during lockdown, runtime config.json mutation, write-only
+pass, etc.).
 
 ---
 

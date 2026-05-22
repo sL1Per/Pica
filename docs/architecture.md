@@ -102,6 +102,7 @@ pica/
 │   │   ├── user-prefs.js    # locale + colorMode (plaintext)
 │   │   ├── org-settings.js  # leave allowances, working time targets
 │   │   ├── company-logo.js  # encrypted blob
+│   │   ├── mail-config.js   # encrypted SMTP config blob in config.json (mail.enc) (0.26.0)
 │   │   ├── backups.js       # full-snapshot encrypted backups
 │   │   └── audit.js         # append-only encrypted NDJSON audit log
 │   └── routes/              # one module per resource — register*Routes(router, deps)
@@ -112,7 +113,7 @@ pica/
 │       ├── leaves.js        # /api/leaves[/:id], /api/leaves/approved
 │       ├── corrections.js   # /api/corrections[/:id]
 │       ├── reports.js       # /api/reports/*
-│       ├── settings.js      # /api/settings/* (org, working-time, branding)
+│       ├── settings.js      # /api/settings/* (org, working-time, branding); GET org returns sanitized mail publicView + mailConfigured; PUT /api/settings/mail employer-only (0.26.0)
 │       ├── backups.js       # /api/backups (list, create, download, delete, restore, status)
 │       ├── security.js      # /api/security/* (passphrase, recovery-code, rotate) (0.23.0)
 │       ├── mail.js          # POST /api/mail/test — employer-only SMTP config probe (0.25.0)
@@ -198,7 +199,8 @@ pica/
 │   ├── test-mail-templates.mjs     # plain-text templates, en-US / pt-PT (0.25.0)
 │   ├── test-mail-mailer.mjs        # gating boundary: org × user × config, best-effort (0.25.0)
 │   ├── test-reminder-scheduler.mjs # 24h-before-leave reminder scan + idempotence (0.25.0)
-│   └── test-mail-routes.mjs        # POST /api/mail/test route (employer-only) (0.25.0)
+│   ├── test-mail-routes.mjs        # POST /api/mail/test route (employer-only) (0.25.0); GET org mail view + PUT /api/settings/mail (0.26.0)
+│   └── test-mail-config-store.mjs  # encrypted SMTP config store: round-trip, AAD, never-throws, write-only pass, abort-not-clobber (0.26.0)
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -248,7 +250,7 @@ based on the user's stored locale, and writes the response.
 | File                  | Contents                                              | Why plaintext |
 |-----------------------|-------------------------------------------------------|---------------|
 | `users.json`          | username, password hash, role, createdAt              | The server needs to authenticate before it can derive the master key |
-| `config.json`         | port, dataDir, KDF salt, wrapped DEK, optional `mail` block (SMTP host/user/pass) | Read at startup before the master key exists; install-specific, never in backups |
+| `config.json`         | port, dataDir, KDF salt, wrapped DEK, optional `mail` block which is now an AES-256-GCM-encrypted `{ enc }` blob (SMTP creds, keyed by the DEK, AAD `pica-mail-config-v1`) (0.26.0) | Read at startup before the master key exists; install-specific, never in backups |
 | `user-prefs.json`     | per-user `locale`, `colorMode`, email-notification opt-outs | Used by the locale meta-injection on every served HTML; not sensitive |
 | `org-settings.json`   | leave allowances, concurrent-leaves flag, working-time targets, email-notification org switches | Org-wide policy; not personal |
 
@@ -341,7 +343,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **40 suites**, passing as of 0.25.0 except two pre-existing
+- Total: **41 suites**, passing as of 0.26.0 except two pre-existing
   flakes unrelated to any recent feature, both failing identically on
   the pre-feature baseline: `test-reports.mjs` overnight-split bucket
   count (host-timezone sensitive) and `test-auth.mjs` (~1/64
@@ -352,7 +354,11 @@ corrupts an existing record) and gives us an audit log for free.
   `test-mail-mailer.mjs`, `test-reminder-scheduler.mjs`,
   `test-mail-routes.mjs` — and extended `test-org-settings.mjs` /
   `test-user-prefs.mjs` (pre-existing) for the new org switches and
-  per-user opt-outs, bringing the total from 34 to 40.
+  per-user opt-outs, taking the total from 34 to 40. The 0.26.0
+  encrypted settings-managed SMTP config added one more —
+  `test-mail-config-store.mjs` (encrypted store: round-trip, AAD
+  binding, never-throws, write-only `pass`, abort-not-clobber) —
+  bringing the total to 41.
 
 ---
 
@@ -412,10 +418,16 @@ minimal, stdlib-only SMTP **submission** client (EHLO, STARTTLS when
 correction decision, 24h leave reminder, password-reset notice),
 localized en-US / pt-PT. `mailer.js` is the gating + best-effort
 boundary: it resolves the org master switch (`org-settings.json`) ×
-the per-user opt-out (`user-prefs.json`) × `config.mail.enabled`,
-builds the message, and hands it to the SMTP client, never throwing
-into the calling route. The whole subsystem is inert unless the
-operator adds an enabled `mail` block to `config.json`. The
+the per-user opt-out (`user-prefs.json`) × the SMTP store's
+`isConfigured()`, builds the message, and hands it to the SMTP client,
+never throwing into the calling route. As of 0.26.0 the SMTP
+credentials live in `src/storage/mail-config.js`, which owns an
+AES-256-GCM-encrypted blob in `config.json` (`mail.enc`, keyed by the
+DEK, AAD `pica-mail-config-v1`) and is configured from Settings →
+Email notifications via `PUT /api/settings/mail`; `src/config.js` no
+longer parses mail (the old `normalizeMail` / `config.mailConfigured`
+were removed). The whole subsystem is inert unless the operator saves
+an enabled SMTP config from Settings. The
 password-reset notice and `POST /api/mail/test` deliberately bypass
 the org/user opt-out layers (a mandatory security notice and a
 config probe respectively) — still gated by `mail.enabled` + a
@@ -440,4 +452,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.25.0._
+_Last touched in 0.26.0._

@@ -31,7 +31,7 @@ to create the first employer.
 
 ### Running the test suite
 
-All 40 suites can be run with:
+All 41 suites can be run with:
 
 ```bash
 $ for f in tests/test-*.mjs; do printf '%s: ' "$f"; node "$f" 2>&1 | tail -1; done
@@ -51,6 +51,7 @@ $ node tests/test-mail-templates.mjs     # 0.25.0 — message templates
 $ node tests/test-mail-mailer.mjs        # 0.25.0 — gating + best-effort
 $ node tests/test-reminder-scheduler.mjs # 0.25.0 — 24h leave reminder
 $ node tests/test-mail-routes.mjs        # 0.25.0 — POST /api/mail/test
+$ node tests/test-mail-config-store.mjs  # 0.26.0 — encrypted SMTP config store
 ```
 
 Two suites carry a pre-existing flake unrelated to any recent
@@ -469,4 +470,4 @@ losing them is how documentation rots.
 
 ---
 
-_Last touched in 0.25.0._
+_Last touched in 0.26.0._

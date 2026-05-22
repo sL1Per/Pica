@@ -329,6 +329,17 @@ slot reserved in 0.23.0 — the offline recovery code remains the
 master-key recovery path. Self-service password recovery, HTML
 email, and per-event employer digests are out of scope / later.
 
+**Follow-up — 0.26.0 (encrypted settings-managed SMTP config).** M14
+itself stays shipped at 0.25.0; 0.26.0 is a follow-up that moved SMTP
+configuration out of the plaintext `mail` block in `config.json` (the
+unpushed 0.25.0 design) into a single AES-256-GCM-encrypted blob keyed
+by the DEK (`mail.enc`, AAD `pica-mail-config-v1`), edited from
+Settings → Email notifications (now ordered before Backups) via a new
+employer-only `PUT /api/settings/mail`. New `src/storage/mail-config.js`;
+`config.js` no longer parses mail. See RELEASES.md 0.26.0. This does not
+change the milestone arc: M15 / M16 / M17 are unchanged and M17 still
+ships last.
+
 ### Milestones 15–17 — planned 📋
 
 Titles are firm; detailed scope firms up when each milestone
@@ -366,4 +377,4 @@ final UI rather than one about to change.
 
 ---
 
-_Last touched in 0.25.0._
+_Last touched in 0.26.0._

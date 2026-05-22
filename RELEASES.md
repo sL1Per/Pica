@@ -14,6 +14,161 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.26.0] — 2026-05-22 — Encrypted settings-managed SMTP config
+
+### What changed
+
+SMTP configuration **moves out of plaintext `config.json`** and into a
+single **AES-256-GCM-encrypted blob** keyed by the DEK. The plaintext
+`mail` block introduced in the (unpushed) 0.25.0 design — host, port,
+user, **pass**, from, and the commented `_mail_help` array — is gone.
+In its place `config.json` carries `"mail": { "enc": "<base64>" }`: one
+encrypted blob (AAD `pica-mail-config-v1`) holding the full SMTP struct.
+The app password never sits in plaintext on disk.
+
+The credentials are now **configured from the app**, on **Settings →
+Email notifications**, which gains an SMTP editor form (host, port,
+secure, user, password, from). The Settings sections were **reordered**
+so Email notifications sits **before** Backups: company →
+organization → notifications → backups → security.
+
+The supporting plumbing changed accordingly:
+
+- New `src/storage/mail-config.js` owns the encrypted blob. It decrypts
+  once on construct and caches the struct in memory; `read()` /
+  `isConfigured()` / `publicView()` / `write()`. It **never throws** —
+  an absent / malformed / undecryptable blob yields the safe disabled
+  default (mail off). `write()` is **abort-not-clobber**: it re-reads
+  the existing `config.json` and aborts the write rather than proceed on
+  a blank object, so a transient read failure cannot destroy
+  `security.wraps`.
+- `src/config.js` **no longer parses mail**: `normalizeMail` and the
+  derived `config.mailConfigured` scalar are removed; `config.mail` is
+  a raw passthrough (the store, not the config loader, owns mail now).
+- The mailer reads SMTP credentials from the store. Its Layer-1 gate is
+  the store's `isConfigured()` (all of enabled + host + user + pass +
+  from present) rather than a config flag.
+- New **employer-only `PUT /api/settings/mail`**, audited as
+  `settings.mail_updated` with **no details** (so the audit record can
+  never leak the password). `GET /api/settings/org` returns a
+  **sanitized `mail` publicView** plus an authoritative `mailConfigured`
+  boolean.
+- `pass` is **write-only** end-to-end: never returned by any endpoint,
+  never logged, never audited. The Settings password field loads blank
+  and only overwrites the stored credential when non-empty.
+
+`CACHE_VERSION` v43 → v44 (Settings assets + 14 new i18n keys per
+locale, plus one updated value, changed).
+
+0.25.0 (Email notifications, M14) stays in history unchanged; this is a
+new 0.26.0 layered on top. There is **no migration** from the
+never-shipped 0.25.0 plaintext `mail` block.
+
+### Endpoints
+
+New:
+
+- `PUT /api/settings/mail` — employer-only. Writes the SMTP config
+  through `mailConfigStore.write()`, audited as `settings.mail_updated`
+  (no details). The response includes the sanitized `mail` publicView
+  and the authoritative `mailConfigured` boolean.
+
+Changed:
+
+- `GET /api/settings/org` now returns a sanitized `mail` publicView —
+  `{ enabled, host, port, secure, user, from, hasPassword }`, **never
+  `pass`** — alongside the `mailConfigured` boolean.
+
+Config / storage:
+
+- `config.json` `mail` is now `{ enc: "<base64 AES-256-GCM>" }` — a
+  single encrypted blob keyed by the DEK (AAD `pica-mail-config-v1`).
+  The plaintext `mail` block and `_mail_help` array are removed. A
+  `mail` key written by hand (plaintext fields) is **ignored** — only
+  the `{ enc }` shape is read.
+
+### Files touched
+
+- `src/storage/mail-config.js` — **new**. The encrypted mail-config
+  store (decrypt-on-construct, in-memory cache, never-throws,
+  write-only `pass`, abort-not-clobber `write()`).
+- `tests/test-mail-config-store.mjs` — **new**. Covers the store:
+  encrypt/decrypt round-trip, AAD binding, never-throws on bad input,
+  write-only `pass`, abort-not-clobber on read failure, `publicView`
+  omits `pass`.
+- `src/config.js` — removed `normalizeMail` / `config.mailConfigured`;
+  `config.mail` is now a raw passthrough.
+- `config.json.example` — replaced the plaintext `mail` block + help
+  with a note: SMTP is configured in-app (Settings → Email
+  notifications) and stored AES-256-GCM-encrypted as `mail.enc`.
+- `tests/test-config-mail.mjs` — updated for the no-parse config.
+- `src/mail/mailer.js` — reads creds from the store; Layer-1 gate is
+  `isConfigured()`.
+- `tests/test-mail-mailer.mjs` — updated for the store-driven mailer.
+- `src/routes/settings.js` — `GET /api/settings/org` `mail` publicView
+  + `mailConfigured`; new employer-only `PUT /api/settings/mail`
+  (audited `settings.mail_updated`, no details).
+- `tests/test-mail-routes.mjs` — updated for the new GET shape + PUT
+  route.
+- `server.js` — constructs `createMailConfigStore`, threads it to the
+  mailer and the settings route, store-driven startup warn;
+  `config.mail` / `mailConfigured` references fully removed repo-wide.
+- `public/settings.html`, `public/settings.js` — SMTP editor form;
+  section reorder (Email notifications before Backups); `pass`
+  write-only in the UI; PUT response drives the authoritative
+  `mailConfigured`.
+- `public/locales/en-US.js`, `public/locales/pt-PT.js` — 15 new i18n
+  keys per locale for the SMTP editor.
+- `public/sw.js` — `CACHE_VERSION` v43 → v44.
+- `package.json` — 0.26.0.
+- One new suite (`tests/test-mail-config-store.mjs`). Total: 41 suites.
+
+### Honest Disclosures
+
+- **SMTP config is NOT in backups.** `config.json` stays gitignored and
+  excluded from the backup archive (unchanged behaviour). After
+  restoring data on a fresh machine the operator **must re-enter** the
+  SMTP details from Settings. The trade-off is deliberate: the app
+  password never travels inside a backup.
+- **The master key must be unlocked to decrypt the SMTP config.** The
+  blob is keyed by the DEK, so outbound mail is **unavailable during
+  the recovery-code / passphrase-reset lockdown** (the DEK is unlocked
+  but the app is in a 503 lockdown that allows only login / `me` /
+  logout / set-passphrase). Mail is best-effort anyway and the lockdown
+  is a rare safety state, so this is an accepted limitation, not a
+  regression.
+- **`config.json` is mutated at runtime by the Settings save.** This is
+  the **same behaviour class** as changing the passphrase, generating a
+  recovery code, or rotating the key — all of which already rewrite
+  `config.json` via `writeConfigAtomic`. The Settings write **aborts
+  rather than clobber**: if it cannot first read the existing
+  `config.json`, it abandons the write so a transient read failure can
+  never destroy `security.wraps`.
+- **No plaintext fallback, no hand-edited `mail` block.** Only the
+  encrypted `{ enc }` shape is read; a `mail` key written by hand with
+  plaintext fields is ignored. There is **no migration** from the
+  never-shipped 0.25.0 plaintext block — operators on that unpushed
+  design re-enter their settings once via the UI.
+- **Losing `config.json` or the passphrase loses the SMTP config**
+  (along with everything else `config.json` holds). The blob is keyed
+  by the DEK whose wraps live only in `config.json`; neither passphrase
+  nor recovery code can recover it without the wrapped ciphertext.
+- **`pass` is write-only.** It is never returned by any endpoint, never
+  logged, and never audited — the `settings.mail_updated` audit record
+  deliberately carries **no details** for exactly this reason. The UI
+  password field is blank on load and only overwrites the stored
+  credential when non-empty.
+- **Two pre-existing test flakes are unrelated to this work and
+  untouched.** `tests/test-reports.mjs` → `overnight shift attributes
+  hours to each day separately` is host-timezone sensitive.
+  `tests/test-auth.mjs` has a ~1/64 probabilistic case (a base64url
+  last-character signature-tamper artifact in the test itself, not the
+  auth code). Both fail identically on the pre-0.26.0 baseline; if
+  `test-auth.mjs` reds, re-run it alone to confirm it is the
+  intermittent pre-existing issue, not a regression.
+
+---
+
 ## [0.25.0] — 2026-05-18 — Email notifications (M14)
 
 ### What changed

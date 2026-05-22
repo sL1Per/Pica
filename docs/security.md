@@ -146,7 +146,7 @@ when stored as a string field.
 | `users.json` (usernames, password hashes, roles)      | No         | Hashes are already one-way; plaintext so the server can authenticate before deriving the master key. |
 | `user-prefs.json` (locale, colorMode)                 | No         | Used on every page render before auth completes; not sensitive. |
 | `org-settings.json`                                   | No         | Org-wide policy, not personal data.                    |
-| `config.json` (KDF salt, wrapped DEK, port, optional SMTP creds) | No   | Read at startup before the master key exists; install-specific, never restored from backups. |
+| `config.json` (KDF salt, wrapped DEK, port; optional SMTP creds in the `mail.enc` blob are themselves AES-256-GCM-encrypted under the DEK, 0.26.0) | Mostly | The file itself is plaintext — read at startup before the master key exists; install-specific, never restored from backups. The SMTP credentials inside it are encrypted (0.26.0). |
 
 This is **pragmatic encryption**, not full-disk encryption. It
 protects the data that actually hurts if it leaks (PII, photos,
@@ -402,22 +402,40 @@ out-of-band. There's no "key in the archive" backdoor.
 
 ---
 
-## Outbound email (M14, 0.25.0)
+## Outbound email (M14, 0.25.0; encrypted config 0.26.0)
 
 From 0.25.0 Pica can send plain-text notification emails. It only
 **submits** mail through the operator's own authenticated relay; it
 never receives mail and is not an MTA.
 
-- **SMTP credentials are stored in plaintext** in the optional
-  `mail` block of `config.json`. This is the **same trust boundary
-  as the already-present wrapped DEK** — anyone who can read
-  `config.json` already holds the keys to the install. `config.json`
+- **SMTP credentials are AES-256-GCM-encrypted** in `config.json`. As
+  of **0.26.0** the optional `mail` block is a single encrypted blob —
+  `"mail": { "enc": "<base64>" }` — keyed by the **DEK** (AAD
+  `pica-mail-config-v1`), not plaintext. (This reverses the 0.25.0
+  design, which stored the credentials as a plaintext `mail` block; the
+  app password no longer sits in cleartext on disk.) The credentials
+  are configured **from the app**, on Settings → Email notifications,
+  via the employer-only `PUT /api/settings/mail`. The `pass` field is
+  **write-only**: never returned by any endpoint, never logged, and
+  never audited (the `settings.mail_updated` audit record carries no
+  details for exactly this reason). `config.json` is **mutated at
+  runtime** by the Settings save — the same behaviour class as the
+  passphrase change / recovery code / key rotation, all of which
+  already rewrite it via `writeConfigAtomic`; the mail write **aborts
+  rather than clobber** if it cannot first read the existing file, so a
+  transient read failure cannot destroy `security.wraps`. `config.json`
   is gitignored and is **not** included in Pica backups, so the
-  credential does not travel inside an archive. Use a **dedicated
-  send-only account with an App Password** (Gmail / Workspace
-  requires 2-Step Verification + an App Password), never a primary
-  credential. Mail is off until the operator adds an enabled `mail`
-  block.
+  credential does not travel inside an archive — after restoring data
+  on a fresh machine the operator must re-enter the SMTP settings.
+  Because the blob is keyed by the DEK, **outbound mail is unavailable
+  during the recovery-code / passphrase-reset lockdown** (a rare safety
+  state; mail is best-effort anyway). Use a **dedicated send-only
+  account with an App Password** (Gmail / Workspace requires 2-Step
+  Verification + an App Password), never a primary credential. Mail is
+  off until the operator saves an enabled SMTP config from Settings.
+  Only the encrypted `{ enc }` shape is read — a hand-edited plaintext
+  `mail` block is ignored, and there is no migration from the
+  never-shipped 0.25.0 plaintext design.
 - **TLS is enforced.** The certificate is verified
   (`rejectUnauthorized` defaults to true). When `secure:false`,
   STARTTLS is **required** and is not silently downgraded to a
@@ -434,8 +452,9 @@ never receives mail and is not an MTA.
   link, or credential) and is intentionally **not** user-opt-outable
   — a user must learn their password was reset. It and the
   employer-only `POST /api/mail/test` config probe bypass the
-  org/user opt-out layers but remain gated by `config.mail.enabled`
-  plus a recipient address.
+  org/user opt-out layers but remain gated by a usable SMTP config
+  (the store's `isConfigured()`, since 0.26.0) plus a recipient
+  address.
 - This release does **not** unblock the email-based KEK master-key
   recovery slot reserved in 0.23.0; the offline recovery code remains
   the master-key recovery path. There is still no self-service
@@ -762,4 +781,4 @@ patch.
 
 ---
 
-_Last touched in 0.25.0._
+_Last touched in 0.26.0._
