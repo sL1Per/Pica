@@ -4,15 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script>
-    // Theme bootstrap — runs synchronously before CSS to prevent FOUC.
+    // Theme + palette bootstrap — runs synchronously before CSS to prevent FOUC.
+    // Resolves color mode (light/dark/system) and palette (linen/slate/olive)
+    // from localStorage onto <html> so app.css's token cascade picks the combo.
     try {
+      var root = document.documentElement;
       var m = localStorage.getItem('pica-color-mode');
-      if (m === 'light' || m === 'dark') {
-        document.documentElement.setAttribute('data-theme', m);
-      } else {
-        document.documentElement.removeAttribute('data-theme');
-      }
-    } catch (e) { /* localStorage blocked → fall back to system */ }
+      var dark = m === 'dark' || (m !== 'light' && window.matchMedia
+        && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (dark) { root.setAttribute('data-theme', 'dark'); }
+      else { root.removeAttribute('data-theme'); }
+      var p = localStorage.getItem('pica-palette');
+      if (p === 'slate' || p === 'olive') { root.setAttribute('data-palette', p); }
+      else { root.removeAttribute('data-palette'); }
+    } catch (e) { /* storage/matchMedia blocked → default linen light */ }
   </script>
   <title data-i18n="title.setup">Pica — Setup</title>
     <link rel="manifest" href="/manifest.json">
