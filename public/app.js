@@ -10,13 +10,22 @@
     const res = await fetch('/api/settings/me', { credentials: 'same-origin' });
     if (!res.ok) return;
     const { prefs } = await res.json();
+    const root = document.documentElement;
+
+    // Color mode (light/dark/system).
     const mode = prefs?.colorMode ?? 'system';
-    // Persist for the next page's synchronous boot.
     try { localStorage.setItem('pica-color-mode', mode); } catch {}
-    if (mode === 'light' || mode === 'dark') {
-      document.documentElement.setAttribute('data-theme', mode);
-    } else {
-      document.documentElement.removeAttribute('data-theme');
+    const dark = mode === 'dark' || (mode !== 'light'
+      && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (dark) root.setAttribute('data-theme', 'dark');
+    else root.removeAttribute('data-theme');
+
+    // Palette (linen/slate/olive). Absent until the Preferences plan adds it —
+    // when absent, leave whatever the synchronous bootstrap already applied.
+    if (prefs?.palette === 'linen' || prefs?.palette === 'slate' || prefs?.palette === 'olive') {
+      try { localStorage.setItem('pica-palette', prefs.palette); } catch {}
+      if (prefs.palette === 'slate' || prefs.palette === 'olive') root.setAttribute('data-palette', prefs.palette);
+      else root.removeAttribute('data-palette');
     }
   } catch { /* anonymous pages (login, setup) get the default theme */ }
 })();
