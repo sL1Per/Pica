@@ -1,5 +1,5 @@
 import { postJson, showMessage, setBusy } from '/app.js';
-import { t, tn, translateError, applyTranslations, fmtTime as i18nFmtTime } from '/i18n.js';
+import { t, tn, translateError, applyTranslations, fmtDate } from '/i18n.js';
 import { reverseGeocode } from '/geocode.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
@@ -11,6 +11,11 @@ const $ = (id) => document.getElementById(id);
 const statusBlock = $('status-block');
 const statusLabel = $('status-label');
 const statusMeta  = $('status-meta');
+const clockBig    = $('clock-big');
+const clockStatus = $('clock-status');
+const punchSub    = $('punch-sub');
+const locLine     = $('map-meta-line');
+const locText     = $('clock-loc-text');
 const commentEl   = $('comment');
 // shareGeo removed in 0.10.2 — location is mandatory. If the browser
 // can't deliver a fix we still allow the punch but log the reason.
@@ -20,6 +25,7 @@ const inBtn       = $('clock-in-btn');
 const outBtn      = $('clock-out-btn');
 const messageEl   = $('message');
 const listEl      = $('today-list');
+const weekListEl  = $('week-list');
 const allLink     = $('all-today-link');
 const mapCard     = $('map-card');
 const mapTile     = $('map-tile');
@@ -29,6 +35,8 @@ const retryGeoBtn = $('retry-geo-btn');
 let isOpen = false;
 let me = null;
 let lastFix = null;     // most recent {lat, lng, accuracy, ts} from a real geolocation reading
+let openSinceTs = null; // ISO ts of the open "in" punch while working (for the live readout)
+let clockTimer = null;  // setInterval handle driving the hero's live elapsed / wall clock
 
 // -------- sessionStorage cache --------------------------------------------
 // Cache the last successful fix per browser session so navigating between
@@ -172,29 +180,91 @@ function relative(iso) {
   return days === 1 ? t('punch.relYesterday') : t('punch.relDaysAgo', { n: days });
 }
 
-// -------- Status block + button enable/disable ------------------------------
+// -------- Status hero + button enable/disable -------------------------------
+
+/** HH:MM:SS from an elapsed-milliseconds value (used by the live readout). */
+function formatElapsed(ms) {
+  const totalSecs = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  const p2 = (n) => String(n).padStart(2, '0');
+  return `${p2(h)}:${p2(m)}:${p2(s)}`;
+}
 
 /**
- * Repaint the status header and lock the two buttons so only the one that
- * makes sense is clickable. The other is `disabled` but stays visually
- * present (the CSS overrides the default greyed-out wash).
+ * Tick the hero's big readout. When clocked in, shows the live elapsed time
+ * since the open punch (updated each second); otherwise the wall-clock HH:MM.
+ * Driven by a single setInterval that is always cleared before being
+ * recreated (paintStatus), so it can never leak or double up.
+ */
+function tickClock() {
+  if (openSinceTs) {
+    clockBig.textContent = formatElapsed(Date.now() - new Date(openSinceTs).getTime());
+  } else {
+    const now = new Date();
+    clockBig.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
+}
+
+/**
+ * Repaint the clock hero from the punch status and lock the two buttons so
+ * only the one that makes sense is clickable. The other stays `disabled` but
+ * visually present. Manages the live readout interval (leak-safe: always
+ * cleared before re-creating).
  */
 function paintStatus({ open, lastPunch }) {
   isOpen = open;
-  statusBlock.classList.remove('status-block--in', 'status-block--out', 'status-block--unknown');
+
+  // Reset the live-readout interval on every repaint. Clearing first means a
+  // status change (in→out, out→in) never leaves two intervals running.
+  if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+
+  statusBlock.classList.toggle('clock-hero--working', open);
+  clockStatus.classList.toggle('clock-status--working', open);
+
   if (open) {
-    statusBlock.classList.add('status-block--in');
-    statusLabel.textContent = t('punch.statusIn');
-    statusMeta.textContent  = lastPunch ? t('punch.statusSince', { time: formatTime(lastPunch.ts), rel: relative(lastPunch.ts) }) : '';
+    statusLabel.textContent = t('punch.workingNow');
+    openSinceTs = lastPunch ? lastPunch.ts : null;
+    statusMeta.textContent = lastPunch
+      ? t('punch.statusSince', { time: formatTime(lastPunch.ts), rel: relative(lastPunch.ts) })
+      : '';
     inBtn.disabled  = true;
     outBtn.disabled = false;
   } else {
-    statusBlock.classList.add('status-block--out');
-    statusLabel.textContent = t('punch.statusOut');
-    statusMeta.textContent  = lastPunch ? t('punch.statusLast', { time: formatTime(lastPunch.ts), rel: relative(lastPunch.ts) }) : t('punch.statusNoPunches');
+    statusLabel.textContent = t('punch.notClockedIn');
+    openSinceTs = null;
+    statusMeta.textContent = lastPunch
+      ? t('punch.statusLast', { time: formatTime(lastPunch.ts), rel: relative(lastPunch.ts) })
+      : t('punch.statusNoPunches');
     inBtn.disabled  = false;
     outBtn.disabled = true;
   }
+
+  // Render once immediately so there's no 1s blank, then tick every second.
+  tickClock();
+  clockTimer = setInterval(tickClock, 1000);
+
+  // Hero location chip — reuse the last successful fix's address.
+  paintHeroLocation();
+}
+
+/**
+ * Show the hero's inline location chip from the most recent fix. Coordinates
+ * render immediately; the reverse-geocode swap-in upgrades to an address.
+ * Hidden when no fix is available.
+ */
+function paintHeroLocation() {
+  if (!lastFix || typeof lastFix.lat !== 'number' || typeof lastFix.lng !== 'number') {
+    locLine.hidden = true;
+    return;
+  }
+  const acc = lastFix.accuracy ? ` · ±${Math.round(lastFix.accuracy)} m` : '';
+  locText.textContent = `${lastFix.lat.toFixed(4)}, ${lastFix.lng.toFixed(4)}${acc}`;
+  locLine.hidden = false;
+  reverseGeocode(lastFix.lat, lastFix.lng).then((label) => {
+    if (label && !locLine.hidden) locText.textContent = `${label}${acc}`;
+  });
 }
 
 // -------- Geolocation -------------------------------------------------------
@@ -363,6 +433,151 @@ function hideMap() {
 
 let dailyHoursTarget = null;  // null until /api/settings/working-time lands
 
+// -------- Session-pair card builder ----------------------------------------
+
+/**
+ * Build one `.sess` card for an { in, out|null } pair. The DOM contract the
+ * CSS depends on: `.sess__accent` is the FIRST child (a <div>; its colour is
+ * set via el.style — CSSOM, never an inline HTML style attribute), then the
+ * `.sess__times` rows (IN row, then OUT row). The CSS separates rows via
+ * `.sess__times + .sess__times`, so we always emit accent-then-rows.
+ *
+ * `live` marks the open trailing session (its `out` is null but the user is
+ * still on the clock) — it gets a sage accent + a "now" out-time, NOT a
+ * missing-punch hint. A non-live incomplete pair (out=null, e.g. a forgotten
+ * clock-out from an earlier session) gets the clay `.sess__missing` hint.
+ */
+function buildSessCard(pair, { live = false } = {}) {
+  const card = document.createElement('li');
+  card.className = 'sess';
+
+  // Accent strip — must be the first child so `.sess__times + .sess__times`
+  // still selects only the gap between consecutive rows.
+  const accent = document.createElement('div');
+  accent.className = 'sess__accent';
+  accent.setAttribute('aria-hidden', 'true');
+  // Live session → sage; completed/incomplete → neutral line. Set via CSSOM.
+  accent.style.background = live ? 'var(--sage)' : 'var(--line)';
+  card.appendChild(accent);
+
+  const missingAddrs = [];
+
+  // IN row (may be null if an "out" has no preceding "in").
+  if (pair.in) {
+    card.appendChild(buildTimeRow(pair.in, 'in', missingAddrs));
+  } else {
+    card.appendChild(buildMissingRow('in'));
+  }
+
+  // OUT row — a real out, a live "now" placeholder, or a missing hint.
+  if (pair.out) {
+    card.appendChild(buildTimeRow(pair.out, 'out', missingAddrs));
+  } else if (live) {
+    card.appendChild(buildLiveOutRow());
+  } else {
+    card.appendChild(buildMissingRow('out'));
+  }
+
+  // Resolve any coordinate labels into addresses asynchronously.
+  for (const { span, geo } of missingAddrs) {
+    reverseGeocode(geo.lat, geo.lng).then((label) => { if (label) span.textContent = label; });
+  }
+
+  return card;
+}
+
+/**
+ * Build a `.sess__times` row for one punch. Columns (per the CSS grid):
+ * kind badge | address/comment | duration. Coordinates render immediately;
+ * the reverse-geocode swap-in is registered via `addrSink`.
+ */
+function buildTimeRow(p, kind, addrSink) {
+  const row = document.createElement('div');
+  row.className = 'sess__times';
+
+  const badge = document.createElement('span');
+  badge.className = `sess__time sess__time--${kind}`;
+  badge.textContent = kind === 'in' ? t('punch.badgeIn') : t('punch.badgeOut');
+  row.appendChild(badge);
+
+  const mid = document.createElement('div');
+  // Time of the punch, plus the reverse-geocoded address (coords first).
+  const time = document.createElement('div');
+  time.className = 'sess__timeval mono';
+  time.textContent = formatTime(p.ts);
+  mid.appendChild(time);
+
+  if (p.geo) {
+    const addr = document.createElement('div');
+    addr.className = 'sess__addr subtle';
+    addr.textContent = `${p.geo.lat.toFixed(4)}, ${p.geo.lng.toFixed(4)}`;
+    mid.appendChild(addr);
+    addrSink.push({ span: addr, geo: p.geo });
+  }
+  if (p.comment) {
+    const c = document.createElement('div');
+    c.className = 'sess__comment-inline';
+    c.textContent = p.comment;
+    mid.appendChild(c);
+  }
+  row.appendChild(mid);
+
+  // Origin badge — all current punches are auto-recorded by the clock; the
+  // data layer carries no manual flag yet (manual entries arrive via
+  // corrections, a later plan). Show the auto badge for clarity.
+  const origin = document.createElement('span');
+  origin.className = 'sess__origin';
+  origin.textContent = t('punch.originAuto');
+  row.appendChild(origin);
+
+  return row;
+}
+
+/** The "— now" out row for the live (still-open) session. */
+function buildLiveOutRow() {
+  const row = document.createElement('div');
+  row.className = 'sess__times';
+
+  const badge = document.createElement('span');
+  badge.className = 'sess__time sess__time--out';
+  badge.textContent = t('punch.badgeOut');
+  row.appendChild(badge);
+
+  const mid = document.createElement('div');
+  const time = document.createElement('div');
+  time.className = 'sess__timeval mono';
+  time.textContent = `— ${t('punch.live')}`;
+  mid.appendChild(time);
+  row.appendChild(mid);
+
+  // Empty trailing cell keeps the live row's 3-column grid aligned with
+  // buildTimeRow (badge | mid | duration) — don't drop it.
+  const dur = document.createElement('span');
+  dur.className = 'sess__dur';
+  dur.textContent = '';
+  row.appendChild(dur);
+
+  return row;
+}
+
+/** Clay missing-punch hint row with a link to file a correction. */
+function buildMissingRow(kind) {
+  const row = document.createElement('div');
+  row.className = 'sess__missing';
+
+  const badge = document.createElement('span');
+  badge.className = `sess__time sess__time--${kind}`;
+  badge.textContent = kind === 'in' ? t('punch.badgeIn') : t('punch.badgeOut');
+  row.appendChild(badge);
+
+  const link = document.createElement('a');
+  link.href = '/corrections/new';
+  link.textContent = t('punch.sessMissing');
+  row.appendChild(link);
+
+  return row;
+}
+
 function renderList(punches) {
   // Update the today-total label next to the section heading.
   // Format: "5h 23m / 8h · break 1h" (break segment only when > 0).
@@ -394,59 +609,14 @@ function renderList(punches) {
     listEl.appendChild(li);
     return;
   }
-  // Newest first — easier to scan on a phone.
-  for (const p of [...punches].reverse()) {
-    const li = document.createElement('li');
-    li.className = 'punch-list__item';
 
-    const badge = document.createElement('span');
-    badge.className = `punch-list__badge punch-list__badge--${p.type}`;
-    badge.textContent = p.type === 'in' ? t('punch.badgeIn') : t('punch.badgeOut');
-
-    const body = document.createElement('div');
-    body.className = 'punch-list__body';
-    const time = document.createElement('div');
-    time.className = 'punch-list__time';
-    time.textContent = formatTime(p.ts);
-    body.appendChild(time);
-
-    const meta = document.createElement('div');
-    meta.className = 'punch-list__meta';
-    const parts = [];
-    if (p.comment) parts.push(escapeHtml(p.comment));
-    let geoSpan = null;
-    if (p.geo) {
-      // Render coords as the immediate fallback. The reverse-geocode
-      // request runs async; when it resolves with a label we swap the
-      // text content. Failure / offline / rate-limit just leaves the
-      // coords visible.
-      geoSpan = document.createElement('span');
-      geoSpan.className = 'punch-list__geo';
-      geoSpan.textContent = `${p.geo.lat.toFixed(4)}, ${p.geo.lng.toFixed(4)}`;
-    }
-    meta.innerHTML = parts.join(' · ');
-    if (geoSpan) {
-      if (parts.length > 0) meta.appendChild(document.createTextNode(' · '));
-      meta.appendChild(geoSpan);
-    }
-    if (parts.length > 0 || geoSpan) body.appendChild(meta);
-
-    li.appendChild(badge);
-    li.appendChild(body);
-    listEl.appendChild(li);
-
-    if (geoSpan) {
-      reverseGeocode(p.geo.lat, p.geo.lng).then((label) => {
-        if (label) geoSpan.textContent = label;
-      });
-    }
-  }
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]));
+  // One `.sess` card per in→out pair, in chronological order. The trailing
+  // open pair (out=null while the user is clocked in) is the live session.
+  const pairs = pairDay(groupPunchesByDay(punches)[0]?.list || []);
+  pairs.forEach((pair, i) => {
+    const live = pair.out == null && pair.in != null && i === pairs.length - 1 && isOpen;
+    listEl.appendChild(buildSessCard(pair, { live }));
+  });
 }
 
 /**
@@ -505,6 +675,35 @@ function formatDuration(ms) {
   return `${h}h ${m}m`;
 }
 
+// -------- Pure week-grouping + pairing helpers ------------------------------
+// These two are mirrored (byte-for-byte) by inline copies in
+// tests/test-punch-week.mjs — punch.js imports /-absolute browser modules
+// Node can't resolve, so the suite re-implements them per the project pattern.
+// Keep this source and the test's copies identical.
+
+// Group an ascending punch array by UTC day → [{ ymd, list }]. Pure.
+export function groupPunchesByDay(punches) {
+  const byDay = new Map();
+  for (const p of [...punches].sort((a, b) => new Date(a.ts) - new Date(b.ts))) {
+    const ymd = new Date(p.ts).toISOString().slice(0, 10);
+    if (!byDay.has(ymd)) byDay.set(ymd, []);
+    byDay.get(ymd).push(p);
+  }
+  return [...byDay.entries()].map(([ymd, list]) => ({ ymd, list }));
+}
+
+// Pair in→out within one day's list → [{ in, out|null }]. Pure. Trailing
+// open `in` yields { in, out:null } (a live/again-missing session).
+export function pairDay(list) {
+  const pairs = []; let open = null;
+  for (const p of list) {
+    if (p.type === 'in') { if (open) pairs.push({ in: open, out: null }); open = p; }
+    else if (p.type === 'out') { pairs.push({ in: open, out: p }); open = null; } // open may be null → missing in
+  }
+  if (open) pairs.push({ in: open, out: null });
+  return pairs;
+}
+
 // -------- Data refresh ------------------------------------------------------
 
 async function refresh() {
@@ -521,6 +720,30 @@ async function refresh() {
   // about the current user. Filter client-side.
   const mine = today.punches.filter((p) => p.employeeId === me.id);
   renderList(mine);
+  paintSubLine(status, mine);
+}
+
+/**
+ * Head sub line under the page title. When clocked in: "Working since HH:MM ·
+ * Xh Ym so far". Otherwise: "Today: Xh Ym across N sessions" (or blank when
+ * there are no punches yet today).
+ */
+function paintSubLine(status, todayPunches) {
+  if (!punchSub) return;
+  if (status.open && status.lastPunch) {
+    punchSub.textContent = t('punch.subWorkingSince', {
+      time: formatTime(status.lastPunch.ts),
+      dur:  formatDuration(totalWorkedMs(todayPunches)),
+    });
+    return;
+  }
+  if (todayPunches.length === 0) { punchSub.textContent = ''; return; }
+  const sessions = pairDay(groupPunchesByDay(todayPunches)[0]?.list || [])
+    .filter((p) => p.in && p.out).length;
+  punchSub.textContent = t('punch.subToday', {
+    dur: formatDuration(totalWorkedMs(todayPunches)),
+    n:   sessions,
+  });
 }
 
 // -------- Action ------------------------------------------------------------
@@ -545,6 +768,7 @@ async function doPunch(direction) {
       lastFix = { ...geo, ts: new Date().toISOString() };
       saveCachedFix(lastFix);
       renderMap(lastFix);
+      paintHeroLocation();
     } else {
       markGeoFailed();
     }
@@ -601,8 +825,134 @@ retryGeoBtn.addEventListener('click', async () => {
     lastFix = { ...fix, ts: new Date().toISOString() };
     saveCachedFix(lastFix);
     renderMap(lastFix);
+    paintHeroLocation();
   }
 });
+
+// -------- Sub-tabs + This-week panel ----------------------------------------
+
+const tabToday = $('tab-today'), tabWeek = $('tab-week');
+const panelToday = $('panel-today'), panelWeek = $('panel-week');
+let weekLoaded = false;
+function showTab(which) {
+  const onWeek = which === 'week';
+  panelToday.hidden = onWeek; panelWeek.hidden = !onWeek;
+  tabToday.classList.toggle('punch-tab--active', !onWeek);
+  tabWeek.classList.toggle('punch-tab--active', onWeek);
+  if (onWeek && !weekLoaded) { weekLoaded = true; loadWeek(); }
+}
+tabToday.addEventListener('click', () => showTab('today'));
+tabWeek.addEventListener('click', () => showTab('week'));
+
+/** Zero-pad a 1-based month to "MM". */
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+/** YYYY-MM-DD for a Date in UTC (matches the by-UTC-day grouping helpers). */
+function ymdOf(d) { return d.toISOString().slice(0, 10); }
+
+/**
+ * Load and render the This-week panel: Monday–Sunday of the current week.
+ * Fetches the month(s) the week spans (one extra fetch when the week crosses
+ * the 1st), filters to the week window, groups by UTC day, and renders each
+ * day as a `.day-group` with a date header + day total and `.sess` rows.
+ *
+ * Uses UTC-day boundaries to stay consistent with the reports/home views and
+ * the `groupPunchesByDay` helper (which slices the ISO string at UTC).
+ */
+async function loadWeek() {
+  // Monday of this week (UTC). getUTCDay(): 0=Sun..6=Sat → days since Monday.
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const dow = today.getUTCDay();           // 0..6, Sun..Sat
+  const sinceMon = (dow + 6) % 7;          // 0 for Mon … 6 for Sun
+  const monday = new Date(today.getTime() - sinceMon * 86_400_000);
+  const sunday = new Date(monday.getTime() + 6 * 86_400_000);
+  const weekStart = ymdOf(monday), weekEnd = ymdOf(sunday);
+
+  // Which (year, month) pairs does the Mon–Sun window touch? Usually one;
+  // two when the week straddles a month boundary (the 1st falls mid-week).
+  const months = new Map(); // key "y-m" → {y, m}
+  const addMonth = (d) => { const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1; months.set(`${y}-${m}`, { y, m }); };
+  addMonth(monday); addMonth(sunday);
+
+  let punches = [];
+  try {
+    for (const { y, m } of months.values()) {
+      const res = await fetch(`/api/punches/by-employee/${me.id}?year=${y}&month=${pad2(m)}`, { credentials: 'same-origin' });
+      if (res.status === 401) { window.location.href = '/login'; return; }
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (Array.isArray(data.punches)) punches.push(...data.punches);
+    }
+  } catch {
+    weekListEl.innerHTML = '';
+    const li = document.createElement('li');
+    li.className = 'subtle';
+    li.textContent = t('punch.couldNotLoad');
+    weekListEl.appendChild(li);
+    return;
+  }
+
+  // Keep only this employee's punches within the Mon–Sun window. The IN/OUT
+  // pairing is handled per day by pairDay.
+  const mine = punches.filter((p) => p.employeeId === me.id);
+  const inWeek = mine.filter((p) => {
+    const ymd = ymdOf(new Date(p.ts));
+    return ymd >= weekStart && ymd <= weekEnd;
+  });
+
+  renderWeek(inWeek);
+}
+
+/** Render the grouped This-week days into #week-list. */
+function renderWeek(punches) {
+  weekListEl.innerHTML = '';
+  const days = groupPunchesByDay(punches);
+  if (days.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'punch-empty';
+    const title = document.createElement('div');
+    title.className = 'punch-empty__title';
+    title.textContent = t('punch.weekEmpty');
+    li.appendChild(title);
+    weekListEl.appendChild(li);
+    return;
+  }
+
+  const todayYmd = ymdOf(new Date());
+
+  // Newest day first.
+  for (const { ymd, list } of [...days].reverse()) {
+    const group = document.createElement('li');
+    group.className = 'day-group';
+
+    const head = document.createElement('div');
+    head.className = 'day-head';
+    const title = document.createElement('span');
+    title.className = 'day-title';
+    title.textContent = fmtDate(`${ymd}T00:00:00Z`);
+    const total = document.createElement('span');
+    total.className = 'day-total mono';
+    total.textContent = formatDuration(totalWorkedMs(list));
+    head.appendChild(title);
+    head.appendChild(total);
+    group.appendChild(head);
+
+    const rows = document.createElement('ul');
+    rows.className = 'punch-list';
+    // Only today's trailing open `in` (while still clocked in) is "live"; a
+    // trailing open `in` on a past day is a forgotten clock-out (missing).
+    const pairs = pairDay(list);
+    pairs.forEach((pair, i) => {
+      const live = ymd === todayYmd && isOpen
+        && pair.out == null && pair.in != null && i === pairs.length - 1;
+      rows.appendChild(buildSessCard(pair, { live }));
+    });
+    group.appendChild(rows);
+
+    weekListEl.appendChild(group);
+  }
+}
 
 // -------- Bootstrap ---------------------------------------------------------
 
@@ -635,6 +985,7 @@ retryGeoBtn.addEventListener('click', async () => {
   if (cached) {
     lastFix = cached;
     renderMap(cached);
+    paintHeroLocation();
   } else if (geoFailedThisSession()) {
     retryGeoBtn.hidden = false;
     geoStatusEl.textContent = 'Location unavailable. Click Retry to try again.';
@@ -644,6 +995,7 @@ retryGeoBtn.addEventListener('click', async () => {
       lastFix = { ...fix, ts: new Date().toISOString() };
       saveCachedFix(lastFix);
       renderMap(lastFix);
+      paintHeroLocation();
     }
   }
 
