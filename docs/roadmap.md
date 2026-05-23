@@ -33,7 +33,7 @@ app in a usable state.
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
-| M15       | Full UI revamp                     | 📋 Planned    |
+| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0) |
 | M16       | E2E browser tests                  | 📋 Planned    |
 | M17       | Deployment guide + TLS samples     | 📋 Planned    |
 
@@ -340,20 +340,42 @@ employer-only `PUT /api/settings/mail`. New `src/storage/mail-config.js`;
 change the milestone arc: M15 / M16 / M17 are unchanged and M17 still
 ships last.
 
-### Milestones 15–17 — planned 📋
+### Milestone 15 — Full UI revamp 🔄 in progress
 
-Titles are firm; detailed scope firms up when each milestone
-starts. The order is deliberate — the deployment guide ships last
-so it documents the final security posture, not a moving target,
-and the E2E suite lands after the UI revamp so tests target the
-final UI rather than one about to change.
+Foundation shipped at **0.27.0**. Detailed plan series lives in
+`docs/superpowers/plans/2026-05-22-m15-*.md`.
 
-- **M15 — Full UI revamp.** End-to-end visual and interaction pass
-  across every page.
-- **M16 — E2E browser tests.** Playwright — the project's first
-  npm dependency (~300 MB on disk), a deliberate departure from
-  the zero-dependency constraint, hence its own milestone. Lands
-  after M15 so it tests the post-revamp UI.
+**Foundation (0.27.0) — done:**
+- ✅ Design-token cascade in `app.css`: 6 `[data-theme]` × `[data-palette]`
+  combos (Linen/Slate/Olive × Light/Dark) as the canonical token vocabulary.
+- ✅ Pre-M15 alias bridge so all 20 un-migrated stylesheets keep rendering.
+- ✅ Three self-hosted font families (Instrument Serif, DM Sans, JetBrains
+  Mono) as 8 woff2 files in `public/fonts/`; `font-src 'self'` CSP unchanged.
+- ✅ Theme + palette inline bootstrap swapped across all 21 HTML files
+  (byte-identical; single CSP hash).
+- ✅ New shell in `topbar.js`/`topbar.css`: desktop sidebar + content
+  top-bar + mobile top app-bar + bottom nav + drawer. `mountTopBar()` /
+  `mountFooter()` contract unchanged.
+- ✅ New nav/menu/crumb i18n keys. CACHE_VERSION v44 → v45.
+- ✅ 3 new test suites (`test-theme-tokens`, `test-theme-bootstrap`,
+  `test-sw-precache`). Total 44.
+
+**Remaining M15 plans (in progress):**
+- Each of the 13 screen bodies rebuilt per the plan series.
+- Alias bridge removed in the final cleanup plan once all 16 stylesheets
+  reference design tokens directly.
+
+### Milestones 16–17 — planned 📋
+
+The order is deliberate — the deployment guide ships last so it documents
+the final security posture, not a moving target, and the E2E suite lands
+after the UI revamp so tests target the final UI rather than one about to
+change.
+
+- **M16 — E2E browser tests.** Playwright — the project's first npm
+  dependency (~300 MB on disk), a deliberate departure from the
+  zero-dependency constraint, hence its own milestone. Lands after M15
+  so it tests the post-revamp UI.
 - **M17 — Deployment guide + TLS samples.** Caddy / nginx / systemd
   samples plus TLS guidance. Ships last by design.
 
@@ -377,4 +399,4 @@ final UI rather than one about to change.
 
 ---
 
-_Last touched in 0.26.0._
+_Last touched in 0.27.0._

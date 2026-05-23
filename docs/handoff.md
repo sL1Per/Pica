@@ -5,14 +5,14 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.26.0._
+_Last touched in 0.27.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.26.0 (released 2026-05-22)
-- **Test count:** 41 suites, all green except **two** pre-existing
+- **Latest version:** 0.27.0 (released 2026-05-23)
+- **Test count:** 44 suites, all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
   pre-feature baseline (see notes.md): `test-reports.mjs`
   `overnight split` bucket count (host-timezone sensitive) and
@@ -25,15 +25,55 @@ _Last touched in 0.26.0._
   `test-reminder-scheduler`, `test-mail-routes`) and extended
   `test-org-settings` / `test-user-prefs` (pre-existing): 34 → 40.
   The 0.26.0 encrypted settings-managed SMTP config added one more,
-  `test-mail-config-store`: 40 → 41.
+  `test-mail-config-store`: 40 → 41. The 0.27.0 M15 foundation added
+  three more — `test-theme-tokens`, `test-theme-bootstrap`,
+  `test-sw-precache`: 41 → 44.
 - **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
-  and 0.25.0 are feature drops on top; no new zip cut yet)
+  through 0.27.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
-- **Lines of code (rough):** ~6 KLoC across `src/`, `public/`, `tests/`
-- **Active milestone:** M14 (Email notifications) shipped at 0.25.0;
-  0.26.0 followed up by moving SMTP config out of plaintext
-  `config.json` into an encrypted, settings-managed blob; M15–M17 are
-  next (M17 deployment guide ships last)
+- **Lines of code (rough):** ~7 KLoC across `src/`, `public/`, `tests/`
+- **Active milestone:** M15 (Full UI revamp) — foundation shipped at
+  0.27.0; screen-body plans in progress (see
+  `docs/superpowers/plans/2026-05-22-m15-*`); M16–M17 follow
+  (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.27.0)
+
+**M15 foundation — design tokens, self-hosted fonts, new shell.**
+Every existing page re-skins immediately via a compatibility bridge;
+the 13 screen bodies are rebuilt in later M15 plans.
+
+**Design-token cascade.** `app.css` carries a `[data-theme]` ×
+`[data-palette]` cascade with 6 combos (Linen/Slate/Olive × Light/Dark).
+A pre-M15 alias bridge maps the old names (`--accent`, `--surface`,
+`--text`, …) onto the new tokens — intentional transitional debt removed
+in the final M15 cleanup plan.
+
+**Self-hosted fonts.** Instrument Serif (headings), DM Sans (UI text),
+JetBrains Mono (monospace) as 8 woff2 files under `public/fonts/`.
+`@font-face` in `app.css`; `font-src 'self'` CSP unchanged. The woff2
+files are **committed to the repo** — a clean checkout already has them.
+`scripts/fetch-fonts.mjs` exists to refresh them if needed (needs
+network). Licenses: SIL OFL, redistribution permitted.
+
+**New bootstrap.** All 21 HTML files' inline `<script>` resolves both
+`data-theme` (light/dark/system) and `data-palette` on `<html>`
+synchronously, byte-identical across all 21 files (one CSP hash). `app.js`
+also applies `palette` from server prefs (defensive: palette pref field
+wired in the Preferences M15 plan).
+
+**New shell.** `topbar.js` + `topbar.css` rebuilt: desktop fixed sidebar
+(brand + icon nav + user-tile popover) + content top-bar (crumb + bell);
+mobile top app-bar + bottom nav + drawer. `mountTopBar()` / `mountFooter()`
+signatures unchanged — no other page edited. New nav/menu/crumb i18n keys
+in both locales. CACHE_VERSION v44 → v45; 8 fonts in SW pre-cache list.
+
+**3 new suites** (`test-theme-tokens`, `test-theme-bootstrap`,
+`test-sw-precache`). Test count 41 → 44. See RELEASES.md 0.27.0 for
+the full Honest Disclosures (foundation only, alias bridge debt, static
+bell, fonts committed, no CSS fallback for dark mode, etc.).
 
 ---
 
@@ -612,7 +652,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13   | Reports revamp                           | ✅ 0.24.0  |
 | M14   | Add email notifications                  | ✅ 0.25.0  |
-| M15   | Full UI revamp                           | 📋 planned |
+| M15   | Full UI revamp                           | 🔄 in progress (foundation 0.27.0) |
 | M16   | E2E browser tests (Playwright)           | 📋 planned |
 | M17   | Deployment guide + TLS samples           | 📋 planned |
 
@@ -678,6 +718,17 @@ of the app handles missing data. A future drop could add explicit
 
 ## Things that have NOT been done that you might assume have
 
+- **The M15 alias bridge is still in `app.css`** (as of 0.27.0). The
+  ~40 extra lines mapping old token names (`--accent`, `--surface`,
+  `--text`, etc.) onto the new 6-combo cascade are intentional
+  transitional debt — they go away in the final M15 cleanup plan once
+  all 16 stylesheets use design tokens directly. Until then, removing
+  them would break the 20 un-migrated pages.
+- **The woff2 font files are committed to the repo** and served from
+  `public/fonts/`. `scripts/fetch-fonts.mjs` is a convenience for
+  refreshing them from upstream; it needs network and is not run as
+  part of any startup or test. A checkout that has the committed files
+  (normal) needs no extra step.
 - **No JS bundling.** Frontend `.js` files are served raw. Imports
   use absolute paths (`/i18n.js`) that work in the browser but NOT
   in Node — tests re-implement frontend logic inline.
@@ -770,7 +821,7 @@ would be less robust.
 If you're about to make a non-trivial change, run these checks first:
 
 ```bash
-# Full regression (33 suites)
+# Full regression (44 suites)
 for f in tests/test-*.mjs; do printf '%s: ' "$f"; node "$f" 2>&1 | tail -1; done
 ```
 
@@ -796,14 +847,14 @@ grep "CACHE_VERSION" public/sw.js | head -1
 
 If you change a pre-cached SW asset (anything in `public/` except
 `*.html`), bump `CACHE_VERSION`. If you change the inline bootstrap
-in `index.html`, the same change must appear in all 19 HTML files
+in `index.html`, the same change must appear in all 21 HTML files
 byte-identically (the test will fail otherwise).
 
 ---
 
 ## Last-mile checklist before shipping a release
 
-1. All 21 test suites green
+1. All 44 test suites green
 2. Live smoke covering whatever you changed
 3. `package.json` version + releaseDate bumped
 4. `public/sw.js` `CACHE_VERSION` bumped if shell assets changed

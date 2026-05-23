@@ -14,6 +14,142 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.27.0] — 2026-05-23 — M15 foundation: design tokens, self-hosted fonts, new shell
+
+### What changed
+
+The visual **foundation** of the M15 UI revamp. Every existing page
+re-skins immediately through a compatibility bridge; the screen bodies
+themselves are rebuilt in later M15 plans.
+
+**Design-token cascade.** `public/app.css` now carries a
+`[data-theme]` × `[data-palette]` CSS-custom-property cascade with
+**6 theme × palette combos**: Linen Light, Linen Dark, Slate Light,
+Slate Dark, Olive Light, Olive Dark. These are the canonical token
+vocabulary for the rest of M15. A **pre-M15 alias bridge** maps the
+old token names (`--accent`, `--surface`, `--text`, etc.) onto the
+new ones so the 20 not-yet-migrated stylesheets keep rendering without
+a single edit. The bridge is intentional transitional debt, removed in
+the final M15 cleanup plan.
+
+**Self-hosted fonts.** Three font families — Instrument Serif (headings),
+DM Sans (UI text), JetBrains Mono (monospace) — are now served from
+`public/fonts/` as 8 woff2 files. `@font-face` blocks in `app.css`
+reference them with absolute `/fonts/*.woff2` paths. `font-src 'self'`
+in the CSP is **unchanged** — no Google CDN, no third-party request,
+no IP leak. The woff2 files are **committed to the repo**, so a clean
+checkout already has them and the app works offline without any extra
+step. A zero-dep `scripts/fetch-fonts.mjs` downloader exists for
+operators who want to refresh or re-fetch the files (needs network).
+Licenses: Instrument Serif, DM Sans, and JetBrains Mono are all SIL
+OFL and permit redistribution.
+
+**Theme + palette bootstrap.** The inline `<script>` in all 21 HTML
+files is swapped for a new bootstrap that resolves **both** color mode
+(light / dark / system via `matchMedia`) **and** palette. It sets both
+`data-theme` and `data-palette` on `<html>` synchronously, before any
+CSS parses, so there is no flash. The script is byte-identical across
+all 21 HTML files — one CSP `sha256-` hash covers them all. `app.js`
+now also applies `palette` from the server's stored preferences
+(defensive default: palette API field doesn't exist server-side yet —
+that is wired in the Preferences M15 plan).
+
+**New shell.** `public/topbar.js` and `public/topbar.css` are rebuilt
+to the M15 design:
+
+- **Desktop:** fixed sidebar (232 px) with brand mark and a
+  role-specific icon nav — employer: Home / Team / Calendar / Leaves /
+  Punches / Reports (plus a Settings link pinned at the bottom);
+  employee: Home / Clock / Calendar / My leaves / Reports — plus a
+  user-tile popover (profile / preferences / sign-out). The content
+  area gets its own top-bar with breadcrumb and notification bell.
+- **Mobile (≤ 760 px):** top app-bar (burger + brand name + bell +
+  avatar) + bottom nav (employer: 4 primary + "More"; employee: all 5)
+  + slide-in drawer (full nav + user controls).
+
+The `mountTopBar()` and `mountFooter()` export signatures are
+**unchanged**, so none of the other 20 pages were edited.
+
+New nav, menu, and crumb keys added to both `public/locales/en-US.js`
+and `public/locales/pt-PT.js`.
+
+`CACHE_VERSION` v44 → v45 (shell CSS/JS, fonts, locales changed).
+8 font files added to the SW pre-cache list.
+
+**3 new test suites**: `test-theme-tokens` (token cascade: all 6
+combos defined, alias bridge present), `test-theme-bootstrap` (inline
+bootstrap byte-identical across all 21 HTML, resolves both mode and
+palette, no third-party CDN URL in any public file — privacy/offline
+regression guard), `test-sw-precache` (font woff2 files in the pre-
+cache list, all listed assets exist on disk). Test count 41 → 44.
+
+### Files touched
+
+- `public/fonts/` — **new directory**. 8 woff2 files: Instrument Serif
+  Regular + Italic, DM Sans Regular + Medium + SemiBold + Bold,
+  JetBrains Mono Regular + Medium. Committed to the repo.
+- `scripts/fetch-fonts.mjs` — **new**. Zero-dep downloader for
+  refreshing the woff2 files (needs network; not shipped to clients).
+- `public/app.css` — design-token cascade (6 `[data-theme]` ×
+  `[data-palette]` combos), pre-M15 alias bridge, `@font-face` blocks,
+  font-family token values.
+- All 21 `public/*.html` — swapped inline bootstrap to resolve both
+  `data-theme` and `data-palette` (byte-identical across all 21).
+- `public/app.js` — extended server-refresh IIFE to also apply
+  `palette` from stored prefs.
+- `public/topbar.js` — rebuilt shell DOM (sidebar + content top-bar
+  + mobile top-bar / bottom-nav / drawer / user-menu popover). Public
+  contract (`mountTopBar` / `mountFooter`) unchanged.
+- `public/topbar.css` — full restyle to the M15 design shell.
+- `public/locales/en-US.js`, `public/locales/pt-PT.js` — new
+  nav / menu / crumb i18n keys.
+- `public/sw.js` — 8 font files added to the pre-cache list;
+  `CACHE_VERSION` v44 → v45.
+- `package.json` — 0.27.0, 2026-05-23.
+- `tests/test-theme-tokens.mjs` — **new**.
+- `tests/test-theme-bootstrap.mjs` — **new**.
+- `tests/test-sw-precache.mjs` — **new**.
+- `docs/architecture.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `RELEASES.md` — this entry; test count; milestone state.
+- `docs/superpowers/plans/2026-05-22-m15-foundation-tokens-shell.md`,
+  `docs/superpowers/plans/2026-05-22-m15-ui-revamp-roadmap.md` — M15
+  planning artifacts committed alongside the release.
+
+### Honest Disclosures
+
+- **Foundation only.** The 13 screen bodies (dashboard, punch, leaves,
+  reports, employees, corrections, settings, etc.) are still their
+  pre-M15 layouts, re-skinned via the alias bridge. Each is rebuilt in
+  a later M15 plan. See
+  `docs/superpowers/plans/2026-05-22-m15-ui-revamp-roadmap.md` for the
+  full plan series.
+- **The alias bridge is intentional transitional debt.** It keeps all
+  20 un-migrated stylesheets rendering without a single edit. It is
+  removed in the final M15 cleanup plan, once every stylesheet
+  references design tokens directly. Until then it adds ~40 lines to
+  `app.css` that will eventually go away.
+- **The notification bell is static.** No red-dot / unread-count
+  wiring exists yet. The pending-count nav badge is deferred to the
+  Employer-home plan to avoid inventing a backend endpoint prematurely.
+- **The woff2 files are committed to the repo.** `scripts/fetch-fonts.mjs`
+  exists for operators who want to refresh them from upstream sources
+  (needs network). A checkout without the files would fall back to
+  system fonts; the committed files mean that fallback should never
+  occur in practice.
+- **System dark mode requires JS.** There is no `prefers-color-scheme`
+  CSS-only fallback. With JS disabled, system-preference users get the
+  light theme. This is acceptable because the app requires JS to
+  function at all.
+- **Brand sub-line uses `app.suffix` ("Time management").** A real
+  company tagline is a Settings concern, handled in the Settings M15
+  plan.
+- **No browser / DOM tests.** Shell layout and interaction are
+  smoke-verified (assets serve, CSP intact, bootstrap byte-identical).
+  Playwright is M16 — it tests the post-revamp UI once all 13 screens
+  are rebuilt.
+
+---
+
 ## [0.26.0] — 2026-05-22 — Encrypted settings-managed SMTP config
 
 ### What changed

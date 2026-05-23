@@ -125,11 +125,14 @@ pica/
 │   ├── scheduler/           # background timers
 │   │   ├── backup-scheduler.js # periodic check; makes a backup if due
 │   │   └── reminder-scheduler.js # 24h-before-leave reminder scan; idempotent via reminder_sent (0.25.0)
+├── scripts/
+│   └── fetch-fonts.mjs      # zero-dep font downloader (run locally; needs network) (0.27.0)
 ├── public/                  # everything served as static assets
-│   ├── app.css              # global tokens + layout primitives
-│   ├── app.js               # shared utilities (postJson, showMessage, toast…)
-│   ├── topbar.css           # app-shell styles (header, sidebar, drawer)
-│   ├── topbar.js            # mountTopBar / mountFooter — every authed page calls these
+│   ├── app.css              # global tokens + layout primitives; design-token cascade (6 theme×palette combos) + pre-M15 alias bridge + @font-face blocks (0.27.0)
+│   ├── app.js               # shared utilities (postJson, showMessage, toast…); applies palette from server prefs (0.27.0)
+│   ├── fonts/               # self-hosted woff2 files: Instrument Serif, DM Sans, JetBrains Mono — 8 files (0.27.0)
+│   ├── topbar.css           # app-shell styles: desktop sidebar + content top-bar + mobile top-bar/bottom-nav/drawer (rebuilt M15, 0.27.0)
+│   ├── topbar.js            # mountTopBar / mountFooter — every authed page calls these; shell rebuilt for M15 keeping same public contract (0.27.0)
 │   ├── i18n.js              # t / tn / translateError / applyTranslations / fmtDate…
 │   ├── manifest.json        # PWA manifest
 │   ├── sw.js                # Service Worker (cache shell + offline fallback)
@@ -200,7 +203,10 @@ pica/
 │   ├── test-mail-mailer.mjs        # gating boundary: org × user × config, best-effort (0.25.0)
 │   ├── test-reminder-scheduler.mjs # 24h-before-leave reminder scan + idempotence (0.25.0)
 │   ├── test-mail-routes.mjs        # POST /api/mail/test route (employer-only) (0.25.0); GET org mail view + PUT /api/settings/mail (0.26.0)
-│   └── test-mail-config-store.mjs  # encrypted SMTP config store: round-trip, AAD, never-throws, write-only pass, abort-not-clobber (0.26.0)
+│   ├── test-mail-config-store.mjs  # encrypted SMTP config store: round-trip, AAD, never-throws, write-only pass, abort-not-clobber (0.26.0)
+│   ├── test-theme-tokens.mjs       # design-token cascade: all 6 theme×palette combos defined, alias bridge present (0.27.0)
+│   ├── test-theme-bootstrap.mjs    # inline bootstrap byte-identical across all 21 HTML, resolves mode+palette; no third-party CDN URLs in public/ (0.27.0)
+│   └── test-sw-precache.mjs        # font woff2 files in SW pre-cache list; all listed assets exist on disk (0.27.0)
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -309,12 +315,19 @@ corrupts an existing record) and gives us an audit log for free.
   file. The `.js` imports from a small set of shared modules
   (`/app.js`, `/topbar.js`, `/i18n.js`). No bundler.
 - **Mobile-first CSS** with custom-property design tokens defined in
-  `app.css`. Per-page CSS files extend, never override the tokens.
-- **App shell layout** since 0.14.0: a sticky header on top, a fixed
-  sidebar on the left (collapses to a drawer on ≤900px viewports),
-  main content fills the gap, footer at the bottom. Implemented
-  entirely in `topbar.css` + `topbar.js`'s `mountTopBar()`. Pages
-  don't need any layout markup of their own.
+  `app.css`. Per-page CSS files extend, never override the tokens. As
+  of 0.27.0, `app.css` carries a full M15 token cascade: 6
+  `[data-theme]` × `[data-palette]` combos (Linen/Slate/Olive ×
+  Light/Dark) with a pre-M15 alias bridge that keeps the 20
+  not-yet-migrated stylesheets rendering unchanged.
+- **App shell layout** rebuilt for M15 at 0.27.0: fixed desktop
+  sidebar (220 px, brand + icon nav + user-tile popover) + content
+  top-bar (breadcrumb + bell); mobile top app-bar + bottom nav (5
+  destinations) + slide-in drawer. Implemented in `topbar.css` +
+  `topbar.js`; the `mountTopBar()` / `mountFooter()` public contract
+  is unchanged so the 20 other pages needed no edits. Three
+  self-hosted woff2 font families served from `public/fonts/`; `font-src
+  'self'` in CSP unchanged.
 - **PWA shell** (manifest + service worker) for installability and
   offline punch queueing. The SW pre-caches the shared shell
   (CSS/JS/i18n) but does **not** cache HTML pages — see
@@ -343,7 +356,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **41 suites**, passing as of 0.26.0 except two pre-existing
+- Total: **44 suites**, passing as of 0.27.0 except two pre-existing
   flakes unrelated to any recent feature, both failing identically on
   the pre-feature baseline: `test-reports.mjs` overnight-split bucket
   count (host-timezone sensitive) and `test-auth.mjs` (~1/64
@@ -358,7 +371,12 @@ corrupts an existing record) and gives us an audit log for free.
   encrypted settings-managed SMTP config added one more —
   `test-mail-config-store.mjs` (encrypted store: round-trip, AAD
   binding, never-throws, write-only `pass`, abort-not-clobber) —
-  bringing the total to 41.
+  bringing the total to 41. The 0.27.0 M15 foundation added three more
+  — `test-theme-tokens.mjs` (design-token cascade: all 6 combos,
+  alias bridge), `test-theme-bootstrap.mjs` (inline bootstrap
+  byte-identical across all 21 HTML, no CDN URL leak), and
+  `test-sw-precache.mjs` (font woff2 files in SW pre-cache list,
+  all assets on disk) — bringing the total to 44.
 
 ---
 
@@ -452,4 +470,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.26.0._
+_Last touched in 0.27.0._
