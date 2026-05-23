@@ -18,11 +18,22 @@ export default {
   'nav.punches':     'Punches',
   'nav.reports':     'Reports',
   'nav.settings':    'Settings',
+  'nav.home':     'Home',
+  'nav.team':     'Team',
+  'nav.clock':    'Clock',
+  'nav.myLeaves': 'My leaves',
+  'nav.more':     'More',
+  'nav.notifications': 'Notifications',
 
   // ---- Avatar menu ----
   'menu.profile':     'View my profile',
   'menu.preferences': 'Preferences',
   'menu.signOut':     'Sign out',
+  'menu.account': 'Your account',
+
+  // ---- Breadcrumbs ----
+  'crumb.overview': 'Overview',
+  'crumb.myDay':    'My day',
 
   // ============================================================
   // Page titles (browser tab)

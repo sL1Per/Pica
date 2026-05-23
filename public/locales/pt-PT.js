@@ -19,10 +19,21 @@ export default {
   'nav.punches':     'Marcações',
   'nav.reports':     'Relatórios',
   'nav.settings':    'Definições',
+  'nav.home':     'Início',
+  'nav.team':     'Equipa',
+  'nav.clock':    'Relógio',
+  'nav.myLeaves': 'As minhas ausências',
+  'nav.more':     'Mais',
+  'nav.notifications': 'Notificações',
 
   'menu.profile':     'Ver o meu perfil',
   'menu.preferences': 'Preferências',
   'menu.signOut':     'Terminar sessão',
+  'menu.account': 'A sua conta',
+
+  // ---- Breadcrumbs ----
+  'crumb.overview': 'Visão geral',
+  'crumb.myDay':    'O meu dia',
 
   // ============================================================
   // Page titles
