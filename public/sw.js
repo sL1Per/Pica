@@ -21,7 +21,7 @@
  *     handles map absence gracefully.
  */
 
-const CACHE_VERSION = 'pica-cache-v44';
+const CACHE_VERSION = 'pica-cache-v45';
 // Pre-cache only static assets, NOT HTML pages. HTML pages need
 // server-side per-request locale injection (the <html lang> attribute
 // and the <meta name="pica-locale"> tag are written based on the
@@ -47,6 +47,14 @@ const PRECACHE_URLS = [
   '/i18n.js',
   '/locales/en-US.js',
   '/locales/pt-PT.js',
+  '/fonts/instrument-serif-400.woff2',
+  '/fonts/instrument-serif-400-italic.woff2',
+  '/fonts/dm-sans-400.woff2',
+  '/fonts/dm-sans-500.woff2',
+  '/fonts/dm-sans-600.woff2',
+  '/fonts/dm-sans-700.woff2',
+  '/fonts/jetbrains-mono-400.woff2',
+  '/fonts/jetbrains-mono-500.woff2',
 ];
 
 // On install: pre-fetch the app shell. `addAll` is atomic — if any single
