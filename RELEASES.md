@@ -14,6 +14,59 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.28.0] — 2026-05-23 — M15 employee home redesign (functional clock hero)
+
+### What changed
+
+The employee landing page (`/`) is rebuilt to the M15 design. For
+**employees only**, the read-only widget dashboard is replaced with:
+
+- a **greeting** (time-of-day + first name) and a live HH:MM:SS clock;
+- a **clock-in/out hero** that actually clocks — one tap records a real
+  punch via `POST /api/punches/clock-in|clock-out` — showing today's
+  worked total, a session timeline (closed sessions in sage, the live
+  one in honey), and a status pill;
+- a **This week** card — Worked / Target / Remaining + a Mon–Fri bar
+  chart (today highlighted) — sourced from
+  `GET /api/reports/timesheets?scope=me&type=week` with the weekly
+  target from `/api/settings/working-time`;
+- an **upcoming-leaves** card (date tile + title + status pill) with a
+  "Book time off" button → `/leaves/new`.
+
+The hero records punch location through a new shared `public/geo.js`
+(best-effort fast geolocation: a fresh cached fix or a single 3-second
+low-accuracy attempt, else the punch goes through with a
+`geoSkipReason`). Punch errors surface via the existing `toast()`.
+
+The **employer** home is unchanged. New `home.*` i18n keys in both
+locales; `CACHE_VERSION` v45 → v46 (adds `/geo.js` to the pre-cache
+list). One new test suite (`test-employee-home`, pure-helper contract)
+→ 45 suites total.
+
+### Honest Disclosures
+
+- **Employer home is still pre-M15** — re-skinned only via the alias
+  bridge; rebuilt in a later M15 plan.
+- The home hero uses the **fast** geo path (cached fix or a 3 s
+  attempt, else `geoSkipReason`); there is **no map preview** here.
+  `/punch` remains the full geolocation UI (map + retry).
+- **`geo.js` duplicates `punch.js`'s fast-geo logic transitionally** —
+  `punch.js` is migrated onto `geo.js` in the Punches plan; until then
+  the ~40 lines live in both.
+- The **This-week bars are Mon–Fri only**; weekend work still counts in
+  the Worked total but is not bar-charted.
+- "Book time off" links to the existing `/leaves/new` page — the
+  Request-Leave modal is a later plan.
+- Week buckets and the "today" highlight use **UTC dates** (consistent
+  with the reports endpoint); near local midnight the highlighted bar
+  follows the UTC day.
+- No DOM/browser tests yet (pixels verified by smoke); Playwright is
+  M16. Pre-existing and out of scope (later M15 cleanup): an inline
+  `style="text-align:center"` in the employer-path `widgetError`, and
+  the shell's `.mono` crumb-date class has no global CSS rule yet.
+
+---
+
 ## [0.27.0] — 2026-05-23 — M15 foundation: design tokens, self-hosted fonts, new shell
 
 ### What changed

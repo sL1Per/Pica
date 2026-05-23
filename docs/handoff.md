@@ -5,14 +5,14 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.27.0._
+_Last touched in 0.28.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.27.0 (released 2026-05-23)
-- **Test count:** 44 suites, all green except **two** pre-existing
+- **Latest version:** 0.28.0 (released 2026-05-23)
+- **Test count:** 45 suites, all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
   pre-feature baseline (see notes.md): `test-reports.mjs`
   `overnight split` bucket count (host-timezone sensitive) and
@@ -27,15 +27,37 @@ _Last touched in 0.27.0._
   The 0.26.0 encrypted settings-managed SMTP config added one more,
   `test-mail-config-store`: 40 → 41. The 0.27.0 M15 foundation added
   three more — `test-theme-tokens`, `test-theme-bootstrap`,
-  `test-sw-precache`: 41 → 44.
+  `test-sw-precache`: 41 → 44. The 0.28.0 employee-home redesign added
+  `test-employee-home` (pure-helper contract): 44 → 45.
 - **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
-  through 0.27.0 are feature drops on top; no new zip cut yet)
+  through 0.28.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~7 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M15 (Full UI revamp) — foundation shipped at
-  0.27.0; screen-body plans in progress (see
-  `docs/superpowers/plans/2026-05-22-m15-*`); M16–M17 follow
+  0.27.0; **employee home** shipped at 0.28.0; remaining screen-body
+  plans in progress (Punches is next — see
+  `docs/superpowers/plans/2026-05-2{2,3}-m15-*`); M16–M17 follow
   (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.28.0)
+
+**M15 employee home — functional clock hero.** The employee landing
+page (`/`) is rebuilt to the design: greeting + live clock, a
+clock-in/out **hero that actually clocks** (one tap → real punch via
+`POST /api/punches/clock-in|clock-out`) with today's worked total +
+session timeline, a "This week" card (Worked/Target/Remaining + Mon–Fri
+bars from `GET /api/reports/timesheets?scope=me&type=week`), and an
+upcoming-leaves card. New shared `public/geo.js` (fast best-effort
+geolocation + `clockPunch`) records punch location; punch errors use
+`toast()`. **Employer home unchanged** (later plan). `CACHE_VERSION`
+v45→v46 (+`/geo.js`); new `home.*` i18n keys both locales; new suite
+`test-employee-home`. Non-obvious / deferred: `geo.js` transitionally
+duplicates `punch.js`'s fast-geo (Punches plan unifies them); week bars
+are Mon–Fri only; week/today use UTC dates; pre-existing employer
+`widgetError` inline-style + shell `.mono` crumb gap noted for later
+M15 cleanup. See RELEASES.md 0.28.0.
 
 ---
 
