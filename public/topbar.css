@@ -1,293 +1,161 @@
-/* ============================================================================
-   App shell: header (top, full-width) + sidebar (left) + main + footer.
+/* ============================================================
+   App shell (M15) — desktop sidebar + content top-bar; mobile
+   top app-bar + bottom nav + drawer. Classes built in topbar.js.
+   Breakpoint: 760px (matches the design handoff).
+   ============================================================ */
 
-   Layout strategy:
-   - body is a flex column, min-height 100vh.
-   - .appshell__header is the first child (auto height).
-   - .appshell__body wraps sidebar + main as a flex row, flex: 1 (grows
-     to fill the viewport between header and footer).
-   - .app-footer (mounted by topbar.js) is the last child, auto height.
+.appshell { min-height: 100vh; display: grid; grid-template-columns: 232px 1fr; background: var(--bg); }
+.appshell__content { display: flex; flex-direction: column; min-width: 0; }
+/* max-width caps the content column; horizontal centering of page bodies is
+   delegated to .container / .container--wide (margin:0 auto) used inside main. */
+.appshell__content > main { flex: 1 0 auto; padding: 24px 40px 60px; max-width: 1320px; width: 100%; }
 
-   On mobile (≤900px), the sidebar is positioned fixed and slides in from
-   the left when toggled, with a scrim covering the main content.
-   ============================================================================ */
-
-/* ---------- Header (top bar, full-width) -------------------------------- */
-
-.appshell__header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  height: 64px;
+/* --- Sidebar --- */
+.appshell__sidebar {
+  background: var(--paper); border-right: 1px solid var(--line);
+  padding: 20px 14px; display: flex; flex-direction: column; gap: 28px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
 }
-.appshell__header-inner {
-  height: 100%;
-  display: grid;
-  /* Three columns: logo (fixed) | title (1fr, centered) | right controls (fixed).
-     Using grid (not flex) makes the title genuinely centered in the
-     viewport — flex with auto-margins drifts when the right side is
-     wider than the left. */
-  grid-template-columns: 80px 1fr auto;
-  align-items: center;
-  padding: 0 var(--gap-4);
-  gap: var(--gap-3);
+.appshell__brand { display: flex; align-items: center; gap: 12px; padding: 6px 8px; }
+.appshell__brand-link { display: flex; }
+.appshell__brand-mark {
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--honey) 0%, var(--honey-deep) 100%);
+  color: var(--paper); display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-serif); font-size: 22px; font-style: italic;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(0,0,0,.06);
 }
+.appshell__brand-mark--img { object-fit: cover; font-size: 0; background: var(--paper-2); }
+.appshell__brand-text { line-height: 1.15; min-width: 0; }
+.appshell__brand-name { font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.appshell__brand-sub { font-size: 12px; color: var(--muted); }
+.appshell__drawer-close { display: none; margin-left: auto; width: 32px; height: 32px; border-radius: 8px; font-size: 22px; color: var(--ink-2); }
 
-.appshell__brand {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  color: var(--text);
+.appshell__nav { display: flex; flex-direction: column; gap: 2px; }
+.appshell__nav--footer { flex: none; }
+.appshell__spacer { flex: 1; }
+.appshell__nav-link {
+  display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px;
+  color: var(--ink-2); font-weight: 500; font-size: 14px; position: relative;
+  transition: background var(--t-fast);
 }
-.appshell__logo {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius);
-  object-fit: cover;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-}
-.appshell__logo--placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  color: var(--text-muted);
-  font-size: var(--text-xl);
-}
+.appshell__nav-link:hover { background: var(--paper-2); }
+.appshell__nav-link--active { background: var(--paper-2); color: var(--ink); font-weight: 600; }
+.appshell__nav-icon { display: inline-flex; flex-shrink: 0; }
+.appshell__nav-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.appshell__nav-bar { position: absolute; left: -14px; top: 8px; bottom: 8px; width: 3px; background: var(--honey); border-radius: 0 3px 3px 0; }
 
-.appshell__title {
-  margin: 0;
-  font-size: var(--text-xl);
-  font-weight: 500;
-  color: var(--text);
-  text-align: center;
-  /* Truncate gracefully if the company name is very long rather than
-     pushing the right-side controls off-screen. */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.appshell__title-name { font-weight: 700; }
-.appshell__title-sep  { color: var(--text-muted); margin: 0 0.25em; }
-.appshell__title-app  { color: var(--text-muted); font-weight: 500; }
-
-.appshell__header-right {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-2);
-  position: relative;  /* for the absolute-positioned avatar menu */
-}
-
-/* Avatar — circular, opens the user menu on click. */
 .appshell__avatar {
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
-  padding: 0;
-  margin: 0;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  flex-shrink: 0;
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: oklch(0.72 0.08 var(--hue, 40)); color: #fff; font-weight: 600; font-size: 13px;
 }
-.appshell__avatar:hover { border-color: var(--accent); }
 .appshell__avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Hamburger — three lines, only visible on mobile via media query below. */
-.appshell__hamburger {
-  display: none;
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
-  padding: 0;
-  margin: 0;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
+.appshell__usertile {
+  display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 10px;
+  background: var(--paper-2); border: 1px solid var(--line-soft); width: 100%; text-align: left;
+  transition: background var(--t-fast), border-color var(--t-fast);
 }
-.appshell__hamburger span {
-  width: 18px;
-  height: 2px;
-  background: var(--text);
-  border-radius: 1px;
-}
+.appshell__usertile:hover { background: var(--paper); border-color: var(--line); }
+.appshell__usertile-info { line-height: 1.2; overflow: hidden; flex: 1; }
+.appshell__usertile-name { display: block; font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.appshell__usertile-role { display: block; font-size: 11.5px; color: var(--muted); text-transform: capitalize; }
+.appshell__usertile-chev { display: inline-flex; color: var(--muted); }
 
-/* User menu (drops from the avatar). */
-.appshell__menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + var(--gap-2));
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  min-width: 220px;
-  padding: var(--gap-2);
-  z-index: 40;
+/* --- Desktop content top bar --- */
+.appshell__topbar { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px 0; }
+.appshell__crumb { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.appshell__crumb-sep { opacity: 0.5; }
+.appshell__crumb-date { font-size: 12px; }
+.appshell__iconbtn {
+  width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink-2);
+  display: inline-flex; align-items: center; justify-content: center; position: relative;
 }
-.appshell__menu-head {
-  padding: var(--gap-2) var(--gap-3);
-  border-bottom: 1px solid var(--border);
-  margin-bottom: var(--gap-1);
-}
-.appshell__menu-name { font-weight: 600; }
-.appshell__menu-role {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  text-transform: capitalize;
-}
-.appshell__menu-item {
-  display: block;
-  padding: var(--gap-2) var(--gap-3);
-  border-radius: var(--radius);
-  color: var(--text);
-  text-decoration: none;
-  font-size: var(--text-sm);
-  background: transparent;
-  border: none;
-  width: 100%;
-  text-align: left;
-  margin-top: 0;
-  min-height: auto;
-  cursor: pointer;
-  font-weight: 500;
-  font-family: inherit;
-}
-.appshell__menu-item:hover {
-  background: var(--surface-2);
-  color: var(--text);
-}
-.appshell__menu-item--danger { color: var(--danger); }
-.appshell__menu-item--danger:hover { background: var(--danger-soft); color: var(--danger); }
+.appshell__iconbtn:hover { background: var(--paper-2); }
+.appshell__topactions { display: flex; align-items: center; gap: 10px; }
 
-/* ---------- Body (sidebar + main, fills the gap) ------------------------ */
-
-.appshell__body {
-  display: flex;
-  flex: 1;
-  min-height: 0;     /* let children flow rather than overflow horizontally */
-  width: 100%;
-  position: relative;  /* anchor for the mobile scrim */
+/* --- User menu popover --- */
+.appshell__usermenu {
+  position: fixed; z-index: 51; min-width: 240px; padding: 6px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 18px 40px -16px rgba(0,0,0,.35), 0 4px 10px -4px rgba(0,0,0,.15);
 }
-
-/* The wrap also makes <main> the flex-growing column. main's existing
-   styles (padding etc.) come from the page CSS. */
-.appshell__body > main {
-  flex: 1;
-  min-width: 0;
+.appshell__usermenu-head { padding: 12px 14px; border-bottom: 1px solid var(--line-soft); margin-bottom: 4px; }
+.appshell__usermenu-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+.appshell__usermenu-role { font-size: 12px; color: var(--muted); margin-top: 2px; text-transform: capitalize; }
+.appshell__usermenu-item {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 10px 12px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--ink);
+  transition: background var(--t-fast);
 }
+.appshell__usermenu-item:hover { background: var(--paper-2); }
+.appshell__usermenu-item--danger { color: var(--clay); }
+.appshell__usermenu-sep { height: 1px; background: var(--line-soft); margin: 4px 6px; }
 
-/* ---------- Sidebar ---------------------------------------------------- */
-
-.appshell__sidebar {
-  width: 220px;
-  flex-shrink: 0;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  padding: var(--gap-4) 0;
+/* --- Footer (mountFooter output) --- */
+.app-footer {
+  border-top: 1px solid var(--line-soft); padding: 20px 40px 28px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 12.5px; color: var(--muted); flex-wrap: wrap;
 }
-.appshell__nav {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-1);
-  padding: 0 var(--gap-3);
-}
-.appshell__nav-link {
-  display: block;
-  padding: var(--gap-2) var(--gap-3);
-  text-decoration: none;
-  color: var(--text);
-  font-size: var(--text-md);
-  font-weight: 500;
-  border-radius: var(--radius);
-  border-left: 3px solid transparent;
-  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
-}
-.appshell__nav-link:hover {
-  background: var(--surface-2);
-  color: var(--text);
-  text-decoration: none;
-}
-.appshell__nav-link--active {
-  /* White "card-like" pill against the tinted sidebar makes the active
-     page pop without needing more saturated colour. The accent left
-     border and bold weight reinforce the "you are here" cue. */
-  background: var(--bg);
-  border-left-color: var(--accent);
-  color: var(--accent);
-  font-weight: 700;
-  text-decoration: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-.appshell__nav-link--active:hover {
-  background: var(--bg);
-  color: var(--accent);
-}
+.app-footer a { color: var(--honey-deep); font-weight: 500; }
+.app-footer a:hover { text-decoration: underline; }
 
-/* ---------- Mobile drawer scrim --------------------------------------- */
+/* --- Mobile chrome: hidden on desktop --- */
+.appshell__mobilebar, .appshell__bottomnav { display: none; }
 
-.appshell__scrim {
-  display: none;  /* shown only when the sidebar drawer opens on mobile */
-  position: fixed;
-  inset: 64px 0 0 0;   /* below the header */
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 19;
-}
+@media (max-width: 760px) {
+  .appshell { grid-template-columns: 1fr; }
+  .appshell__topbar { display: none; }
+  .appshell__content > main { padding: 16px 16px 24px; }
 
-/* ---------- Mobile breakpoint (<= 900px) ------------------------------- */
-
-@media (max-width: 900px) {
-  .appshell__header-inner {
-    grid-template-columns: 56px 1fr auto;
-    padding: 0 var(--gap-3);
-  }
-  .appshell__logo { width: 40px; height: 40px; }
-  .appshell__title {
-    font-size: var(--text-lg);
-  }
-  /* Hide the "— Time management" suffix on small screens to avoid wrapping
-     and keep the title readable. The brand name alone is enough context. */
-  .appshell__title-sep, .appshell__title-app { display: none; }
-
-  .appshell__hamburger { display: flex; }
-
-  /* Sidebar becomes a drawer: hidden by default, slides in when open. */
+  /* Sidebar becomes an off-canvas drawer */
   .appshell__sidebar {
-    position: fixed;
-    top: 64px;
-    left: 0;
-    bottom: 0;
-    width: 260px;
-    transform: translateX(-100%);
-    transition: transform 0.2s ease-out;
-    z-index: 20;
-    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 41;
+    width: 280px; max-width: 85vw; height: 100vh;
+    transform: translateX(-100%); transition: transform .25s;
+    box-shadow: 4px 0 32px -8px rgba(0,0,0,.25);
   }
   .appshell__sidebar--open { transform: translateX(0); }
+  .appshell__drawer-close { display: inline-flex; align-items: center; justify-content: center; }
 
-  .appshell__scrim:not([hidden]) { display: block; }
-}
+  .appshell__scrim { position: fixed; inset: 0; z-index: 40; background: rgba(20,14,5,0.45); backdrop-filter: blur(2px); }
 
-/* On very small screens, the avatar menu drops to nearly full width. */
-@media (max-width: 480px) {
-  .appshell__menu {
-    right: var(--gap-2);
-    left: var(--gap-2);
-    min-width: 0;
+  .appshell__mobilebar {
+    display: flex; align-items: center; gap: 12px;
+    position: sticky; top: 0; z-index: 30; padding: 12px 16px;
+    background: var(--paper); border-bottom: 1px solid var(--line);
   }
+  .appshell__burger { width: 40px; height: 40px; border-radius: 10px; background: var(--paper-2); border: 1px solid var(--line); color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center; }
+  .appshell__mobilebrand { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .appshell__mobilebrand .appshell__brand-mark { width: 32px; height: 32px; border-radius: 9px; font-size: 19px; }
+  .appshell__mobilebrand-name { font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .appshell__mobile-avatar { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+
+  .appshell__bottomnav {
+    display: flex; justify-content: space-around;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: var(--paper); border-top: 1px solid var(--line);
+    padding: 6px 4px calc(env(safe-area-inset-bottom) + 6px);
+  }
+  .appshell__content > main { padding-bottom: 84px; }   /* clear the bottom nav */
+  .appshell__bottom-item {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; padding: 6px 4px; border-radius: 8px; position: relative; color: var(--muted);
+  }
+  .appshell__bottom-item--active { color: var(--ink); }
+  .appshell__bottom-item--active::after { content: ""; position: absolute; bottom: 2px; width: 28px; height: 3px; border-radius: 2px; background: var(--honey); }
+  .appshell__bottom-label { font-size: 10.5px; font-weight: 500; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .appshell__bottom-item--active .appshell__bottom-label { font-weight: 700; }
+
+  .app-footer { padding: 16px 16px 24px; font-size: 11.5px; }
 }
+
+/* Touch targets: every interactive shell control ≥ 44px on mobile */
+@media (max-width: 760px) and (pointer: coarse) {
+  .appshell__bottom-item, .appshell__nav-link, .appshell__usermenu-item { min-height: 44px; }
+}
+
+.appshell__svg { display: block; }
