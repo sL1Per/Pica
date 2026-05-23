@@ -14,6 +14,55 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.30.0] — 2026-05-24 — M15 employee punch (clock) page restyle
+
+### What changed
+
+The employee-facing `/punch` (Clock) page is rebuilt to the M15 design
+while **preserving every shipped behavior**:
+
+- a **clock hero** — status pill ("Working now" with a pulsing dot /
+  "Not clocked in"), a big mono readout (live elapsed when working, else
+  the wall clock), a location chip, and a tall check-in/out button;
+- a **sub-tab strip** — **Today** and **This week** are panels on the
+  page; **My corrections** is a link to `/corrections` (a "tab strip over
+  existing routes", not a consolidation);
+- **session-pair rows** (IN/OUT with reverse-geocoded address, duration,
+  origin badge, comment, and a clay "missing punch · file a correction"
+  hint for incomplete pairs);
+- a **This week** panel (new) — the viewer's own prior-day sessions
+  grouped by day with per-day totals, sourced from
+  `GET /api/punches/by-employee/<self>?year=&month=`;
+- an inline "Missing a punch?" reminder linking to `/corrections/new`.
+
+All of the page's machinery is untouched: geolocation (thorough + fast
+paths), the **offline punch queue** (enqueue/drain/idempotency), the
+**OSM map preview**, reverse-geocoded addresses, and break-time totals.
+New `punch.*` i18n keys in both locales; `CACHE_VERSION` v47 → v48; new
+`test-punch-week` suite (day-grouping + pairing helpers).
+
+### Honest Disclosures
+
+- **My corrections** links to the still-pre-M15 `/corrections` page, and
+  **"Forgot to clock?"** navigates to the existing `/corrections/new`
+  page — the `/corrections` restyle and the manual-time **modal** are the
+  next plan (3b). The **employer** `/punches/today` + corrections
+  inbox/History are also a later plan.
+- `punch.js` still carries its own copy of the fast-geo logic (it was NOT
+  migrated onto the shared `/geo.js`); that unification is the final
+  cleanup plan.
+- This-week groups by **UTC day** (consistent with the reports endpoint /
+  home / server `todayYmd`); near local midnight a session can appear
+  under the UTC day. Acceptable at the ≤50-employee self-hosted target.
+- Session rows show an **Auto** origin badge for now — punches carry no
+  manual/source field yet; correction-sourced (manual) entries arrive
+  with plan 3b (the CSS already has a `--manual` variant).
+- The Week tab is **not** re-fetched after an offline-queue drain (the
+  badge + Today tab reflect the sync; the Week tab refreshes on reload).
+- No DOM/browser tests (pixels verified by smoke); Playwright is M16.
+
+---
+
 ## [0.29.0] — 2026-05-23 — M15 preferences: color-palette picker
 
 ### What changed

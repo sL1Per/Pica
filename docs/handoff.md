@@ -5,15 +5,15 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.29.0._
+_Last touched in 0.30.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.29.0 (released 2026-05-23)
-- **Test count:** 45 suites (0.29.0 added palette cases to the existing
-  `test-user-prefs` — no new suite), all green except **two** pre-existing
+- **Latest version:** 0.30.0 (released 2026-05-24)
+- **Test count:** 46 suites (0.30.0 added `test-punch-week`; 0.29.0 added
+  palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
   pre-feature baseline (see notes.md): `test-reports.mjs`
   `overnight split` bucket count (host-timezone sensitive) and
@@ -31,15 +31,36 @@ _Last touched in 0.29.0._
   `test-sw-precache`: 41 → 44. The 0.28.0 employee-home redesign added
   `test-employee-home` (pure-helper contract): 44 → 45.
 - **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
-  through 0.28.0 are feature drops on top; no new zip cut yet)
+  through 0.30.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~7 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M15 (Full UI revamp) — foundation shipped at
-  0.27.0; **employee home** at 0.28.0; **palette picker** (pulled forward
-  from the Preferences plan) at 0.29.0; remaining screen-body plans in
-  progress (Punches is next — see
-  `docs/superpowers/plans/2026-05-2{2,3}-m15-*`); M16–M17 follow
+  0.27.0; **employee home** at 0.28.0; **palette picker** at 0.29.0;
+  **employee punch (clock) page** at 0.30.0; remaining screen-body plans
+  in progress (**next: plan 3b** — `/corrections` restyle + manual-time
+  modal + employer punch views — then Leaves/Calendar/Employer/Settings;
+  see `docs/superpowers/plans/2026-05-2{2,3}-m15-*`); M16–M17 follow
   (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.30.0)
+
+**M15 employee punch (clock) page.** `/punch` rebuilt to the design:
+clock hero (status pill + live mono readout + location chip + check-in/out),
+a **sub-tab strip** (Today/This-week panels on-page; **My corrections**
+links to `/corrections`), session-pair rows (with missing-punch hints),
+and a new **This week** panel (own prior-day sessions grouped by day, from
+`/api/punches/by-employee`). **All machinery preserved**: geolocation,
+the offline punch queue, the OSM map preview, reverse-geocoding, break
+totals (`punch.js`'s ~18 machinery functions are byte-identical; only
+`renderList` markup + `paintStatus` output changed, plus additive
+week/tabs). New `punch.*` i18n keys; CACHE_VERSION v47→v48; new
+`test-punch-week` suite. **Deferred to plan 3b** (next): `/corrections`
+restyle + the manual-time **modal** + employer `/punches/today` &
+corrections inbox/History; "Forgot to clock?" currently links to
+`/corrections/new`. `punch.js` keeps its own geo copy (unified with
+`/geo.js` in the final cleanup). See RELEASES.md 0.30.0.
 
 ---
 
