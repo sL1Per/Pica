@@ -1,139 +1,300 @@
 /* ============================================================================
-   Punch (clock in / clock out) page
+   Punch (clock in / clock out) page — M15 design
+   Tokens from app.css: --paper, --paper-2, --ink, --ink-2, --muted,
+   --honey, --honey-deep, --sage, --sage-soft, --clay, --clay-soft,
+   --line, --line-soft, --font-mono, --font-serif.
    ============================================================================ */
 
-.page-header {
+/* ---------- Page header --------------------------------------------------- */
+
+.punch-head {
   display: flex;
-  justify-content: space-between;
   align-items: flex-end;
-  gap: var(--gap-3);
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 8px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
-  margin-bottom: var(--gap-4);
-}
-.page-header h1 { margin-bottom: var(--gap-1); }
-
-.punch-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: var(--gap-5);
-  box-shadow: var(--shadow-sm);
 }
 
-/* ---------- Status block (dot + label) ---------------------------------- */
+.punch-head__title {
+  font-family: var(--font-serif);
+  font-size: 48px;
+  line-height: 1;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
 
-.status-block {
-  display: flex;
+.punch-head__sub {
+  color: var(--muted);
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+/* Ghost link button — honey outline, no fill */
+.punch-forgot {
+  height: 40px;
+  padding: 0 16px;
+  background: var(--paper);
+  color: var(--honey-deep);
+  border: 1px solid var(--honey);
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 14px;
+  display: inline-flex;
   align-items: center;
-  gap: var(--gap-3);
-  padding: var(--gap-3);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border);  /* state color injected below */
-  border-radius: var(--radius);
-  margin-bottom: var(--gap-4);
+  gap: 8px;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
 }
-.status-block--in  { background: var(--success-soft); border-left-color: var(--success); border-color: var(--success); }
-.status-block--out { background: var(--danger-soft);  border-left-color: var(--danger);  border-color: var(--danger); }
-.status-dot {
-  width: 12px; height: 12px;
+.punch-forgot:hover {
+  background: var(--paper-2);
+  color: var(--honey-deep);
+  text-decoration: none;
+}
+
+/* ---------- Clock hero ---------------------------------------------------- */
+
+.clock-hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: center;
+  padding: 24px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Working state: sage border */
+.clock-hero--working {
+  border-color: var(--sage);
+}
+
+/* Left accent bar — 4px wide, absolutely positioned */
+.clock-hero__accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: transparent;
+  border-radius: 16px 0 0 16px;
+}
+.clock-hero--working .clock-hero__accent {
+  background: var(--sage);
+}
+
+/* Flex column for the left side content */
+.clock-hero__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+/* Status pill */
+.clock-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  width: fit-content;
+}
+
+.clock-status--working {
+  background: var(--sage-soft);
+  color: var(--sage);
+  border-color: var(--sage);
+}
+
+/* Pulsing dot inside the status pill */
+.clock-status__dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+  background: var(--sage);
   flex-shrink: 0;
 }
-.status-block--in  .status-dot { background: var(--success); box-shadow: 0 0 0 4px rgba(46,125,50,0.18); }
-.status-block--out .status-dot { background: var(--danger);  box-shadow: 0 0 0 4px rgba(168,50,50,0.18); }
-.status-label { font-weight: 600; font-size: var(--text-md); }
-.status-meta  { color: var(--text-muted); font-size: var(--text-sm); }
-
-/* ---------- Two-button row ---------------------------------------------- */
-
-.punch-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--gap-3);
-  margin-bottom: var(--gap-4);
+.clock-status--working .clock-status__dot {
+  animation: pulse 2s infinite;
 }
 
-.punch-btn {
-  margin: 0;
-  padding: var(--gap-4) var(--gap-3);
-  min-height: 56px;
-  font-size: var(--text-md);
-  font-weight: 700;
-  border-radius: var(--radius-lg);
-  border: 2px solid transparent;
-  background: var(--bg);
-  color: var(--text);
-  cursor: pointer;
-  transition: transform var(--t-fast), box-shadow var(--t-fast);
+/* Big mono clock readout */
+.clock-big {
+  font-family: var(--font-mono);
+  font-size: 88px;
+  line-height: 1;
+  color: var(--ink);
+  letter-spacing: -0.03em;
+  margin-top: 10px;
+  font-variant-numeric: tabular-nums;
 }
 
-.punch-btn--in {
-  background: var(--success-soft);
-  color: var(--success);
-  border-color: var(--success);
-}
-.punch-btn--in:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.18);
-  transform: translateY(-1px);
+/* Sub line below the readout */
+.clock-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
 }
 
-.punch-btn--out {
-  background: var(--danger-soft);
-  color: var(--danger);
-  border-color: var(--danger);
-}
-.punch-btn--out:hover:not(:disabled) {
-  box-shadow: 0 4px 12px rgba(168, 50, 50, 0.18);
-  transform: translateY(-1px);
-}
-
-/*
- * Disabled = unclickable, but visually identical (no greyed-out wash).
- * Override the global button:disabled opacity from app.css so the inactive
- * button still reads as "this is the other action" rather than "broken".
- * cursor stays default to signal it's not interactive.
- */
-.punch-btn:disabled {
-  opacity: 1;
-  cursor: default;
-  /* No transform/shadow on hover — already handled by :hover:not(:disabled) above. */
-}
-
-/* ---------- Comment textarea + checkbox -------------------------------- */
-
-.punch-card label[for="comment"] {
-  display: block;
-  margin-top: 0;
-  margin-bottom: var(--gap-1);
-  font-weight: 600;
-  font-size: var(--text-sm);
-}
-
-.checkbox {
+/* Location mini-row */
+.clock-loc {
   display: flex;
   align-items: center;
-  gap: var(--gap-2);
-  margin-top: var(--gap-3);
-  font-size: var(--text-sm);
-  cursor: pointer;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--paper-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  width: fit-content;
+  margin-top: 12px;
 }
-.checkbox input { margin: 0; }
 
-/* ---------- Map card ---------------------------------------------------- */
+/* Small clay dot with soft ring */
+.clock-loc__pin {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--clay);
+  box-shadow: 0 0 0 3px var(--clay-soft);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ---------- Punch actions ------------------------------------------------- */
+
+/* Row holding in/out buttons */
+.punch-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+/* Base punch button */
+.punch-btn {
+  height: 64px;
+  padding: 0 28px;
+  min-width: 180px;
+  background: var(--honey);
+  color: #FBF6EC;
+  border: none;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.12s;
+  box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 8px 20px -8px rgba(201,122,26,.55);
+}
+.punch-btn:hover:not(:disabled) {
+  transform: scale(1.01);
+}
+.punch-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.punch-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Check-in: honey */
+.punch-btn--in {
+  background: var(--honey);
+  box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 8px 20px -8px rgba(201,122,26,.55);
+}
+
+/* Check-out: clay */
+.punch-btn--out {
+  background: var(--clay);
+  box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 8px 20px -8px rgba(177,75,42,.55);
+}
+
+/* ---------- Comment textarea ---------------------------------------------- */
+
+.punch-comment__label {
+  display: block;
+  margin-top: 16px;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.punch-comment {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 64px;
+  padding: 10px 14px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+.punch-comment:focus {
+  border-color: var(--honey);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* ---------- Queue badge --------------------------------------------------- */
+
+.queue-badge {
+  margin: 12px 0 0 0;
+  padding: 8px 14px;
+  background: var(--paper-2);
+  color: var(--honey-deep);
+  border: 1px solid var(--honey);
+  border-radius: 10px;
+  font-size: 13px;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* ---------- Geo status ---------------------------------------------------- */
+
+.geo-status {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* ---------- Map card (OSM preview — preserve; restyle to tokens) ---------- */
 
 .map-card {
-  margin-top: var(--gap-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
   overflow: hidden;
 }
 .map-card__frame {
   position: relative;
   width: 100%;
-  height: 200px;
-  background: var(--surface-2);
+  height: 180px;
+  background: var(--paper-2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -149,32 +310,191 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -100%);
-  font-size: 28px;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  font-size: 26px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35));
   pointer-events: none;
   user-select: none;
 }
 .map-card__meta {
-  padding: var(--gap-2) var(--gap-3);
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line-soft);
 }
 .map-card__attrib {
   margin: 0;
-  padding: 4px var(--gap-3);
+  padding: 4px 14px;
   font-size: 10px;
-  color: var(--text-subtle);
-  background: var(--surface);
+  color: var(--muted);
+  background: var(--paper-2);
   text-align: right;
 }
-.map-card__attrib a { color: var(--text-subtle); }
-.map-card__attrib a:hover { color: var(--accent); }
+.map-card__attrib a { color: var(--muted); }
+.map-card__attrib a:hover { color: var(--honey); text-decoration: none; }
+.map-card__hint {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
 
-/* ---------- Today list -------------------------------------------------- */
+/* ---------- Sub-tab strip ------------------------------------------------- */
 
-.today-section { margin-top: var(--gap-6); }
+.punch-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  width: fit-content;
+  margin-bottom: 18px;
+}
+
+/* Both <button> and <a> tabs look identical */
+.punch-tab {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  border: none;
+  font-weight: 500;
+  font-size: 13.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.1s, color 0.1s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.punch-tab--active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.punch-tab:hover:not(.punch-tab--active) {
+  background: var(--paper-2);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+/* ---------- Session pair row (.sess) -------------------------------------- */
+
+/*
+ * Each .sess is a card with an IN row and an OUT row separated by a thin
+ * line. The left accent strip changes color for live vs completed sessions.
+ */
+.sess {
+  display: grid;
+  grid-template-columns: 1fr;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+/* 3px accent bar on the left (set background via JS for live vs done) */
+.sess__accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 12px 0 0 12px;
+}
+
+/* A single IN or OUT row inside the pair card */
+.sess__times {
+  display: grid;
+  grid-template-columns: 74px 1fr auto;
+  gap: 14px;
+  padding: 14px 18px;
+  align-items: center;
+  border-top: 1px solid var(--line-soft);
+}
+.sess__times:first-of-type {
+  border-top: none;
+}
+
+/* IN / OUT kind badge */
+.sess__time {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 26px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.sess__time--in {
+  background: var(--sage-soft);
+  color: var(--sage);
+  border-color: var(--sage);
+}
+
+/* Duration shown on the right of the pair row */
+.sess__dur {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Origin badge (manual vs auto) */
+.sess__origin {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  text-transform: uppercase;
+  border: none;
+}
+.sess__origin--manual {
+  background: #F4E4C7;
+  color: var(--honey-deep);
+  border: 1px solid var(--honey);
+}
+
+/* Comment row — italic, paper-2 bg */
+.sess__comment {
+  padding: 10px 18px 14px 88px;
+  background: var(--paper-2);
+  border-top: 1px solid var(--line-soft);
+  font-size: 13px;
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+/* Missing punch hint — clay text + link to corrections */
+.sess__missing {
+  display: grid;
+  grid-template-columns: 74px 1fr auto;
+  gap: 14px;
+  padding: 12px 18px;
+  align-items: center;
+  border-top: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  color: var(--clay);
+}
+
+/* ---------- Punch list base ----------------------------------------------- */
 
 .punch-list {
   list-style: none;
@@ -182,104 +502,197 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-2);
 }
-.punch-list__item {
+
+/* ---------- Day group (This-week panel) ----------------------------------- */
+
+.day-group {
+  margin-bottom: 22px;
+}
+
+.day-head {
   display: flex;
-  align-items: center;
-  gap: var(--gap-3);
-  padding: var(--gap-3);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 4px;
 }
-.punch-list__badge {
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: var(--text-xs);
+
+.day-title {
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  flex-shrink: 0;
-}
-.punch-list__badge--in  { background: var(--success-soft); color: var(--success); }
-.punch-list__badge--out { background: var(--accent-soft);  color: var(--accent); }
-.punch-list__body { flex: 1; min-width: 0; }
-.punch-list__time { font-weight: 600; }
-.punch-list__meta {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-.punch-list__geo::before { content: "📍 "; }
-
-.map-card__hint {
-  margin-top: var(--gap-1);
-  margin-bottom: 0;
-  font-size: var(--text-xs);
+  font-size: 14px;
+  color: var(--ink);
 }
 
+.day-total {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
 
-/* Today section header — h2 left, total worked right. */
+/* ---------- Today section header ----------------------------------------- */
+
 .today-section__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--gap-3);
-  margin-bottom: var(--gap-3);
+  gap: 12px;
+  margin-bottom: 12px;
 }
-.today-section__head h2 { margin: 0; }
+
 .today-total {
-  font-size: var(--text-sm);
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
 }
 
-/* ----- Two-column layout (desktop) ------------------------------------- */
-/* Mobile (default): single column, sections stack naturally. */
+/* ---------- Inline "Missing a punch?" reminder ---------------------------- */
 
-.punch-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--gap-5);
-  align-items: start;
-}
-
-@media (min-width: 900px) {
-  .punch-layout {
-    grid-template-columns: 1fr 1fr;
-  }
-  /* Today section title doesn't need top margin when it's its own column. */
-  .punch-layout .today-section { margin-top: 0; }
-}
-
-/* Queue badge — visible when offline punches are waiting to sync. */
-.queue-badge {
-  margin: 0 0 var(--gap-3) 0;
-  padding: var(--gap-2) var(--gap-3);
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  font-size: var(--text-sm);
-  text-align: center;
-}
-
-/* Today section foot — "register manual time" link */
-.today-section__foot {
-  margin-top: var(--gap-3);
+/*
+ * Rendered as an <a> linking to /corrections/new so keyboard + screen
+ * readers get the correct semantics without an onclick handler.
+ */
+.punch-reminder {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 16px 18px;
+  background: var(--paper);
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--ink-2);
+  text-align: left;
   display: flex;
-  flex-direction: column;
-  gap: var(--gap-1);
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.1s;
 }
-.forgot-line {
-  margin: 0;
-  font-size: var(--text-sm);
-  text-align: right;
-}
-.forgot-link {
-  color: var(--text-muted);
+.punch-reminder:hover {
+  background: var(--paper-2);
   text-decoration: none;
 }
-.forgot-link:hover { color: var(--accent); text-decoration: underline; }
+
+/* Honey-tinted icon tile */
+.punch-reminder__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #F4E4C7;
+  color: var(--honey-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.punch-reminder__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.punch-reminder__title {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink);
+  display: block;
+}
+
+.punch-reminder__sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  display: block;
+}
+
+/* ---------- Empty states -------------------------------------------------- */
+
+.punch-empty {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.punch-empty__title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+/* ---------- Pulse keyframe ------------------------------------------------ */
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(92, 122, 78, 0.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(92, 122, 78, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(92, 122, 78, 0); }
+}
+
+/* ---------- Mobile ≤ 760px ----------------------------------------------- */
+
+@media (max-width: 760px) {
+  .punch-head__title {
+    font-size: 36px;
+  }
+
+  /* Stack the hero: body above buttons */
+  .clock-hero {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* Shrink the big readout to 56px on mobile */
+  .clock-big {
+    font-size: 56px;
+  }
+
+  /* Punch buttons: full width, stacked, still ≥64px tall */
+  .punch-actions {
+    width: 100%;
+  }
+  .punch-btn {
+    width: 100%;
+    min-width: unset;
+    height: 64px;           /* maintain the 64px minimum */
+  }
+
+  /* Tabs scroll horizontally on narrow screens */
+  .punch-tabs {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Session rows: tighter grid */
+  .sess__times {
+    grid-template-columns: 56px 1fr auto;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .sess__comment {
+    padding-left: 56px;
+  }
+
+  .sess__missing {
+    grid-template-columns: 56px 1fr;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+
+  .clock-loc {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
