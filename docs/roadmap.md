@@ -33,7 +33,7 @@ app in a usable state.
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
-| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0) |
+| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0) |
 | M16       | E2E browser tests                  | 📋 Planned    |
 | M17       | Deployment guide + TLS samples     | 📋 Planned    |
 
@@ -399,4 +399,4 @@ change.
 
 ---
 
-_Last touched in 0.28.0._
+_Last touched in 0.29.0._

@@ -5,14 +5,15 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.28.0._
+_Last touched in 0.29.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.28.0 (released 2026-05-23)
-- **Test count:** 45 suites, all green except **two** pre-existing
+- **Latest version:** 0.29.0 (released 2026-05-23)
+- **Test count:** 45 suites (0.29.0 added palette cases to the existing
+  `test-user-prefs` — no new suite), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
   pre-feature baseline (see notes.md): `test-reports.mjs`
   `overnight split` bucket count (host-timezone sensitive) and
@@ -34,10 +35,30 @@ _Last touched in 0.28.0._
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~7 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M15 (Full UI revamp) — foundation shipped at
-  0.27.0; **employee home** shipped at 0.28.0; remaining screen-body
-  plans in progress (Punches is next — see
+  0.27.0; **employee home** at 0.28.0; **palette picker** (pulled forward
+  from the Preferences plan) at 0.29.0; remaining screen-body plans in
+  progress (Punches is next — see
   `docs/superpowers/plans/2026-05-2{2,3}-m15-*`); M16–M17 follow
   (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.29.0)
+
+**M15 preferences — color-palette picker.** Preferences gains a
+**Palette** section: three swatch cards (Linen / Slate / Olive), each
+with a 4-chip preview (bg · primary · success · alert) that **swaps with
+the selected color mode**. `palette` is now a real user pref
+(`src/storage/user-prefs.js`: enum linen/slate/olive, default linen,
+validated; `PUT /api/settings/me` already passes it through). Saving
+persists it and applies app-wide via the 0.27.0 `data-palette` cascade +
+the existing bootstrap/`app.js` (`pica-palette`). New `prefs.palette*`
+i18n keys both locales; `CACHE_VERSION` v46→v47. Non-obvious: palette +
+mode apply **on Save** (not live); preview chip hex is hardcoded in
+`preferences.js` (mirrors `app.css`'s 6 combos — keep in sync); the rest
+of the Preferences page is still pre-M15 (full redesign is a later plan).
+This was pulled forward from the Preferences plan at the operator's
+request. See RELEASES.md 0.29.0.
 
 ---
 

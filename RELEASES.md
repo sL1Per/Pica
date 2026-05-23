@@ -14,6 +14,47 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.29.0] — 2026-05-23 — M15 preferences: color-palette picker
+
+### What changed
+
+The Preferences page gains a **Palette** picker — three swatch cards
+(Linen / Slate / Olive), each showing a 4-chip preview (background ·
+primary · success · alert) that **swaps with the selected color mode**,
+so you can see how a palette looks in light or dark before saving. The
+chosen palette is persisted per-user and applied app-wide through the
+`data-palette` token cascade shipped in 0.27.0.
+
+`palette` is now a first-class user preference: `src/storage/user-prefs.js`
+adds it (enum `linen|slate|olive`, default `linen`, validated like
+`colorMode`) and `PUT /api/settings/me` accepts it (the route already
+passes the body through — no route change). The synchronous theme
+bootstrap and the `app.js` server-refresh (both from 0.27.0) already read
+`pica-palette` / `prefs.palette`, so a saved palette takes effect
+immediately and on every page.
+
+New `prefs.palette*` i18n keys in both locales; `CACHE_VERSION` v46 → v47
+(locale files are pre-cached). Palette validation + default are covered by
+new cases in `test-user-prefs`.
+
+### Honest Disclosures
+
+- This adds the **palette control + persistence only**; the rest of the
+  Preferences page keeps its pre-M15 layout (the full Preferences
+  redesign is a later M15 plan). The picker is styled with design tokens
+  (via the alias bridge) so it sits cleanly inside the old page.
+- Palette and color mode apply **on Save** (consistent with the existing
+  color-mode behavior), not live on card-click; the card highlight + chip
+  preview give immediate feedback.
+- The preview chip hex values are **hardcoded** in `preferences.js`
+  (mirroring the 6-combo cascade in `app.css`) because the preview must
+  show all three palettes at once — which the live CSS vars (only the
+  active palette) cannot provide. If the palette token values in `app.css`
+  ever change, update the `PALETTE_CHIPS` map too.
+- No DOM tests (pixels verified by smoke); Playwright is M16.
+
+---
+
 ## [0.28.0] — 2026-05-23 — M15 employee home redesign (functional clock hero)
 
 ### What changed
