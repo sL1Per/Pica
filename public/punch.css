@@ -128,7 +128,8 @@
   background: var(--sage);
   flex-shrink: 0;
 }
-.clock-status--working .clock-status__dot {
+.clock-status--working .clock-status__dot,
+.clock-status__pulse {
   animation: pulse 2s infinite;
 }
 
@@ -354,6 +355,7 @@
 /* Both <button> and <a> tabs look identical */
 .punch-tab {
   height: 36px;
+  margin-top: 0;            /* counter app.css's global button { margin-top } so <a> and <button> tabs align */
   padding: 0 16px;
   border-radius: 8px;
   background: transparent;
@@ -416,10 +418,11 @@
   gap: 14px;
   padding: 14px 18px;
   align-items: center;
-  border-top: 1px solid var(--line-soft);
 }
-.sess__times:first-of-type {
-  border-top: none;
+/* Separator only BETWEEN consecutive rows — robust to the leading
+   .sess__accent <div> (a class-agnostic :first-of-type would miss it). */
+.sess__times + .sess__times {
+  border-top: 1px solid var(--line-soft);
 }
 
 /* IN / OUT kind badge */
