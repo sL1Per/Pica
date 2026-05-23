@@ -8,3 +8,58 @@
 @media (min-width: 600px) {
   .radio-row { flex-direction: row; gap: var(--gap-4); }
 }
+
+/* ===== Palette picker (M15) — 3 swatch cards; chip colors set via JS ===== */
+.palette-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: var(--gap-1) 0 var(--gap-2);
+}
+.palette-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color var(--t-fast);
+}
+.palette-card:hover { border-color: var(--border-strong); }
+.palette-card--active { border-color: var(--accent); }
+.palette-swatches {
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.palette-chip { flex: 1; height: 36px; }
+.palette-name { font-size: var(--text-sm); font-weight: 600; }
+.palette-sub  { font-size: var(--text-xs); color: var(--text-subtle); }
+.palette-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.palette-check--on { background: var(--accent); border-color: var(--accent); }
+
+@media (max-width: 600px) {
+  .palette-row { grid-template-columns: 1fr; }
+}

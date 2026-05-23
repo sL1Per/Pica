@@ -12,10 +12,10 @@ const test = (n, f) => { try { f(); console.log(`  ✓ ${n}`); passed++; }
   catch (e) { console.error(`  ✗ ${n}\n    ${e.message}`); failed++; } };
 
 console.log('Service worker precache (M15)');
-test('CACHE_VERSION is at least v46', () => {
+test('CACHE_VERSION is at least v47', () => {
   const m = sw.match(/pica-cache-v(\d+)/);
   assert.ok(m, 'no CACHE_VERSION found');
-  assert.ok(Number(m[1]) >= 46, `expected >= v46, got v${m && m[1]}`);
+  assert.ok(Number(m[1]) >= 47, `expected >= v47, got v${m && m[1]}`);
 });
 for (const f of [
   '/fonts/instrument-serif-400.woff2', '/fonts/instrument-serif-400-italic.woff2',
