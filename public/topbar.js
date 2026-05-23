@@ -1,39 +1,73 @@
 // Importing app.js for its color-mode bootstrap side effect — applies
 // the saved theme on every page that uses this module.
 import '/app.js';
-import { t, getLocale } from '/i18n.js';
+import { t, getLocale, fmtDate } from '/i18n.js';
 
 // Sentinel returned by loadBarData() when it has already triggered a
 // redirect (e.g. mustChangePassword → /preferences). mountTopBar() uses
 // this to avoid a fallback /login redirect that would race the first.
 const REDIRECTING = Symbol('redirecting');
 
-// Shared top navigation bar. Every authenticated page imports mountTopBar().
+// Shared app shell. Every authenticated page imports mountTopBar().
 //
-// The bar is injected as the first child of <body>. Pages do NOT need to
-// include any HTML for it — this module controls the markup, styles, and
-// behavior. Adding a new page means just calling mountTopBar() from its
-// module and the bar appears.
+// mountTopBar() wraps the page's <main> in a <div.appshell> grid (sidebar +
+// content column with its own top bar); the mobile top app-bar, bottom nav,
+// user-menu popover, and drawer scrim are appended at the body level. Pages
+// do NOT include any shell HTML — this module controls the markup and
+// behavior (styles live in topbar.css). Adding a new page means just calling
+// mountTopBar() from its module and the shell appears.
 
 // Nav items use translation keys for labels. The key is resolved at
 // build-time (i.e. when this module is imported on each page load). If
 // a new locale ever lacks a key, the t() function shows "[key]" so the
 // gap is obvious in the UI.
-const NAV_EMPLOYEE = [
-  { href: '/punch',            labelKey: 'nav.punches' },
-  { href: '/leaves/calendar',  labelKey: 'nav.calendar' },
-  { href: '/leaves',           labelKey: 'nav.leaves' },
-  { href: '/reports',          labelKey: 'nav.reports' },
-];
+// Inline stroke icons (path data ported from the design's icons.jsx). Returns an
+// SVG string for innerHTML; stroke uses currentColor so CSS controls the color.
+const ICON_PATHS = {
+  home: '<path d="M4 11l8-6 8 6v9a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/>',
+  users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3 2.8-5 6-5s6 2 6 5"/><path d="M16 4.5a3 3 0 0 1 0 6"/><path d="M21 20c0-2.4-1.6-4.3-4-4.8"/>',
+  calendar: '<rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9h17M8 3v3M16 3v3"/>',
+  leaf: '<path d="M20 4c0 9-6 15-15 16 1-9 7-15 15-16z"/><path d="M5 20c4-6 8-10 14-14"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/>',
+  chart: '<path d="M4 20h16"/><path d="M7 16v-4M12 16V8M17 16v-6"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h0a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v0a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+  bell: '<path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6z"/><path d="M10 19a2 2 0 0 0 4 0"/>',
+  user: '<circle cx="12" cy="8" r="3.6"/><path d="M4 20c0-3.6 3.6-6 8-6s8 2.4 8 6"/>',
+  chevron: '<path d="M8 9l4-4 4 4M16 15l-4 4-4-4"/>',
+  signout: '<path d="M15 17l5-5-5-5M20 12H9M12 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h7"/>',
+  burger: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  more: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+};
+function icon(name, size = 18, sw = 1.7) {
+  return `<svg class="appshell__svg" width="${size}" height="${size}" viewBox="0 0 24 24" `
+    + `fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" `
+    + `stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name]}</svg>`;
+}
 
-const NAV_EMPLOYER = [
-  { href: '/employees',        labelKey: 'nav.employees' },
-  { href: '/leaves/calendar',  labelKey: 'nav.calendar' },
-  { href: '/leaves',           labelKey: 'nav.leaves' },
-  { href: '/punch',            labelKey: 'nav.punches' },
-  { href: '/reports',          labelKey: 'nav.reports' },
-  { href: '/settings',         labelKey: 'nav.settings' },
+// Nav models. hrefs map to real Pica routes; `icon` keys index ICON_PATHS.
+// Mobile bottom nav shows `primary`; employer overflow (Punches/Reports) lives
+// behind "More" (the drawer).
+const NAV_EMPLOYEE = [
+  { href: '/',                 labelKey: 'nav.home',     icon: 'home' },
+  { href: '/punch',            labelKey: 'nav.clock',    icon: 'clock' },
+  { href: '/leaves/calendar',  labelKey: 'nav.calendar', icon: 'calendar' },
+  { href: '/leaves',           labelKey: 'nav.myLeaves', icon: 'leaf' },
+  { href: '/reports',          labelKey: 'nav.reports',  icon: 'chart' },
 ];
+const NAV_EMPLOYER = [
+  { href: '/',                 labelKey: 'nav.home',     icon: 'home' },
+  { href: '/employees',        labelKey: 'nav.team',     icon: 'users' },
+  { href: '/leaves/calendar',  labelKey: 'nav.calendar', icon: 'calendar' },
+  { href: '/leaves',           labelKey: 'nav.leaves',   icon: 'leaf' },
+  { href: '/punch',            labelKey: 'nav.punches',  icon: 'clock' },
+  { href: '/reports',          labelKey: 'nav.reports',  icon: 'chart' },
+];
+// Deterministic avatar hue (oklch) from a string — matches the design's hue scheme.
+function hueFor(s) {
+  let h = 0; const str = String(s || '');
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
+  return h;
+}
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({
@@ -49,7 +83,6 @@ function initialsFor(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-/** True when the current URL matches an item's href exactly or as a prefix. */
 /**
  * Is `href` the active nav entry for the current path?
  *
@@ -117,239 +150,251 @@ async function loadBarData() {
 }
 
 /**
- * Build the DOM. The structure:
- *
- *   <header.appshell__header>           ← full-width across the top
- *     <div.appshell__header-inner>      ← grid: logo | title | controls
- *       <a.appshell__brand href="/">
- *         <img|div.appshell__logo>
- *       </a>
- *       <h1.appshell__title>
- *         <span.appshell__title-name>   {company name}
- *         <span.appshell__title-sep>    " — "
- *         <span.appshell__title-app>    "Time management"
- *       </h1>
- *       <div.appshell__header-right>
- *         <button.appshell__hamburger>  ← mobile only
- *         <button.appshell__avatar>     ← always, opens user menu
- *       </div>
- *       <div.appshell__menu [hidden]>   ← user menu dropdown
- *     </div>
- *   </header>
+ * Build the DOM. The structure (M15 shell):
  *
  *   <aside.appshell__sidebar>           ← left rail (desktop) / drawer (mobile)
- *     <nav.appshell__nav>
- *       <a.appshell__nav-link>{label}   per nav item
- *     </nav>
+ *     <div.appshell__brand>             brand mark + name/sub + drawer-close
+ *     <nav.appshell__nav>               primary nav links (icon + label)
+ *     <div.appshell__spacer>
+ *     <nav.appshell__nav--footer>       Settings link (employer only)
+ *     <button.appshell__usertile>       avatar + name/role, opens user menu
  *   </aside>
  *
- *   <div.appshell__scrim [hidden]>      ← backdrop for mobile drawer
+ *   <header.appshell__topbar>           ← desktop content top bar: crumb + bell
+ *   <header.appshell__mobilebar>        ← mobile top app bar: burger/brand/avatar
+ *   <nav.appshell__bottomnav>           ← mobile bottom nav (+ "More" for employer)
+ *   <div.appshell__usermenu [hidden]>   ← shared popover (desktop tile + mobile avatar)
+ *   <div.appshell__scrim [hidden]>      ← backdrop for the mobile drawer
  *
- * The header goes at the top of <body>. The sidebar + scrim are inserted
- * into a new <div.appshell__body> wrapper alongside <main> so they can
- * lay out as a row. mountTopBar() handles the wrapping; pages' HTML
- * stays unchanged.
+ * mountTopBar() wires the layout: the sidebar + a <div.appshell__content>
+ * (holding the topbar and the page's <main>) sit inside a <div.appshell>
+ * grid; the mobile chrome, popover, and scrim live at the body level.
+ * Pages' HTML stays unchanged.
  */
+function navLinks(items, currentPath, allHrefs, cls) {
+  return items.map((it) => {
+    const active = isActive(currentPath, it.href, allHrefs) ? ` ${cls}--active` : '';
+    return `<a class="${cls}${active}" href="${it.href}">`
+      + `<span class="appshell__nav-icon">${icon(it.icon, 18, active ? 2 : 1.7)}</span>`
+      + `<span class="appshell__nav-label">${escapeHtml(t(it.labelKey))}</span>`
+      + (active ? `<span class="appshell__nav-bar" aria-hidden="true"></span>` : '')
+      + `</a>`;
+  }).join('');
+}
+
 function buildBar({ user, branding, hasOwnPicture }) {
   const items = user.role === 'employer' ? NAV_EMPLOYER : NAV_EMPLOYEE;
   const currentPath = window.location.pathname;
-  const allHrefs = items.map((x) => x.href);
-
+  const allHrefs = items.map((x) => x.href).concat(user.role === 'employer' ? ['/settings'] : []);
   const name = branding.name || 'Pica';
-  const logoHtml = branding.hasLogo
-    ? `<img class="appshell__logo" src="/api/branding/logo" alt="">`
-    : `<div class="appshell__logo appshell__logo--placeholder" aria-hidden="true">P</div>`;
+  const sub = escapeHtml(t('app.suffix'));
+  const hue = hueFor(user.id || user.username);
+  const displayName = escapeHtml(user.fullName || user.username);
+  const role = escapeHtml(user.role);
 
-  // Sidebar links (desktop) — vertical list, active state visually distinct.
-  const sidebarLinks = items.map((it) => {
-    const active = isActive(currentPath, it.href, allHrefs) ? ' appshell__nav-link--active' : '';
-    return `<a class="appshell__nav-link${active}" href="${it.href}">${escapeHtml(t(it.labelKey))}</a>`;
-  }).join('');
-
-  // Drawer links (mobile) — same set, distinct CSS so they can grow taller.
-  const drawerLinks = items.map((it) => {
-    const active = isActive(currentPath, it.href, allHrefs) ? ' appshell__drawer-link--active' : '';
-    return `<a class="appshell__drawer-link${active}" href="${it.href}">${escapeHtml(t(it.labelKey))}</a>`;
-  }).join('');
-
+  const brandMark = branding.hasLogo
+    ? `<img class="appshell__brand-mark appshell__brand-mark--img" src="/api/branding/logo" alt="">`
+    : `<span class="appshell__brand-mark" aria-hidden="true">${escapeHtml(name[0] || 'P')}</span>`;
   const avatarInner = hasOwnPicture
     ? `<img src="/api/employees/${user.id}/picture" alt="">`
-    : `<span>${initialsFor(user.fullName || user.username)}</span>`;
+    : `<span>${escapeHtml(initialsFor(user.fullName || user.username))}</span>`;
 
-  // -- Header (full-width, top of viewport) -------------------------------
-  // Layout: logo (left) — title (center, brand name + " — Time management") — controls (right).
-  // Mobile: hamburger to open the sidebar drawer; avatar always present.
-  const header = document.createElement('header');
-  header.className = 'appshell__header';
-  header.innerHTML = `
-    <div class="appshell__header-inner">
-      <a class="appshell__brand" href="/" aria-label="Dashboard">
-        ${logoHtml}
-      </a>
-
-      <h1 class="appshell__title">
-        <span class="appshell__title-name">${escapeHtml(name)}</span>
-        <span class="appshell__title-sep"> — </span>
-        <span class="appshell__title-app">${escapeHtml(t('app.suffix'))}</span>
-      </h1>
-
-      <div class="appshell__header-right">
-        <button class="appshell__hamburger" type="button" aria-label="Menu" aria-expanded="false" aria-controls="appshell-sidebar">
-          <span></span><span></span><span></span>
-        </button>
-        <button class="appshell__avatar" type="button" aria-label="User menu" aria-expanded="false">
-          ${avatarInner}
-        </button>
-      </div>
-
-      <div class="appshell__menu" role="menu" hidden>
-        <div class="appshell__menu-head">
-          <div class="appshell__menu-name">${escapeHtml(user.fullName || user.username)}</div>
-          <div class="appshell__menu-role">${escapeHtml(user.role)}</div>
-        </div>
-        <a class="appshell__menu-item" role="menuitem" href="/employees/${user.id}/profile">${escapeHtml(t('menu.profile'))}</a>
-        <a class="appshell__menu-item" role="menuitem" href="/preferences">${escapeHtml(t('menu.preferences'))}</a>
-        <button class="appshell__menu-item appshell__menu-item--danger" role="menuitem" type="button" data-action="logout">${escapeHtml(t('menu.signOut'))}</button>
-      </div>
-    </div>
-  `;
-
-  // -- Sidebar (left, vertical nav, full content height) -------------------
-  // Desktop: always visible, fixed width.
-  // Mobile (≤900px): hidden by default, slides in as a drawer when the
-  // hamburger is tapped (controlled by .appshell__sidebar--open).
+  // -- Sidebar (desktop rail / mobile drawer) -----------------------------
   const sidebar = document.createElement('aside');
   sidebar.className = 'appshell__sidebar';
   sidebar.id = 'appshell-sidebar';
   sidebar.innerHTML = `
+    <div class="appshell__brand">
+      <a class="appshell__brand-link" href="/" aria-label="Home">${brandMark}</a>
+      <div class="appshell__brand-text">
+        <div class="appshell__brand-name">${escapeHtml(name)}</div>
+        <div class="appshell__brand-sub">${sub}</div>
+      </div>
+      <button class="appshell__drawer-close" type="button" aria-label="Close menu">&times;</button>
+    </div>
     <nav class="appshell__nav" aria-label="Primary">
-      ${sidebarLinks}
+      ${navLinks(items, currentPath, allHrefs, 'appshell__nav-link')}
     </nav>
-  `;
+    <div class="appshell__spacer"></div>
+    ${user.role === 'employer' ? `<nav class="appshell__nav appshell__nav--footer" aria-label="Settings">
+      ${navLinks([{ href: '/settings', labelKey: 'nav.settings', icon: 'settings' }], currentPath, allHrefs, 'appshell__nav-link')}
+    </nav>` : ''}
+    <button class="appshell__usertile" type="button" aria-haspopup="menu" aria-expanded="false">
+      <span class="appshell__avatar" style="--hue:${hue}">${avatarInner}</span>
+      <span class="appshell__usertile-info">
+        <span class="appshell__usertile-name">${displayName}</span>
+        <span class="appshell__usertile-role">${role}</span>
+      </span>
+      <span class="appshell__usertile-chev">${icon('chevron', 14, 1.8)}</span>
+    </button>`;
 
-  // -- Drawer scrim (only visible when the sidebar is open on mobile) ----
-  // Tapping the scrim closes the drawer. Separate element so it can sit
-  // *under* the sidebar in z-index but above the main content.
+  // -- Desktop content top bar (crumb + bell) -----------------------------
+  const topbar = document.createElement('header');
+  topbar.className = 'appshell__topbar';
+  let dateLabel = '';
+  try { dateLabel = fmtDate(new Date()); } catch { dateLabel = ''; }
+  topbar.innerHTML = `
+    <div class="appshell__crumb">
+      <span>${escapeHtml(t(user.role === 'employer' ? 'crumb.overview' : 'crumb.myDay'))}</span>
+      <span class="appshell__crumb-sep">&middot;</span>
+      <span class="appshell__crumb-date mono">${escapeHtml(dateLabel)}</span>
+    </div>
+    <div class="appshell__topactions">
+      <button class="appshell__iconbtn" type="button" aria-label="${escapeHtml(t('nav.notifications'))}">
+        ${icon('bell', 17, 1.6)}
+      </button>
+    </div>`;
+
+  // -- Mobile top app bar -------------------------------------------------
+  const mobilebar = document.createElement('header');
+  mobilebar.className = 'appshell__mobilebar';
+  mobilebar.innerHTML = `
+    <button class="appshell__burger" type="button" aria-label="Menu" aria-controls="appshell-sidebar" aria-expanded="false">${icon('burger', 18, 1.8)}</button>
+    <a class="appshell__mobilebrand" href="/">
+      ${brandMark}
+      <span class="appshell__mobilebrand-name">${escapeHtml(name)}</span>
+    </a>
+    <button class="appshell__iconbtn" type="button" aria-label="${escapeHtml(t('nav.notifications'))}">${icon('bell', 17, 1.6)}</button>
+    <button class="appshell__mobile-avatar" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="${escapeHtml(t('menu.account'))}">
+      <span class="appshell__avatar" style="--hue:${hue}">${avatarInner}</span>
+    </button>`;
+
+  // -- Mobile bottom nav --------------------------------------------------
+  const bottomnav = document.createElement('nav');
+  bottomnav.className = 'appshell__bottomnav';
+  bottomnav.setAttribute('aria-label', 'Primary');
+  const primary = user.role === 'employer' ? items.slice(0, 4) : items;
+  const bottomItems = primary.map((it) => {
+    const active = isActive(currentPath, it.href, allHrefs) ? ' appshell__bottom-item--active' : '';
+    return `<a class="appshell__bottom-item${active}" href="${it.href}">`
+      + `${icon(it.icon, 22, active ? 2 : 1.6)}`
+      + `<span class="appshell__bottom-label">${escapeHtml(t(it.labelKey))}</span></a>`;
+  }).join('');
+  const more = user.role === 'employer'
+    ? `<button class="appshell__bottom-item" type="button" data-action="more">${icon('more', 22, 1.7)}<span class="appshell__bottom-label">${escapeHtml(t('nav.more'))}</span></button>`
+    : '';
+  bottomnav.innerHTML = bottomItems + more;
+
+  // -- User menu popover (shared by desktop usertile + mobile avatar) ------
+  const menu = document.createElement('div');
+  menu.className = 'appshell__usermenu';
+  menu.setAttribute('role', 'menu');
+  menu.hidden = true;
+  menu.innerHTML = `
+    <div class="appshell__usermenu-head">
+      <div class="appshell__usermenu-name">${displayName}</div>
+      <div class="appshell__usermenu-role">${role}</div>
+    </div>
+    <a class="appshell__usermenu-item" role="menuitem" href="/employees/${user.id}/profile">
+      ${icon('user', 16, 1.7)}<span>${escapeHtml(t('menu.profile'))}</span></a>
+    <a class="appshell__usermenu-item" role="menuitem" href="/preferences">
+      ${icon('settings', 16, 1.7)}<span>${escapeHtml(t('menu.preferences'))}</span></a>
+    <div class="appshell__usermenu-sep"></div>
+    <button class="appshell__usermenu-item appshell__usermenu-item--danger" role="menuitem" type="button" data-action="logout">
+      ${icon('signout', 16, 1.7)}<span>${escapeHtml(t('menu.signOut'))}</span></button>`;
+
+  // -- Drawer scrim -------------------------------------------------------
   const scrim = document.createElement('div');
   scrim.className = 'appshell__scrim';
   scrim.setAttribute('hidden', '');
 
-  return { header, sidebar, scrim };
+  return { sidebar, topbar, mobilebar, bottomnav, menu, scrim };
 }
 
-function wireEvents({ header, sidebar, scrim }) {
-  const avatar    = header.querySelector('.appshell__avatar');
-  const menu      = header.querySelector('.appshell__menu');
-  const hamburger = header.querySelector('.appshell__hamburger');
-  const logoutBtn = header.querySelector('[data-action="logout"]');
+function wireEvents({ sidebar, mobilebar, bottomnav, menu, scrim }) {
+  const usertile  = sidebar.querySelector('.appshell__usertile');
+  const drawerX   = sidebar.querySelector('.appshell__drawer-close');
+  const burger    = mobilebar.querySelector('.appshell__burger');
+  const mAvatar   = mobilebar.querySelector('.appshell__mobile-avatar');
+  const moreBtn   = bottomnav.querySelector('[data-action="more"]');
+  const logoutBtn = menu.querySelector('[data-action="logout"]');
 
-  function closeMenu() {
-    menu.hidden = true;
-    avatar.setAttribute('aria-expanded', 'false');
+  function closeMenu() { menu.hidden = true; usertile?.setAttribute('aria-expanded', 'false'); mAvatar?.setAttribute('aria-expanded', 'false'); }
+  function openDrawer() { sidebar.classList.add('appshell__sidebar--open'); scrim.hidden = false; burger?.setAttribute('aria-expanded', 'true'); }
+  function closeDrawer() { sidebar.classList.remove('appshell__sidebar--open'); scrim.hidden = true; burger?.setAttribute('aria-expanded', 'false'); }
+  function closeAll() { closeMenu(); closeDrawer(); }
+
+  // Position the popover near its trigger, clamped to the viewport.
+  function openMenu(trigger) {
+    closeDrawer();
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    const a = trigger.getBoundingClientRect();
+    const m = menu.getBoundingClientRect();
+    const gap = 8, margin = 12;
+    let top = a.bottom + gap;
+    if (top + m.height + margin > window.innerHeight && a.top - m.height - gap > margin) top = a.top - m.height - gap;
+    top = Math.max(margin, Math.min(top, window.innerHeight - m.height - margin));
+    let left = a.right - m.width;
+    if (left < margin) left = a.left;
+    left = Math.max(margin, Math.min(left, window.innerWidth - m.width - margin));
+    menu.style.top = `${Math.round(top)}px`;
+    menu.style.left = `${Math.round(left)}px`;
   }
-  function closeSidebar() {
-    sidebar.classList.remove('appshell__sidebar--open');
-    scrim.hidden = true;
-    hamburger.setAttribute('aria-expanded', 'false');
-  }
-  function closeAll() {
-    closeMenu();
-    closeSidebar();
-  }
+  function toggleMenu(trigger) { if (menu.hidden) openMenu(trigger); else closeMenu(); }
 
-  avatar.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const willOpen = menu.hidden;
-    closeAll();
-    if (willOpen) {
-      menu.hidden = false;
-      avatar.setAttribute('aria-expanded', 'true');
-    }
-  });
+  usertile?.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(usertile); });
+  mAvatar?.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(mAvatar); });
+  burger?.addEventListener('click', (e) => { e.stopPropagation(); sidebar.classList.contains('appshell__sidebar--open') ? closeDrawer() : openDrawer(); });
+  moreBtn?.addEventListener('click', (e) => { e.stopPropagation(); openDrawer(); });
+  drawerX?.addEventListener('click', () => closeDrawer());
+  scrim.addEventListener('click', () => closeDrawer());
+  sidebar.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => closeDrawer()));
 
-  // Hamburger toggles the sidebar drawer (mobile only — at desktop sizes
-  // the sidebar is always visible and the hamburger is hidden by CSS, so
-  // this event won't fire from a desktop click).
-  hamburger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const isOpen = sidebar.classList.contains('appshell__sidebar--open');
-    closeAll();
-    if (!isOpen) {
-      sidebar.classList.add('appshell__sidebar--open');
-      scrim.hidden = false;
-      hamburger.setAttribute('aria-expanded', 'true');
-    }
-  });
-
-  // Tap on scrim closes the drawer.
-  scrim.addEventListener('click', () => closeSidebar());
-
-  // Tap on a sidebar link closes the drawer too (so navigation feels
-  // snappy on mobile — the new page loads, the drawer doesn't linger).
-  sidebar.querySelectorAll('a').forEach((a) => {
-    a.addEventListener('click', () => closeSidebar());
-  });
-
-  // Click outside the menu closes it. Note: clicks inside the sidebar
-  // are NOT "outside" — so opening the avatar menu and then clicking a
-  // sidebar link works without the menu intercepting.
   document.addEventListener('click', (e) => {
-    if (!header.contains(e.target) && !sidebar.contains(e.target)) closeAll();
+    if (!menu.contains(e.target) && !sidebar.contains(e.target) && !mobilebar.contains(e.target)) closeMenu();
   });
-
-  // Close on escape.
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeAll();
-  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
 
   logoutBtn.addEventListener('click', async () => {
-    try {
-      await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
-    } catch {}
+    try { await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }); } catch {}
     window.location.href = '/login';
   });
 }
 
 /**
- * Mount the top bar AND the sidebar. Pages that need authentication
- * should call this as early as possible. Unauthenticated users are
- * redirected to /login.
+ * Mount the shell (sidebar + content top bar + mobile chrome). Pages that
+ * need authentication should call this as early as possible. Unauthenticated
+ * users are redirected to /login.
  *
- * The header goes at the top of <body>. The sidebar + scrim sit just
- * before <main> so the flex container in CSS can lay them out as a row.
+ * The sidebar and a <div.appshell__content> (which receives the top bar and
+ * the page's <main>) are placed inside a <div.appshell> grid so CSS can lay
+ * them out as a row. The mobile bar, bottom nav, user-menu popover, and
+ * drawer scrim are appended at the body level. Pages' HTML stays unchanged.
  */
 export async function mountTopBar() {
   const data = await loadBarData();
-  if (data === REDIRECTING) return;  // a redirect is already pending
-  if (!data) {
-    window.location.href = '/login';
-    return;
-  }
-  const { header, sidebar, scrim } = buildBar(data);
+  if (data === REDIRECTING) return;
+  if (!data) { window.location.href = '/login'; return; }
 
-  // Insert the header as the first child.
-  document.body.insertBefore(header, document.body.firstChild);
-
-  // Find where main lives and wrap main + sidebar in a flex container.
-  // The wrapper (`appshell__body`) is created here so pages don't need
-  // to wrap their <main> manually — keeps each page's HTML simple.
+  const { sidebar, topbar, mobilebar, bottomnav, menu, scrim } = buildBar(data);
   const main = document.querySelector('main');
+
+  // Desktop grid: <div.appshell> [ sidebar | <div.appshell__content> [topbar, main, footer] ].
+  const appshell = document.createElement('div');
+  appshell.className = 'appshell';
+  const content = document.createElement('div');
+  content.className = 'appshell__content';
+
   if (main) {
-    const bodyWrap = document.createElement('div');
-    bodyWrap.className = 'appshell__body';
-    main.parentNode.insertBefore(bodyWrap, main);
-    bodyWrap.appendChild(sidebar);
-    bodyWrap.appendChild(main);
-    bodyWrap.appendChild(scrim);
+    main.parentNode.insertBefore(appshell, main);
+    appshell.appendChild(sidebar);
+    appshell.appendChild(content);
+    content.appendChild(topbar);
+    content.appendChild(main);   // moves <main> into the content column
   } else {
-    // No <main> on this page — just append the sidebar to body so
-    // the CSS still has something to lay out (rare; e.g. login page
-    // doesn't call mountTopBar).
-    document.body.appendChild(sidebar);
-    document.body.appendChild(scrim);
+    document.body.appendChild(appshell);
+    appshell.appendChild(sidebar);
+    appshell.appendChild(content);
   }
 
-  wireEvents({ header, sidebar, scrim });
+  // Mobile chrome + shared popover/scrim live at the body level.
+  document.body.insertBefore(mobilebar, document.body.firstChild);
+  document.body.appendChild(scrim);
+  document.body.appendChild(bottomnav);
+  document.body.appendChild(menu);
+
+  wireEvents({ sidebar, mobilebar, bottomnav, menu, scrim });
   return data;
 }
 
@@ -416,7 +461,7 @@ export async function mountFooter() {
   } else {
     footer.textContent = 'Pica';
   }
-  document.body.appendChild(footer);
+  (document.querySelector('.appshell__content') || document.body).appendChild(footer);
 }
 
 // Register the service worker so the app is installable + offline-capable.
