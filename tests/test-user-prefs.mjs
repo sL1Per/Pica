@@ -15,6 +15,7 @@ import {
   createUserPrefsStore,
   VALID_LOCALES,
   VALID_COLOR_MODES,
+  VALID_PALETTES,
   DEFAULT_PREFS,
 } from '../src/storage/user-prefs.js';
 
@@ -43,9 +44,10 @@ try {
   console.log('Defaults + get');
   // ---------------------------------------------------------------------------
 
-  await test('exposes the set of valid locales and color modes', () => {
+  await test('exposes the set of valid locales, color modes and palettes', () => {
     assert.deepEqual([...VALID_LOCALES], ['en-US', 'pt-PT']);
     assert.deepEqual([...VALID_COLOR_MODES], ['light', 'dark', 'system']);
+    assert.deepEqual([...VALID_PALETTES], ['linen', 'slate', 'olive']);
   });
 
   await test('get() returns DEFAULT_PREFS for an unknown user', () => {
@@ -53,6 +55,7 @@ try {
     assert.deepEqual(p, DEFAULT_PREFS);
     assert.equal(p.locale, 'en-US');
     assert.equal(p.colorMode, 'system');
+    assert.equal(p.palette, 'linen');
   });
 
   await test('file is not created until first write', () => {
@@ -67,6 +70,12 @@ try {
     const p = store.update(aliceId, { colorMode: 'dark' });
     assert.equal(p.colorMode, 'dark');
     assert.equal(p.locale, 'en-US'); // default merged in
+  });
+
+  await test('update() persists palette and preserves siblings', () => {
+    const p = store.update(aliceId, { palette: 'slate' });
+    assert.equal(p.palette, 'slate');
+    assert.equal(p.colorMode, 'dark'); // preserved from the earlier patch
   });
 
   await test('file on disk is valid JSON keyed by user id', () => {
@@ -115,6 +124,10 @@ try {
 
   await test('rejects invalid colorMode', () => {
     assert.throws(() => store.update(aliceId, { colorMode: 'neon' }), /colorMode/);
+  });
+
+  await test('rejects invalid palette', () => {
+    assert.throws(() => store.update(aliceId, { palette: 'neon' }), /palette/);
   });
 
   await test('rejects update with no userId', () => {

@@ -17,6 +17,9 @@ import path from 'node:path';
 
 export const VALID_LOCALES = Object.freeze(['en-US', 'pt-PT']);
 export const VALID_COLOR_MODES = Object.freeze(['light', 'dark', 'system']);
+// M15: the three design palettes. Each renders in both light and dark via the
+// token cascade in app.css; `colorMode` and `palette` are orthogonal axes.
+export const VALID_PALETTES = Object.freeze(['linen', 'slate', 'olive']);
 
 // email sub-object defaults. Both keys default to true — absent or true → send;
 // only strict false blocks sending (mirrors the mailer's `=== false` contract).
@@ -35,6 +38,8 @@ function withEmailDefaults(storedEmail) {
 export const DEFAULT_PREFS = Object.freeze({
   locale: 'en-US',
   colorMode: 'system',
+  // M15: linen is the bare-:root default in app.css (no data-palette attribute).
+  palette: 'linen',
   // M14 §3.5: per-user email gating switches. Frozen copy here; get() and
   // update() always return a fresh plain object so callers cannot mutate it.
   email: DEFAULT_EMAIL_PREFS,
@@ -127,6 +132,12 @@ export function createUserPrefsStore(dataDir) {
           throw new Error(`colorMode must be one of: ${VALID_COLOR_MODES.join(', ')}`);
         }
         clean.colorMode = patch.colorMode;
+      }
+      if ('palette' in patch) {
+        if (!VALID_PALETTES.includes(patch.palette)) {
+          throw new Error(`palette must be one of: ${VALID_PALETTES.join(', ')}`);
+        }
+        clean.palette = patch.palette;
       }
       if ('email' in patch && patch.email && typeof patch.email === 'object') {
         // Only whitelist the two known keys; unknown sub-keys are dropped.
