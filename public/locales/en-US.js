@@ -58,6 +58,33 @@ export default {
   'title.settings':        'Pica — Settings',
 
   // ============================================================
+  // Employee home (M15)
+  // ============================================================
+  'home.greet.late':      'Working late',
+  'home.greet.morning':   'Good morning',
+  'home.greet.afternoon': 'Good afternoon',
+  'home.greet.evening':   'Good evening',
+  'home.workingNow':      'Working now',
+  'home.notClockedIn':    'Not clocked in',
+  'home.checkIn':         'Check in',
+  'home.checkOut':        'Check out',
+  'home.helpIn':          'One tap to start your day.',
+  'home.helpOut':         'One tap when you stop for a break or end your day.',
+  'home.checkedInAt':     'Checked in at {time} — keep going.',
+  'home.totalToday':      'Total worked today across {n} sessions.',
+  'home.now':             'now',
+  'home.thisWeek':        'This week',
+  'home.worked':          'Worked',
+  'home.target':          'Target',
+  'home.remaining':       'Remaining',
+  'home.yourLeaves':      'Your leaves',
+  'home.seeAll':          'See all',
+  'home.bookTimeOff':     'Book time off',
+  'home.leaveDays':       '{n} days · {type}',
+  'home.noUpcomingLeaves':'No upcoming leaves.',
+  'home.punchFailed':     'Could not record your punch. Please try again.',
+
+  // ============================================================
   // Dashboard (/)
   // ============================================================
   'dashboard.welcome':   'Welcome to {name}',
@@ -283,6 +310,10 @@ export default {
   'status.approved':  'approved',
   'status.rejected':  'rejected',
   'status.cancelled': 'cancelled',
+
+  // Leave-namespaced status (used by the home leaves card).
+  'leaves.status.approved': 'Approved',
+  'leaves.status.pending':  'Pending',
 
   // Plural — days.
   'leaves.daysCount': {

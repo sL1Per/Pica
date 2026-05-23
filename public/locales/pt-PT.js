@@ -58,6 +58,33 @@ export default {
   'title.settings':        'Pica — Definições',
 
   // ============================================================
+  // Employee home (M15)
+  // ============================================================
+  'home.greet.late':      'A trabalhar até tarde',
+  'home.greet.morning':   'Bom dia',
+  'home.greet.afternoon': 'Boa tarde',
+  'home.greet.evening':   'Boa noite',
+  'home.workingNow':      'A trabalhar',
+  'home.notClockedIn':    'Sem registo',
+  'home.checkIn':         'Entrar',
+  'home.checkOut':        'Sair',
+  'home.helpIn':          'Um toque para começar o dia.',
+  'home.helpOut':         'Um toque ao fazer uma pausa ou terminar o dia.',
+  'home.checkedInAt':     'Entrada às {time} — continue.',
+  'home.totalToday':      'Total trabalhado hoje em {n} sessões.',
+  'home.now':             'agora',
+  'home.thisWeek':        'Esta semana',
+  'home.worked':          'Trabalhado',
+  'home.target':          'Objetivo',
+  'home.remaining':       'Restante',
+  'home.yourLeaves':      'As suas ausências',
+  'home.seeAll':          'Ver todas',
+  'home.bookTimeOff':     'Marcar ausência',
+  'home.leaveDays':       '{n} dias · {type}',
+  'home.noUpcomingLeaves':'Sem ausências próximas.',
+  'home.punchFailed':     'Não foi possível registar a marcação. Tente novamente.',
+
+  // ============================================================
   // Dashboard
   // ============================================================
   'dashboard.welcome':   'Bem-vindo a {name}',
@@ -280,6 +307,10 @@ export default {
   'status.approved':  'aprovado',
   'status.rejected':  'rejeitado',
   'status.cancelled': 'cancelado',
+
+  // Leave-namespaced status (used by the home leaves card).
+  'leaves.status.approved': 'Aprovada',
+  'leaves.status.pending':  'Pendente',
 
   'leaves.daysCount': {
     one:   '{count} dia',
