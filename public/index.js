@@ -8,7 +8,9 @@
  */
 
 import { mountTopBar, mountFooter } from '/topbar.js';
-import { t, fmtTime, fmtHours } from '/i18n.js';
+import { t, fmtDate, fmtTime, fmtHours, translateError } from '/i18n.js';
+import { clockPunch } from '/geo.js';
+import { toast } from '/app.js';
 
 // ---- Quick-nav cards (kept from earlier dashboard) -----------------------
 
@@ -314,82 +316,6 @@ function renderOnLeaveTodayEmployer(widgetEl, approvedLeaves) {
   setWidgetBody(widgetEl, html);
 }
 
-// ---- Renderers — employee ---------------------------------------------
-
-function renderPendingApprovalsEmployee(widgetEl, leaves, corrections) {
-  const pendingLeaves = leaves.filter((l) => l.status === 'pending');
-  const pendingCorrections = corrections.filter((c) => c.status === 'pending');
-  if (pendingLeaves.length === 0 && pendingCorrections.length === 0) {
-    setWidgetBody(widgetEl, `<div class="widget__empty">${escapeHtml(t('widgets.allCaughtUp'))}</div>`);
-    return;
-  }
-  setWidgetBody(widgetEl, `
-    <div class="widget__row">
-      <div class="widget__row-main">
-        <div class="widget__row-name">
-          <a href="/leaves">${escapeHtml(t('widgets.pendingLeaves'))}</a>
-        </div>
-      </div>
-      <div class="widget__row-aside">
-        <span class="widget__count${pendingLeaves.length === 0 ? ' widget__count--zero' : ''}">${pendingLeaves.length}</span>
-      </div>
-    </div>
-    <div class="widget__row">
-      <div class="widget__row-main">
-        <div class="widget__row-name">
-          <a href="/corrections">${escapeHtml(t('widgets.pendingCorrections'))}</a>
-        </div>
-      </div>
-      <div class="widget__row-aside">
-        <span class="widget__count${pendingCorrections.length === 0 ? ' widget__count--zero' : ''}">${pendingCorrections.length}</span>
-      </div>
-    </div>
-  `);
-}
-
-function renderTodayHoursEmployee(widgetEl, todayPunches, workingTime) {
-  // todayPunches is the user's own punches for today (already filtered by
-  // the API since we're an employee).
-  const groups = groupPunchesByEmployee(todayPunches.map((p) => ({ ...p, employeeId: 'self' })), new Map());
-  const g = groups[0];
-  const target = workingTime?.dailyHours ? `${workingTime.dailyHours}h` : null;
-
-  if (!g) {
-    // No punches today.
-    setWidgetBody(widgetEl, `
-      <div class="widget__bignum widget__bignum--muted">0<span class="widget__bignum-suffix">h</span></div>
-      <div class="widget__caption">${escapeHtml(t('widgets.notClockedInYet'))}</div>
-      <div style="margin-top: var(--gap-3)">
-        <a href="/punch" class="widget__action">${escapeHtml(t('widgets.goClockIn'))}</a>
-      </div>
-    `);
-    return;
-  }
-
-  const totalMs = workedMsFromPairs(g.pairs) + openDurationMs(g.openInPunch);
-  const totalHrs = totalMs / 3_600_000;
-  const wholeHrs = Math.floor(totalHrs);
-  const minStr   = String(Math.round((totalHrs - wholeHrs) * 60)).padStart(2, '0');
-
-  let captionHtml = '';
-  if (g.openInPunch) {
-    captionHtml = `<div class="widget__caption">${escapeHtml(t('widgets.currentlyClockedIn', { time: timeOnly(g.openInPunch.ts) }))}</div>`;
-  } else if (target) {
-    captionHtml = `<div class="widget__caption">${escapeHtml(t('widgets.todayTarget', { target }))}</div>`;
-  }
-
-  const brkMs = breakMsFromGroup(g);
-  const breakHtml = brkMs > 0
-    ? `<div class="widget__caption">${escapeHtml(t('punch.todayBreak', { dur: humanDuration(brkMs) }))}</div>`
-    : '';
-
-  setWidgetBody(widgetEl, `
-    <div class="widget__bignum">${wholeHrs}<span class="widget__bignum-suffix">h ${minStr}m</span></div>
-    ${captionHtml}
-    ${breakHtml}
-  `);
-}
-
 // ---- Orchestration -----------------------------------------------------
 
 /** Build the widget shells in order, return references for the loaders. */
@@ -404,15 +330,6 @@ function buildEmployerWidgets(grid) {
   grid.appendChild(working);
   grid.appendChild(onLeave);
   return { pending, working, onLeave };
-}
-
-function buildEmployeeWidgets(grid) {
-  const pending = buildWidget({ titleKey: 'widgets.myPending' });
-  const today   = buildWidget({ titleKey: 'widgets.todayHours',
-                                action: { href: '/punch', labelKey: 'widgets.viewAll' } });
-  grid.appendChild(pending);
-  grid.appendChild(today);
-  return { pending, today };
 }
 
 async function loadEmployerWidgets(widgets) {
@@ -464,31 +381,243 @@ async function loadEmployerWidgets(widgets) {
   }
 }
 
-async function loadEmployeeWidgets(widgets) {
-  Object.values(widgets).forEach(widgetLoading);
+// ===== Employee home (M15) =================================================
 
-  const [leaves, corrections, today, wt] = await Promise.allSettled([
-    fetchJson('/api/leaves'),
-    fetchJson('/api/corrections?status=pending'),
-    fetchJson('/api/punches/today'),
-    fetchJson('/api/settings/working-time'),
-  ]);
+function greetingKeyFor(d) {
+  const h = d.getHours();
+  if (h < 5)  return 'home.greet.late';
+  if (h < 12) return 'home.greet.morning';
+  if (h < 18) return 'home.greet.afternoon';
+  return 'home.greet.evening';
+}
 
-  if (leaves.status === 'fulfilled' && corrections.status === 'fulfilled') {
-    renderPendingApprovalsEmployee(widgets.pending,
-      leaves.value.leaves ?? [],
-      corrections.value.corrections ?? []);
-  } else {
-    widgetError(widgets.pending, () => loadEmployeeWidgets(widgets));
+// punches ascending → {workedMs, open, segments:[{startMs,endMs,live}]}
+function pairWorkedMs(punches, nowMs) {
+  // punches: [{type,ts}] ascending. Returns {workedMs, open, segments:[{startMs,endMs,live}]}.
+  let open = null, workedMs = 0; const segments = [];
+  for (const p of punches) {
+    if (p.type === 'in') open = new Date(p.ts).getTime();
+    else if (p.type === 'out' && open != null) {
+      const end = new Date(p.ts).getTime();
+      segments.push({ startMs: open, endMs: end, live: false }); workedMs += end - open; open = null;
+    }
   }
+  let isOpen = false;
+  if (open != null) { segments.push({ startMs: open, endMs: nowMs, live: true }); workedMs += nowMs - open; isOpen = true; }
+  return { workedMs, open: isOpen, segments };
+}
 
-  if (today.status === 'fulfilled') {
-    renderTodayHoursEmployee(widgets.today,
-      today.value.punches ?? [],
-      wt.status === 'fulfilled' ? wt.value.workingTime : null);
-  } else {
-    widgetError(widgets.today, () => loadEmployeeWidgets(widgets));
+function weekBars(period, buckets, todayYmd) {
+  // period:{from,to}; buckets:[{key:ymd,hours}]. Returns one entry per day from..to.
+  // Use UTC noon to iterate — avoids local-midnight rollback in UTC+ timezones.
+  const byKey = new Map(buckets.map((b) => [b.key, b.hours]));
+  const out = []; const d = new Date(period.from + 'T12:00:00Z');
+  const end = new Date(period.to + 'T12:00:00Z');
+  while (d <= end) {
+    const ymd = d.toISOString().slice(0, 10);
+    out.push({ ymd, hours: byKey.get(ymd) || 0, today: ymd === todayYmd, dow: d.getUTCDay() });
+    d.setUTCDate(d.getUTCDate() + 1);
   }
+  return out;
+}
+
+function hhmm(ms) {
+  const totalMin = Math.max(0, Math.round(ms / 60000));
+  return { h: Math.floor(totalMin / 60), m: totalMin % 60 };
+}
+function fmtClock(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+function fmtHM(iso) {
+  const d = new Date(iso); const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// Build the static home shell into <main>. Returns element refs for live bits.
+function renderEmployeeHomeShell(main, user) {
+  const first = (user.fullName || user.username || '').trim().split(/\s+/)[0] || user.username;
+  main.innerHTML = `
+    <div class="emp-home">
+      <div class="emp-greet">
+        <div>
+          <h1 class="emp-greet__title">${escapeHtml(t(greetingKeyFor(new Date())))}, <em>${escapeHtml(first)}</em></h1>
+          <div class="emp-greet__sub">${escapeHtml(fmtDate(new Date()))}</div>
+        </div>
+        <div class="emp-clock"><span class="emp-clock__dot"></span><span data-live-clock>${fmtClock(new Date())}</span></div>
+      </div>
+      <div class="emp-grid">
+        <section class="emp-hero" data-hero aria-live="polite"></section>
+        <div class="emp-col">
+          <section class="emp-card" data-week></section>
+          <section class="emp-card" data-leaves></section>
+        </div>
+      </div>
+    </div>
+  `;
+  return {
+    liveClock: main.querySelector('[data-live-clock]'),
+    hero: main.querySelector('[data-hero]'),
+    week: main.querySelector('[data-week]'),
+    leaves: main.querySelector('[data-leaves]'),
+  };
+}
+
+function renderHero(heroEl, todayPunches, onPunch) {
+  const sorted = [...todayPunches].sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const { workedMs, open, segments } = pairWorkedMs(sorted, Date.now());
+  const { h, m } = hhmm(workedMs);
+  const inAt = open ? segments.at(-1) : null;
+
+  // Timeline window: 08:00 → 17:00 local, widened to fit any earlier/later activity.
+  const dayStart = new Date(); dayStart.setHours(8, 0, 0, 0);
+  const dayEnd = new Date(); dayEnd.setHours(17, 0, 0, 0);
+  let winStart = dayStart.getTime(), winEnd = dayEnd.getTime();
+  for (const s of segments) { winStart = Math.min(winStart, s.startMs); winEnd = Math.max(winEnd, s.endMs); }
+  const span = Math.max(1, winEnd - winStart);
+
+  const legend = segments.map((s) =>
+    `<span><i class="${s.live ? 'live' : ''}"></i>${escapeHtml(fmtHM(new Date(s.startMs).toISOString()))}–${s.live ? escapeHtml(t('home.now')) : escapeHtml(fmtHM(new Date(s.endMs).toISOString()))}</span>`
+  ).join('');
+
+  heroEl.innerHTML = `
+    <div class="emp-hero__status${open ? ' emp-hero__status--working' : ''}">
+      <span class="emp-hero__dot"></span>${escapeHtml(open ? t('home.workingNow') : t('home.notClockedIn'))}
+    </div>
+    <div>
+      <div class="emp-hero__big">${String(h).padStart(2,'0')}<small>h</small>${String(m).padStart(2,'0')}</div>
+      <div class="emp-hero__label">${open && inAt
+        ? t('home.checkedInAt', { time: `<strong>${escapeHtml(fmtHM(new Date(inAt.startMs).toISOString()))}</strong>` })
+        : escapeHtml(t('home.totalToday', { n: segments.length }))}</div>
+    </div>
+    <div>
+      <div class="emp-timeline">
+        <span class="emp-timeline__cap">${escapeHtml(fmtHM(new Date(winStart).toISOString()))}</span>
+        <div class="emp-timeline__bar" data-segs></div>
+        <span class="emp-timeline__cap">${escapeHtml(fmtHM(new Date(winEnd).toISOString()))}</span>
+      </div>
+      <div class="emp-timeline__legend">${legend}</div>
+    </div>
+    <button type="button" class="emp-punch${open ? ' emp-punch--out' : ''}" data-punch>
+      ${escapeHtml(open ? t('home.checkOut') : t('home.checkIn'))}
+    </button>
+    <div class="emp-punch__help">${escapeHtml(open ? t('home.helpOut') : t('home.helpIn'))}</div>
+  `;
+  // Segments: set geometry via CSSOM (no inline style attribute in markup → CSP-clean).
+  const bar = heroEl.querySelector('[data-segs]');
+  for (const s of segments) {
+    const seg = document.createElement('div');
+    seg.className = 'emp-timeline__seg' + (s.live ? ' emp-timeline__seg--live' : '');
+    seg.style.left = `${((s.startMs - winStart) / span) * 100}%`;
+    seg.style.width = `${((s.endMs - s.startMs) / span) * 100}%`;
+    bar.appendChild(seg);
+  }
+  const btn = heroEl.querySelector('[data-punch]');
+  btn.addEventListener('click', () => onPunch(open, btn));
+}
+
+function renderWeek(weekEl, period, buckets, totalHours, weeklyTarget) {
+  const todayYmd = new Date().toISOString().slice(0, 10);
+  const bars = weekBars(period, buckets, todayYmd).filter((b) => b.dow >= 1 && b.dow <= 5); // Mon–Fri
+  const maxH = Math.max(8, ...bars.map((b) => b.hours));
+  const worked = totalHours || 0;
+  const remaining = (weeklyTarget || 0) - worked;
+  const dayLetters = ['', 'M', 'T', 'W', 'T', 'F'];
+  weekEl.innerHTML = `
+    <h3 class="emp-card__title">${escapeHtml(t('home.thisWeek'))}</h3>
+    <div class="emp-week">
+      <div class="emp-stat"><div class="emp-stat__val">${escapeHtml(fmtHours(worked))}<small>h</small></div><div class="emp-stat__label">${escapeHtml(t('home.worked'))}</div></div>
+      <div class="emp-stat"><div class="emp-stat__val">${escapeHtml(fmtHours(weeklyTarget || 0))}<small>h</small></div><div class="emp-stat__label">${escapeHtml(t('home.target'))}</div></div>
+      <div class="emp-stat"><div class="emp-stat__val${remaining < 0 ? ' emp-stat__val--neg' : ''}">${remaining < 0 ? '−' : ''}${escapeHtml(fmtHours(Math.abs(remaining)))}<small>h</small></div><div class="emp-stat__label">${escapeHtml(t('home.remaining'))}</div></div>
+    </div>
+    <div class="emp-weekbars" data-bars></div>
+  `;
+  const barsEl = weekEl.querySelector('[data-bars]');
+  for (const b of bars) {
+    const col = document.createElement('div'); col.className = 'emp-weekbars__col';
+    const bar = document.createElement('div');
+    bar.className = 'emp-weekbars__bar' + (b.today ? ' emp-weekbars__bar--today' : '') + (b.hours ? '' : ' emp-weekbars__bar--empty');
+    bar.style.height = `${Math.max(4, (b.hours / maxH) * 100)}%`;
+    const label = document.createElement('span');
+    label.className = 'emp-weekbars__day' + (b.today ? ' emp-weekbars__day--today' : '');
+    label.textContent = dayLetters[b.dow] || '';
+    col.appendChild(bar); col.appendChild(label); barsEl.appendChild(col);
+  }
+}
+
+function renderLeaves(leavesEl, leaves) {
+  const todayYmd = new Date().toISOString().slice(0, 10);
+  const upcoming = (leaves || [])
+    .filter((l) => (l.status === 'approved' || l.status === 'pending') && String(l.end).slice(0, 10) >= todayYmd)
+    .sort((a, b) => String(a.start).localeCompare(String(b.start)))
+    .slice(0, 3);
+
+  const rows = upcoming.map((l) => {
+    const start = new Date(String(l.start).slice(0, 10) + 'T00:00:00');
+    const endY = String(l.end).slice(0, 10), startY = String(l.start).slice(0, 10);
+    const days = Math.max(1, Math.round((new Date(endY) - new Date(startY)) / 86400000) + 1);
+    const typeLabel = t('leaves.type.' + l.type);
+    const sub = l.unit === 'hours' ? typeLabel : t('home.leaveDays', { n: days, type: typeLabel });
+    const pill = l.status === 'approved' ? 'approved' : 'pending';
+    return `
+      <div class="emp-leave">
+        <div class="emp-leave__date">
+          <div class="emp-leave__day">${start.getDate()}</div>
+          <div class="emp-leave__mon">${escapeHtml(start.toLocaleString(undefined, { month: 'short' }))}</div>
+        </div>
+        <div>
+          <div class="emp-leave__title">${escapeHtml(l.reason || typeLabel)}</div>
+          <div class="emp-leave__sub">${escapeHtml(sub)}</div>
+        </div>
+        <a class="emp-leave__pill emp-leave__pill--${pill}" href="/leaves/${escapeHtml(l.id)}">${escapeHtml(t('leaves.status.' + l.status))}</a>
+      </div>`;
+  }).join('');
+
+  leavesEl.innerHTML = `
+    <div class="emp-card__head">
+      <h3 class="emp-card__title">${escapeHtml(t('home.yourLeaves'))}</h3>
+      <a class="emp-card__link" href="/leaves">${escapeHtml(t('home.seeAll'))}</a>
+    </div>
+    <div>${rows || `<div class="emp-empty">${escapeHtml(t('home.noUpcomingLeaves'))}</div>`}</div>
+    <a class="emp-book" href="/leaves/new">+ ${escapeHtml(t('home.bookTimeOff'))}</a>
+  `;
+}
+
+async function loadEmployeeHome(refs, user) {
+  // Hero (today) — load first; it's the primary action.
+  const refreshHero = async () => {
+    try {
+      const today = await fetchJson('/api/punches/today');
+      renderHero(refs.hero, today.punches ?? [], onPunch);
+    } catch { refs.hero.innerHTML = `<div class="emp-empty">${escapeHtml(t('widgets.couldNotLoad'))}</div>`; }
+  };
+  const onPunch = async (isOpen, btn) => {
+    btn.disabled = true;
+    try {
+      await clockPunch(isOpen ? 'out' : 'in', {});
+      await refreshHero();
+    } catch (e) {
+      toast(translateError(e.errorCode, t('home.punchFailed')), 'error');
+      btn.disabled = false;
+    }
+  };
+  await refreshHero();
+
+  // This week.
+  try {
+    const ymd = new Date().toISOString().slice(0, 10);
+    const [wk, wt] = await Promise.all([
+      fetchJson(`/api/reports/timesheets?scope=me&type=week&anchor=${ymd}`),
+      fetchJson('/api/settings/working-time').catch(() => ({ workingTime: {} })),
+    ]);
+    renderWeek(refs.week, wk.period, wk.buckets ?? [], wk.totalHours ?? 0, wt.workingTime?.weeklyHours ?? 0);
+  } catch { refs.week.innerHTML = `<h3 class="emp-card__title">${escapeHtml(t('home.thisWeek'))}</h3><div class="emp-empty">${escapeHtml(t('widgets.couldNotLoad'))}</div>`; }
+
+  // Leaves.
+  try {
+    const lv = await fetchJson('/api/leaves');
+    renderLeaves(refs.leaves, lv.leaves ?? []);
+  } catch { refs.leaves.innerHTML = `<div class="emp-empty">${escapeHtml(t('widgets.couldNotLoad'))}</div>`; }
 }
 
 // ---- Boot --------------------------------------------------------------
@@ -510,29 +639,31 @@ async function loadEmployeeWidgets(widgets) {
     });
   }
 
-  // Build widgets for the user's role.
-  const grid = document.getElementById('widget-grid');
-  let widgets;
-  let loader;
   if (data.user.role === 'employer') {
-    widgets = buildEmployerWidgets(grid);
-    loader = () => loadEmployerWidgets(widgets);
-  } else {
-    widgets = buildEmployeeWidgets(grid);
-    loader = () => loadEmployeeWidgets(widgets);
+    // Employer home is redesigned in a later M15 plan — keep the widgets.
+    const grid = document.getElementById('widget-grid');
+    const widgets = buildEmployerWidgets(grid);
+    const loader = () => loadEmployerWidgets(widgets);
+    loader();
+    // Refresh on tab visibility change. When the user comes back to this
+    // tab after working in another, the widgets should reflect what's
+    // current — punches drift, leaves get filed, corrections get
+    // approved. Cheap: only fires when the user is actually looking.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') loader();
+    });
+    renderNavCards(data.user.role);
+    return;
   }
 
-  // Initial load.
-  loader();
-
-  // Refresh on tab visibility change. When the user comes back to this
-  // tab after working in another, the widgets should reflect what's
-  // current — punches drift, leaves get filed, corrections get
-  // approved. Cheap: only fires when the user is actually looking.
+  // Employee home (M15): replace <main> with the new layout.
+  const main = document.querySelector('main');
+  main.className = '';                 // drop .container--wide; the shell owns width
+  const refs = renderEmployeeHomeShell(main, data.user);
+  const tick = () => { if (refs.liveClock) refs.liveClock.textContent = fmtClock(new Date()); };
+  setInterval(tick, 1000);
+  await loadEmployeeHome(refs, data.user);
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') loader();
+    if (document.visibilityState === 'visible') loadEmployeeHome(refs, data.user);
   });
-
-  // Quick-nav cards stay below the widgets.
-  renderNavCards(data.user.role);
 })();
