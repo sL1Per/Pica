@@ -2,9 +2,11 @@
    Correction detail page — M15 design
    Status-hero + cards vocabulary, mirroring the Leave-detail screen.
    Tokens from app.css: --paper, --paper-2, --ink, --ink-2, --muted,
-   --honey, --honey-deep, --honey (pending), --sage, --sage-soft (approved),
+   --honey, --honey-deep, --sage, --sage-soft (approved),
    --clay, --clay-soft (rejected), --line, --line-soft, --font-mono, --font-serif.
-   Status coloring is class-driven — never inline color from JS.
+   Pending hero bg is hardcoded #F4E4C7 (no --honey-soft token exists);
+   border and icon use --honey. Status coloring is class-driven — never
+   inline color from JS.
    ============================================================================ */
 
 /* ---------- Page layout --------------------------------------------------- */
@@ -180,6 +182,16 @@
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Rejection notes — preserve newlines from free-text input */
+#f-notes {
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
 }
 
 /* ---------- Actions row --------------------------------------------------- */

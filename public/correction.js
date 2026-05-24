@@ -192,7 +192,6 @@ function renderActions() {
 
     actionsEl.appendChild(approve);
     actionsEl.appendChild(reject);
-    actionsEl.hidden = false;
     $('actions-card').hidden = false;
   } else if (correction.status === 'pending' && isOwner) {
     const cancel = document.createElement('button');
@@ -202,7 +201,6 @@ function renderActions() {
       if (confirm(t('correction.confirmCancel'))) action('cancel');
     });
     actionsEl.appendChild(cancel);
-    actionsEl.hidden = false;
     $('actions-card').hidden = false;
   } else if (correction.status === 'approved' && isEmployer) {
     // Employer can reverse an approval. This does NOT remove the materialized
@@ -216,7 +214,6 @@ function renderActions() {
       }
     });
     actionsEl.appendChild(undo);
-    actionsEl.hidden = false;
     $('actions-card').hidden = false;
   } else {
     // No actions available — hide the card entirely.
