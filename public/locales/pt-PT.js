@@ -281,6 +281,11 @@ export default {
   'punchesToday.employerOnly': 'Acesso apenas para empregadores.',
   'punchesToday.title':       'Marcações de hoje de todos',
   'punchesToday.empty':       'Sem marcações hoje.',
+  'punchesToday.tabToday':       'Hoje',
+  'punchesToday.tabCorrections': 'Correções',
+  'punchesToday.statusWorking':  'A trabalhar',
+  'punchesToday.statusDone':     'Terminou por hoje',
+  'punchesToday.stillWorking':   'Ainda a trabalhar',
   'punchesToday.openPunches': 'Marcações abertas:',
   'punchesToday.allClosed':   'Todos com saída marcada.',
 

@@ -282,6 +282,11 @@ export default {
   'punchesToday.employerOnly': 'Employer access only.',
   'punchesToday.title':       'Everyone\'s punches today',
   'punchesToday.empty':       'No punches today.',
+  'punchesToday.tabToday':       'Today',
+  'punchesToday.tabCorrections': 'Corrections',
+  'punchesToday.statusWorking':  'Working now',
+  'punchesToday.statusDone':     'Done for the day',
+  'punchesToday.stillWorking':   'Still working',
   'punchesToday.openPunches': 'Open punches:',
   'punchesToday.allClosed':   'All clocked out.',
 
