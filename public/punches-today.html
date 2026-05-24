@@ -38,9 +38,15 @@
       </div>
     </header>
 
+    <!-- Sub-tab strip: Today is the current panel; Corrections navigates -->
+    <nav class="punch-tabs" aria-label="Punch views">
+      <button type="button" class="punch-tab punch-tab--active" data-i18n="punchesToday.tabToday">Today</button>
+      <a class="punch-tab" href="/corrections" data-i18n="punchesToday.tabCorrections">Corrections</a>
+    </nav>
+
     <div id="message" class="message"></div>
 
-    <div id="groups" class="groups">
+    <div id="groups" class="ptoday">
       <p class="subtle" data-i18n="punchesToday.loading">Loading…</p>
     </div>
   </main>
