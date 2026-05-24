@@ -348,13 +348,13 @@
   color: var(--muted);
 }
 
-/* ---------- Legacy classes — kept for non-list pages ---------------------- */
+/* ---------- Legacy classes — kept for the detail page ---------------------- */
 
 /*
- * The detail page and new-correction form still use the old class names
- * (.back, .kv, .kind-fieldset, .reject-dialog, .callout, .form-actions,
- * .kind-radio). They are preserved here unchanged until those pages are
- * ported in Tasks 2 and 3.
+ * The detail page (correction.html) still uses these class names:
+ * .back, .kv, .reject-dialog, .callout, .form-actions.
+ * (.kind-fieldset and .kind-radio were used only by correction-new.html,
+ * which was retired in M15 — the modal now handles new entries.)
  */
 
 .back {
@@ -420,43 +420,6 @@
   background: #F4E4C7;
   border: 1px solid var(--honey);
   color: var(--ink);
-}
-
-.kind-fieldset {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: var(--gap-3);
-  margin: 0 0 var(--gap-4) 0;
-}
-
-.kind-fieldset legend {
-  padding: 0 var(--gap-2);
-  font-weight: 600;
-  font-size: var(--text-sm);
-  color: var(--muted);
-}
-
-.kind-radio {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--gap-2);
-  padding: var(--gap-2);
-  cursor: pointer;
-  border-radius: var(--radius);
-  transition: background var(--t-fast);
-}
-
-.kind-radio:hover { background: var(--paper-2); }
-
-.kind-radio input[type="radio"] { margin-top: 4px; flex-shrink: 0; }
-
-.kind-radio strong { display: block; font-size: var(--text-md); }
-
-.kind-radio span {
-  display: block;
-  font-size: var(--text-sm);
-  color: var(--muted);
-  margin-top: 2px;
 }
 
 /* ---------- Mobile ≤ 760px ----------------------------------------------- */

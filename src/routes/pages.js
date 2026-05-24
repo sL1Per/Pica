@@ -169,7 +169,9 @@ export function registerPageRoutes(router, { publicDir, usersStore, userPrefsSto
   router.get('/corrections/new', async (req, res) => {
     const a = authed(req);
     if (a.redirect) return res.redirect(a.redirect);
-    await sendHtml(res, 'correction-new.html', req);
+    // The standalone new-entry page is retired; the modal on /corrections
+    // handles creation. Passing ?new=1 tells that page to auto-open it.
+    return res.redirect('/corrections?new=1');
   });
 
   router.get('/corrections/:id', async (req, res) => {
