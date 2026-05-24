@@ -1,128 +1,352 @@
 /* ============================================================================
-   Time corrections — list, new, detail
+   Time corrections — M15 design
+   Tokens from app.css: --paper, --paper-2, --ink, --ink-2, --muted,
+   --honey, --honey-deep, --sage, --sage-soft, --clay, --clay-soft,
+   --line, --line-soft, --font-mono, --font-serif.
+   Status coloring is class-driven (never inline color from JS).
    ============================================================================ */
 
-.page-header {
+/* ---------- Page layout --------------------------------------------------- */
+
+.corr-page {
+  /* Vertical stack of sections — matches the gap scale used across M15 pages. */
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: var(--gap-3);
-  flex-wrap: wrap;
-  margin-bottom: var(--gap-4);
+  flex-direction: column;
+  gap: 24px;
 }
-.page-header h1 { margin-bottom: var(--gap-1); }
-.page-header__actions { display: flex; gap: var(--gap-2); }
+
+.corr-section {
+  /* Groups a heading + card set; bottom margin handled by .corr-page gap. */
+  display: block;
+}
+
+/* ---------- Cards --------------------------------------------------------- */
+
+/*
+ * .corr-card  — base card (paper bg, line border, 16px radius).
+ * .corr-card--pending — honey-outlined "waiting on you" inbox variant.
+ */
+.corr-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.corr-card--pending {
+  border-color: var(--honey);
+}
+
+.corr-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.corr-card__title {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Small pill — e.g. "3 waiting on you". Sits inline next to the title. */
+.corr-card__tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--clay);
+  color: #fff;
+  margin-left: 6px;
+  line-height: 1.4;
+}
+
+/* ---------- Correction row ------------------------------------------------ */
+
+/*
+ * Three-column grid: [3px accent bar] | [main content] | [aside / status].
+ * The accent bar is absolutely positioned on the left edge of the card so it
+ * bleeds inside the 24px padding; the row itself has left padding to clear it.
+ * Status color is applied by a modifier class on the row — JS adds the class,
+ * never an inline color. See .corr-row--pending / --approved / --rejected /
+ * --cancelled below.
+ */
+.corr-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 0;
+  position: relative;
+  cursor: pointer;
+}
+
+/*
+ * Separator only between consecutive rows. Using the adjacent-sibling combinator
+ * is more robust than :first-of-type — the latter breaks when a non-row sibling
+ * (e.g. an empty-state <p>) precedes the first row inside the card.
+ * Same pattern as .sess__times + .sess__times in punch.css.
+ */
+.corr-row + .corr-row {
+  border-top: 1px solid var(--line-soft);
+}
+
+/* The thin colored accent bar on the left edge of each row. */
+.corr-row__accent {
+  position: absolute;
+  left: -16px;          /* pull into the card's 24px padding so it hugs the edge */
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--line);   /* default/fallback — status modifiers override */
+}
+
+/* Main body: name + time summary + sub-line */
+.corr-row__main {
+  min-width: 0;
+}
+
+/* Primary text line — who and what time */
+.corr-row__who {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+
+/* Mono date/time string */
+.corr-row__when {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+/* Chips row — kind + justification state */
+.corr-row__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* Mono total-hours on the aside */
+.corr-row__hours {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ---------- Status modifiers on the row ----------------------------------- */
+
+/* honey = pending (waiting on someone) */
+.corr-row--pending .corr-row__accent  { background: var(--honey); }
+/* sage = approved */
+.corr-row--approved .corr-row__accent { background: var(--sage); }
+/* clay = rejected */
+.corr-row--rejected .corr-row__accent { background: var(--clay); }
+/* muted = cancelled (no accent color, just subdued) */
+.corr-row--cancelled .corr-row__accent { background: var(--muted); }
+.corr-row--cancelled { opacity: 0.7; }
+
+/* ---------- Status pills -------------------------------------------------- */
+
+/*
+ * Inline status badge. Used in history rows and the detail page.
+ * Color is driven by a modifier class — never by inline style.
+ */
+.corr-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.corr-status--pending {
+  /* Use paper-tint for pending so it doesn't look identical to the accent bar. */
+  background: #F4E4C7;
+  color: var(--honey-deep);
+}
+
+.corr-status--approved {
+  background: var(--sage-soft);
+  color: var(--sage);
+}
+
+.corr-status--rejected {
+  background: var(--clay-soft);
+  color: var(--clay);
+}
+
+.corr-status--cancelled {
+  background: var(--paper-2);
+  color: var(--muted);
+}
+
+/* ---------- Chips --------------------------------------------------------- */
+
+/*
+ * .corr-chip        — base chip (neutral).
+ * .corr-chip--kind  — in/out/both kind indicator (slightly bolder).
+ * .corr-chip--ok    — justified (sage tint, positive signal).
+ * .corr-chip--warn  — unjustified / needs attention (clay-honey tint).
+ */
+.corr-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--paper-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.corr-chip--kind {
+  background: var(--paper-2);
+  color: var(--ink);
+  border-color: var(--line);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+}
+
+.corr-chip--ok {
+  background: var(--sage-soft);
+  color: var(--sage);
+  border-color: var(--sage-soft);
+}
+
+.corr-chip--warn {
+  background: #F4E4C7;
+  color: var(--honey-deep);
+  border-color: var(--honey);
+}
+
+/* ---------- Inline employer actions --------------------------------------- */
+
+/*
+ * .corr-actions — a flex row holding the inline approve/reject icon buttons.
+ *   Placed in the aside column of the employer-pending inbox row.
+ * .corr-act     — compact square icon button base.
+ * .corr-act--approve — sage, ✓ icon.
+ * .corr-act--reject  — paper-2 bg, clay outline, ✗ icon.
+ *
+ * IMPORTANT: app.css has `button { margin-top: 16px }` globally. These inline
+ * action buttons must NOT pick that up — they sit inside a flex row and need
+ * to be vertically centered. Same fix used on .punch-tab in punch.css.
+ */
+.corr-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.corr-act {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-top: 0;          /* neutralize global button { margin-top: 16px } */
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink-2);
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+  white-space: nowrap;
+}
+
+.corr-act--approve {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: #fff;
+}
+
+.corr-act--approve:hover:not(:disabled) {
+  /* background/border-color are identical to base — only dim on hover. */
+  opacity: 0.88;
+}
+
+.corr-act--reject {
+  background: var(--paper-2);
+  border-color: var(--line);
+  color: var(--ink-2);
+}
+
+.corr-act--reject:hover:not(:disabled) {
+  background: var(--clay-soft);
+  border-color: var(--clay);
+  color: var(--clay);
+}
+
+/* ---------- Empty states -------------------------------------------------- */
+
+.corr-empty {
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.corr-empty__title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.corr-empty__sub {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ---------- Legacy classes — kept for non-list pages ---------------------- */
+
+/*
+ * The detail page and new-correction form still use the old class names
+ * (.back, .kv, .kind-fieldset, .reject-dialog, .callout, .form-actions,
+ * .kind-radio). They are preserved here unchanged until those pages are
+ * ported in Tasks 2 and 3.
+ */
 
 .back {
   display: inline-block;
   margin-bottom: var(--gap-2);
   font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-
-/* ----- Correction list rows -------------------------------------------- */
-
-.correction-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-2);
-}
-.correction-row {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  transition: border-color var(--t-fast), background var(--t-fast);
-}
-.correction-row:hover { border-color: var(--accent); }
-
-.correction-row__link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gap-3);
-  padding: var(--gap-3) var(--gap-4);
+  color: var(--ink-2);
   text-decoration: none;
-  color: var(--text);
 }
-.correction-row__main { flex: 1; min-width: 0; }
-.correction-row__who {
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-.correction-row__when {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-  margin-bottom: var(--gap-2);
-}
-.correction-row__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-1);
-}
-.correction-row__hours {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  flex-shrink: 0;
-}
-
-/* Pending rows pop a bit more so the employer notices what needs decision. */
-.correction-row--pending { border-left: 3px solid var(--accent); }
-.correction-row--approved { border-left: 3px solid var(--success); }
-.correction-row--rejected { border-left: 3px solid var(--danger); opacity: 0.85; }
-.correction-row--cancelled { opacity: 0.65; }
-
-/* ----- Status tags ----------------------------------------------------- */
-
-.status-tag {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  background: var(--surface-2);
-  color: var(--text-muted);
-}
-.status-tag--pending  { background: var(--accent-soft);  color: var(--accent); }
-.status-tag--approved { background: var(--success-soft); color: var(--success); }
-.status-tag--rejected { background: var(--danger-soft);  color: var(--danger); }
-.status-tag--cancelled{ background: var(--surface-2);    color: var(--text-subtle); }
-
-/* ----- Chips (justified / kind) ---------------------------------------- */
-
-.chip {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: var(--text-xs);
-  font-weight: 500;
-  background: var(--surface-2);
-  color: var(--text-muted);
-}
-.chip--ok    { background: var(--success-soft); color: var(--success); }
-.chip--warn  { background: var(--danger-soft);  color: var(--danger); }
-
-/* ----- Callout (info hint on new form) --------------------------------- */
-
-.callout {
-  margin-top: var(--gap-3);
-  padding: var(--gap-3);
-  border-radius: var(--radius);
-  font-size: var(--text-sm);
-}
-.callout--warn {
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
-  color: var(--text);
-}
-
-/* ----- Detail page --------------------------------------------------- */
 
 .kv {
   display: grid;
@@ -130,18 +354,19 @@
   gap: var(--gap-2) var(--gap-4);
   margin: 0;
 }
+
 .kv dt {
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--muted);
   font-size: var(--text-sm);
 }
+
 .kv dd {
   margin: 0;
   word-break: break-word;
 }
-.kv dd.multiline { white-space: pre-wrap; }
 
-/* ----- Form actions row ----------------------------------------------- */
+.kv dd.multiline { white-space: pre-wrap; }
 
 .form-actions {
   display: flex;
@@ -150,36 +375,50 @@
   margin-top: var(--gap-4);
 }
 
-/* ----- Reject dialog -------------------------------------------------- */
-
 .reject-dialog {
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: var(--gap-4);
-  background: var(--surface);
-  color: var(--text);
+  background: var(--paper);
+  color: var(--ink);
   max-width: 480px;
   width: 90%;
 }
+
 .reject-dialog::backdrop {
   background: rgba(0, 0, 0, 0.4);
 }
+
 .reject-dialog h3 { margin-top: 0; }
 .reject-dialog textarea { width: 100%; }
 
-/* Kind selector on the new-correction form. */
+.callout {
+  margin-top: var(--gap-3);
+  padding: var(--gap-3);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+}
+
+.callout--warn {
+  background: #F4E4C7;
+  border: 1px solid var(--honey);
+  color: var(--ink);
+}
+
 .kind-fieldset {
-  border: 1px solid var(--border);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: var(--gap-3);
   margin: 0 0 var(--gap-4) 0;
 }
+
 .kind-fieldset legend {
   padding: 0 var(--gap-2);
   font-weight: 600;
   font-size: var(--text-sm);
-  color: var(--text-muted);
+  color: var(--muted);
 }
+
 .kind-radio {
   display: flex;
   align-items: flex-start;
@@ -189,23 +428,48 @@
   border-radius: var(--radius);
   transition: background var(--t-fast);
 }
-.kind-radio:hover { background: var(--surface-2); }
+
+.kind-radio:hover { background: var(--paper-2); }
+
 .kind-radio input[type="radio"] { margin-top: 4px; flex-shrink: 0; }
+
 .kind-radio strong { display: block; font-size: var(--text-md); }
+
 .kind-radio span {
   display: block;
   font-size: var(--text-sm);
-  color: var(--text-muted);
+  color: var(--muted);
   margin-top: 2px;
 }
 
-/* "Kind" chip style for list rows. */
-.chip--kind { background: var(--surface-2); color: var(--text); font-weight: 600; }
+/* ---------- Mobile ≤ 760px ----------------------------------------------- */
 
-/* Approve / reject button colors on the corrections detail page.
-   The base styling (size, font, padding) comes from app.css; here we just
-   override the background per-action. */
-.btn-approve { background: var(--success); }
-.btn-approve:hover:not(:disabled) { background: #256a29; }
-.btn-reject  { background: var(--danger); }
-.btn-reject:hover:not(:disabled) { background: #902e2e; }
+@media (max-width: 760px) {
+  .corr-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  /* Pull the accent bar inward to match the reduced padding. */
+  .corr-row__accent {
+    left: -12px;
+  }
+
+  /*
+   * On narrow screens the aside (status pill / actions) wraps below the main
+   * content rather than sitting in a side column.
+   */
+  .corr-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .corr-row__hours {
+    font-size: 12px;
+  }
+
+  .corr-actions {
+    /* Align action buttons to the start of the row when stacked. */
+    justify-content: flex-start;
+  }
+}
