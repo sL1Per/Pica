@@ -155,8 +155,9 @@ pica/
 │   ├── employee.{html,js,css}          # employer's per-employee summary
 │   ├── employee-profile.{html,js,css}  # full profile editor (sub-route)
 │   ├── corrections.{html,js,css}
-│   ├── correction-new.{html,js}
-│   ├── correction.{html,js}  # correction detail
+│   ├── correction.{html,js,css}  # correction detail
+│   ├── modal.{js,css}                # generic reusable <dialog> shell (0.32.0)
+│   ├── manual-time-modal.{js,css}    # manual-time form modal; /corrections/new retired (0.32.0)
 │   ├── settings.{html,js,css}
 │   ├── preferences.{html,js,css}
 │   ├── security.{html,js,css}       # standalone page (passphrase/recovery/rotate);
@@ -205,7 +206,7 @@ pica/
 │   ├── test-mail-routes.mjs        # POST /api/mail/test route (employer-only) (0.25.0); GET org mail view + PUT /api/settings/mail (0.26.0)
 │   ├── test-mail-config-store.mjs  # encrypted SMTP config store: round-trip, AAD, never-throws, write-only pass, abort-not-clobber (0.26.0)
 │   ├── test-theme-tokens.mjs       # design-token cascade: all 6 theme×palette combos defined, alias bridge present (0.27.0)
-│   ├── test-theme-bootstrap.mjs    # inline bootstrap byte-identical across all 21 HTML, resolves mode+palette; no third-party CDN URLs in public/ (0.27.0)
+│   ├── test-theme-bootstrap.mjs    # inline bootstrap byte-identical across all HTML (20 after /corrections/new retired in 0.32.0), resolves mode+palette; no third-party CDN URLs in public/ (0.27.0)
 │   └── test-sw-precache.mjs        # font woff2 files in SW pre-cache list; all listed assets exist on disk (0.27.0)
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
@@ -358,8 +359,8 @@ corrupts an existing record) and gives us an audit log for free.
   per-employee aggregation × scope/RBAC enforcement).
 - Total: **46 suites** (+`test-employee-home` in 0.28.0 — employee-home
   helpers; +`test-punch-week` in 0.30.0 — clock-page day-grouping/pairing
-  helpers; the 0.31.0 corrections restyle added no new suite), passing
-  as of 0.31.0 except two pre-existing
+  helpers; the 0.31.0 corrections restyle and the 0.32.0 manual-time
+  modal each added no new suite), passing as of 0.32.0 except two pre-existing
   flakes unrelated to any recent feature, both failing identically on
   the pre-feature baseline: `test-reports.mjs` overnight-split bucket
   count (host-timezone sensitive) and `test-auth.mjs` (~1/64
@@ -473,4 +474,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.31.0._
+_Last touched in 0.32.0._

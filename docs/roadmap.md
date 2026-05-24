@@ -33,7 +33,7 @@ app in a usable state.
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
-| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0) |
+| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0) |
 | M16       | E2E browser tests                  | 📋 Planned    |
 | M17       | Deployment guide + TLS samples     | 📋 Planned    |
 
@@ -361,13 +361,14 @@ Foundation shipped at **0.27.0**. Detailed plan series lives in
   `test-sw-precache`). Total 44.
 
 **Screen bodies shipped so far:** employee home (0.28.0), palette picker
-(0.29.0), employee punch/clock page (0.30.0), and the **corrections list +
+(0.29.0), employee punch/clock page (0.30.0), the **corrections list +
 detail** restyle (0.31.0 — including a new employer *inline* approve/decline
-on pending rows).
+on pending rows), and the **manual-time modal** (0.32.0 — a reusable
+`<dialog>` shell + the manual-time form; `/corrections/new` retired to a
+redirect that auto-opens the modal).
 
 **Remaining M15 plans (in progress):**
-- **3b-ii** — the manual-time **modal** + `/corrections/new` restyle;
-  **3b-iii** — the employer `/punches/today` view + corrections inbox.
+- **3b-iii** (next) — the employer `/punches/today` view + corrections inbox.
 - The remaining screen bodies (Leaves / Request-leave / Calendar / Employer
   home + Team + Employee detail / Settings + Security / Profile edit /
   Reports) rebuilt per the plan series.
@@ -408,4 +409,4 @@ change.
 
 ---
 
-_Last touched in 0.31.0._
+_Last touched in 0.32.0._

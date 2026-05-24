@@ -14,6 +14,78 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.32.0] — 2026-05-24 — M15 manual-time modal + `/corrections/new` retirement
+
+### What changed
+
+Filing a manual time correction is now a **reusable modal** instead of a
+standalone page. The form (kind both/in/out, start/end, justification)
+and its `POST /api/corrections` contract are ported verbatim from the old
+`/corrections/new` page — only the container changed.
+
+- **Generic modal shell** `public/modal.js` (+ `modal.css`) — a small,
+  dependency-free primitive on the native `<dialog>` element (the same
+  precedent as the reject dialog): centered panel, dimmed backdrop,
+  close on the × button / Escape / backdrop click, native focus-trap and
+  focus restoration. Built with `createElement`/`textContent` (no
+  `innerHTML`), CSP-clean. This shell is what **Plan 4 (request-leave)
+  will reuse**.
+- **Manual-time modal** `public/manual-time-modal.js` (+
+  `manual-time-modal.css`) — builds the form into the shell and exposes
+  `openManualTimeModal({ onFiled })`. It is **self-styled** (its own
+  `mtm-` classes), so it renders correctly on any page — including the
+  punch page, which does not link `corrections.css`.
+- **Wired into** the corrections list ("Register manual time" → opens the
+  modal; on success the list re-fetches so the new pending row and the
+  "N waiting on you" tag appear) and the punch page ("Forgot to clock?" /
+  "Missing a punch?" → open the modal in place). All entry points keep
+  their `href="/corrections/new"` as a no-op fallback.
+- **`/corrections/new` retired** — the route now `302`-redirects to
+  `/corrections?new=1`, which auto-opens the modal (and strips the query
+  via `replaceState`). The standalone `correction-new.html` /
+  `correction-new.js` are deleted, and the now-dead `.kind-fieldset` /
+  `.kind-radio` rules were removed from `corrections.css` (`.form-actions`
+  stays — the reject dialog still uses it).
+
+No backend changes beyond the one-line route redirect. Two new i18n keys
+(`modal.close`, `manualTime.filed`) in both locales; `CACHE_VERSION`
+v49 → v50 and the four modal assets added to the SW precache (the
+pre-cached punch page statically imports the modal).
+
+This release was **verified live in a real browser** via the Playwright
+MCP (not an in-repo dependency): open from the list and the punch page,
+fill, submit, the correction is filed (`pending`, 8h, justification
+round-tripped), the modal closes, the list refreshes with the inline
+✓/✗ actions; the `/corrections/new` redirect auto-opens the modal; Escape
+closes it.
+
+### Honest Disclosures
+
+- **No no-JS fallback for filing.** The standalone form page is gone, so
+  filing a correction now requires JavaScript. Acceptable — the whole app
+  already requires JS — but it is a real removal of progressive
+  enhancement for this one flow. The `href` fallbacks only navigate to
+  the redirect, which needs JS to open the modal.
+- **Files for self only**, unchanged: `POST /api/corrections` is
+  `requireAuth` and records `employeeId = req.user.id` (an employer can
+  file for themselves, as before).
+- **Offline filing still isn't queued.** Unlike punches, a correction
+  POSTed while offline fails; the modal surfaces the error and stays
+  open. (The modal assets are pre-cached so the punch page still loads
+  offline; only the submit needs the network.)
+- The generic `modal.js` shell is intentionally **minimal** (no size
+  variants, no stacking of multiple modals) — Plan 4 will extend it as
+  request-leave needs.
+- **Browser-smoke-verified, but still no in-repo DOM test.** The
+  Playwright MCP drove the flow this once; an automated, committed E2E
+  suite is still M16. There remain two **pre-existing** items this slice
+  did not address: the `topbar.js` runtime inline-style CSP violations
+  (visible as console errors on every page since 0.27.0), and the
+  detail-page `correction.js` local date/hour formatters (CLAUDE.md says
+  to use `/i18n.js`).
+
+---
+
 ## [0.31.0] — 2026-05-24 — M15 corrections list + detail restyle
 
 ### What changed

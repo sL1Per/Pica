@@ -5,13 +5,13 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.31.0._
+_Last touched in 0.32.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.31.0 (released 2026-05-24)
+- **Latest version:** 0.32.0 (released 2026-05-24)
 - **Test count:** 46 suites (0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -37,11 +37,38 @@ _Last touched in 0.31.0._
 - **Active milestone:** M15 (Full UI revamp) — foundation shipped at
   0.27.0; **employee home** at 0.28.0; **palette picker** at 0.29.0;
   **employee punch (clock) page** at 0.30.0; **corrections list + detail**
-  at 0.31.0; remaining screen-body plans in progress (**next: plan 3b-ii**
-  — the manual-time **modal** + `/corrections/new` restyle — then **3b-iii**
-  employer `/punches/today`, then Leaves/Calendar/Employer/Settings; see
-  `docs/superpowers/plans/2026-05-2{2,3,4}-m15-*`); M16–M17 follow
-  (M17 deployment guide ships last)
+  at 0.31.0; **manual-time modal** (`/corrections/new` retired) at 0.32.0;
+  remaining screen-body plans in progress (**next: plan 3b-iii** — employer
+  `/punches/today` + corrections inbox — then Leaves/Calendar/Employer/
+  Settings; see `docs/superpowers/plans/2026-05-2{2,3,4}-m15-*`); M16–M17
+  follow (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.32.0)
+
+**M15 manual-time modal + `/corrections/new` retirement.** Filing a manual
+time correction is now a **reusable modal** (native `<dialog>`), not a
+separate page. New generic shell `public/modal.js`+`modal.css` (backdrop /
+Esc / focus-trap; the shell **Plan 4 request-leave will reuse**) and
+`public/manual-time-modal.js`+`manual-time-modal.css` (the form — ported
+verbatim from the old page, **self-styled** with `mtm-` classes so it works
+on pages that don't link `corrections.css`, e.g. punch). Exposes
+`openManualTimeModal({ onFiled })`. Wired into the corrections list
+("Register manual time" → opens modal; `onFiled` re-fetches so the new
+pending row + tag appear) and the punch page ("Forgot to clock?" / "Missing
+a punch?"). `/corrections/new` now `302`→`/corrections?new=1` (auto-opens
+the modal, strips the query); `correction-new.{html,js}` deleted and the
+dead `.kind-fieldset`/`.kind-radio` removed from `corrections.css`
+(`.form-actions` kept — reject dialog uses it). One-line route change; no
+other backend change. 2 new i18n keys (`modal.close`, `manualTime.filed`)
+both locales; `CACHE_VERSION` v49 → v50 + 4 modal assets precached. **No new
+test suite** (count stays 46). **Verified live in a browser via the
+Playwright MCP** (open→fill→submit→filed→close→list refresh; redirect
+auto-open; Esc close; both entry points) — but the automated in-repo E2E
+suite is still M16. Pre-existing items noted, not fixed: `topbar.js` runtime
+inline-style CSP console errors (since 0.27.0); detail-page `correction.js`
+local date/hour formatters (should use `/i18n.js`). See RELEASES.md 0.32.0.
 
 ---
 
