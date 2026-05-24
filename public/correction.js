@@ -44,20 +44,19 @@ const HERO_ICONS = {
   cancelled: '—',
 };
 
-// NEW i18n keys referenced here; locale strings added in the upcoming i18n task.
-// Label keys (big serif status word):
+// Hero label keys (big serif status word) — present in both en-US and pt-PT locales:
 //   correction.heroPending   — e.g. "Pending review"
 //   correction.heroApproved  — e.g. "Approved"
 //   correction.heroRejected  — e.g. "Rejected"
 //   correction.heroCancelled — e.g. "Cancelled"
-// Blurb keys (one-sentence context):
+// Hero blurb keys (one-sentence context) — also present in both locales:
 //   correction.heroPendingBlurb   — e.g. "Waiting for a manager decision."
 //   correction.heroApprovedBlurb  — e.g. "The correction has been applied."
 //   correction.heroRejectedBlurb  — e.g. "Not approved. See the notes below."
 //   correction.heroCancelledBlurb — e.g. "Withdrawn. No changes were made."
 //
-// tSoft(key) returns the translated string if the key exists, or '' if not.
-// This lets the new keys be absent until the locale files are updated.
+// tSoft(key) returns '' for any key absent from the active locale (defensive
+// guard: t() returns '[key]' for missing keys, which tSoft normalises to '').
 function tSoft(key) {
   const v = t(key);
   // t() returns '[key]' for missing keys — treat that as absent.

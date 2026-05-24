@@ -70,6 +70,15 @@
   line-height: 1.4;
 }
 
+/* ---------- List reset ---------------------------------------------------- */
+
+/* Removes UA bullets and padding from the pending/history <ul> wrappers. */
+.corr-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
 /* ---------- Correction row ------------------------------------------------ */
 
 /*
@@ -337,19 +346,6 @@
   padding: 40px 24px;
   text-align: center;
   color: var(--muted);
-}
-
-.corr-empty__title {
-  font-family: var(--font-serif);
-  font-size: 24px;
-  color: var(--ink);
-  margin-bottom: 6px;
-}
-
-.corr-empty__sub {
-  font-size: 13.5px;
-  color: var(--muted);
-  margin-top: 4px;
 }
 
 /* ---------- Legacy classes — kept for non-list pages ---------------------- */
