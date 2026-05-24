@@ -1,6 +1,7 @@
 import { postJson, showMessage, setBusy } from '/app.js';
 import { t, tn, translateError, applyTranslations, fmtDate } from '/i18n.js';
 import { reverseGeocode } from '/geocode.js';
+import { openManualTimeModal } from '/manual-time-modal.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
@@ -953,6 +954,23 @@ function renderWeek(punches) {
     weekListEl.appendChild(group);
   }
 }
+
+// -------- Manual-time modal wiring ------------------------------------------
+// Both .punch-forgot and .punch-reminder are anchor fallbacks to
+// /corrections/new. When JS is running we intercept and open the modal
+// in-place instead. querySelectorAll guards against either element being
+// absent (e.g. future DOM changes), so the loop is a no-op in that case.
+
+document.querySelectorAll('.punch-forgot, .punch-reminder').forEach((anchor) => {
+  anchor.addEventListener('click', (e) => {
+    e.preventDefault();
+    openManualTimeModal({
+      onFiled: () => {
+        showMessage(messageEl, t('manualTime.filed'), 'success');
+      },
+    });
+  });
+});
 
 // -------- Bootstrap ---------------------------------------------------------
 
