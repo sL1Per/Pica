@@ -592,6 +592,10 @@ export default {
   'correctionNew.submitting':  'A submeter…',
   'correctionNew.couldNotFile': 'Não foi possível submeter a correção',
 
+  // Reusable modal shell + manual-time modal (0.32.0).
+  'modal.close':               'Fechar',
+  'manualTime.filed':          'A sua marcação manual foi submetida para aprovação.',
+
   // Detail page.
   'correction.backToList':  '← Voltar às correções',
   'correction.title':       'Correção',

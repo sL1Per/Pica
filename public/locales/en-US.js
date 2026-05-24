@@ -596,6 +596,10 @@ export default {
   'correctionNew.submitting':  'Submitting…',
   'correctionNew.couldNotFile': 'Could not file correction',
 
+  // Reusable modal shell + manual-time modal (0.32.0).
+  'modal.close':               'Close',
+  'manualTime.filed':          'Your manual time entry was submitted for approval.',
+
   // Detail page.
   'correction.backToList':  '← Back to corrections',
   'correction.title':       'Correction',

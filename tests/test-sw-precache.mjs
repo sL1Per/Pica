@@ -12,10 +12,10 @@ const test = (n, f) => { try { f(); console.log(`  ✓ ${n}`); passed++; }
   catch (e) { console.error(`  ✗ ${n}\n    ${e.message}`); failed++; } };
 
 console.log('Service worker precache (M15)');
-test('CACHE_VERSION is at least v49', () => {
+test('CACHE_VERSION is at least v50', () => {
   const m = sw.match(/pica-cache-v(\d+)/);
   assert.ok(m, 'no CACHE_VERSION found');
-  assert.ok(Number(m[1]) >= 49, `expected >= v49, got v${m && m[1]}`);
+  assert.ok(Number(m[1]) >= 50, `expected >= v50, got v${m && m[1]}`);
 });
 for (const f of [
   '/fonts/instrument-serif-400.woff2', '/fonts/instrument-serif-400-italic.woff2',
@@ -23,7 +23,8 @@ for (const f of [
   '/fonts/dm-sans-700.woff2', '/fonts/jetbrains-mono-400.woff2', '/fonts/jetbrains-mono-500.woff2',
 ])
   test(`precaches ${f}`, () => assert.ok(sw.includes(`'${f}'`), `missing ${f}`));
-for (const f of ['/app.css', '/topbar.css', '/topbar.js', '/app.js', '/i18n.js', '/geo.js'])
+for (const f of ['/app.css', '/topbar.css', '/topbar.js', '/app.js', '/i18n.js', '/geo.js',
+  '/modal.js', '/modal.css', '/manual-time-modal.js', '/manual-time-modal.css'])
   test(`precaches shell asset ${f}`, () => assert.ok(sw.includes(`'${f}'`)));
 
 console.log(`\n${passed} passed, ${failed} failed`);
