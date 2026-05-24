@@ -14,6 +14,66 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.33.0] — 2026-05-24 — M15 employer `/punches/today` restyle
+
+### What changed
+
+The employer-only "everyone's punches today" page (`/punches/today`) is
+rebuilt to the M15 design, **preserving every shipped behavior** (grouping
+by employee, worked/break totals, reverse-geocoded addresses,
+most-recently-active sort, employer-only guard, empty/loading states):
+
+- Each employee is now a **card** with a person header — name, role, a
+  **status pill** (sage "Working now" with a pulsing dot when they have an
+  open session, else muted "Done for the day"), and a mono worked·break
+  total.
+- Their punches render as **session pairs** (in → out, or "Still working"
+  for an open session) using the same `.sess` vocabulary as the employee
+  clock page (3a) — `punch.css` is already linked here, so no CSS was
+  duplicated. Addresses are reverse-geocoded per fix (coords first, then
+  the label swaps in).
+- A **tab strip** (`Today` active · `Corrections` → `/corrections`) mirrors
+  the employee `/punch` sub-tabs and the design's employer view (Pica stays
+  multi-page — "Corrections" is a link, not an in-page panel).
+- The renderer was rewritten to build DOM with `createElement`/
+  `textContent` only — the old `escapeHtml` + raw-HTML-string assignment
+  path is gone, closing that XSS surface.
+
+No backend changes (the `/api/punches/today`, `/api/employees`, `/api/me`
+contracts are unchanged). 5 new `punchesToday.*` i18n keys (tab + status
+labels) in both locales; `CACHE_VERSION` v50 → v51 (locales are
+pre-cached). `punches-today.{html,js,css}` are not pre-cached, so editing
+them needed no bump on their own account.
+
+This completes the **punches/corrections screen group** (employee clock
+0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 ·
+employer today 0.33.0). Verified live in a browser via the Playwright MCP
+(employer clocks in → card shows "Working now" + a live "Still working"
+row; clocks out → "Done for the day" + a paired In/Out session; the
+Corrections tab navigates).
+
+### Honest Disclosures
+
+- **No backend change.** Session pairing is a small **local**
+  re-implementation in `punches-today.js` (~12 lines) — deliberately not
+  shared with `punch.js`, whose pairing helpers live in a module with page
+  side effects (importing it would run that page's bootstrap). Extracting a
+  shared `punch-helpers.js` is a later cleanup; until then the pairing
+  logic exists in two places (both covered: `punch.js` by
+  `test-punch-week`, this one by the browser smoke).
+- **Reverse-geocoding still hits OSM Nominatim** per unique fix (the
+  existing privacy/throughput trade-off from 0.22.9, unchanged).
+- **Browser-smoke-verified, no in-repo DOM test.** The Playwright MCP drove
+  the flow once; an automated committed E2E suite is still M16.
+- **Pre-existing, not addressed here:** the `topbar.js` runtime
+  inline-style CSP console errors (every page since 0.27.0) still appear in
+  the browser console; and a couple of zero-impact CSS nits in
+  `punches-today.css` (a zero-delta `--done` status modifier kept for
+  JS-toggle symmetry; the mobile head uses `flex-wrap`) are deferred to the
+  Plan 9 cleanup.
+
+---
+
 ## [0.32.0] — 2026-05-24 — M15 manual-time modal + `/corrections/new` retirement
 
 ### What changed

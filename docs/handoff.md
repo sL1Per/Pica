@@ -5,13 +5,13 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.32.0._
+_Last touched in 0.33.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.32.0 (released 2026-05-24)
+- **Latest version:** 0.33.0 (released 2026-05-24)
 - **Test count:** 46 suites (0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -38,10 +38,37 @@ _Last touched in 0.32.0._
   0.27.0; **employee home** at 0.28.0; **palette picker** at 0.29.0;
   **employee punch (clock) page** at 0.30.0; **corrections list + detail**
   at 0.31.0; **manual-time modal** (`/corrections/new` retired) at 0.32.0;
-  remaining screen-body plans in progress (**next: plan 3b-iii** — employer
-  `/punches/today` + corrections inbox — then Leaves/Calendar/Employer/
-  Settings; see `docs/superpowers/plans/2026-05-2{2,3,4}-m15-*`); M16–M17
-  follow (M17 deployment guide ships last)
+  **employer `/punches/today`** at 0.33.0 — which **completes the
+  punches/corrections screen group**. Remaining screen-body plans in
+  progress (**next: Plan 4 Leaves** — list / request-leave modal / detail —
+  then Calendar/Employer-Home/Settings/Profile/Reports; see
+  `docs/superpowers/plans/2026-05-2*-m15-*`); M16–M17 follow (M17
+  deployment guide ships last)
+
+---
+
+## What just shipped (0.33.0)
+
+**M15 employer `/punches/today` restyle.** The employer "everyone's punches
+today" page is rebuilt to the M15 design: **per-employee cards** with a
+person header (name/role), a **status pill** (sage "Working now" + pulsing
+dot when they have an open session, else muted "Done for the day"), a mono
+worked·break total, and their punches as **session pairs** (in → out, or
+"Still working" for an open session) reusing the 3a `.sess` vocabulary
+(`punch.css` is already linked here — no CSS duplication). Added a **tab
+strip** (`Today` · `Corrections`→`/corrections`) mirroring the employee
+sub-tabs. The renderer was rewritten to `createElement`/`textContent` only
+(dropped the old `escapeHtml` + raw-HTML path — XSS surface closed). A small
+local `pairSessions` helper does the in→out pairing (not shared with
+`punch.js` to avoid its page side effects — a later cleanup). **No backend
+change.** Reverse-geocoding/totals/sort/guard/empty all preserved. 5 new
+`punchesToday.*` i18n keys (tabs + status) both locales; `CACHE_VERSION`
+v50 → v51; no new test suite (count stays 46). **Verified live via the
+Playwright MCP** (clock-in → "Working now" + "Still working" row; clock-out
+→ "Done for the day" + paired In/Out; Corrections tab navigates). This
+**completes the punches/corrections screen group**. Pre-existing
+`topbar.js` CSP console errors persist (not this slice). See RELEASES.md
+0.33.0.
 
 ---
 
