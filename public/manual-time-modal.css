@@ -1,0 +1,151 @@
+/* ============================================================================
+   Manual-time modal — form-specific styles (M15).
+
+   The generic modal shell (dialog, panel, backdrop, title bar, close button)
+   is handled by modal.css. This file styles only the form elements inside
+   the modal body (.mtm-* classes).
+
+   Tokens from app.css: --paper-2, --ink, --muted, --honey, --line, --radius,
+   --gap-2, --gap-3, --gap-4, --t-fast, --text-sm, --text-md, --leading-tight.
+
+   No inline styles. [hidden] semantics (display:none !important) are enforced
+   globally by app.css — the hidden attribute is used in manual-time-modal.js
+   to show/hide the start/end fields and this file must not override that rule.
+   ============================================================================ */
+
+/* ---------- Subtitle -------------------------------------------------------- */
+
+.mtm-subtitle {
+  margin: 0 0 16px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+/* ---------- Kind group (radio cards) --------------------------------------- */
+
+/*
+ * Rendered as a <fieldset> to keep the legend/radio semantics accessible.
+ * Visual reset: remove the default fieldset border/padding; the cards provide
+ * their own visual affordance.
+ */
+.mtm-kinds {
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--gap-4) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-2);
+}
+
+.mtm-kinds legend {
+  padding: 0;
+  margin-bottom: var(--gap-2);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  float: left;    /* lets the legend sit above the flex children in Firefox */
+  width: 100%;
+}
+
+/* Card-style radio label. Ported from .kind-radio in corrections.css. */
+.mtm-kind {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-2);
+  padding: var(--gap-2) var(--gap-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+
+.mtm-kind:hover {
+  background: var(--paper-2);
+}
+
+/* Selected state — honey accent border to match the pending/action colour. */
+.mtm-kind:has(:checked) {
+  border-color: var(--honey);
+  background: var(--paper-2);
+}
+
+.mtm-kind input[type="radio"] {
+  /* Align the radio with the first line of the title text, not the top of the
+     card. 4px nudge is calibrated for the default 16px font-size. */
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+/* Text column: stacks title (strong) above description (span). Mirrors the
+   anonymous <div> inside .kind-radio in correction-new.html. */
+.mtm-kind__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.mtm-kind strong {
+  display: block;
+  font-size: var(--text-md);
+  color: var(--ink);
+  line-height: var(--leading-tight);
+}
+
+.mtm-kind span {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ---------- Datetime fields ------------------------------------------------ */
+
+/*
+ * Each field is a <div> wrapper containing a <label> + <input type=datetime-local>.
+ * app.css provides base label/input styling; we only need the block spacing here.
+ */
+.mtm-field {
+  margin-bottom: var(--gap-4);
+}
+
+/* ---------- Actions row ---------------------------------------------------- */
+
+/*
+ * Flex row, right-aligned, containing the Cancel (btn-ghost) and Submit
+ * (btn-primary) buttons.
+ *
+ * IMPORTANT: app.css has `button { margin-top: 16px }` globally. When buttons
+ * live inside a flex row they should not carry that margin — it breaks vertical
+ * alignment. Neutralize it here just as .corr-act and .punch-tab do in their
+ * respective stylesheets.
+ */
+.mtm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--gap-2);
+  margin-top: var(--gap-4);
+}
+
+.mtm-actions button,
+.mtm-actions a {
+  margin-top: 0;   /* neutralize global button { margin-top: 16px } */
+}
+
+/* ---------- Mobile ≤ 480px ------------------------------------------------- */
+
+@media (max-width: 480px) {
+  /* Stack action buttons vertically and stretch to full width on very narrow
+     viewports (e.g. 375px iPhone SE). The submit button comes first visually
+     when stacked, so we use column-reverse to keep the natural DOM order
+     (cancel before submit) without reordering in markup. */
+  .mtm-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .mtm-actions button,
+  .mtm-actions a {
+    width: 100%;
+    text-align: center;
+  }
+}
