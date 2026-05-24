@@ -15,9 +15,6 @@ const headingEl   = $('list-heading');
 const pendingTag  = $('pending-tag');
 
 let me = null;
-// currentCorrections holds the last-fetched array so we can re-render in place
-// after an inline approve/reject without a full page navigation.
-let currentCorrections = [];
 
 // -------- Row builder -------------------------------------------------------
 
@@ -25,16 +22,23 @@ function buildRow(c) {
   const li = document.createElement('li');
   li.className = `corr-row corr-row--${c.status}`;
 
-  // Accent bar — absolutely positioned, must be first child of the positioned
+  // Accent bar — absolutely positioned, must be a direct child of the positioned
   // .corr-row so the CSS left:-16px places it against the card's inner edge.
+  // It is decorative and lives OUTSIDE the <a> so it doesn't affect link hit area.
   const accent = document.createElement('div');
   accent.className = 'corr-row__accent';
   accent.setAttribute('aria-hidden', 'true');
   li.appendChild(accent);
 
-  // Clicking anywhere on the row navigates to the detail page. The inline
-  // approve/reject buttons inside stop propagation so they don't trigger this.
-  li.addEventListener('click', () => { window.location.href = `/corrections/${c.id}`; });
+  // Real anchor — the navigable area. Carries the main content and the aside
+  // (hours/status). Using a real <a href> restores keyboard focus, Enter-to-open,
+  // middle-click/open-in-new-tab, and screen-reader link semantics. The
+  // .corr-actions div is a sibling (NOT inside the <a>) because buttons inside
+  // an anchor is invalid HTML.
+  const link = document.createElement('a');
+  link.className = 'corr-row__link';
+  link.href = `/corrections/${c.id}`;
+  li.appendChild(link);
 
   // Main content column.
   const main = document.createElement('div');
@@ -85,22 +89,25 @@ function buildRow(c) {
   chips.appendChild(justChip);
 
   main.appendChild(chips);
-  li.appendChild(main);
+  link.appendChild(main);
 
-  // Aside column — hours display, or inline actions for employer+pending rows.
+  // Aside: hours display goes inside the link; inline actions are a sibling.
+  const hoursEl = document.createElement('div');
+  hoursEl.className = 'corr-row__hours';
+  if (c.kind === 'both') {
+    hoursEl.textContent = fmtHours(c.hours);
+  } else if (c.kind === 'in') {
+    hoursEl.textContent = t('corrections.kindIn');
+  } else {
+    hoursEl.textContent = t('corrections.kindOut');
+  }
+  link.appendChild(hoursEl);
+
+  // Employer inline approve/reject actions — sibling of the <a>, NOT inside it
+  // (buttons inside an anchor is invalid HTML). JS stopPropagation is kept for
+  // safety but no longer strictly needed since the actions aren't inside the link.
   if (me.role === 'employer' && c.status === 'pending') {
     li.appendChild(buildInlineActions(c));
-  } else {
-    const hoursEl = document.createElement('div');
-    hoursEl.className = 'corr-row__hours';
-    if (c.kind === 'both') {
-      hoursEl.textContent = fmtHours(c.hours);
-    } else if (c.kind === 'in') {
-      hoursEl.textContent = t('corrections.kindIn');
-    } else {
-      hoursEl.textContent = t('corrections.kindOut');
-    }
-    li.appendChild(hoursEl);
   }
 
   return li;
@@ -123,7 +130,7 @@ function buildInlineActions(c) {
   approveBtn.setAttribute('aria-label', t('corrections.inlineApprove'));
   approveBtn.textContent = '✓';
   approveBtn.addEventListener('click', (e) => {
-    e.stopPropagation();   // prevent row-click navigation
+    e.stopPropagation();   // prevent the click from bubbling into the <a> link
     handleInlineApprove(c, approveBtn, rejectBtn);
   });
 
@@ -159,7 +166,6 @@ function buildRejectForm(c, actionsEl) {
 
   const input = document.createElement('input');
   input.type = 'text';
-  input.className = 'field';
   input.placeholder = t('corrections.rejectNotesPlaceholder');
   input.maxLength = 500;
   form.appendChild(input);
@@ -170,7 +176,11 @@ function buildRejectForm(c, actionsEl) {
   submitBtn.textContent = t('corrections.inlineReject');
   submitBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
-    await handleInlineReject(c, input.value.trim() || undefined, actionsEl, form);
+    // Disable the form controls for the duration of the request to prevent
+    // double-submit. Mirror the approve path's in-flight guarding on actionsEl.
+    submitBtn.disabled = true;
+    input.disabled = true;
+    await handleInlineReject(c, input.value.trim() || undefined, actionsEl, submitBtn, input);
   });
   form.appendChild(submitBtn);
 
@@ -205,8 +215,9 @@ async function handleInlineApprove(c, approveBtn, rejectBtn) {
 }
 
 // Reject flow — collects notes inline, then POSTs.
-async function handleInlineReject(c, notes, actionsEl, notesForm) {
-  // Disable buttons while the request is in flight.
+async function handleInlineReject(c, notes, actionsEl, submitBtn, notesInput) {
+  // Disable toggle buttons while the request is in flight (mirrors approve path).
+  // submitBtn and notesInput are already disabled by the caller before this runs.
   const btns = actionsEl.querySelectorAll('button');
   btns.forEach((b) => { b.disabled = true; });
 
@@ -215,7 +226,8 @@ async function handleInlineReject(c, notes, actionsEl, notesForm) {
     await reloadList();
   } else {
     btns.forEach((b) => { b.disabled = false; });
-    notesForm.hidden = false;
+    submitBtn.disabled = false;
+    notesInput.disabled = false;
     showMessage(messageEl, translateError(result.data.errorCode, result.data.error || t('corrections.couldNotLoad')), 'error');
   }
 }
@@ -278,7 +290,6 @@ async function reloadList() {
     const res = await fetch('/api/corrections', { credentials: 'same-origin' });
     if (res.status === 401) { window.location.href = '/login'; return; }
     const { corrections } = await res.json();
-    currentCorrections = corrections;
     render(corrections);
   } catch {
     showMessage(messageEl, t('corrections.couldNotLoad'), 'error');

@@ -73,9 +73,12 @@
 /* ---------- Correction row ------------------------------------------------ */
 
 /*
- * Three-column grid: [3px accent bar] | [main content] | [aside / status].
+ * Grid: [.corr-row__link 1fr] [.corr-actions auto (employer+pending only)].
  * The accent bar is absolutely positioned on the left edge of the card so it
- * bleeds inside the 24px padding; the row itself has left padding to clear it.
+ * bleeds inside the 24px padding. The .corr-row__link <a> is the 1fr cell and
+ * carries its own inner flex layout (main + hours aside). .corr-actions is the
+ * auto cell; it is omitted for non-employer / non-pending rows, so the grid
+ * collapses to a single column naturally.
  * Status color is applied by a modifier class on the row — JS adds the class,
  * never an inline color. See .corr-row--pending / --approved / --rejected /
  * --cancelled below.
@@ -87,7 +90,25 @@
   align-items: center;
   padding: 14px 0;
   position: relative;
-  cursor: pointer;
+}
+
+/* The navigable row area — restores keyboard focus, Enter-to-open,
+   middle-click, and screen-reader link semantics lost when the old
+   implementation used a bare <li> + JS click handler. */
+.corr-row__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.corr-row__link:focus-visible {
+  outline: 2px solid var(--sage);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /*
@@ -456,12 +477,16 @@
   }
 
   /*
-   * On narrow screens the aside (status pill / actions) wraps below the main
-   * content rather than sitting in a side column.
+   * On narrow screens the link's inner flex row wraps so hours/actions appear
+   * below the main content rather than sitting in a side column.
    */
   .corr-row {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .corr-row__link {
+    flex-wrap: wrap;
   }
 
   .corr-row__hours {
