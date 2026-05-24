@@ -1,0 +1,158 @@
+/* ============================================================================
+   Pica — generic modal shell (M15 manual-time)
+   Tokens from app.css: --paper, --paper-2, --ink, --ink-2, --muted,
+   --line, --line-soft, --font-serif, --radius-xl, --shadow-lg,
+   --gap-4, --gap-5, --gap-6, --t-fast.
+   Structure: dialog.modal > .modal__panel > .modal__head + .modal__body
+   ============================================================================ */
+
+/* ---------- Native <dialog> reset ----------------------------------------- */
+
+/*
+ * Remove every UA-supplied style from <dialog>. showModal() centers the dialog
+ * in the viewport by default — we keep that by NOT overriding the UA margin.
+ * border/padding/background from the UA sheet are reset here so our panel
+ * takes full control of the visual.
+ */
+dialog.modal {
+  border: 0;
+  padding: 0;
+  background: transparent;  /* panel carries the background */
+  width: min(92vw, 520px);
+  max-width: 520px;
+  /* border-radius on the dialog itself is unnecessary (panel handles it),
+     but clip it so any overflow during animation stays rounded. */
+  border-radius: var(--radius-xl);
+  /* Ensure the dialog sits above the app shell (sidebar z=10, topbar z=20). */
+  z-index: 200;
+  /* Remove outline that some browsers add to the dialog element. */
+  outline: none;
+}
+
+/* ---------- Backdrop -------------------------------------------------------- */
+
+dialog.modal::backdrop {
+  background: rgba(20, 14, 5, 0.45);
+  /* Subtle blur to push focus to the modal. Harmless on browsers that
+     don't support backdrop-filter. */
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+/* ---------- Panel ----------------------------------------------------------- */
+
+/*
+ * .modal__panel — the visible white card. flex column so the body can grow
+ * while the header stays fixed height.
+ */
+.modal__panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;         /* clip children (body scroll) to the rounded corners */
+  max-height: 92vh;
+}
+
+/* ---------- Header ---------------------------------------------------------- */
+
+.modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap-3);
+  padding: var(--gap-5) var(--gap-6) var(--gap-5);
+  border-bottom: 1px solid var(--line-soft);
+  flex-shrink: 0;
+}
+
+/* Serif display title — matches the design spec (request-leave.jsx rqStyles.title) */
+.modal__title {
+  font-family: var(--font-serif);
+  font-size: 1.875rem;  /* 30px — spec: fontSize: 30 */
+  line-height: 1.05;
+  color: var(--ink);
+  margin: 0;
+  font-weight: 400;     /* Instrument Serif renders best at regular weight */
+}
+
+/* ---------- Close button ---------------------------------------------------- */
+
+/*
+ * Compact ghost icon button. margin-top:0 is REQUIRED to beat the global
+ * `button { margin-top: 16px }` rule from app.css (same pattern as .corr-act
+ * in corrections.css and .punch-tab in punch.css).
+ */
+.modal__close {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  margin-top: 0;        /* neutralize global button { margin-top: 16px } */
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink-2);
+  font-size: 1.125rem;  /* 18px — same as design spec rqStyles.closeBtn */
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+
+.modal__close:hover:not(:disabled) {
+  background: var(--line);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+/* ---------- Body ------------------------------------------------------------ */
+
+/*
+ * .modal__body — scrollable content area. Callers append their form here.
+ * padding matches the design body spec (20px top/bottom, 28px sides).
+ */
+.modal__body {
+  padding: var(--gap-5) var(--gap-6);
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+/* ---------- Respect [hidden] ------------------------------------------------ */
+
+/*
+ * When the browser doesn't support <dialog> and the hidden-attribute fallback
+ * is used, [hidden] { display:none !important } from app.css takes effect.
+ * Nothing extra needed here.
+ */
+
+/* ---------- Mobile ≤ 760px -------------------------------------------------- */
+
+@media (max-width: 760px) {
+  dialog.modal {
+    /* Near-full-width on narrow screens. */
+    width: min(96vw, 520px);
+  }
+
+  .modal__panel {
+    /* Slightly reduced max-height to stay clear of mobile browser chrome. */
+    max-height: 88vh;
+  }
+
+  .modal__head {
+    /* Tighter horizontal padding on small screens. */
+    padding: var(--gap-4) var(--gap-5) var(--gap-4);
+  }
+
+  .modal__title {
+    font-size: 1.625rem;  /* step down from 30px to 26px on small screens */
+  }
+
+  .modal__body {
+    padding: var(--gap-4) var(--gap-5);
+  }
+}
