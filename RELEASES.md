@@ -14,6 +14,68 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.31.0] — 2026-05-24 — M15 corrections list + detail restyle
+
+### What changed
+
+The `/corrections` list and `/corrections/:id` detail pages are rebuilt
+to the M15 design, **preserving every shipped decide flow** (file /
+approve / reject-with-note / cancel / reverse, justified/unjustified
+semantics, the materialized-punch behavior, and server-enforced employee
+privacy — employees still see only their own):
+
+- **List (`/corrections`)** — status-accented rows (a thin honey/sage/
+  clay/muted bar by status, mono dates, kind + justification chips, a
+  status pill, hours) grouped into a **Pending** card and a **History**
+  card, with role-aware headings and empty states. The clickable row is
+  still a real `<a>` to the detail page (keyboard-focusable, middle-click
+  to open in a new tab, announced as a link by screen readers).
+- **Employer inline approve/decline (new)** — pending rows now carry
+  inline ✓/✗ buttons so an employer can decide without opening the
+  detail page. Approve shows the same confirmation as the detail page
+  for an unjustified both-punch correction; decline reveals an inline
+  notes field. Both post to the **existing**
+  `POST /api/corrections/:id/{approve,reject}` endpoints, then the list
+  re-fetches so the row moves to History and the "N waiting on you" tag
+  recomputes. The inline buttons are double-submit-guarded and
+  `stopPropagation` so they never trigger the row's navigation.
+- **Detail (`/corrections/:id`)** — rebuilt to a **status-hero** card
+  (status-colored icon + serif label + one-line blurb) plus **Details**
+  (When/Kind/Hours), **Reason/justification**, and **Actions** cards,
+  mirroring the Leave-detail vocabulary. All decide logic is byte-for-
+  byte unchanged — only `render()` and the markup/CSS were rewritten.
+
+No backend changes — the endpoints are exactly as before. 14 new
+`corrections.*`/`correction.*` i18n keys in both locales; `CACHE_VERSION`
+v48 → v49 (locale files are pre-cached). `corrections.css`/
+`correction.css` are not pre-cached, so editing them needs no bump.
+
+### Honest Disclosures
+
+- The **inline approve/decline** is the only new behavior; the detail
+  page remains the full view (decision notes, the reverse/cancel flows,
+  the employee-name header). The inline decline collects an optional
+  note but no other metadata.
+- The **manual-time modal** and the **`/corrections/new` restyle** are
+  the next plan (3b-ii) — "Register manual time" / "Forgot to clock?"
+  still navigate to the existing (pre-M15) new-entry page. The
+  **employer `/punches/today`** view is plan 3b-iii.
+- **No DOM/browser tests.** The restyle was smoke-verified (the pages
+  and their CSS/JS serve, the corrections API round-trips, auth-gating
+  returns 401/302, and the CSP / theme-bootstrap invariants hold) and
+  unit-verified (i18n parity, SW precache, frontend imports). But the
+  interactive inline-decide wiring is client-side JS a headless smoke
+  cannot exercise — browser verification waits for M16 (Playwright).
+- The "N waiting on you" tag uses a single `{n}`-interpolated string (no
+  singular/plural split); it reads correctly for n = 1 in both en-US and
+  pt-PT, so no `tn()` plural form was added.
+- A pre-existing, build-date-sensitive `test-reports.mjs` case
+  ("overnight shift attributes hours to each day separately") fails on
+  this date independent of this change; it touches no file in this slice
+  (verified failing identically at the branch base).
+
+---
+
 ## [0.30.0] — 2026-05-24 — M15 employee punch (clock) page restyle
 
 ### What changed

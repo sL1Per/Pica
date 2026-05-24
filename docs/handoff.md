@@ -5,13 +5,13 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.30.0._
+_Last touched in 0.31.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.30.0 (released 2026-05-24)
+- **Latest version:** 0.31.0 (released 2026-05-24)
 - **Test count:** 46 suites (0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -36,11 +36,36 @@ _Last touched in 0.30.0._
 - **Lines of code (rough):** ~7 KLoC across `src/`, `public/`, `tests/`
 - **Active milestone:** M15 (Full UI revamp) — foundation shipped at
   0.27.0; **employee home** at 0.28.0; **palette picker** at 0.29.0;
-  **employee punch (clock) page** at 0.30.0; remaining screen-body plans
-  in progress (**next: plan 3b** — `/corrections` restyle + manual-time
-  modal + employer punch views — then Leaves/Calendar/Employer/Settings;
-  see `docs/superpowers/plans/2026-05-2{2,3}-m15-*`); M16–M17 follow
+  **employee punch (clock) page** at 0.30.0; **corrections list + detail**
+  at 0.31.0; remaining screen-body plans in progress (**next: plan 3b-ii**
+  — the manual-time **modal** + `/corrections/new` restyle — then **3b-iii**
+  employer `/punches/today`, then Leaves/Calendar/Employer/Settings; see
+  `docs/superpowers/plans/2026-05-2{2,3,4}-m15-*`); M16–M17 follow
   (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.31.0)
+
+**M15 corrections list + detail restyle.** `/corrections` and
+`/corrections/:id` rebuilt to the M15 design, **preserving every decide
+flow** (file / approve / reject-with-note / cancel / reverse;
+justified/unjustified; materialized punches; server-enforced employee
+privacy). List: status-accented rows (honey/sage/clay/muted bar, mono
+dates, kind + justification chips, status pill, hours) in **Pending** +
+**History** cards; the row is still a real `<a>` (keyboard / middle-click /
+SR link). **New behavior:** employer **inline approve/decline** on pending
+rows (✓/✗ → the existing `POST /api/corrections/:id/{approve,reject}`;
+double-submit-guarded + `stopPropagation`; the list re-fetches so the row
+moves to History and the "N waiting on you" tag recomputes). Detail:
+**status-hero** card + Details/Reason/Actions cards (Leave-detail
+vocabulary); only `render()` + markup/CSS changed — decide logic is
+byte-identical. **No backend changes.** 14 new `corrections.*`/
+`correction.*` i18n keys both locales; `CACHE_VERSION` v48 → v49; no new
+test suite. **Deferred to 3b-ii / 3b-iii** (next): the manual-time
+**modal** + `/corrections/new` restyle, and the employer `/punches/today`
+view — "Register manual time" / "Forgot to clock?" still open the pre-M15
+new-entry page. See RELEASES.md 0.31.0.
 
 ---
 
@@ -885,20 +910,27 @@ would be less robust.
 If you're about to make a non-trivial change, run these checks first:
 
 ```bash
-# Full regression (44 suites)
+# Full regression (46 suites)
 for f in tests/test-*.mjs; do printf '%s: ' "$f"; node "$f" 2>&1 | tail -1; done
 ```
 
 ```bash
-# Live smoke pattern — ALWAYS use a throwaway temp dir; NEVER delete ./data, ./backups, ./config.json
+# Live smoke pattern — run from a COPY of the repo in a throwaway temp dir.
+# IMPORTANT: there is NO data-dir env override. config.json is read from the
+# server's OWN directory (path.join(__dirname,'config.json')); dataDir/backupDir
+# default to ./data and ./backups beside it. So NEVER run `node server.js` from
+# the real checkout for a smoke — it would create/clobber the real ./data and
+# ./config.json. Copy the repo first (excluding data/backups/config.json).
 SMOKE=$(mktemp -d)
-PICA_DATA_DIR="$SMOKE/data" PICA_BACKUP_DIR="$SMOKE/backups" \
-  PICA_CONFIG="$SMOKE/config.json" PICA_PASSPHRASE="changeme123" \
-  node server.js > /tmp/p.out 2>&1 &
+rsync -a --exclude data --exclude backups --exclude config.json --exclude .git \
+  --exclude 'data.pre-restore-*' --exclude 'data.staging-*' ./ "$SMOKE"/
+printf '{ "port": 8099, "host": "127.0.0.1" }' > "$SMOKE/config.json"
+( cd "$SMOKE" && PICA_PASSPHRASE="changeme123" node server.js > /tmp/p.out 2>&1 ) &
 PID=$!
-sleep 2
-# ... your test requests via curl ...
-kill -INT $PID; wait $PID
+# wait for boot without a fixed sleep
+curl -s --retry 40 --retry-connrefused --retry-delay 1 -o /dev/null http://127.0.0.1:8099/login
+# ... your test requests via curl against http://127.0.0.1:8099 ...
+kill -INT $PID 2>/dev/null; wait $PID 2>/dev/null
 rm -rf "$SMOKE"
 ```
 
@@ -918,7 +950,7 @@ byte-identically (the test will fail otherwise).
 
 ## Last-mile checklist before shipping a release
 
-1. All 44 test suites green
+1. All 46 test suites green (bar the two documented pre-existing flakes)
 2. Live smoke covering whatever you changed
 3. `package.json` version + releaseDate bumped
 4. `public/sw.js` `CACHE_VERSION` bumped if shell assets changed

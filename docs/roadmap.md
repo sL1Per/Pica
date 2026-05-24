@@ -33,7 +33,7 @@ app in a usable state.
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
-| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0) |
+| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0) |
 | M16       | E2E browser tests                  | 📋 Planned    |
 | M17       | Deployment guide + TLS samples     | 📋 Planned    |
 
@@ -360,8 +360,17 @@ Foundation shipped at **0.27.0**. Detailed plan series lives in
 - ✅ 3 new test suites (`test-theme-tokens`, `test-theme-bootstrap`,
   `test-sw-precache`). Total 44.
 
+**Screen bodies shipped so far:** employee home (0.28.0), palette picker
+(0.29.0), employee punch/clock page (0.30.0), and the **corrections list +
+detail** restyle (0.31.0 — including a new employer *inline* approve/decline
+on pending rows).
+
 **Remaining M15 plans (in progress):**
-- Each of the 13 screen bodies rebuilt per the plan series.
+- **3b-ii** — the manual-time **modal** + `/corrections/new` restyle;
+  **3b-iii** — the employer `/punches/today` view + corrections inbox.
+- The remaining screen bodies (Leaves / Request-leave / Calendar / Employer
+  home + Team + Employee detail / Settings + Security / Profile edit /
+  Reports) rebuilt per the plan series.
 - Alias bridge removed in the final cleanup plan once all 16 stylesheets
   reference design tokens directly.
 
@@ -399,4 +408,4 @@ change.
 
 ---
 
-_Last touched in 0.30.0._
+_Last touched in 0.31.0._
