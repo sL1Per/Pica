@@ -1,6 +1,7 @@
 import { postJson, showMessage } from '/app.js';
 import { t, translateError, applyTranslations, fmtDateTime, fmtHours } from '/i18n.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
+import { openManualTimeModal } from '/manual-time-modal.js';
 
 mountTopBar();
 mountFooter();
@@ -309,4 +310,22 @@ async function reloadList() {
   }
 
   await reloadList();
+
+  // Wire "Register manual time" button to open the modal instead of navigating.
+  // The <a href="/corrections/new"> fallback is preserved for JS-disabled contexts.
+  const newBtn = document.getElementById('new-correction');
+  if (newBtn) {
+    newBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openManualTimeModal({ onFiled: reloadList });
+    });
+  }
+
+  // Auto-open the modal when the page is reached via ?new=1 (e.g. redirected
+  // from another page that wants to trigger the form without navigating away).
+  // Strip the query param immediately so a page refresh doesn't reopen the modal.
+  if (new URLSearchParams(location.search).get('new') === '1') {
+    history.replaceState({}, '', '/corrections');
+    openManualTimeModal({ onFiled: reloadList });
+  }
 })();
