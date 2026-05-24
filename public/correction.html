@@ -27,50 +27,77 @@
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/topbar.css">
   <link rel="stylesheet" href="/corrections.css">
+  <link rel="stylesheet" href="/correction.css">
 </head>
 <body>
   <main class="container">
     <header class="page-header">
       <div>
-        <a id="back-link" class="back" href="/corrections" data-i18n="correction.backToList">← Back to corrections</a>
+        <a id="back-link" class="cdet-back" href="/corrections" data-i18n="correction.backToList">← Back to corrections</a>
         <h1 id="page-title" data-i18n="correction.title">Correction</h1>
       </div>
     </header>
 
     <div id="message" class="message"></div>
 
-    <section class="card">
-      <dl class="kv">
-        <dt data-i18n="correction.fieldStatus">Status</dt>
-        <dd><span id="f-status" class="status-tag">—</span></dd>
+    <div class="cdet-page">
 
-        <dt data-i18n="correction.fieldEmployee">Employee</dt>
-        <dd id="f-employee">—</dd>
+      <!-- Status hero: modifier class (.cdet-hero--pending/approved/rejected/cancelled)
+           + icon glyph + label + blurb are all set by render() in correction.js. -->
+      <div id="cdet-hero" class="cdet-hero">
+        <div id="cdet-hero-icon" class="cdet-hero__icon" aria-hidden="true"></div>
+        <div class="cdet-hero__body">
+          <p id="cdet-hero-label" class="cdet-hero__label"></p>
+          <p id="cdet-hero-blurb" class="cdet-hero__blurb"></p>
+        </div>
+      </div>
 
-        <dt data-row="start" data-i18n="correction.fieldStart">Start</dt>
-        <dd id="f-start">—</dd>
+      <!-- Details card: Employee, When (start/end/hours), Filed, Decision -->
+      <div class="cdet-card">
+        <h2 class="cdet-card__title" data-i18n="correction.cardDetails">Details</h2>
+        <dl class="cdet-dl">
 
-        <dt data-row="end" data-i18n="correction.fieldEnd">End</dt>
-        <dd id="f-end">—</dd>
+          <dt data-i18n="correction.fieldEmployee">Employee</dt>
+          <dd id="f-employee">—</dd>
 
-        <dt data-row="hours" data-i18n="correction.fieldDuration">Duration</dt>
-        <dd id="f-hours">—</dd>
+          <dt data-row="start" data-i18n="correction.fieldStart">Start</dt>
+          <dd id="f-start" class="cdet-mono">—</dd>
 
-        <dt data-i18n="correction.fieldJustification">Justification</dt>
-        <dd id="f-justification" class="multiline">—</dd>
+          <dt data-row="end" data-i18n="correction.fieldEnd">End</dt>
+          <dd id="f-end" class="cdet-mono">—</dd>
 
-        <dt data-i18n="correction.fieldFiled">Filed</dt>
-        <dd id="f-created">—</dd>
+          <dt data-row="hours" data-i18n="correction.fieldDuration">Duration</dt>
+          <dd id="f-hours" class="cdet-mono">—</dd>
 
-        <dt id="dt-decided" hidden data-i18n="correction.fieldDecision">Decision</dt>
-        <dd id="f-decided" hidden>—</dd>
+          <dt data-i18n="correction.fieldFiled">Filed</dt>
+          <dd id="f-created" class="cdet-mono">—</dd>
 
-        <dt id="dt-notes" hidden data-i18n="correction.fieldNotes">Notes</dt>
-        <dd id="f-notes" class="multiline" hidden>—</dd>
-      </dl>
+          <dt id="dt-decided" hidden data-i18n="correction.fieldDecision">Decision</dt>
+          <dd id="f-decided" class="cdet-mono" hidden>—</dd>
 
-      <div id="actions" class="form-actions" hidden></div>
-    </section>
+        </dl>
+      </div>
+
+      <!-- Reason / Justification card -->
+      <div class="cdet-card">
+        <h2 class="cdet-card__title" data-i18n="correction.fieldJustification">Justification</h2>
+        <p id="f-justification">—</p>
+
+        <!-- Notes row: only revealed after a rejection decision -->
+        <h3 id="dt-notes" hidden data-i18n="correction.fieldNotes">Notes</h3>
+        <p id="f-notes" hidden>—</p>
+      </div>
+
+      <!-- f-status: preserved for JS that sets textContent + className; kept hidden in the card layout -->
+      <span id="f-status" class="status-tag" hidden>—</span>
+
+      <!-- Actions card: wrapper shown/hidden by renderActions() -->
+      <div id="actions-card" class="cdet-card" hidden>
+        <h2 class="cdet-card__title" data-i18n="correction.cardActions">Actions</h2>
+        <div id="actions" class="cdet-actions"></div>
+      </div>
+
+    </div>
 
     <dialog id="reject-dialog" class="reject-dialog">
       <form method="dialog">

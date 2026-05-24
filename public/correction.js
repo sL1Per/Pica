@@ -36,9 +36,66 @@ function fmtHours(h) {
   return `${hh}h ${mm}m`;
 }
 
+// Status icon glyphs — pure text, no SVG, no inline style.
+const HERO_ICONS = {
+  pending:   '⏳',
+  approved:  '✓',
+  rejected:  '✕',
+  cancelled: '—',
+};
+
+// NEW i18n keys referenced here; locale strings added in the upcoming i18n task.
+// Label keys (big serif status word):
+//   correction.heroPending   — e.g. "Pending review"
+//   correction.heroApproved  — e.g. "Approved"
+//   correction.heroRejected  — e.g. "Rejected"
+//   correction.heroCancelled — e.g. "Cancelled"
+// Blurb keys (one-sentence context):
+//   correction.heroPendingBlurb   — e.g. "Waiting for a manager decision."
+//   correction.heroApprovedBlurb  — e.g. "The correction has been applied."
+//   correction.heroRejectedBlurb  — e.g. "Not approved. See the notes below."
+//   correction.heroCancelledBlurb — e.g. "Withdrawn. No changes were made."
+//
+// tSoft(key) returns the translated string if the key exists, or '' if not.
+// This lets the new keys be absent until the locale files are updated.
+function tSoft(key) {
+  const v = t(key);
+  // t() returns '[key]' for missing keys — treat that as absent.
+  return v === `[${key}]` ? '' : v;
+}
+
+// Status-to-modifier class mapping for the hero card.
+const HERO_MODIFIERS = {
+  pending:   'cdet-hero--pending',
+  approved:  'cdet-hero--approved',
+  rejected:  'cdet-hero--rejected',
+  cancelled: 'cdet-hero--cancelled',
+};
+
 function render() {
+  // --- Preserved f-status (hidden element, kept for JS contract) ---
   $('f-status').textContent = t('status.' + correction.status);
   $('f-status').className = `status-tag status-tag--${correction.status}`;
+
+  // --- Status hero ---
+  const heroEl = $('cdet-hero');
+  // Strip any previous modifier then apply the current one.
+  heroEl.className = 'cdet-hero ' + (HERO_MODIFIERS[correction.status] || '');
+
+  $('cdet-hero-icon').textContent = HERO_ICONS[correction.status] || '';
+
+  // Hero label: "Pending review" / "Approved" / "Rejected" / "Cancelled"
+  // Uses new i18n keys correction.heroPending/heroApproved/heroRejected/heroCancelled.
+  // Falls back to the existing status.* key until the locale files are updated.
+  const cap = correction.status.charAt(0).toUpperCase() + correction.status.slice(1);
+  const heroLabelKey = 'correction.hero' + cap;
+  $('cdet-hero-label').textContent = tSoft(heroLabelKey) || t('status.' + correction.status);
+
+  // Hero blurb: one-sentence context line (new keys, empty until locale update).
+  const heroBlurbKey = 'correction.hero' + cap + 'Blurb';
+  $('cdet-hero-blurb').textContent = tSoft(heroBlurbKey);
+
+  // --- Details card ---
   $('f-employee').textContent = correction.fullName || correction.username || correction.employeeId;
 
   // Render time fields based on kind.
@@ -74,8 +131,6 @@ function render() {
     $('f-hours').hidden = true;
   }
 
-  $('f-justification').textContent = correction.justification || t('correction.fieldJustificationNone');
-
   $('f-created').textContent = fmtDateTime(correction.createdAt);
 
   if (correction.decidedAt) {
@@ -83,6 +138,17 @@ function render() {
     $('f-decided').hidden = false;
     $('f-decided').textContent = `${t('status.' + correction.status)} · ${fmtDateTime(correction.decidedAt)}`;
   }
+
+  // --- Reason / Justification card ---
+  const justEl = $('f-justification');
+  if (correction.justification) {
+    justEl.textContent = correction.justification;
+    justEl.className = 'cdet-reason--filled';
+  } else {
+    justEl.textContent = t('correction.fieldJustificationNone');
+    justEl.className = 'cdet-reason--empty';
+  }
+
   if (correction.notes) {
     $('dt-notes').hidden = false;
     $('f-notes').hidden = false;
@@ -127,6 +193,7 @@ function renderActions() {
     actionsEl.appendChild(approve);
     actionsEl.appendChild(reject);
     actionsEl.hidden = false;
+    $('actions-card').hidden = false;
   } else if (correction.status === 'pending' && isOwner) {
     const cancel = document.createElement('button');
     cancel.className = 'btn-ghost';
@@ -136,6 +203,7 @@ function renderActions() {
     });
     actionsEl.appendChild(cancel);
     actionsEl.hidden = false;
+    $('actions-card').hidden = false;
   } else if (correction.status === 'approved' && isEmployer) {
     // Employer can reverse an approval. This does NOT remove the materialized
     // punches (they stay in the audit log).
@@ -149,6 +217,10 @@ function renderActions() {
     });
     actionsEl.appendChild(undo);
     actionsEl.hidden = false;
+    $('actions-card').hidden = false;
+  } else {
+    // No actions available — hide the card entirely.
+    $('actions-card').hidden = true;
   }
 }
 
