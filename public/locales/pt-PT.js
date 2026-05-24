@@ -565,6 +565,10 @@ export default {
   'corrections.noJustification': 'sem justificação',
   'corrections.arrived':   'Chegou às {time}',
   'corrections.left':      'Saiu às {time}',
+  'corrections.pendingTag':             '{n} à sua espera',
+  'corrections.inlineApprove':          'Aprovar',
+  'corrections.inlineReject':           'Rejeitar',
+  'corrections.rejectNotesPlaceholder': 'Motivo da rejeição (opcional)',
 
   // New form.
   'correctionNew.title':       'Registar tempo manualmente',
@@ -621,6 +625,16 @@ export default {
   'correction.rejectTitle':    'Rejeitar correção',
   'correction.rejectNotes':    'Notas (opcional)',
   'correction.rejectPlaceholder': 'Motivo da rejeição',
+  'correction.heroPending':         'Em análise',
+  'correction.heroApproved':        'Aprovada',
+  'correction.heroRejected':        'Rejeitada',
+  'correction.heroCancelled':       'Cancelada',
+  'correction.heroPendingBlurb':    'A aguardar a decisão de um gestor.',
+  'correction.heroApprovedBlurb':   'A correção foi aplicada.',
+  'correction.heroRejectedBlurb':   'Não aprovada. Veja as notas abaixo.',
+  'correction.heroCancelledBlurb':  'Retirada. Não foram feitas alterações.',
+  'correction.cardDetails':         'Detalhes',
+  'correction.cardActions':         'Ações',
 
   // ============================================================
   // Settings

@@ -569,6 +569,10 @@ export default {
   'corrections.noJustification': 'no justification',
   'corrections.arrived':   'Arrived {time}',
   'corrections.left':      'Left {time}',
+  'corrections.pendingTag':             '{n} waiting on you',
+  'corrections.inlineApprove':          'Approve',
+  'corrections.inlineReject':           'Reject',
+  'corrections.rejectNotesPlaceholder': 'Reason for rejection (optional)',
 
   // New form.
   'correctionNew.title':       'Register manual time',
@@ -625,6 +629,16 @@ export default {
   'correction.rejectTitle':    'Reject correction',
   'correction.rejectNotes':    'Notes (optional)',
   'correction.rejectPlaceholder': 'Reason for rejection',
+  'correction.heroPending':         'Pending review',
+  'correction.heroApproved':        'Approved',
+  'correction.heroRejected':        'Rejected',
+  'correction.heroCancelled':       'Cancelled',
+  'correction.heroPendingBlurb':    'Waiting for a manager decision.',
+  'correction.heroApprovedBlurb':   'The correction has been applied.',
+  'correction.heroRejectedBlurb':   'Not approved. See the notes below.',
+  'correction.heroCancelledBlurb':  'Withdrawn. No changes were made.',
+  'correction.cardDetails':         'Details',
+  'correction.cardActions':         'Actions',
 
   // ============================================================
   // Settings
