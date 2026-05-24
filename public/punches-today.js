@@ -15,12 +15,6 @@ function formatTime(iso) {
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]));
-}
-
 /**
  * Compute worked milliseconds today from an ordered list of (in/out) pairs.
  * Unclosed clock-ins count up to "now" so active shifts still show progress.
@@ -65,74 +59,207 @@ function humanDuration(ms) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function renderGroup(name, username, punches) {
-  const section = document.createElement('section');
-  section.className = 'group';
-
-  const header = document.createElement('div');
-  header.className = 'group__header';
-  const nameEl = document.createElement('span');
-  nameEl.className = 'group__name';
-  nameEl.textContent = name || username;
-  const hoursEl = document.createElement('span');
-  hoursEl.className = 'group__hours';
-  let line = humanDuration(workedMs(punches));
-  const brk = breakMs(punches);
-  if (brk > 0) line += ` · ${t('punch.todayBreak', { dur: humanDuration(brk) })}`;
-  hoursEl.textContent = line;
-  header.appendChild(nameEl);
-  header.appendChild(hoursEl);
-  section.appendChild(header);
-
-  const ul = document.createElement('ul');
-  ul.className = 'punch-list';
-  for (const p of [...punches].reverse()) {
-    const li = document.createElement('li');
-    li.className = 'punch-list__item';
-
-    const badge = document.createElement('span');
-    badge.className = `punch-list__badge punch-list__badge--${p.type}`;
-    badge.textContent = p.type === 'in' ? t('punch.badgeIn') : t('punch.badgeOut');
-
-    const body = document.createElement('div');
-    body.className = 'punch-list__body';
-    const time = document.createElement('div');
-    time.className = 'punch-list__time';
-    time.textContent = formatTime(p.ts);
-    body.appendChild(time);
-
-    const parts = [];
-    if (p.comment) parts.push(escapeHtml(p.comment));
-    let geoSpan = null;
-    if (p.geo) {
-      geoSpan = document.createElement('span');
-      geoSpan.className = 'punch-list__geo';
-      geoSpan.textContent = `${p.geo.lat.toFixed(4)}, ${p.geo.lng.toFixed(4)}`;
-    }
-    let meta = null;
-    if (parts.length || geoSpan) {
-      meta = document.createElement('div');
-      meta.className = 'punch-list__meta';
-      if (parts.length) meta.innerHTML = parts.join(' · ');
-      if (geoSpan) {
-        if (parts.length) meta.appendChild(document.createTextNode(' · '));
-        meta.appendChild(geoSpan);
+/**
+ * Pair chronological punches into sessions.
+ * An "in" opens a session; the next "out" closes it.
+ * A trailing "in" with no closing "out" yields outTs: null (still working).
+ * Returns [{inTs, outTs|null, inGeo, outGeo, inComment, outComment}].
+ */
+function pairSessions(punches) {
+  const sessions = [];
+  let open = null;
+  for (const p of punches) {
+    if (p.type === 'in') {
+      // If an unclosed "in" already exists, close it implicitly before opening.
+      if (open) sessions.push(open);
+      open = { inTs: p.ts, outTs: null, inGeo: p.geo || null, outGeo: null, inComment: p.comment || null, outComment: null };
+    } else if (p.type === 'out') {
+      if (open) {
+        open.outTs = p.ts;
+        open.outGeo = p.geo || null;
+        open.outComment = p.comment || null;
+        sessions.push(open);
+        open = null;
       }
-      body.appendChild(meta);
-    }
-
-    li.appendChild(badge);
-    li.appendChild(body);
-    ul.appendChild(li);
-
-    if (geoSpan) {
-      reverseGeocode(p.geo.lat, p.geo.lng).then((label) => {
-        if (label) geoSpan.textContent = label;
-      });
+      // An "out" with no open "in" is a data anomaly — skip it silently.
     }
   }
-  section.appendChild(ul);
-  return section;
+  if (open) sessions.push(open);
+  return sessions;
+}
+
+/**
+ * Build one address <div> whose text starts as coords and upgrades to a
+ * label when reverse geocoding resolves.
+ */
+function buildAddrEl(geo) {
+  const el = document.createElement('div');
+  el.className = 'sess__addr subtle';
+  el.textContent = `${geo.lat.toFixed(4)}, ${geo.lng.toFixed(4)}`;
+  reverseGeocode(geo.lat, geo.lng).then((label) => { if (label) el.textContent = label; });
+  return el;
+}
+
+/**
+ * Build a .sess__times row for one side (in or out) of a session.
+ * kind = 'in' | 'out'.  ts = ISO string.  geo/comment optional.
+ */
+function buildSessRow(kind, ts, geo, comment) {
+  const row = document.createElement('div');
+  row.className = 'sess__times';
+
+  const badge = document.createElement('span');
+  badge.className = `sess__time sess__time--${kind}`;
+  badge.textContent = kind === 'in' ? t('punch.badgeIn') : t('punch.badgeOut');
+  row.appendChild(badge);
+
+  const mid = document.createElement('div');
+  const time = document.createElement('div');
+  time.className = 'sess__timeval mono';
+  time.textContent = formatTime(ts);
+  mid.appendChild(time);
+  if (geo) mid.appendChild(buildAddrEl(geo));
+  if (comment) {
+    const c = document.createElement('div');
+    c.className = 'sess__comment-inline';
+    c.textContent = comment;
+    mid.appendChild(c);
+  }
+  row.appendChild(mid);
+
+  // Empty trailing cell keeps the 3-column grid aligned (badge | mid | origin).
+  const origin = document.createElement('span');
+  origin.className = 'sess__origin';
+  row.appendChild(origin);
+
+  return row;
+}
+
+/**
+ * Build the "— still working" out-row for a live (open) session.
+ */
+function buildLiveSessRow() {
+  const row = document.createElement('div');
+  row.className = 'sess__times';
+
+  const badge = document.createElement('span');
+  badge.className = 'sess__time sess__time--out';
+  badge.textContent = t('punch.badgeOut');
+  row.appendChild(badge);
+
+  const mid = document.createElement('div');
+  const time = document.createElement('div');
+  time.className = 'sess__timeval mono';
+  // punchesToday.stillWorking — added to i18n in a later task; renders as [key] until then.
+  time.textContent = `— ${t('punchesToday.stillWorking')}`;
+  mid.appendChild(time);
+  row.appendChild(mid);
+
+  const origin = document.createElement('span');
+  origin.className = 'sess__origin';
+  row.appendChild(origin);
+
+  return row;
+}
+
+/**
+ * Build a complete .sess card for one session pair.
+ * live = true when outTs is null and the employee is still on the clock.
+ */
+function buildSessCard(sess, { live = false } = {}) {
+  const card = document.createElement('li');
+  card.className = 'sess';
+
+  // Accent strip — must be first child so `.sess__times + .sess__times`
+  // still selects only the gap between consecutive time rows.
+  const accent = document.createElement('div');
+  accent.className = 'sess__accent';
+  accent.setAttribute('aria-hidden', 'true');
+  // Live session → sage; completed → neutral line. Set via CSSOM.
+  accent.style.background = live ? 'var(--sage)' : 'var(--line)';
+  card.appendChild(accent);
+
+  card.appendChild(buildSessRow('in', sess.inTs, sess.inGeo, sess.inComment));
+
+  if (sess.outTs) {
+    card.appendChild(buildSessRow('out', sess.outTs, sess.outGeo, sess.outComment));
+  } else if (live) {
+    card.appendChild(buildLiveSessRow());
+  }
+  // A non-live open session (forgotten clock-out) just omits the out row.
+  // The accent stays neutral and no "missing" link is shown — this employer
+  // view is read-only; corrections are filed from the Corrections tab.
+
+  return card;
+}
+
+/**
+ * Render one per-employee card into the .ptoday container.
+ * name     — full display name (may be undefined/null, falls back to username)
+ * username — @-handle / role label
+ * punches  — chronological punches array for this employee today
+ */
+function renderGroup(name, username, punches) {
+  const card = document.createElement('article');
+  card.className = 'ptoday-emp';
+
+  // ---- Head row -----------------------------------------------------------
+  const head = document.createElement('div');
+  head.className = 'ptoday-emp__head';
+
+  const nameEl = document.createElement('span');
+  nameEl.className = 'ptoday-emp__name';
+  nameEl.textContent = name || username;
+  head.appendChild(nameEl);
+
+  const roleEl = document.createElement('span');
+  roleEl.className = 'ptoday-emp__role';
+  roleEl.textContent = username;
+  head.appendChild(roleEl);
+
+  // Status pill — working if the last punch is an "in" (no closing "out").
+  const lastPunch = punches[punches.length - 1];
+  const isWorking = lastPunch && lastPunch.type === 'in';
+
+  const pill = document.createElement('span');
+  pill.className = isWorking ? 'ptoday-status ptoday-status--working' : 'ptoday-status ptoday-status--done';
+  if (isWorking) {
+    const dot = document.createElement('span');
+    dot.className = 'ptoday-status__dot';
+    pill.appendChild(dot);
+  }
+  const pillLabel = document.createElement('span');
+  // punchesToday.statusWorking / punchesToday.statusDone — added to i18n in a later task.
+  pillLabel.textContent = isWorking ? t('punchesToday.statusWorking') : t('punchesToday.statusDone');
+  pill.appendChild(pillLabel);
+  head.appendChild(pill);
+
+  // Stats aside — worked duration, optional break.
+  const stats = document.createElement('span');
+  stats.className = 'ptoday-emp__stats';
+  let statsText = humanDuration(workedMs(punches));
+  const brk = breakMs(punches);
+  if (brk > 0) statsText += ` · ${t('punch.todayBreak', { dur: humanDuration(brk) })}`;
+  stats.textContent = statsText;
+  head.appendChild(stats);
+
+  card.appendChild(head);
+
+  // ---- Session rows -------------------------------------------------------
+  const sessions = pairSessions(punches);
+  const sessionsWrapper = document.createElement('ul');
+  sessionsWrapper.className = 'ptoday-sessions';
+
+  for (let i = 0; i < sessions.length; i++) {
+    const sess = sessions[i];
+    // A trailing open session is "live" when the employee is still working
+    // (i.e. last punch is type "in" and this is the final session entry).
+    const live = isWorking && sess.outTs === null && i === sessions.length - 1;
+    sessionsWrapper.appendChild(buildSessCard(sess, { live }));
+  }
+
+  card.appendChild(sessionsWrapper);
+  return card;
 }
 
 (async () => {
@@ -159,11 +286,16 @@ function renderGroup(name, username, punches) {
     byId.get(p.employeeId).punches.push(p);
   }
 
-  groupsEl.innerHTML = '';
+  // Clear the loading placeholder (no replaceChildren shorthand for compatibility).
+  groupsEl.replaceChildren();
+
   if (byId.size === 0) {
     const empty = document.createElement('div');
-    empty.className = 'group__empty';
-    empty.textContent = t('punchesToday.empty');
+    empty.className = 'ptoday-empty';
+    const emptyTitle = document.createElement('p');
+    emptyTitle.className = 'ptoday-empty__title';
+    emptyTitle.textContent = t('punchesToday.empty');
+    empty.appendChild(emptyTitle);
     groupsEl.appendChild(empty);
     return;
   }
