@@ -42,19 +42,30 @@
 
     <div id="message" class="message"></div>
 
-    <section class="card">
-      <h2 id="list-heading" data-i18n="corrections.pendingHeading.own">Pending corrections</h2>
-      <ul id="pending-list" class="correction-list">
-        <li class="subtle" data-i18n="employees.loading">Loading…</li>
-      </ul>
-    </section>
+    <div class="corr-page">
+      <section class="corr-section">
+        <div class="corr-card corr-card--pending">
+          <div class="corr-card__head">
+            <h2 class="corr-card__title" id="list-heading" data-i18n="corrections.pendingHeading.own">Pending corrections</h2>
+            <span class="corr-card__tag" id="pending-tag" hidden></span>
+          </div>
+          <ul id="pending-list" class="corr-list">
+            <li class="subtle" data-i18n="employees.loading">Loading…</li>
+          </ul>
+        </div>
+      </section>
 
-    <section class="card">
-      <h2 data-i18n="corrections.historyHeading">History</h2>
-      <ul id="history-list" class="correction-list">
-        <li class="subtle" data-i18n="employees.loading">Loading…</li>
-      </ul>
-    </section>
+      <section class="corr-section">
+        <div class="corr-card">
+          <div class="corr-card__head">
+            <h2 class="corr-card__title" data-i18n="corrections.historyHeading">History</h2>
+          </div>
+          <ul id="history-list" class="corr-list">
+            <li class="subtle" data-i18n="employees.loading">Loading…</li>
+          </ul>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script type="module" src="/corrections.js"></script>
