@@ -2,9 +2,8 @@
 
 ### Roadmap
 
-- [**DONE**] M13: Reports revamp
-- M14: Add email notifications
 - M15: Full UI revamp
+- backups is not done to config.json file, it should be no?
 - M16: E2E browser tests
 - M16: Deployment guide + TLS samples
 
@@ -23,6 +22,7 @@
 - [**DONE**] Leaves that move to next year need to expire at some point. Add a option in the organization settings to set the date when the vacations that moved from previous year expire. This should also reflect on the amount each employee has. (2)
 - [**DONE**] Make profile fields mandatory (2)
 - [**DONE**] Instead of showing coordinates, try to show an approximate address.
+- [**DONE**] Reports revamp
 
 ### Add
 
@@ -31,12 +31,7 @@
 - [**DONE**] Add ability to upload files on leave request for justification. Max 5mb file size. This needs to be encrypted on the disk/storage but visible to the employer or the employee that updated (not to other employees!)
 - [**DONE**] Add an option to reset the master-key (0.23.0: envelope encryption + passphrase change + rotation + recovery code + wipe-reset)
 - Employer to create employee positions and employees need to pick up from a select box instead of current free text.
-- email notifications
-  - Password reset
-  - Password recovery
-  - Masterkey recovery
-  - Approvals / rejections
-  - Reminders
+- [**DONE**] email notifications
 
 ### Translations
 

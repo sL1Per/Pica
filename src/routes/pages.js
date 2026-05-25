@@ -149,7 +149,10 @@ export function registerPageRoutes(router, { publicDir, usersStore, userPrefsSto
   router.get('/leaves/new', async (req, res) => {
     const a = authed(req);
     if (a.redirect) return res.redirect(a.redirect);
-    await sendHtml(res, 'leave-new.html', req);
+    // The standalone request page is retired; the modal on /leaves handles
+    // creation. Passing ?new=1 tells that page to auto-open it. (The home and
+    // calendar "Request leave" buttons still link /leaves/new and arrive here.)
+    return res.redirect('/leaves?new=1');
   });
 
   router.get('/leaves/:id', async (req, res) => {
