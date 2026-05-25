@@ -969,4 +969,21 @@ export default {
   'rlm.startBeforeEnd':     'O início deve ser igual ou anterior ao fim.',
   'rlm.pickDateTimes':      'Escolha uma data e as duas horas.',
   'rlm.endAfterStart':      'A hora de fim deve ser posterior à de início.',
+
+  // ============================================================
+  // M15 Plano 5 — Calendário
+  // ============================================================
+  'calendar.outToday':       'Ausentes hoje',
+  'calendar.outTomorrow':    'Ausentes amanhã',
+  'calendar.noneOut':        'Ninguém ausente.',
+  'calendar.pendingTitle':   'Pedidos pendentes',
+  'calendar.requestThisDay': '+ Pedir ausência neste dia',
+  'calendar.subEmployer':    '{out} ausentes hoje · {pending} por aprovar',
+  'calendar.subEmployee':    'Tem {n} de {cap} dias de férias este ano',
+  'calendar.scopeMine':      'Minhas',
+  'calendar.scopeTeam':      'Equipa',
+  'calendar.balanceTitle':   'Saldo de férias',
+  'calendar.noLeavesDay':    'Sem ausências neste dia.',
+  'calendar.closed':         'Encerrado',
+  'calendar.moreN':          '+{n} mais',
 };

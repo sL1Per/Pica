@@ -970,4 +970,21 @@ export default {
   'rlm.startBeforeEnd':     'Start must be on or before end.',
   'rlm.pickDateTimes':      'Pick a date and both times.',
   'rlm.endAfterStart':      'End time must be after start time.',
+
+  // ============================================================
+  // M15 Plan 5 — Calendar restyle
+  // ============================================================
+  'calendar.outToday':       'Out today',
+  'calendar.outTomorrow':    'Out tomorrow',
+  'calendar.noneOut':        'No one is out.',
+  'calendar.pendingTitle':   'Pending requests',
+  'calendar.requestThisDay': '+ Request leave this day',
+  'calendar.subEmployer':    '{out} out today · {pending} pending approval',
+  'calendar.subEmployee':    'You have {n} of {cap} vacation days left this year',
+  'calendar.scopeMine':      'Mine',
+  'calendar.scopeTeam':      'Team',
+  'calendar.balanceTitle':   'Vacation balance',
+  'calendar.noLeavesDay':    'No leaves on this day.',
+  'calendar.closed':         'Closed',
+  'calendar.moreN':          '+{n} more',
 };
