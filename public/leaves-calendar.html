@@ -27,53 +27,47 @@
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/topbar.css">
   <link rel="stylesheet" href="/leaves-calendar.css">
+  <link rel="stylesheet" href="/modal.css">
+  <link rel="stylesheet" href="/request-leave-modal.css">
 </head>
 <body>
   <main class="container container--wide">
-    <header class="page-header">
-      <div>
-        <h1 data-i18n="calendar.title">Leaves calendar</h1>
-        <p class="muted">
-          <a href="/leaves" data-i18n="calendar.myLeaves">← My leaves</a>
-          · <span class="subtle" data-i18n="calendar.approvedOnly">Approved leaves only</span>
-        </p>
-      </div>
-      <a href="/leaves/new" class="btn-link" data-i18n="calendar.requestNew">+ Request leave</a>
-    </header>
-
     <div id="message" class="message"></div>
 
-    <nav class="cal-nav">
-      <button id="prev-month" class="secondary" type="button">←</button>
-      <h2 id="cal-title">…</h2>
-      <button id="next-month" class="secondary" type="button">→</button>
-      <button id="today-btn" class="secondary" type="button" data-i18n="calendar.today">Today</button>
-    </nav>
+    <div class="cal-page">
+      <div class="cal-main">
+        <header class="cal-head">
+          <h1 class="cal-head__title" data-i18n="calendar.title">Calendar</h1>
+          <p class="cal-head__sub" id="cal-sub"></p>
+        </header>
 
-    <div class="cal-grid" id="cal-grid">
-      <!-- 7 weekday headers + 42 day cells injected by JS -->
+        <div class="cal-toolbar">
+          <div class="cal-nav">
+            <button id="prev-month" type="button" class="cal-nav__btn" aria-label="Previous month">←</button>
+            <h2 id="cal-month" class="cal-month">…</h2>
+            <button id="next-month" type="button" class="cal-nav__btn" aria-label="Next month">→</button>
+            <button id="today-btn" type="button" class="cal-today" data-i18n="calendar.today">Today</button>
+          </div>
+          <div id="cal-chips" class="cal-chips"></div>
+          <div id="cal-scope" class="cal-scope" hidden></div>
+        </div>
+
+        <div class="cal-weekhead" id="cal-weekhead"></div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+      <aside class="cal-rail">
+        <section class="cal-rail__card" id="rail-role"></section>
+        <section class="cal-rail__card">
+          <h3 class="cal-rail__title" data-i18n="calendar.outToday">Out today</h3>
+          <div id="rail-out-today"></div>
+        </section>
+        <section class="cal-rail__card">
+          <h3 class="cal-rail__title" data-i18n="calendar.outTomorrow">Out tomorrow</h3>
+          <div id="rail-out-tomorrow"></div>
+        </section>
+      </aside>
     </div>
-
-    <!-- Tap-to-expand day-details panel. Hidden until a day is selected.
-         On mobile this is the primary read surface; on desktop it
-         supplements the in-cell bars. -->
-    <section id="cal-details" class="cal-details" hidden aria-live="polite">
-      <header class="cal-details__head">
-        <h3 id="cal-details-title" class="cal-details__title">…</h3>
-        <button id="cal-details-close" type="button" class="cal-details__close"
-                aria-label="Close" data-i18n-attr="aria-label:calendar.detailsClose">×</button>
-      </header>
-      <ul id="cal-details-list" class="cal-details__list"></ul>
-    </section>
-
-    <section class="legend">
-      <strong data-i18n="calendar.legendType">Type</strong>
-      <span class="legend__chip legend__chip--vacation" data-i18n="leaves.type.vacation">Vacation</span>
-      <span class="legend__chip legend__chip--sick" data-i18n="leaves.type.sick">Sick</span>
-      <span class="legend__chip legend__chip--appointment" data-i18n="leaves.type.appointment">Appointment</span>
-      <span class="legend__chip legend__chip--other" data-i18n="leaves.type.other">Other</span>
-      <span class="legend__chip legend__chip--blocked" data-i18n="calendar.blocked">Blocked</span>
-    </section>
   </main>
 
   <script type="module" src="/leaves-calendar.js"></script>
