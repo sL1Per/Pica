@@ -220,7 +220,7 @@ function buildBar({ user, branding, hasOwnPicture }) {
       ${navLinks([{ href: '/settings', labelKey: 'nav.settings', icon: 'settings' }], currentPath, allHrefs, 'appshell__nav-link')}
     </nav>` : ''}
     <button class="appshell__usertile" type="button" aria-haspopup="menu" aria-expanded="false">
-      <span class="appshell__avatar" style="--hue:${hue}">${avatarInner}</span>
+      <span class="appshell__avatar">${avatarInner}</span>
       <span class="appshell__usertile-info">
         <span class="appshell__usertile-name">${displayName}</span>
         <span class="appshell__usertile-role">${role}</span>
@@ -256,7 +256,7 @@ function buildBar({ user, branding, hasOwnPicture }) {
     </a>
     <button class="appshell__iconbtn" type="button" aria-label="${escapeHtml(t('nav.notifications'))}">${icon('bell', 17, 1.6)}</button>
     <button class="appshell__mobile-avatar" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="${escapeHtml(t('menu.account'))}">
-      <span class="appshell__avatar" style="--hue:${hue}">${avatarInner}</span>
+      <span class="appshell__avatar">${avatarInner}</span>
     </button>`;
 
   // -- Mobile bottom nav --------------------------------------------------
@@ -297,6 +297,12 @@ function buildBar({ user, branding, hasOwnPicture }) {
   const scrim = document.createElement('div');
   scrim.className = 'appshell__scrim';
   scrim.setAttribute('hidden', '');
+
+  // Per-user avatar hue: set via CSSOM (not an inline style= attribute, which
+  // CSP style-src 'self' would block when parsed from the markup above).
+  for (const host of [sidebar, mobilebar]) {
+    host.querySelectorAll('.appshell__avatar').forEach((a) => a.style.setProperty('--hue', hue));
+  }
 
   return { sidebar, topbar, mobilebar, bottomnav, menu, scrim };
 }
