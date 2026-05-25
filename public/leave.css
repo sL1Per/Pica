@@ -1,144 +1,230 @@
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--gap-4);
-  margin-bottom: var(--gap-5);
-}
-.page-header h1 { margin-bottom: var(--gap-1); }
-.page-header a { color: var(--accent); text-decoration: none; }
-.page-header a:hover { text-decoration: underline; }
+/* ============================================================================
+   Leave detail page — M15 design (Plan 4)
+   Status-hero + cards vocabulary, mirroring correction.css (ldet- of cdet-),
+   plus a two-column layout with a mini-calendar and an activity timeline.
+   Tokens from app.css: --paper, --paper-2, --ink, --ink-2, --muted,
+   --honey, --honey-deep, --sage, --sage-soft, --clay, --clay-soft, --plum,
+   --line, --line-soft, --font-mono, --font-serif.
+   Pending hero/cells use the hardcoded honey tint #F4E4C7 (no --honey-soft
+   token). Status / type coloring is class-driven — never inline color from JS.
+   ============================================================================ */
 
-select {
-  display: block;
-  width: 100%;
-  margin-top: var(--gap-1);
-  padding: var(--gap-3);
-  font-family: inherit;
-  font-size: var(--text-md);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-}
+/* ---------- Back link ----------------------------------------------------- */
 
-input[type="date"],
-input[type="time"] {
-  display: block;
-  width: 100%;
-  margin-top: var(--gap-1);
-  padding: var(--gap-3);
-  font-family: inherit;
-  font-size: var(--text-md);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
+.ldet-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  text-decoration: none;
 }
-input:focus, select:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-  border-color: var(--accent);
-}
+.ldet-back:hover { color: var(--honey); }
 
-textarea {
-  display: block;
-  width: 100%;
-  margin-top: var(--gap-1);
-  padding: var(--gap-3);
-  font-family: inherit;
-  font-size: var(--text-md);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-  resize: vertical;
-}
+/* ---------- Two-column grid ----------------------------------------------- */
 
-.radio-row {
-  display: flex;
-  gap: var(--gap-4);
-  margin-top: var(--gap-1);
-}
-.radio {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gap-2);
-  margin: 0;
-  font-weight: normal;
-  cursor: pointer;
-}
-
-.time-row {
-  display: flex;
-  gap: var(--gap-3);
-}
-.time-row > div { flex: 1; }
-
-/* Detail view */
-
-.leave-summary {
+.ldet-grid {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--gap-2) var(--gap-4);
-  margin: var(--gap-4) 0;
-  font-size: var(--text-sm);
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
 }
-.leave-summary dt { color: var(--text-muted); }
-.leave-summary dd { margin: 0; font-weight: 500; }
+@media (min-width: 900px) {
+  .ldet-grid { grid-template-columns: 1fr 320px; }
+}
+.ldet-main, .ldet-aside { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-.status-banner {
-  padding: var(--gap-3) var(--gap-4);
-  border-radius: var(--radius);
-  font-weight: 600;
-  margin-bottom: var(--gap-4);
+/* ---------- Status hero --------------------------------------------------- */
+
+.ldet-hero {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
 }
-.status-banner--pending   { background: #fff3dc; color: #a06a00; }
-.status-banner--approved  { background: var(--success-soft); color: var(--success); }
-.status-banner--rejected  { background: var(--danger-soft); color: var(--danger); }
-.status-banner--cancelled { background: #efefef; color: var(--text-muted); }
+.ldet-hero--pending   { background: #F4E4C7;          border-color: var(--honey); }
+.ldet-hero--approved  { background: var(--sage-soft); border-color: var(--sage); }
+.ldet-hero--rejected  { background: var(--clay-soft); border-color: var(--clay); }
+.ldet-hero--cancelled { background: var(--paper-2);   border-color: var(--line); opacity: 0.85; }
 
-.actions {
-  margin-top: var(--gap-5);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-3);
+.ldet-hero__icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 28px; font-weight: 600; line-height: 1;
+  color: #fff;
+  background: var(--muted);
 }
-.actions button { margin-top: 0; flex: 1; min-width: 120px; }
-.actions .btn-approve { background: var(--success); }
-.actions .btn-approve:hover:not(:disabled) { background: #256a29; }
-.actions .btn-reject  { background: var(--danger); }
-.actions .btn-reject:hover:not(:disabled) { background: #902e2e; }
+.ldet-hero--pending   .ldet-hero__icon { background: var(--honey); }
+.ldet-hero--approved  .ldet-hero__icon { background: var(--sage); }
+.ldet-hero--rejected  .ldet-hero__icon { background: var(--clay); }
+.ldet-hero--cancelled .ldet-hero__icon { background: var(--muted); }
 
-.decided-note {
-  margin-top: var(--gap-4);
-  padding: var(--gap-3);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: var(--text-sm);
+.ldet-hero__body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ldet-hero__label {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 30px; line-height: 1;
+  text-transform: capitalize;
 }
-.decided-note__label { color: var(--text-muted); margin-bottom: var(--gap-1); }
+.ldet-hero--pending   .ldet-hero__label { color: var(--honey-deep); }
+.ldet-hero--approved  .ldet-hero__label { color: var(--sage); }
+.ldet-hero--rejected  .ldet-hero__label { color: var(--clay); }
+.ldet-hero--cancelled .ldet-hero__label { color: var(--muted); }
+.ldet-hero__blurb { margin: 0; font-size: 13px; color: var(--ink-2); }
 
-.attachment-edit {
-  margin-top: var(--gap-4);
-  padding: var(--gap-3);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: var(--text-sm);
+/* ---------- Generic card -------------------------------------------------- */
+
+.ldet-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
 }
-.attachment-edit label { display: block; color: var(--text-muted); margin-bottom: var(--gap-1); }
-.attachment-edit input[type="file"] { margin-bottom: var(--gap-2); }
-.attachment-edit .actions { margin-top: var(--gap-2); }
+.ldet-card__title {
+  margin: 0 0 16px 0;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+/* ---------- Definition list ----------------------------------------------- */
+
+.ldet-dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 20px;
+  margin: 0;
+}
+.ldet-dl dt {
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted);
+  align-self: baseline; padding-top: 2px;
+}
+.ldet-dl dd { margin: 0; font-size: 14px; color: var(--ink); word-break: break-word; align-self: baseline; }
+.ldet-dl dd.ldet-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13.5px; }
+
+/* ---------- Reason -------------------------------------------------------- */
+
+.ldet-reason--empty { font-style: italic; color: var(--muted); font-size: 13.5px; }
+.ldet-reason--filled { font-size: 14px; color: var(--ink); line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+
+/* ---------- Decision note ------------------------------------------------- */
+
+.ldet-decided { margin-top: 4px; }
+.ldet-decided__label { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.ldet-decided__notes { font-size: 14px; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+
+/* ---------- Attachments --------------------------------------------------- */
+
+.ldet-att__pill {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 10px;
+  text-decoration: none; color: var(--ink); font-size: 13.5px; font-weight: 500;
+}
+.ldet-att__pill:hover { border-color: var(--honey); }
+.ldet-att__badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 34px; height: 26px; padding: 0 6px;
+  background: var(--honey); color: #FBF6EC;
+  border-radius: 6px; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+.attachment-edit { margin-top: 16px; }
+.attachment-edit label { display: block; font-size: var(--text-sm); font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
+.attachment-edit .actions { display: flex; gap: 8px; margin-top: 10px; }
+.attachment-edit .actions button { margin-top: 0; }
+
+/* ---------- Actions ------------------------------------------------------- */
+
+.ldet-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.ldet-actions > button { margin-top: 0; }
+.ldet-actions .btn-approve {
+  background: var(--sage); border-color: var(--sage); color: #fff;
+  box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 4px 12px -6px rgba(92,122,78,.5);
+}
+.ldet-actions .btn-approve:hover:not(:disabled) { opacity: 0.88; }
+.ldet-actions .btn-reject { background: var(--paper); border-color: var(--clay); color: var(--clay); }
+.ldet-actions .btn-reject:hover:not(:disabled) { background: var(--clay-soft); }
+
+/* ---------- Reject dialog (inline panel) ---------------------------------- */
 
 .reject-dialog {
-  margin-top: var(--gap-4);
-  padding: var(--gap-4);
-  background: var(--danger-soft);
-  border: 1px solid var(--danger);
-  border-radius: var(--radius);
+  margin-top: 14px;
+  padding: 16px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.reject-dialog label { display: block; font-size: var(--text-sm); font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
+.reject-dialog textarea { width: 100%; }
+.reject-dialog .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.reject-dialog .actions button { margin-top: 0; }
+
+/* ---------- Mini-calendar (aside) ----------------------------------------- */
+
+.ldet-mini__month { text-align: center; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 12px; }
+.ldet-mini__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.ldet-mini__dow {
+  text-align: center; font-size: 10px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; padding-bottom: 2px;
+}
+.ldet-mini__cell {
+  aspect-ratio: 1 / 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--ink-2);
+  border-radius: 8px; font-variant-numeric: tabular-nums;
+}
+.ldet-mini__cell--muted { color: transparent; }
+.ldet-mini__cell--today { box-shadow: 0 0 0 2px var(--honey) inset; font-weight: 700; }
+.ldet-mini__cell--inrange { font-weight: 700; }
+/* type-tinted in-range fills (set via a type class on the grid) */
+.ldet-mini--vacation    .ldet-mini__cell--inrange { background: #F4E4C7;          color: var(--honey-deep); }
+.ldet-mini--sick        .ldet-mini__cell--inrange { background: var(--clay-soft); color: var(--clay); }
+.ldet-mini--appointment .ldet-mini__cell--inrange { background: var(--sage-soft); color: var(--sage); }
+.ldet-mini--other       .ldet-mini__cell--inrange { background: var(--paper-2);   color: var(--plum); }
+
+/* ---------- Activity timeline (aside) ------------------------------------- */
+
+.ldet-time__list { list-style: none; margin: 0; padding: 0; }
+.ldet-time__item { position: relative; padding: 0 0 16px 22px; }
+.ldet-time__item:last-child { padding-bottom: 0; }
+/* connecting line */
+.ldet-time__item:not(:last-child)::before {
+  content: ''; position: absolute;
+  left: 5px; top: 14px; bottom: 0; width: 2px;
+  background: var(--line);
+}
+.ldet-time__dot {
+  position: absolute; left: 0; top: 3px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--muted);
+  box-shadow: 0 0 0 3px var(--paper);
+}
+.ldet-time__dot--requested { background: var(--honey); }
+.ldet-time__dot--approved  { background: var(--sage); }
+.ldet-time__dot--rejected  { background: var(--clay); }
+.ldet-time__dot--cancelled { background: var(--muted); }
+.ldet-time__title { font-size: 13px; font-weight: 600; color: var(--ink); }
+.ldet-time__ts { margin-top: 1px; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ldet-time__note {
+  margin-top: 6px; padding: 8px 10px;
+  background: var(--paper-2); border: 1px solid var(--line-soft); border-radius: 8px;
+  font-size: 12.5px; color: var(--ink-2); white-space: pre-wrap; word-break: break-word;
+}
+
+/* ---------- Mobile ≤ 760px ----------------------------------------------- */
+
+@media (max-width: 760px) {
+  .ldet-hero { padding: 18px; gap: 14px; }
+  .ldet-hero__icon { width: 44px; height: 44px; font-size: 22px; }
+  .ldet-hero__label { font-size: 24px; }
+  .ldet-card { padding: 18px; border-radius: 12px; }
+  .ldet-dl { gap: 6px 16px; }
+  .ldet-actions { flex-direction: column; }
+  .ldet-actions > button { width: 100%; }
 }
