@@ -1,7 +1,8 @@
-import { showMessage, postJson } from '/app.js';
+import { showMessage } from '/app.js';
 import { t, applyTranslations, fmtHours } from '/i18n.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 import { openRequestLeaveModal } from '/request-leave-modal.js';
+import { approveLeaveWithCheck, rejectLeave } from '/leave-actions.js';
 
 mountTopBar();
 mountFooter();
@@ -167,27 +168,14 @@ function buildInlineActions(l, li) {
 
 async function inlineApprove(l, btn) {
   showMessage(messageEl, '');
-  // Concurrency check (same as the detail page): warn before approving if the
-  // policy forbids concurrent leaves and approved overlaps exist.
-  let overlaps = [];
-  let concurrentAllowed = true;
-  try {
-    const r = await fetch(`/api/leaves/${l.id}/overlaps`, { credentials: 'same-origin' });
-    if (r.ok) { const j = await r.json(); overlaps = j.overlaps ?? []; concurrentAllowed = j.concurrentAllowed !== false; }
-  } catch { /* non-fatal — skip the warning */ }
-
-  if (overlaps.length > 0 && !concurrentAllowed) {
-    const names = overlaps.map((o) => o.fullName || o.username || t('rlm.someone')).join(', ');
-    if (!confirm(t('leaves.concurrentConfirm', { n: overlaps.length, names }))) return;
-  }
-
   btn.disabled = true;
-  const res = await postJson(`/api/leaves/${l.id}/approve`, {});
+  const res = await approveLeaveWithCheck(l);   // shared concurrency check + confirm
+  if (res.cancelled) { btn.disabled = false; return; }
   if (res.ok) {
     await loadAll();
   } else {
     btn.disabled = false;
-    showMessage(messageEl, res.data.error || t('leaves.actionFailed'), 'error');
+    showMessage(messageEl, res.data?.error || t('leaves.actionFailed'), 'error');
   }
 }
 
@@ -218,9 +206,9 @@ function toggleRejectNote(l, li) {
   confirmBtn.addEventListener('click', async () => {
     confirmBtn.disabled = true;
     showMessage(messageEl, '');
-    const res = await postJson(`/api/leaves/${l.id}/reject`, { notes: ta.value.trim() });
+    const res = await rejectLeave(l.id, ta.value.trim());
     if (res.ok) { await loadAll(); }
-    else { confirmBtn.disabled = false; showMessage(messageEl, res.data.error || t('leaves.actionFailed'), 'error'); }
+    else { confirmBtn.disabled = false; showMessage(messageEl, res.data?.error || t('leaves.actionFailed'), 'error'); }
   });
   actions.append(cancel, confirmBtn);
 
