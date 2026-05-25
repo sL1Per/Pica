@@ -5,14 +5,14 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.34.0._
+_Last touched in 0.35.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.34.0 (released 2026-05-25)
-- **Test count:** 46 suites (0.30.0 added `test-punch-week`; 0.29.0 added
+- **Latest version:** 0.35.0 (released 2026-05-25)
+- **Test count:** 47 suites (0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
   pre-feature baseline (see notes.md): `test-reports.mjs`
@@ -29,7 +29,9 @@ _Last touched in 0.34.0._
   `test-mail-config-store`: 40 → 41. The 0.27.0 M15 foundation added
   three more — `test-theme-tokens`, `test-theme-bootstrap`,
   `test-sw-precache`: 41 → 44. The 0.28.0 employee-home redesign added
-  `test-employee-home` (pure-helper contract): 44 → 45.
+  `test-employee-home` (pure-helper contract): 44 → 45. The 0.30.0 clock
+  page added `test-punch-week`: 45 → 46. The 0.35.0 leaves restyle added
+  `test-leaves-render` (day-count + status-partition): 46 → 47.
 - **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
   through 0.30.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
@@ -39,11 +41,49 @@ _Last touched in 0.34.0._
   **employee punch (clock) page** at 0.30.0; **corrections list + detail**
   at 0.31.0; **manual-time modal** (`/corrections/new` retired) at 0.32.0;
   **employer `/punches/today`** at 0.33.0 — which **completes the
-  punches/corrections screen group**. Remaining screen-body plans in
-  progress (**next: Plan 4 Leaves** — list / request-leave modal / detail —
-  then Calendar/Employer-Home/Settings/Profile/Reports; see
-  `docs/superpowers/plans/2026-05-2*-m15-*`); M16–M17 follow (M17
+  punches/corrections screen group**; **leaves** (list / request-leave modal /
+  detail) at 0.35.0. Remaining screen-body plans in progress
+  (**next: Plan 5 Calendar** — then Employer-Home/Team/Settings/Profile/Reports;
+  see `docs/superpowers/plans/2026-05-2*-m15-*`); M16–M17 follow (M17
   deployment guide ships last)
+
+---
+
+## What just shipped (0.35.0)
+
+**M15 leaves restyle (Plan 4) — list + request modal + detail.** All three
+leaves screens rebuilt to the design, every existing behavior preserved, four
+extras added (all from existing endpoints — no backend change).
+
+- **`/leaves`** split into role regions. *Employee:* "Your balance" 4 stat-blocks
+  + "Your history" status tabs (counts) over status-accented rows. *Employer:*
+  honey-outlined **"Pending approval" inbox** with a "N waiting on you" tag and
+  **inline ✓/✗ per pending row** (NEW — approve reuses the `/overlaps`
+  concurrency check + confirm; reject reveals an inline note; the list
+  re-fetches so rows move to History and the tag/tabs recompute), a "Team
+  balance" matrix, and an "All requests" tabbed list.
+- **Request-Leave modal** (`request-leave-modal.{js,css}`, on the 0.32.0
+  `modal.js` shell) replaces the `/leave-new` page: type cards, Full-days/Hours
+  toggle, reason, file drop-zone + **balance-after summary**, **conflict box**
+  (anonymized count for employees / names for employers), and a **success
+  state**. `/leaves/new` → `302 /leaves?new=1` (auto-opens, strips query);
+  `leave-new.{html,js}` deleted. Home / calendar buttons reach it via that
+  redirect.
+- **`/leaves/:id`** rebuilt: status-hero + Details/Reason/Attachment/Actions
+  cards (attachment + approve/reject/cancel/revoke logic byte-identical) and a
+  right column with a **mini-calendar** + **activity timeline**; duration now
+  i18n-plural + `fmtDateTime`.
+
+42 new i18n keys/locale; `CACHE_VERSION` v52 → v53 (+precache
+`request-leave-modal.{js,css}`); new suite `test-leaves-render` (46 → 47).
+**Verified live via the Playwright MCP** (employer inline approve + detail
+hero/mini-cal/timeline; employee balance blocks, modal conflict box +
+balance-after + success + `?new=1`; privacy held; **zero console errors** both
+roles). Honest Disclosures (full list in RELEASES.md 0.35.0): half-day
+morning/afternoon deferred (needs a backend unit-model change); the mini-calendar
+duplicates Plan 5 calendar code (highlights only the start month of a spanning
+leave); employee conflict box is a count only (privacy); home/calendar reach the
+modal via redirect, not inline; no DOM/E2E tests (M16).
 
 ---
 

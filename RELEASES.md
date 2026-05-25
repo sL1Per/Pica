@@ -14,6 +14,86 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.35.0] — 2026-05-25 — M15 leaves restyle (list + request modal + detail)
+
+### What changed
+
+**M15 Plan 4** rebuilds the three leaves screens to the design, preserving every
+existing leave behavior and adding four design extras (all from existing
+endpoints — no backend change).
+
+- **Leaves list (`/leaves`).** Split into role regions.
+  - *Employee:* a "Your balance" card of four stat-blocks (vacation / sick /
+    appointment / other — remaining-over-total, used count, progress bar,
+    pending note; unlimited types show no cap) and a "Your history" section with
+    status tabs (counts per status) over status-accented rows.
+  - *Employer:* a honey-outlined **"Pending approval" inbox** with a
+    "N waiting on you" tag and **inline ✓ / ✗ on each pending row** (NEW — until
+    now only the detail page could decide), a "Team balance" matrix with a year
+    selector, and an "All requests" tabbed list. Inline approve runs the same
+    `/overlaps` concurrency check + confirm as the detail page; reject reveals an
+    inline note. On either, the list re-fetches so the row moves to History and
+    the tag/tabs recompute.
+- **Request-Leave modal.** The old `/leave-new` page is retired; requesting a
+  leave now opens a reusable `<dialog>` modal (`request-leave-modal.{js,css}`)
+  built on the 0.32.0 `modal.js` shell — type cards, Full-days/Hours toggle,
+  reason, and a file drop-zone (same 5 MB multipart upload). Plus three extras:
+  a **balance-after summary** (serif day count + remaining-after-deduction,
+  clay when overdrawn), a **conflict box** (counts approved leaves overlapping
+  the chosen range — anonymized count for employees, names for employers), and a
+  **success state** that replaces the body (check + "Request sent" + Request
+  another / Done). `/leaves/new` now `302`→`/leaves?new=1` (auto-opens the modal,
+  strips the query); `leave-new.{html,js}` deleted. The home "+ Book time off"
+  and calendar "Request leave" buttons reach the modal through that redirect.
+- **Leave detail (`/leaves/:id`).** Rebuilt to a two-column layout: a
+  status-hero card (status-colored bg/border + round icon + serif label +
+  blurb), Details / Reason / Attachment / Actions cards (the full attachment
+  add/replace/remove flow and approve / reject-with-note / cancel / revoke logic
+  are byte-identical, including the concurrency confirm), and a right column with
+  a **mini-calendar** (the leave's month, its days tinted by type, today
+  honey-bordered) and an **activity timeline** (Requested → decision, with the
+  rejection note as a bubble). Duration now uses locale-aware i18n plurals and
+  `fmtDateTime` (replacing the old hardcoded English strings).
+
+42 new i18n keys per locale (`rlm.*`, plus `leaves.*` / `leave.*` additions);
+`CACHE_VERSION` v52 → v53 (locales changed and `request-leave-modal.{js,css}`
+joined the precache list). New suite `test-leaves-render.mjs` (day-count +
+status-partition contract): 46 → 47.
+
+Verified live via the Playwright MCP on a throwaway server: employer inline
+approve (tabs/matrix recompute) + detail hero/mini-calendar/timeline; employee
+balance blocks, request modal with conflict box + balance-after + success state,
+`?new=1` auto-open; privacy held (employee sees only own leaves; conflict box is
+a count with no name); **zero console errors** on both roles.
+
+### Honest Disclosures
+
+- **Half-day morning/afternoon is NOT included.** The design's request modal
+  offers Full-day / Morning / Afternoon (0.5-day) buttons, but the backend leave
+  model only has `days` / `hours` units. Adding half-days needs a storage-layer
+  unit-model change (and balance/`daysOf` math), out of scope for a restyle
+  plan. The existing Hours unit covers sub-day leave in the meantime.
+- **The detail mini-calendar is self-contained**, duplicating month-grid logic
+  the Plan 5 Calendar will own. It's deliberate transitional code; Plan 5
+  unifies them. It also highlights only the portion of a multi-month leave that
+  falls in the leave's **start** month.
+- **The employee conflict box is a count only** ("N colleagues already off") —
+  no names — because `/api/leaves/approved` anonymizes other employees' leaves
+  for employees (by design). Employers see names. The box is informational;
+  concurrency is still enforced server-side at submit (0.22.17).
+- **Home / calendar reach the modal via the `/leaves?new=1` redirect**, not by
+  opening it inline on those pages (they don't link the modal assets yet). A
+  later pass could wire the modal directly into the employee home card.
+- **"Request another"** in the success state resets the form in place (it does
+  not preserve the previous values).
+- **No DOM / E2E tests** for the rendered markup — Playwright is M16. The new
+  unit suite covers only the pure helpers (day-count, status partition); the UI
+  was smoke-verified manually.
+- Pre-existing, untouched: the unauthenticated `GET /api/settings/me` 401 logged
+  once on the login page (palette pre-fetch before auth).
+
+---
+
 ## [0.34.0] — 2026-05-25 — Punch / topbar CSS polish (two pre-existing bug fixes)
 
 ### What changed

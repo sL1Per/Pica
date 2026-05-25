@@ -145,10 +145,9 @@ pica/
 │   ├── index.{html,js,css}  # dashboard with widgets
 │   ├── punch.{html,js,css}  # clock-in/out
 │   ├── punches-today.{html,js}
-│   ├── leaves.{html,js,css}
+│   ├── leaves.{html,js,css}  # M15 list: balance blocks / pending inbox + inline decide (0.35.0)
 │   ├── leaves-calendar.{html,js,css}
-│   ├── leave-new.{html,js}
-│   ├── leave.{html,js,css}  # leave detail
+│   ├── leave.{html,js,css}  # leave detail: status hero + mini-calendar + timeline (0.35.0)
 │   ├── reports.{html,js,css}
 │   ├── employees.{html,js,css}
 │   ├── employee-new.{html,js}
@@ -158,6 +157,7 @@ pica/
 │   ├── correction.{html,js,css}  # correction detail
 │   ├── modal.{js,css}                # generic reusable <dialog> shell (0.32.0)
 │   ├── manual-time-modal.{js,css}    # manual-time form modal; /corrections/new retired (0.32.0)
+│   ├── request-leave-modal.{js,css}  # leave-request modal; /leaves/new retired (0.35.0)
 │   ├── settings.{html,js,css}
 │   ├── preferences.{html,js,css}
 │   ├── security.{html,js,css}       # standalone page (passphrase/recovery/rotate);
@@ -193,6 +193,7 @@ pica/
 │   ├── test-employee-picture-route.mjs  # picture upload: 400 not 500 when no profile
 │   ├── test-leaves-concurrent.mjs  # no-concurrent-leave enforcement at booking
 │   ├── test-leaves-attachment.mjs  # leave justification file: storage, policy, authz
+│   ├── test-leaves-render.mjs      # M15 leaves frontend pure helpers (day-count + partition)
 │   ├── test-dek.mjs                # DEK wrap/unwrap + v1→v2 migration (0.23.0)
 │   ├── test-keyring.mjs            # multi-slot keyring operations (0.23.0)
 │   ├── test-rotate.mjs             # key rotation staged swap (0.23.0)
@@ -357,11 +358,12 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **46 suites** (+`test-employee-home` in 0.28.0 — employee-home
+- Total: **47 suites** (+`test-employee-home` in 0.28.0 — employee-home
   helpers; +`test-punch-week` in 0.30.0 — clock-page day-grouping/pairing
   helpers; the 0.31.0 corrections restyle, the 0.32.0 manual-time modal,
-  and the 0.33.0 employer-today restyle each added no new suite), passing
-  as of 0.34.0 except two pre-existing
+  and the 0.33.0 employer-today restyle each added no new suite;
+  +`test-leaves-render` in 0.35.0 — leaves day-count + status-partition
+  helpers), passing as of 0.35.0 except two pre-existing
   flakes unrelated to any recent feature, both failing identically on
   the pre-feature baseline: `test-reports.mjs` overnight-split bucket
   count (host-timezone sensitive) and `test-auth.mjs` (~1/64
@@ -475,4 +477,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.34.0._
+_Last touched in 0.35.0._
