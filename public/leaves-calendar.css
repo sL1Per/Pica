@@ -1,281 +1,248 @@
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--gap-4);
-  margin-bottom: var(--gap-5);
+/* ============================================================================
+   Leaves calendar — M15 design (Plan 5)
+   Tokens from app.css: --paper, --paper-2, --bg-2, --ink, --ink-2, --muted,
+   --honey, --honey-deep, --sage, --sage-soft, --clay, --clay-soft, --plum,
+   --line, --line-soft, --font-serif, --font-mono.
+   Per-type colors mirror the leave-detail mini-cal. Status / type coloring is
+   class-driven (popover/bar position + bar fill are CSSOM — never inline style=).
+   ============================================================================ */
+
+/* ---------- Page layout --------------------------------------------------- */
+
+.cal-page { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+@media (min-width: 980px) { .cal-page { grid-template-columns: 1fr 320px; } }
+.cal-main { min-width: 0; }
+.cal-rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* ---------- Header -------------------------------------------------------- */
+
+.cal-head { margin-bottom: 16px; }
+.cal-head__title { margin: 0; font-family: var(--font-serif); font-size: 1.75rem; line-height: 1.1; color: var(--ink); }
+.cal-head__sub { margin: 4px 0 0; font-size: var(--text-sm); color: var(--text-subtle); }
+
+/* ---------- Toolbar ------------------------------------------------------- */
+
+.cal-toolbar {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 12px; margin-bottom: 14px;
 }
-.page-header h1 { margin-bottom: var(--gap-1); }
-.page-header a { color: var(--accent); text-decoration: none; }
-.page-header a:hover { text-decoration: underline; }
-
-/* Container widens for the calendar — list views stay narrow. */
-
-
-.btn-link {
-  display: inline-block;
-  padding: var(--gap-2) var(--gap-4);
-  background: var(--accent);
-  color: white !important;
-  border-radius: var(--radius);
-  font-weight: 600;
-  text-decoration: none !important;
-  font-size: var(--text-sm);
-  margin-top: var(--gap-2);
+.cal-nav { display: flex; align-items: center; gap: 8px; }
+.cal-nav__btn {
+  margin-top: 0; width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--paper); color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  font-size: var(--text-md); cursor: pointer;
 }
-.btn-link:hover { background: var(--accent-hover); }
-
-/* Nav row */
-
-.cal-nav {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-2);
-  margin-bottom: var(--gap-3);
+.cal-nav__btn:hover { background: var(--paper-2); border-color: var(--border-strong); }
+.cal-month {
+  margin: 0 4px; min-width: 9.5rem;
+  font-family: var(--font-serif); font-size: 1.625rem; line-height: 1; color: var(--ink);
 }
-.cal-nav h2 {
-  flex: 1;
-  margin: 0;
-  text-align: center;
-  font-size: var(--text-lg);
+.cal-today {
+  margin-top: 0; height: 34px; padding: 0 14px;
+  background: var(--paper); color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  font-size: var(--text-sm); font-weight: 600; cursor: pointer;
 }
-.cal-nav button {
-  margin: 0;
-  padding: var(--gap-2) var(--gap-4);
-  min-width: 44px;       /* touch target */
-}
+.cal-today:hover { background: var(--paper-2); }
 
-/* Grid */
+.cal-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cal-chip {
+  margin-top: 0; height: 28px; padding: 0 10px;
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 999px; border: 1px solid transparent;
+  background: transparent; color: var(--muted);
+  font-size: var(--text-xs); font-weight: 600; text-transform: capitalize; cursor: pointer;
+}
+.cal-chip__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.cal-chip--vacation.cal-chip--on    { background: #F4E4C7;          border-color: var(--honey); color: var(--honey-deep); }
+.cal-chip--sick.cal-chip--on        { background: var(--clay-soft); border-color: var(--clay);  color: var(--clay); }
+.cal-chip--appointment.cal-chip--on { background: var(--sage-soft); border-color: var(--sage);  color: var(--sage); }
+.cal-chip--other.cal-chip--on       { background: var(--paper-2);   border-color: var(--plum);  color: var(--plum); }
+.cal-chip--blocked.cal-chip--on     { background: var(--paper-2);   border-color: var(--line);  color: var(--ink-2); }
+.cal-chip--vacation    .cal-chip__dot { background: var(--honey); }
+.cal-chip--sick        .cal-chip__dot { background: var(--clay); }
+.cal-chip--appointment .cal-chip__dot { background: var(--sage); }
+.cal-chip--other       .cal-chip__dot { background: var(--plum); }
+.cal-chip--blocked     .cal-chip__dot { background: var(--muted); }
+.cal-chip:not(.cal-chip--on) { opacity: 0.65; }
+
+.cal-scope { display: inline-flex; gap: 4px; padding: 3px; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius); margin-left: auto; }
+.cal-scope__btn {
+  margin-top: 0; height: 28px; padding: 0 12px;
+  background: transparent; color: var(--text-muted);
+  border: none; border-radius: var(--radius-sm);
+  font-size: var(--text-xs); font-weight: 600; cursor: pointer;
+}
+.cal-scope__btn--active { background: var(--paper); color: var(--accent); box-shadow: var(--shadow-sm); }
+
+/* ---------- Weekday header + grid ----------------------------------------- */
+
+.cal-weekhead { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--paper); border: 1px solid var(--line-soft); border-bottom: none; border-radius: var(--radius-lg) var(--radius-lg) 0 0; overflow: hidden; }
+.cal-weekhead__cell { padding: 10px 12px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.cal-weekhead__cell--weekend { color: var(--muted); }
 
 .cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 1px; background: var(--line-soft);
+  border: 1px solid var(--line-soft); border-top: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden;
+}
+.cal-cell {
+  position: relative; min-height: 108px;
+  padding: 8px 10px 10px; background: var(--paper);
+  display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+  transition: background var(--t-fast);
+}
+.cal-cell--weekend { background: var(--bg-2); }
+.cal-cell--outside { background: var(--paper-2); opacity: 0.5; cursor: default; }
+.cal-cell--today   { background: var(--paper-2); }
+.cal-cell:hover:not(.cal-cell--outside) { background: var(--paper-2); }
+.cal-cell--blocked::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(0,0,0,.045) 6px 7px);
+}
+.cal-cell__num {
+  align-self: flex-start;
+  font-size: 13px; font-weight: 500; color: var(--ink-2);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.cal-cell--outside .cal-cell__num { color: var(--muted); }
+.cal-cell--today .cal-cell__num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--honey); color: #FBF6EC; font-weight: 700;
+}
+.cal-cell__closed {
+  position: absolute; top: 6px; right: 8px; z-index: 1;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted);
 }
 
-.cal-weekday {
-  background: var(--surface);
-  padding: var(--gap-2);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  color: var(--text-muted);
-}
+/* ---------- Leave pills --------------------------------------------------- */
 
-.cal-day {
-  background: var(--bg);
-  min-height: 80px;
-  padding: var(--gap-2);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  position: relative;
+.cal-pill {
+  position: relative; z-index: 1;
+  border-radius: 6px; padding: 3px 6px 3px 8px;
+  font-size: 11.5px; font-weight: 500; line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border-left: 3px solid var(--line);
+  background: var(--paper-2); color: var(--ink-2);
+  text-decoration: none; display: block;
 }
-.cal-day--other-month {
-  background: var(--surface);
-  color: var(--text-subtle);
+.cal-pill--vacation    { background: #F4E4C7;          color: var(--honey-deep); border-left-color: var(--honey); }
+.cal-pill--sick        { background: var(--clay-soft); color: var(--clay);       border-left-color: var(--clay); }
+.cal-pill--appointment { background: var(--sage-soft); color: var(--sage);       border-left-color: var(--sage); }
+.cal-pill--other       { background: var(--paper-2);   color: var(--plum);       border-left-color: var(--plum); }
+.cal-pill--pending {
+  background: transparent; color: var(--muted);
+  border: 1px dashed var(--line); border-left: 3px dashed var(--honey);
 }
-.cal-day--today .cal-day__num {
-  background: var(--accent);
-  color: white;
-  border-radius: 50%;
-  width: 24px; height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: auto;
-}
+.cal-pill--self { font-weight: 700; }
+.cal-pill--anonymized { background: var(--paper-2); color: var(--muted); border-left-color: var(--line); cursor: default; }
+.cal-more { z-index: 1; font-size: 11px; font-weight: 500; color: var(--muted); padding: 1px 4px; }
 
-.cal-day__num {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-muted);
-}
+/* ---------- Day popover --------------------------------------------------- */
 
-/* Leave bars */
+.cal-pop {
+  position: absolute; z-index: 50;
+  min-width: 280px; max-width: 340px;
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 14px; padding: 16px;
+  box-shadow: 0 12px 32px -8px rgba(0,0,0,.18), 0 2px 8px -2px rgba(0,0,0,.06);
+}
+.cal-pop__close {
+  position: absolute; top: 8px; right: 10px; margin-top: 0;
+  width: auto; min-height: 0; padding: 0;
+  background: none; border: none; color: var(--muted);
+  font-size: 22px; line-height: 1; cursor: pointer;
+}
+.cal-pop__date { font-family: var(--font-serif); font-size: 22px; line-height: 1.1; color: var(--ink); margin-bottom: 14px; }
+.cal-pop__empty { font-size: 13px; color: var(--muted); padding: 4px 0; }
+.cal-pop__row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line-soft); text-decoration: none; }
+.cal-pop__row:first-of-type { border-top: none; }
+.cal-pop__av {
+  width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--paper-2); border: 1px solid var(--line);
+  color: var(--ink-2); font-size: 12px; font-weight: 700;
+}
+.cal-pop__body { flex: 1; min-width: 0; }
+.cal-pop__name { font-weight: 500; font-size: 13.5px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-pop__meta { font-size: 12px; color: var(--muted); }
+.cal-pop__req {
+  margin-top: 12px; width: 100%; height: 36px; margin-bottom: 0;
+  background: var(--paper-2); border: 1px dashed var(--line); color: var(--ink-2);
+  border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.cal-pop__req:hover { border-color: var(--honey); color: var(--ink); }
 
-.cal-bar {
-  display: block;
-  padding: 2px 6px;
-  font-size: 11px;
-  line-height: 1.25;
-  border-radius: 3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-decoration: none;
-  color: inherit;
-  border-left: 3px solid transparent;
-}
-.cal-bar:hover { filter: brightness(0.95); }
-.cal-bar--vacation    { background: #e3f0fb; border-left-color: #1f72c7; color: #0d3e72; }
-.cal-bar--sick        { background: #fde6e6; border-left-color: #b33a3a; color: #6c1717; }
-.cal-bar--appointment { background: #f0e7fa; border-left-color: #7a4ec3; color: #3a1f6b; }
-.cal-bar--other       { background: #eee; border-left-color: #888; color: #333; }
-.cal-bar--anonymized  { background: repeating-linear-gradient(135deg, #eee, #eee 4px, #e3e3e3 4px, #e3e3e3 8px); border-left-color: #aaa; color: #555; font-style: italic; }
-
-.cal-bar--self {
-  font-weight: 700;
-  box-shadow: inset 0 0 0 1px currentColor;
-}
-
-.cal-bar__name { font-weight: 600; }
-
-/* Empty state — small touch on cells with no leaves */
-
-.cal-day__empty {
-  flex: 1;
-}
-
-/* Employer-blocked days — distinct amber hatch, clearly not a leave type. */
-.cal-day--blocked {
-  background-image: repeating-linear-gradient(
-    135deg, transparent, transparent 7px,
-    rgba(194, 124, 12, 0.12) 7px, rgba(194, 124, 12, 0.12) 9px);
-}
-.cal-day__blocked {
-  display: block;
-  padding: 2px 6px;
-  font-size: 11px;
-  line-height: 1.25;
-  border-radius: 3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: #fbedd6;
-  border-left: 3px solid #c27c0c;
-  color: #6b4209;
-  font-weight: 600;
-}
-
-/* Legend */
-
-.legend {
-  margin-top: var(--gap-4);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-2);
-  align-items: center;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-.legend strong { color: var(--text); }
-.legend__chip {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 3px;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  border-left: 3px solid transparent;
-}
-.legend__chip--vacation    { background: #e3f0fb; border-left-color: #1f72c7; color: #0d3e72; }
-.legend__chip--sick        { background: #fde6e6; border-left-color: #b33a3a; color: #6c1717; }
-.legend__chip--appointment { background: #f0e7fa; border-left-color: #7a4ec3; color: #3a1f6b; }
-.legend__chip--other       { background: #eee; border-left-color: #888; color: #333; }
-.legend__chip--blocked     { background: #fbedd6; border-left-color: #c27c0c; color: #6b4209; }
-
-/* ---------- Tap-to-expand day-details panel ------------------------------ */
-/* Shown when the user taps a day. Lists every leave for that day with
-   full readable detail — primary read surface on mobile where bars
-   collapse to colored pills with no text. */
-
-.cal-details {
-  margin-top: var(--gap-4);
-  padding: var(--gap-3) var(--gap-4);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-.cal-details__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gap-3);
-  margin-bottom: var(--gap-2);
-}
-.cal-details__title {
-  margin: 0;
-  font-size: var(--text-md);
-  font-weight: 700;
-}
-.cal-details__close {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 1.5rem;
-  line-height: 1;
-  padding: 0 var(--gap-2);
-  cursor: pointer;
-  margin: 0;
-  min-width: 32px;
-}
-.cal-details__close:hover { color: var(--text); }
-.cal-details__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-2);
-}
-.cal-details__row {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-3);
-  padding: var(--gap-2);
-  border-radius: var(--radius);
-  background: var(--bg);
-  text-decoration: none;
-  color: inherit;
-  border-left: 3px solid transparent;
-}
-.cal-details__row:hover { filter: brightness(0.97); }
-.cal-details__row--vacation    { border-left-color: #1f72c7; }
-.cal-details__row--sick        { border-left-color: #b33a3a; }
-.cal-details__row--appointment { border-left-color: #7a4ec3; }
-.cal-details__row--other       { border-left-color: #888; }
-.cal-details__row--anonymized  { border-left-color: #aaa; font-style: italic; color: var(--text-muted); }
-.cal-details__row--blocked     { border-left-color: #c27c0c; background: #fbedd6; color: #6b4209; }
-.cal-details__row--self        { box-shadow: inset 0 0 0 1px var(--accent); }
-.cal-details__row-name { font-weight: 600; }
-.cal-details__row-meta { color: var(--text-muted); font-size: var(--text-sm); margin-left: auto; }
-.cal-details__empty   { color: var(--text-muted); font-size: var(--text-sm); padding: var(--gap-2); }
-
-/* Highlight the day cell currently expanded in the details panel. */
-.cal-day--selected {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-  z-index: 1;
-}
-
-/* ---------- Mobile tuning ------------------------------------------------ */
-
+/* Mobile: popover becomes a bottom sheet. */
 @media (max-width: 600px) {
-
-  .cal-day {
-    min-height: 60px;
-    padding: 4px;
-    cursor: pointer;       /* tap affordance */
-    -webkit-tap-highlight-color: rgba(0,0,0,0.05);
+  .cal-pop {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto !important;
+    width: auto; max-width: none; min-width: 0;
+    border-radius: 16px 16px 0 0;
   }
-  .cal-weekday { padding: 4px; font-size: 10px; }
-  .cal-bar {
-    font-size: 10px;
-    padding: 1px 4px;
-    pointer-events: none;  /* let cell handler take the tap */
-  }
-  /* Hide name text on very narrow screens — keep only the type color. */
-  .cal-bar__name { display: none; }
-  .cal-nav h2 { font-size: var(--text-md); }
+}
 
-  /* Details panel sits flush below the grid on mobile, no extra margin. */
-  .cal-details { margin-top: var(--gap-3); padding: var(--gap-2); }
-  .cal-details__row { padding: var(--gap-2); }
-  .cal-details__row-meta { font-size: var(--text-xs); }
+/* ---------- Right rail ---------------------------------------------------- */
+
+.cal-rail__card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+.cal-rail__title { margin: 0 0 14px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.cal-rail__empty { font-size: 13px; color: var(--muted); text-align: center; padding: 14px 0; }
+
+.cal-cta {
+  width: 100%; height: 48px; margin-top: 14px;
+  background: var(--honey); color: #FBF6EC; border: none; border-radius: 12px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255,255,255,.2) inset, 0 6px 14px -6px rgba(201,122,26,.5);
+}
+.cal-cta:hover { background: var(--honey-deep); }
+
+.cal-bal__row { display: flex; align-items: baseline; gap: 8px; }
+.cal-bal__big { font-family: var(--font-serif); font-size: 2.75rem; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cal-bal__unit { font-size: 14px; color: var(--muted); }
+.cal-bal__bar { height: 6px; border-radius: 3px; background: var(--bg-2); overflow: hidden; margin-top: 8px; }
+.cal-bal__fill { height: 100%; width: calc(var(--pct, 0) * 1%); background: var(--sage); border-radius: 3px; }
+
+.cal-out__row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line-soft); }
+.cal-out__row:first-of-type { border-top: none; }
+.cal-out__body { min-width: 0; }
+.cal-out__name { font-weight: 500; font-size: 13.5px; color: var(--ink); line-height: 1.2; }
+.cal-out__sub { font-size: 11.5px; color: var(--muted); }
+.cal-out__tag {
+  margin-left: auto; flex-shrink: 0;
+  font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+  background: var(--paper-2); color: var(--muted); text-transform: capitalize;
+}
+.cal-out__tag--vacation    { background: #F4E4C7;          color: var(--honey-deep); }
+.cal-out__tag--sick        { background: var(--clay-soft); color: var(--clay); }
+.cal-out__tag--appointment { background: var(--sage-soft); color: var(--sage); }
+.cal-out__tag--other       { background: var(--paper-2);   color: var(--plum); }
+
+/* Employer pending card rows + inline actions */
+.cal-pend__row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line-soft); }
+.cal-pend__row:first-of-type { border-top: none; }
+.cal-pend__body { flex: 1; min-width: 0; }
+.cal-pend__name { font-weight: 500; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-pend__meta { font-size: 11.5px; color: var(--muted); font-family: var(--font-mono); }
+.cal-pend__actions { display: flex; gap: 6px; flex-shrink: 0; }
+.cal-act {
+  width: 30px; height: 30px; margin-top: 0; padding: 0; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 600; line-height: 1; cursor: pointer;
+  border: 1px solid var(--line); background: var(--paper-2); color: var(--ink-2);
+}
+.cal-act--approve { background: var(--sage); border-color: var(--sage); color: #fff; }
+.cal-act--approve:hover:not(:disabled) { opacity: 0.88; }
+.cal-act--reject:hover:not(:disabled) { background: var(--clay-soft); border-color: var(--clay); color: var(--clay); }
+
+/* ---------- Mobile ≤ 760px ----------------------------------------------- */
+
+@media (max-width: 760px) {
+  .cal-cell { min-height: 84px; padding: 6px 6px 8px; }
+  .cal-scope { margin-left: 0; }
+  .cal-rail__card { padding: 16px; }
 }
