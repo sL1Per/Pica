@@ -29,58 +29,90 @@
   <link rel="stylesheet" href="/leave.css">
 </head>
 <body>
-  <main class="container">
-    <header class="page-header">
-      <div>
-        <h1 id="page-title" data-i18n="leave.title">Leave</h1>
-        <p class="muted"><a href="/leaves" data-i18n="leave.backToLeaves">← Back to list</a></p>
-      </div>
-    </header>
+  <main class="container container--wide">
+    <a href="/leaves" class="ldet-back" data-i18n="leave.backToLeaves">← Back to leaves</a>
 
     <div id="message" class="message"></div>
 
-    <section class="card" id="detail" hidden>
-      <div id="status-banner" class="status-banner"></div>
+    <div id="detail" class="ldet-grid" hidden>
+      <div class="ldet-main">
 
-      <dl class="leave-summary">
-        <dt data-i18n="leave.fieldEmployee">Employee</dt>   <dd id="f-employee"></dd>
-        <dt data-i18n="leave.fieldType">Type</dt>       <dd id="f-type"></dd>
-        <dt data-i18n="leave.fieldWhen">When</dt>       <dd id="f-when"></dd>
-        <dt data-i18n="leave.fieldDuration">Duration</dt>   <dd id="f-duration"></dd>
-        <dt data-i18n="leave.fieldRequested">Requested</dt>  <dd id="f-created"></dd>
-        <dt id="l-reason-dt" hidden data-i18n="leave.fieldReason">Reason</dt>
-        <dd id="f-reason" hidden></dd>
-        <dt id="l-attachment-dt" hidden data-i18n="leave.fieldAttachment">Attachment</dt>
-        <dd id="f-attachment" hidden></dd>
-      </dl>
-
-      <div id="attachment-edit" class="attachment-edit" hidden>
-        <label for="att-file" data-i18n="leave.attachmentChange">Add or replace file</label>
-        <input type="file" id="att-file"
-               accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/jpeg,image/png,image/gif,image/webp">
-        <div class="actions">
-          <button type="button" id="att-upload" class="secondary" data-i18n="leave.attachmentUpload">Upload</button>
-          <button type="button" id="att-remove" class="secondary" hidden data-i18n="leave.attachmentRemove">Remove</button>
+        <!-- Status hero -->
+        <div id="status-hero" class="ldet-hero">
+          <div id="hero-icon" class="ldet-hero__icon"></div>
+          <div class="ldet-hero__body">
+            <h1 id="hero-label" class="ldet-hero__label"></h1>
+            <p id="hero-blurb" class="ldet-hero__blurb"></p>
+          </div>
         </div>
-        <p class="subtle" data-i18n="leaveNew.attachmentHint">PDF or image, max 5 MB. Encrypted; visible only to you and your employer.</p>
+
+        <!-- Details -->
+        <section class="ldet-card">
+          <h2 class="ldet-card__title" data-i18n="leave.detailsHeading">Details</h2>
+          <dl class="ldet-dl">
+            <dt data-i18n="leave.fieldEmployee">Employee</dt>  <dd id="f-employee"></dd>
+            <dt data-i18n="leave.fieldType">Type</dt>          <dd id="f-type"></dd>
+            <dt data-i18n="leave.fieldWhen">When</dt>          <dd id="f-when" class="ldet-mono"></dd>
+            <dt data-i18n="leave.fieldDuration">Duration</dt>  <dd id="f-duration"></dd>
+            <dt data-i18n="leave.fieldRequested">Requested</dt><dd id="f-created" class="ldet-mono"></dd>
+          </dl>
+        </section>
+
+        <!-- Reason -->
+        <section class="ldet-card">
+          <h2 class="ldet-card__title" data-i18n="leave.fieldReason">Reason</h2>
+          <div id="f-reason" class="ldet-reason--empty"></div>
+        </section>
+
+        <!-- Attachment -->
+        <section class="ldet-card" id="attachment-card" hidden>
+          <h2 class="ldet-card__title" data-i18n="leave.fieldAttachment">Attachment</h2>
+          <div id="f-attachment"></div>
+          <div id="attachment-edit" class="attachment-edit" hidden>
+            <label for="att-file" data-i18n="leave.attachmentChange">Add or replace file</label>
+            <input type="file" id="att-file"
+                   accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/jpeg,image/png,image/gif,image/webp">
+            <div class="actions">
+              <button type="button" id="att-upload" class="btn-ghost" data-i18n="leave.attachmentUpload">Upload</button>
+              <button type="button" id="att-remove" class="btn-ghost" hidden data-i18n="leave.attachmentRemove">Remove</button>
+            </div>
+            <p class="subtle" data-i18n="leaveNew.attachmentHint">PDF or image, max 5 MB. Encrypted; visible only to you and your employer.</p>
+          </div>
+        </section>
+
+        <!-- Decision note -->
+        <section class="ldet-card ldet-decided" id="decided-note" hidden>
+          <div class="ldet-decided__label" id="decided-label"></div>
+          <div class="ldet-decided__notes" id="decided-notes"></div>
+        </section>
+
+        <!-- Actions -->
+        <section class="ldet-card" id="actions-card" hidden>
+          <h2 class="ldet-card__title" data-i18n="leave.actionsHeading">Actions</h2>
+          <div class="ldet-actions" id="actions"></div>
+
+          <div id="reject-dialog" class="reject-dialog" hidden>
+            <label for="reject-notes" data-i18n="leave.rejectNotesEmployee">Notes for the employee (optional)</label>
+            <textarea id="reject-notes" rows="3" maxlength="500"></textarea>
+            <div class="actions">
+              <button type="button" id="reject-cancel" class="btn-ghost" data-i18n="leave.cancelButton">Cancel</button>
+              <button type="button" id="reject-confirm" class="btn-reject" data-i18n="leave.actionReject">Reject</button>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <div id="decided-note" class="decided-note" hidden>
-        <div class="decided-note__label" id="decided-label"></div>
-        <div id="decided-notes"></div>
-      </div>
-
-      <div class="actions" id="actions"></div>
-
-      <div id="reject-dialog" class="reject-dialog" hidden>
-        <label for="reject-notes" data-i18n="leave.rejectNotesEmployee">Notes for the employee (optional)</label>
-        <textarea id="reject-notes" rows="3" maxlength="500"></textarea>
-        <div class="actions">
-          <button type="button" id="reject-cancel" class="secondary" data-i18n="leave.cancelButton">Cancel</button>
-          <button type="button" id="reject-confirm" class="btn-reject" data-i18n="leave.actionReject">Reject</button>
-        </div>
-      </div>
-    </section>
+      <aside class="ldet-aside">
+        <section class="ldet-card">
+          <h2 class="ldet-card__title" data-i18n="leave.inCalendar">In the calendar</h2>
+          <div id="mini-cal"></div>
+        </section>
+        <section class="ldet-card">
+          <h2 class="ldet-card__title" data-i18n="leave.activity">Activity</h2>
+          <div id="activity"></div>
+        </section>
+      </aside>
+    </div>
   </main>
 
   <script type="module" src="/leave.js"></script>
