@@ -1,6 +1,7 @@
-import { showMessage } from '/app.js';
+import { showMessage, postJson } from '/app.js';
 import { t, applyTranslations, fmtHours } from '/i18n.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
+import { openRequestLeaveModal } from '/request-leave-modal.js';
 
 mountTopBar();
 mountFooter();
@@ -8,33 +9,38 @@ applyTranslations();
 
 // -- DOM refs ---------------------------------------------------------------
 
-const listEl = document.getElementById('leave-list');
-const messageEl = document.getElementById('message');
-const filterBar = document.querySelector('.filter-bar');
-const yearSelect = document.getElementById('year-select');
-const tblEmployee = document.getElementById('balance-table-employee');
-const tblEmployer = document.getElementById('balance-table-employer');
-const tblEmployerWrap = document.getElementById('balance-table-employer-wrap');
+const messageEl     = document.getElementById('message');
+const requestBtn    = document.getElementById('request-btn');
+const empRegion     = document.getElementById('emp-region');
+const emprRegion    = document.getElementById('empr-region');
+// Employee
+const balanceBlocks = document.getElementById('balance-blocks');
+const filterBar     = document.getElementById('filter-bar');
+const listEl        = document.getElementById('leave-list');
+// Employer
+const pendingList   = document.getElementById('pending-list');
+const pendingTag    = document.getElementById('pending-tag');
+const yearSelect    = document.getElementById('year-select');
+const matrix        = document.getElementById('balance-matrix');
+const filterBarEmpr = document.getElementById('filter-bar-empr');
+const listEmpr      = document.getElementById('leave-list-empr');
 
 // -- State ------------------------------------------------------------------
 
+const FILTERS = ['all', 'pending', 'approved', 'rejected', 'cancelled'];
 let allLeaves = [];
 let me = null;
-let activeFilter = 'all';
+let activeFilter = 'all';        // employee history
+let activeFilterEmpr = 'all';    // employer all-requests
 let currentYear = new Date().getFullYear();
 
 // -- Helpers ----------------------------------------------------------------
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]));
-}
+function fmt(n) { return fmtHours(n); }
 
 function formatRange(leave) {
   if (leave.unit === 'days') {
-    if (leave.start === leave.end) return leave.start;
-    return `${leave.start} → ${leave.end}`;
+    return leave.start === leave.end ? leave.start : `${leave.start} → ${leave.end}`;
   }
   const s = new Date(leave.start);
   const e = new Date(leave.end);
@@ -45,129 +51,375 @@ function formatRange(leave) {
   return sameDay ? `${ds}, ${hs}–${he}` : `${leave.start} → ${leave.end}`;
 }
 
-function fmt(n) {
-  // Keep whole numbers clean, half-days visible.
-  return fmtHours(n);
+// Compact count badge for the row aside (e.g. "3d" / "4h").
+function dayCount(leave) {
+  if (leave.unit === 'hours') {
+    return typeof leave.hours === 'number' ? `${fmt(leave.hours)}h` : '';
+  }
+  const s = new Date(leave.start);
+  const e = new Date(leave.end);
+  const days = Math.round((e - s) / 86_400_000) + 1;
+  return `${days}d`;
 }
 
-// -- List rendering (unchanged from before) ---------------------------------
+function countsByStatus(leaves) {
+  const c = { all: leaves.length, pending: 0, approved: 0, rejected: 0, cancelled: 0 };
+  for (const l of leaves) if (c[l.status] !== undefined) c[l.status] += 1;
+  return c;
+}
 
-function renderList() {
-  const filtered = activeFilter === 'all'
-    ? allLeaves
-    : allLeaves.filter((l) => l.status === activeFilter);
+// -- Row rendering ----------------------------------------------------------
 
-  listEl.innerHTML = '';
-  if (filtered.length === 0) {
+function renderRow(l, { showName, withActions }) {
+  const li = document.createElement('li');
+
+  const row = document.createElement('div');
+  row.className = `lv-row lv-row--${l.status}`;
+
+  const accent = document.createElement('span');
+  accent.className = 'lv-row__accent';
+  row.appendChild(accent);
+
+  const a = document.createElement('a');
+  a.className = 'lv-row__link';
+  a.href = `/leaves/${l.id}`;
+
+  const main = document.createElement('div');
+  main.className = 'lv-row__main';
+
+  const who = document.createElement('div');
+  who.className = 'lv-row__who';
+  who.textContent = showName ? (l.fullName || l.username || l.employeeId) : t('leaves.type.' + l.type);
+  main.appendChild(who);
+
+  const when = document.createElement('div');
+  when.className = 'lv-row__when';
+  when.textContent = formatRange(l);
+  main.appendChild(when);
+
+  if (showName) {
+    const chips = document.createElement('div');
+    chips.className = 'lv-row__chips';
+    const typeChip = document.createElement('span');
+    typeChip.className = 'lv-type';
+    typeChip.textContent = t('leaves.type.' + l.type);
+    chips.appendChild(typeChip);
+    main.appendChild(chips);
+  }
+
+  if (l.reason) {
+    const note = document.createElement('div');
+    note.className = 'subtle';
+    note.textContent = l.reason;
+    main.appendChild(note);
+  }
+
+  const aside = document.createElement('div');
+  aside.className = 'lv-row__chips';
+  const days = document.createElement('span');
+  days.className = 'lv-row__days';
+  days.textContent = dayCount(l);
+  const status = document.createElement('span');
+  status.className = `lv-status lv-status--${l.status}`;
+  status.textContent = t('status.' + l.status);
+  aside.append(days, status);
+
+  a.append(main, aside);
+  row.appendChild(a);
+
+  if (withActions) row.appendChild(buildInlineActions(l, li));
+
+  li.appendChild(row);
+  return li;
+}
+
+// -- Employer inline approve / reject --------------------------------------
+
+function buildInlineActions(l, li) {
+  const wrap = document.createElement('div');
+  wrap.className = 'lv-rowact';
+
+  const approve = document.createElement('button');
+  approve.type = 'button';
+  approve.className = 'lv-act lv-act--approve';
+  approve.textContent = '✓';
+  approve.title = t('leave.actionApprove');
+  approve.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    inlineApprove(l, approve);
+  });
+
+  const reject = document.createElement('button');
+  reject.type = 'button';
+  reject.className = 'lv-act lv-act--reject';
+  reject.textContent = '✗';
+  reject.title = t('leave.actionReject');
+  reject.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleRejectNote(l, li);
+  });
+
+  wrap.append(approve, reject);
+  return wrap;
+}
+
+async function inlineApprove(l, btn) {
+  showMessage(messageEl, '');
+  // Concurrency check (same as the detail page): warn before approving if the
+  // policy forbids concurrent leaves and approved overlaps exist.
+  let overlaps = [];
+  let concurrentAllowed = true;
+  try {
+    const r = await fetch(`/api/leaves/${l.id}/overlaps`, { credentials: 'same-origin' });
+    if (r.ok) { const j = await r.json(); overlaps = j.overlaps ?? []; concurrentAllowed = j.concurrentAllowed !== false; }
+  } catch { /* non-fatal — skip the warning */ }
+
+  if (overlaps.length > 0 && !concurrentAllowed) {
+    const names = overlaps.map((o) => o.fullName || o.username || t('rlm.someone')).join(', ');
+    if (!confirm(t('leaves.concurrentConfirm', { n: overlaps.length, names }))) return;
+  }
+
+  btn.disabled = true;
+  const res = await postJson(`/api/leaves/${l.id}/approve`, {});
+  if (res.ok) {
+    await loadAll();
+  } else {
+    btn.disabled = false;
+    showMessage(messageEl, res.data.error || t('leaves.actionFailed'), 'error');
+  }
+}
+
+function toggleRejectNote(l, li) {
+  const existing = li.querySelector('.lv-reject');
+  if (existing) { existing.remove(); return; }
+
+  const box = document.createElement('div');
+  box.className = 'lv-reject';
+
+  const ta = document.createElement('textarea');
+  ta.className = 'lv-reject__input';
+  ta.rows = 2;
+  ta.maxLength = 500;
+  ta.placeholder = t('leave.rejectNotesEmployee');
+
+  const actions = document.createElement('div');
+  actions.className = 'lv-reject__actions';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'btn-ghost';
+  cancel.textContent = t('leave.cancelButton');
+  cancel.addEventListener('click', () => box.remove());
+  const confirmBtn = document.createElement('button');
+  confirmBtn.type = 'button';
+  confirmBtn.className = 'btn-reject';
+  confirmBtn.textContent = t('leave.actionReject');
+  confirmBtn.addEventListener('click', async () => {
+    confirmBtn.disabled = true;
+    showMessage(messageEl, '');
+    const res = await postJson(`/api/leaves/${l.id}/reject`, { notes: ta.value.trim() });
+    if (res.ok) { await loadAll(); }
+    else { confirmBtn.disabled = false; showMessage(messageEl, res.data.error || t('leaves.actionFailed'), 'error'); }
+  });
+  actions.append(cancel, confirmBtn);
+
+  box.append(ta, actions);
+  li.appendChild(box);
+  ta.focus();
+}
+
+// -- Filter tabs ------------------------------------------------------------
+
+function renderFilterBar(barEl, active, counts, onPick) {
+  barEl.replaceChildren();
+  for (const f of FILTERS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'lv-filter__btn' + (f === active ? ' lv-filter__btn--active' : '');
+    const label = document.createElement('span');
+    label.textContent = t('leaves.filter' + f.charAt(0).toUpperCase() + f.slice(1));
+    btn.appendChild(label);
+    const cnt = document.createElement('span');
+    cnt.className = 'lv-filter__count';
+    cnt.textContent = String(counts[f] ?? 0);
+    btn.appendChild(cnt);
+    btn.addEventListener('click', () => onPick(f));
+    barEl.appendChild(btn);
+  }
+}
+
+function filtered(leaves, f) {
+  return f === 'all' ? leaves : leaves.filter((l) => l.status === f);
+}
+
+function renderListInto(ulEl, leaves, f, opts) {
+  ulEl.replaceChildren();
+  const rows = filtered(leaves, f);
+  if (rows.length === 0) {
     const li = document.createElement('li');
-    li.className = 'empty';
-    li.textContent = activeFilter === 'all'
+    li.className = 'lv-empty';
+    li.textContent = f === 'all'
       ? t('leaves.noEntriesAll')
-      : t('leaves.noEntriesFiltered', { filter: t('leaves.filter' + activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1)).toLowerCase() });
-    listEl.appendChild(li);
+      : t('leaves.noEntriesFiltered', { filter: t('leaves.filter' + f.charAt(0).toUpperCase() + f.slice(1)).toLowerCase() });
+    ulEl.appendChild(li);
     return;
   }
-  for (const l of filtered) {
-    const li = document.createElement('li');
-    const a = document.createElement('a');
-    a.className = `leave-list__item leave-list__item--${l.status}`;
-    a.href = `/leaves/${l.id}`;
-
-    const who = (me.role === 'employer') ? (l.fullName || l.username) : null;
-
-    a.innerHTML = `
-      <div class="leave-list__row">
-        <div class="leave-list__title">
-          <span class="type-tag">${escapeHtml(t('leaves.type.' + l.type))}</span>${who ? escapeHtml(who) : escapeHtml(formatRange(l))}
-        </div>
-        <span class="status-badge status-badge--${l.status}">${escapeHtml(t('status.' + l.status))}</span>
-      </div>
-      <div class="leave-list__meta">${who ? escapeHtml(formatRange(l)) : ''}${l.reason ? (who ? ' · ' : '') + escapeHtml(l.reason) : ''}</div>
-    `;
-    li.appendChild(a);
-    listEl.appendChild(li);
-  }
+  for (const l of rows) ulEl.appendChild(renderRow(l, opts));
 }
 
-// -- Balance rendering ------------------------------------------------------
+// -- Employee balance blocks ------------------------------------------------
 
-function renderEmployeeBalance(balances) {
-  const tbody = tblEmployee.querySelector('tbody');
-  tbody.innerHTML = '';
+function renderBalanceBlocks(balances) {
+  balanceBlocks.replaceChildren();
   for (const b of balances) {
-    const tr = document.createElement('tr');
-    const overLimit = b.remaining < 0 ? ' balance-row--over' : '';
-    tr.className = `balance-row${overLimit}`;
-    // allowance===0 means "no cap" — display "—" instead of zeros that would
-    // misread as "you have nothing".
     const unlimited = b.allowance === 0;
-    // Show carry-in alongside the base allowance when active (vacation only).
-    // Format: "22 + 5" with a tooltip naming the expiry date.
-    let allowanceCell = unlimited ? '—' : fmt(b.allowance);
-    if (!unlimited && b.carryIn > 0) {
-      const tip = b.carryExpiresAt
-        ? t('leaves.carryTooltip', { date: b.carryExpiresAt })
-        : '';
-      allowanceCell = `${fmt(b.allowance)} <span class="balance-cell--carry" title="${escapeHtml(tip)}">+${fmt(b.carryIn)}</span>`;
+    const cap = b.effectiveAllowance ?? b.allowance;
+
+    const block = document.createElement('div');
+    block.className = 'lv-bal__block';
+
+    const type = document.createElement('span');
+    type.className = 'lv-bal__type';
+    type.textContent = t('leaves.type.' + b.type);
+    block.appendChild(type);
+
+    const nums = document.createElement('div');
+    nums.className = 'lv-bal__nums';
+    const num = document.createElement('span');
+    num.className = 'lv-bal__num';
+    num.textContent = unlimited ? fmt(b.booked) : fmt(b.remaining);
+    nums.appendChild(num);
+    if (!unlimited) {
+      const total = document.createElement('span');
+      total.className = 'lv-bal__total';
+      total.textContent = `/ ${fmt(cap)}`;
+      nums.appendChild(total);
     }
-    tr.innerHTML = `
-      <td><span class="type-tag">${escapeHtml(t('leaves.type.' + b.type))}</span></td>
-      <td class="right">${allowanceCell}</td>
-      <td class="right balance-cell--pending">${b.pending > 0 ? fmt(b.pending) : '—'}</td>
-      <td class="right">${fmt(b.booked)}</td>
-      <td class="right balance-cell--remaining">${unlimited ? '—' : fmt(b.remaining)}</td>
-    `;
-    tbody.appendChild(tr);
+    block.appendChild(nums);
+
+    const bar = document.createElement('div');
+    bar.className = 'lv-bal__bar';
+    const fill = document.createElement('div');
+    fill.className = 'lv-bal__fill' + (!unlimited && b.remaining < 0 ? ' lv-bal__fill--over' : '');
+    const pct = unlimited || cap <= 0 ? 0 : Math.min(100, Math.max(0, (b.booked / cap) * 100));
+    fill.style.setProperty('--pct', String(pct));   // CSSOM, not inline attr (CSP-safe)
+    bar.appendChild(fill);
+    block.appendChild(bar);
+
+    const meta = document.createElement('div');
+    meta.className = 'lv-bal__meta';
+    meta.textContent = t('leaves.balUsed', { n: fmt(b.booked) });
+    if (b.pending > 0) {
+      meta.appendChild(document.createTextNode(' · '));
+      const pend = document.createElement('span');
+      pend.className = 'lv-bal__pending';
+      pend.textContent = t('leaves.balPending', { n: fmt(b.pending) });
+      meta.appendChild(pend);
+    }
+    block.appendChild(meta);
+
+    balanceBlocks.appendChild(block);
   }
-  tblEmployee.hidden = false;
-  tblEmployerWrap.hidden = true;
 }
+
+// -- Employer matrix --------------------------------------------------------
 
 function renderEmployerMatrix({ rows }) {
-  // Build the header from the types on the first row. All rows share types in
-  // the same order since they come from the same org-settings list.
   const types = (rows[0]?.balances ?? []).map((b) => b.type);
-  const thead = tblEmployer.querySelector('thead');
-  const tbody = tblEmployer.querySelector('tbody');
-  thead.innerHTML = '';
-  tbody.innerHTML = '';
+  const thead = matrix.querySelector('thead');
+  const tbody = matrix.querySelector('tbody');
+  thead.replaceChildren();
+  tbody.replaceChildren();
 
-  // Header row — Employee column then one per type with colspan for
-  // remaining / allowance presentation.
   const trh = document.createElement('tr');
-  trh.innerHTML = `<th>${escapeHtml(t('reports.employee'))}</th>` + types
-    .map((typ) => `<th class="right">${escapeHtml(t('leaves.type.' + typ))}</th>`)
-    .join('');
+  const thName = document.createElement('th');
+  thName.textContent = t('reports.employee');
+  trh.appendChild(thName);
+  for (const typ of types) {
+    const th = document.createElement('th');
+    th.className = 'right';
+    th.textContent = t('leaves.type.' + typ);
+    trh.appendChild(th);
+  }
   thead.appendChild(trh);
 
   for (const row of rows) {
     const tr = document.createElement('tr');
-    const displayName = row.fullName ? `${row.fullName}` : row.username;
-    const subtle = row.fullName ? `<span class="muted"> · ${escapeHtml(row.username)}</span>` : '';
-    const roleTag = row.role === 'employer' ? ` <span class="type-tag type-tag--role">${escapeHtml(t('employee.role.employer'))}</span>` : '';
-    let html = `<td>${escapeHtml(displayName)}${subtle}${roleTag}</td>`;
+    const tdName = document.createElement('td');
+    tdName.textContent = row.fullName || row.username;
+    if (row.fullName) {
+      const sub = document.createElement('span');
+      sub.className = 'muted';
+      sub.textContent = ` · ${row.username}`;
+      tdName.appendChild(sub);
+    }
+    if (row.role === 'employer') {
+      const role = document.createElement('span');
+      role.className = 'lv-type--role';
+      role.textContent = t('employee.role.employer');
+      tdName.appendChild(document.createTextNode(' '));
+      tdName.appendChild(role);
+    }
+    tr.appendChild(tdName);
+
     for (const b of row.balances) {
       const unlimited = b.allowance === 0;
       const over = !unlimited && b.remaining < 0;
-      const cls = over ? ' balance-matrix__cell--over' : '';
-      const pending = b.pending > 0 ? `<span class="balance-matrix__pending">+${fmt(b.pending)}</span>` : '';
       const cap = b.effectiveAllowance ?? b.allowance;
-      const main = unlimited
-        ? `<strong>${fmt(b.booked)}</strong> <span class="muted">/ —</span>`
-        : `<strong>${fmt(b.remaining)}</strong> <span class="muted">/ ${fmt(cap)}</span>`;
-      html += `
-        <td class="right balance-matrix__cell${cls}">
-          <span class="balance-matrix__main">${main}</span>
-          ${pending}
-        </td>
-      `;
+      const td = document.createElement('td');
+      td.className = 'right lv-matrix__cell' + (over ? ' lv-matrix__cell--over' : '');
+      const mainSpan = document.createElement('span');
+      mainSpan.className = 'lv-matrix__main';
+      const strong = document.createElement('strong');
+      strong.textContent = unlimited ? fmt(b.booked) : fmt(b.remaining);
+      const slash = document.createElement('span');
+      slash.className = 'muted';
+      slash.textContent = unlimited ? ' / —' : ` / ${fmt(cap)}`;
+      mainSpan.append(strong, slash);
+      td.appendChild(mainSpan);
+      if (b.pending > 0) {
+        const pend = document.createElement('span');
+        pend.className = 'lv-matrix__pending';
+        pend.textContent = `+${fmt(b.pending)}`;
+        td.appendChild(pend);
+      }
+      tr.appendChild(td);
     }
-    tr.innerHTML = html;
     tbody.appendChild(tr);
   }
+}
 
-  tblEmployee.hidden = true;
-  tblEmployerWrap.hidden = false;
+// -- Render orchestration ---------------------------------------------------
+
+function renderEmployee() {
+  const counts = countsByStatus(allLeaves);
+  renderFilterBar(filterBar, activeFilter, counts, (f) => { activeFilter = f; renderEmployee(); });
+  renderListInto(listEl, allLeaves, activeFilter, { showName: false, withActions: false });
+}
+
+function renderEmployer() {
+  const pending = allLeaves.filter((l) => l.status === 'pending');
+  pendingTag.hidden = pending.length === 0;
+  pendingTag.textContent = t('leaves.pendingTag', { n: pending.length });
+  pendingList.replaceChildren();
+  if (pending.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'lv-empty';
+    li.textContent = t('leaves.noPending');
+    pendingList.appendChild(li);
+  } else {
+    for (const l of pending) pendingList.appendChild(renderRow(l, { showName: true, withActions: true }));
+  }
+
+  const counts = countsByStatus(allLeaves);
+  renderFilterBar(filterBarEmpr, activeFilterEmpr, counts, (f) => { activeFilterEmpr = f; renderEmployer(); });
+  renderListInto(listEmpr, allLeaves, activeFilterEmpr, { showName: true, withActions: false });
+}
+
+function renderAll() {
+  if (me.role === 'employer') renderEmployer();
+  else renderEmployee();
 }
 
 // -- Data fetches -----------------------------------------------------------
@@ -175,25 +427,33 @@ function renderEmployerMatrix({ rows }) {
 async function refreshBalances() {
   if (me.role === 'employer') {
     const res = await fetch(`/api/leaves/balances?year=${currentYear}`, { credentials: 'same-origin' });
-    if (!res.ok) return;
-    const data = await res.json();
-    renderEmployerMatrix(data);
+    if (res.ok) renderEmployerMatrix(await res.json());
   } else {
     const res = await fetch(`/api/leaves/balances/${me.id}?year=${currentYear}`, { credentials: 'same-origin' });
-    if (!res.ok) return;
-    const data = await res.json();
-    renderEmployeeBalance(data.balances);
+    if (res.ok) renderBalanceBlocks((await res.json()).balances);
   }
+}
+
+async function loadAll() {
+  const res = await fetch('/api/leaves', { credentials: 'same-origin' });
+  if (!res.ok) { showMessage(messageEl, t('leaves.failedToLoad'), 'error'); return; }
+  allLeaves = (await res.json()).leaves;
+  renderAll();
+  await refreshBalances();
 }
 
 // -- Year selector ----------------------------------------------------------
 
 function populateYears() {
   const now = new Date().getFullYear();
-  const years = [now - 1, now, now + 1];
-  yearSelect.innerHTML = years
-    .map((y) => `<option value="${y}"${y === currentYear ? ' selected' : ''}>${y}</option>`)
-    .join('');
+  yearSelect.replaceChildren();
+  for (const y of [now - 1, now, now + 1]) {
+    const opt = document.createElement('option');
+    opt.value = String(y);
+    opt.textContent = String(y);
+    if (y === currentYear) opt.selected = true;
+    yearSelect.appendChild(opt);
+  }
 }
 
 yearSelect.addEventListener('change', async () => {
@@ -201,34 +461,34 @@ yearSelect.addEventListener('change', async () => {
   await refreshBalances();
 });
 
-// -- Filter bar -------------------------------------------------------------
+// -- Request modal wiring ---------------------------------------------------
 
-filterBar.addEventListener('click', (e) => {
-  if (!e.target.matches('button.filter')) return;
-  activeFilter = e.target.dataset.filter;
-  filterBar.querySelectorAll('.filter').forEach((b) =>
-    b.classList.toggle('active', b === e.target));
-  renderList();
-});
+function openRequest(prefillDate) {
+  openRequestLeaveModal({ prefillDate, onCreated: () => loadAll() });
+}
+
+requestBtn.addEventListener('click', () => openRequest());
 
 // -- Bootstrap --------------------------------------------------------------
 
 (async () => {
-  const [meRes, leavesRes] = await Promise.all([
-    fetch('/api/me',     { credentials: 'same-origin' }),
-    fetch('/api/leaves', { credentials: 'same-origin' }),
-  ]);
+  const meRes = await fetch('/api/me', { credentials: 'same-origin' });
   if (meRes.status === 401) { window.location.href = '/login'; return; }
   me = await meRes.json();
 
-  populateYears();
-
-  if (!leavesRes.ok) {
-    showMessage(messageEl, t('leaves.failedToLoad'), 'error');
-    return;
+  if (me.role === 'employer') {
+    emprRegion.hidden = false;
+    populateYears();
+  } else {
+    empRegion.hidden = false;
   }
-  allLeaves = (await leavesRes.json()).leaves;
-  renderList();
 
-  await refreshBalances();
+  await loadAll();
+
+  // ?new=1 → auto-open the request modal (the retired /leaves/new redirect, and
+  // the home / calendar "Request leave" buttons, both arrive here).
+  if (new URLSearchParams(location.search).get('new') === '1') {
+    openRequest();
+    history.replaceState({}, '', '/leaves');
+  }
 })();
