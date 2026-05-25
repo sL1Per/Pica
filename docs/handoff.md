@@ -5,14 +5,14 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.35.0._
+_Last touched in 0.36.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.35.0 (released 2026-05-25)
-- **Test count:** 47 suites (0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
+- **Latest version:** 0.36.0 (released 2026-05-25)
+- **Test count:** 48 suites (0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
   pre-feature baseline (see notes.md): `test-reports.mjs`
@@ -31,7 +31,8 @@ _Last touched in 0.35.0._
   `test-sw-precache`: 41 → 44. The 0.28.0 employee-home redesign added
   `test-employee-home` (pure-helper contract): 44 → 45. The 0.30.0 clock
   page added `test-punch-week`: 45 → 46. The 0.35.0 leaves restyle added
-  `test-leaves-render` (day-count + status-partition): 46 → 47.
+  `test-leaves-render` (day-count + status-partition): 46 → 47. The 0.36.0
+  calendar restyle added `test-calendar-grid` (shared month-matrix): 47 → 48.
 - **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
   through 0.30.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
@@ -42,10 +43,37 @@ _Last touched in 0.35.0._
   at 0.31.0; **manual-time modal** (`/corrections/new` retired) at 0.32.0;
   **employer `/punches/today`** at 0.33.0 — which **completes the
   punches/corrections screen group**; **leaves** (list / request-leave modal /
-  detail) at 0.35.0. Remaining screen-body plans in progress
-  (**next: Plan 5 Calendar** — then Employer-Home/Team/Settings/Profile/Reports;
-  see `docs/superpowers/plans/2026-05-2*-m15-*`); M16–M17 follow (M17
-  deployment guide ships last)
+  detail) at 0.35.0; **calendar** (toolbar/chips/scope, pending+approved grid,
+  anchored popover, right rail) at 0.36.0. Remaining screen-body plans in
+  progress (**next: Plan 6 Employer-Home + Team + Employee detail** — then
+  Settings/Profile/Reports; see `docs/superpowers/plans/2026-05-2*-m15-*`);
+  M16–M17 follow (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.36.0)
+
+**M15 calendar restyle (Plan 5).** `/leaves/calendar` rebuilt to the design.
+Now shows **pending + approved** (was approved-only): employer bars = everyone's
+`{pending,approved}` from `/api/leaves`; employee = own merged with anonymized
+others from `/api/leaves/approved` (privacy unchanged). New **toolbar**
+(◀▶ Today + serif month + type-filter chips + employee Mine|Team scope), grid
+(today honey-circle, closed-day hatch, pills ≤3 + "+N more", pending dashed,
+anonymized "Unavailable" blocks), an **anchored day popover** (flips/clamps;
+bottom-sheet on mobile; employee "Request leave this day" → Plan-4 modal with
+prefilled date), and a **320px right rail** (Out today/tomorrow + employee
+balance card / employer pending-requests with inline approve/decline). Two new
+**shared modules**: `calendar-grid.js` (`monthMatrix` — also now backs the
+leave-detail mini-cal; `leave.js` refactored) and `leave-actions.js`
+(approve/reject — `leaves.js` + the rail share it). 13 `calendar.*` i18n keys/
+locale; `CACHE_VERSION` v53 → v54 (+precache the 2 shared modules); new suite
+`test-calendar-grid` (47 → 48). **Verified live via the Playwright MCP** (employer
+grid + popover + rail inline-approve→reload; employee Mine|Team + anonymized
+privacy + balance card + request-this-day→modal-prefilled; mini-cal via shared
+helper; **zero console errors**). Honest Disclosures (full list in RELEASES.md
+0.36.0): employee view stays anonymized (no names/types for others); pending+
+approved only (rejected/cancelled excluded); popover is viewport-clamped JS that
+closes (not repositions) on scroll; no DOM/E2E tests (M16).
 
 ---
 

@@ -14,6 +14,79 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.36.0] — 2026-05-25 — M15 calendar restyle
+
+### What changed
+
+**M15 Plan 5** rebuilds `/leaves/calendar` to the design, preserving employee
+privacy and adding pending leaves + a right rail + an anchored day popover. It
+also unifies the month-grid scaffolding into a shared helper.
+
+- **Data model.** The calendar now shows **pending + approved** (was approved-
+  only). Both roles fetch `/api/leaves` + `/api/leaves/approved`. Employer bars
+  = everyone's `{pending, approved}`. Employee bars = own `{pending, approved}`
+  (from `/api/leaves`) **merged** with anonymized others (from
+  `/api/leaves/approved`) — others still carry no identity or type (privacy
+  unchanged). `blockedRanges` from the approved feed.
+- **Toolbar.** ◀ ▶ Today + serif month label · **type-filter chips**
+  (Vacation / Sick / Appointment / Other / Closed — toggle visibility) ·
+  employee-only **Mine | Team** scope.
+- **Grid.** Today = honey circle; weekends muted; outside-month faded; **closed
+  days** (employer blocked ranges) get the 135° hatch + a "Closed" label; leave
+  **pills ≤ 3 + "+N more"**; **pending → dashed** pill; bold name when it's the
+  viewer; anonymized others render as generic "Unavailable" blocks.
+- **Anchored day popover** (replaces the old details panel). Click a cell → a
+  popover positioned below it (flips up near the bottom, clamps to the viewport;
+  **bottom-sheet on mobile ≤ 600px**) lists each leave (avatar initials + name +
+  type · range, linking to `/leaves/:id` for employer/owner; anonymized rows for
+  employees) and, for employees, **"Request leave this day"** → opens the Plan-4
+  request modal with the date prefilled. Closes on outside-click / Esc / nav.
+- **Right rail (320px).** Out today + Out tomorrow lists; employee **vacation
+  balance** card (remaining / cap + bar + Request CTA); employer **pending
+  requests** card with inline approve / decline. Header subtitle: employer
+  `N out today · M pending`; employee `You have N of {cap} vacation days left`.
+- **Shared modules (DRY).** New `calendar-grid.js` (`monthMatrix` — the Mon-first
+  6×7 day matrix) now backs **both** the calendar and the leave-detail
+  mini-calendar (`leave.js` refactored onto it). New `leave-actions.js`
+  (`approveLeaveWithCheck` / `rejectLeave` — the concurrency-checked decide
+  helpers) is shared by the leaves list (`leaves.js` refactored onto it) and the
+  calendar rail.
+
+13 new `calendar.*` i18n keys per locale; `CACHE_VERSION` v53 → v54 (locales
+changed and `calendar-grid.js` + `leave-actions.js` joined the precache list).
+New suite `test-calendar-grid.mjs` (month-matrix contract): 47 → 48.
+
+Verified live via the Playwright MCP on a throwaway server: employer grid
+(approved solid + pending dashed), chips, popover, rail pending **inline approve
+→ reload** (the row clears and the approved leave appears in Out tomorrow);
+employee Mine|Team scope, anonymized "Unavailable" blocks (privacy held),
+balance card, popover **"Request leave this day" → modal prefilled**; the
+leave-detail mini-calendar still renders via the shared helper; **zero console
+errors** on both roles.
+
+### Honest Disclosures
+
+- **The employee view stays anonymized** — other employees' leaves show as
+  count-free "Unavailable" blocks (no name, no type) in the grid, popover, and
+  Out-today/tomorrow rail, consistent with `/api/leaves/approved` (0.22.4). Only
+  the employer sees names.
+- **The calendar shows pending + approved only.** Rejected and cancelled leaves
+  are excluded by design.
+- **Popover positioning is viewport-clamped vanilla JS** (CSSOM `left`/`top`; no
+  positioning library). It flips above the cell near the bottom edge and becomes
+  a bottom sheet on mobile, but it does not reposition on scroll/resize while
+  open — it closes on outside interaction instead.
+- **A multi-month leave highlights only the portion in the shown month** (the
+  leave-detail mini-calendar anchors on the leave's start month). Unchanged from
+  0.35.0; the shared helper did not alter this.
+- **No DOM / E2E tests** for the rendered calendar markup — Playwright is M16.
+  The new unit suite covers only the pure month-matrix helper; the UI was
+  smoke-verified manually.
+- Pre-existing, untouched: the unauthenticated `GET /api/settings/me` 401 logged
+  once on the login page (palette pre-fetch before auth).
+
+---
+
 ## [0.35.0] — 2026-05-25 — M15 leaves restyle (list + request modal + detail)
 
 ### What changed

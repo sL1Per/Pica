@@ -33,7 +33,7 @@ app in a usable state.
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
-| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0) |
+| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0) |
 | M16       | E2E browser tests                  | 📋 Planned    |
 | M17       | Deployment guide + TLS samples     | 📋 Planned    |
 
@@ -372,13 +372,19 @@ Plan 4: list with employee balance stat-blocks / employer pending inbox +
 *inline* approve/decline + team matrix; a **request-leave modal** reusing the
 0.32.0 shell with balance-after + conflict box + success state, retiring
 `/leaves/new` to a `?new=1` redirect; and a leave-detail status-hero +
-mini-calendar + activity timeline).
+mini-calendar + activity timeline). **Calendar** (0.36.0 — Plan 5: toolbar with
+type-filter chips + employee Mine|Team scope; a pending+approved month grid with
+closed-day hatch, "+N more", and anonymized blocks for employees; an anchored day
+popover with employee "Request leave this day"; and a right rail with Out
+today/tomorrow + an employee balance card / employer pending-requests inline
+decide. Introduced shared `calendar-grid.js` [month-matrix, also adopted by the
+leave-detail mini-cal] and `leave-actions.js` [approve/reject, shared with the
+leaves list]).
 
 **Remaining M15 plans (in progress):**
-- **Plan 5 (next)** — Calendar (read-only month view from leaves data; will
-  unify the leave-detail mini-calendar code).
-- The remaining screen bodies (Employer home + Team + Employee detail /
-  Settings + Security / Profile edit / Reports) rebuilt per the plan series.
+- **Plan 6 (next)** — Employer home + Team + Employee detail.
+- The remaining screen bodies (Settings + Security / Profile edit / Reports)
+  rebuilt per the plan series.
 - Alias bridge removed in the final cleanup plan once all 16 stylesheets
   reference design tokens directly.
 
@@ -416,4 +422,4 @@ change.
 
 ---
 
-_Last touched in 0.35.0._
+_Last touched in 0.36.0._
