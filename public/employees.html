@@ -30,20 +30,37 @@
 </head>
 <body>
   <main class="container container--wide">
-    <header class="page-header">
+    <header class="tm-header">
       <div>
-        <h1 data-i18n="employees.title">Employees</h1>
+        <h1 class="tm-header__title" data-i18n="employees.title">Team</h1>
+        <p class="tm-header__sub" id="tm-sub"></p>
       </div>
-      <a href="/employees/new" class="btn-link" data-i18n="employeeNew.button">+ New employee</a>
+      <a href="/employees/new" class="tm-new" data-i18n="employeeNew.button">+ New employee</a>
     </header>
 
     <div id="message" class="message"></div>
 
-    <ul id="employee-list" class="employee-list">
-      <li class="employee-list__empty subtle" data-i18n="employees.loading">Loading…</li>
-    </ul>
-  </main>
+    <div class="tm-toolbar">
+      <input type="search" id="tm-search" class="tm-search"
+             data-i18n-attr="placeholder:team.searchPlaceholder" placeholder="Search people…"
+             autocomplete="off">
+      <div id="tm-chips" class="tm-chips"><!-- filter chips built in JS --></div>
+    </div>
 
-  <script type="module" src="/employees.js"></script>
+    <div class="tm-table">
+      <div class="tm-thead">
+        <span data-i18n="team.colPerson">Person</span>
+        <span data-i18n="team.colStatus">Status now</span>
+        <span data-i18n="team.colWeek">This week</span>
+        <span data-i18n="team.colToday">Today</span>
+        <span></span>
+      </div>
+      <div id="tm-tbody"></div>
+    </div>
+
+    <p id="tm-empty" class="tm-empty" hidden data-i18n="team.empty">No one matches.</p>
+
+    <script type="module" src="/employees.js"></script>
+  </main>
 </body>
 </html>
