@@ -26,128 +26,41 @@
   <meta name="theme-color" content="#2e7d32">
   <link rel="stylesheet" href="/app.css">
   <link rel="stylesheet" href="/topbar.css">
+  <link rel="stylesheet" href="/modal.css">
   <link rel="stylesheet" href="/employee.css">
 </head>
 <body>
   <main class="container container--wide">
-    <p class="muted">
-      <a id="back-link" href="/employees" data-i18n="employee.summary.back">← Back to employees</a>
-    </p>
+    <a class="ed-back" id="back-link" href="/employees" data-i18n="employee.summary.back">← Back to team</a>
 
     <div id="message" class="message"></div>
+    <p id="error" class="ed-error" hidden></p>
 
-    <!-- Profile header card: avatar, name, role, position, action buttons -->
-    <section class="card summary-header" id="header-section" hidden>
-      <div class="summary-header__main">
-        <div class="summary-header__avatar-wrap">
-          <img id="avatar" class="summary-avatar" alt="" hidden>
-          <div id="avatar-placeholder" class="summary-avatar summary-avatar--placeholder" aria-hidden="true"></div>
-        </div>
-        <div class="summary-header__text">
-          <h1 id="name" class="summary-name">…</h1>
-          <p id="role-line" class="muted summary-role">…</p>
-          <p id="position-line" class="muted summary-position" hidden></p>
-        </div>
+    <!-- Hero, 3-up stats, and the lower cards are all built by employee.js. -->
+    <section id="ed-hero" class="ed-hero" hidden></section>
+
+    <div id="ed-stats" class="ed-stats" hidden></div>
+
+    <div class="ed-grid" id="ed-grid" hidden>
+      <div class="ed-col">
+        <section class="ed-card">
+          <h2 class="ed-card__title" data-i18n="employee.detail.recentTitle">Recent days</h2>
+          <div id="ed-recent-body"></div>
+        </section>
       </div>
-      <div class="summary-header__actions">
-        <button id="reset-pw-btn" type="button" class="secondary"
-                data-i18n="employee.summary.resetPw">Reset password</button>
-        <a id="profile-link" href="#" class="btn-primary" data-i18n="employee.summary.viewProfile">Go to profile →</a>
-      </div>
-    </section>
-
-    <!-- Password-reset modal — hidden by default, shown by the Reset button. -->
-    <div id="reset-pw-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="reset-pw-title">
-      <div class="modal__backdrop" data-modal-close></div>
-      <div class="modal__panel">
-        <h2 id="reset-pw-title" data-i18n="employee.summary.resetPwModalTitle">Reset employee password</h2>
-        <p class="muted" data-i18n="employee.summary.resetPwModalHelp">Type a temporary password and share it with the employee out-of-band (in person, secure chat, etc.). They will be required to change it on their next login.</p>
-
-        <div id="reset-pw-message" class="message"></div>
-
-        <form id="reset-pw-form" autocomplete="off">
-          <label for="reset-pw-new" data-i18n="employee.summary.resetPwNewLabel">New temporary password</label>
-          <input type="password" id="reset-pw-new" autocomplete="new-password" minlength="8" required>
-
-          <label for="reset-pw-confirm" data-i18n="employee.summary.resetPwConfirmLabel">Confirm new password</label>
-          <input type="password" id="reset-pw-confirm" autocomplete="new-password" minlength="8" required>
-
-          <div class="btn-row">
-            <button type="button" class="secondary" data-modal-close data-i18n="employee.summary.resetPwCancel">Cancel</button>
-            <button type="submit" id="reset-pw-submit" data-i18n="employee.summary.resetPwSubmit">Reset password</button>
-          </div>
-        </form>
+      <div class="ed-col">
+        <section class="ed-card">
+          <h2 class="ed-card__title" id="ed-pending-title" data-i18n="employee.summary.pendingDetailTitle">Awaiting your decision</h2>
+          <div id="ed-pending-body"></div>
+        </section>
+        <section class="ed-card">
+          <h2 class="ed-card__title" data-i18n="employee.summary.upcomingTitle">Upcoming leaves</h2>
+          <div id="ed-upcoming-body"></div>
+        </section>
       </div>
     </div>
 
-    <!-- Stats row: 3 quick-look numbers -->
-    <div id="stats-grid" class="widget-grid summary-stats" hidden>
-      <section class="widget">
-        <div class="widget__head">
-          <h2 class="widget__title" data-i18n="employee.summary.weekHoursTitle">This week</h2>
-        </div>
-        <div class="widget__body">
-          <div class="widget__bignum">
-            <span id="week-hours">0</span><span class="widget__bignum-suffix">h</span>
-          </div>
-          <div class="widget__caption" id="week-caption">…</div>
-        </div>
-      </section>
-      <section class="widget">
-        <div class="widget__head">
-          <h2 class="widget__title" data-i18n="employee.summary.missingWeekTitle">Missing this week</h2>
-        </div>
-        <div class="widget__body">
-          <div class="widget__bignum" id="missing-week-bignum">0<span class="widget__bignum-suffix">h</span></div>
-          <div class="widget__caption" id="missing-week-caption">…</div>
-        </div>
-      </section>
-      <section class="widget">
-        <div class="widget__head">
-          <h2 class="widget__title" data-i18n="employee.summary.missingMonthTitle">Missing this month</h2>
-        </div>
-        <div class="widget__body">
-          <div class="widget__bignum" id="missing-month-bignum">0<span class="widget__bignum-suffix">h</span></div>
-          <div class="widget__caption" id="missing-month-caption">…</div>
-        </div>
-      </section>
-      <section class="widget">
-        <div class="widget__head">
-          <h2 class="widget__title" data-i18n="employee.summary.pendingTitle">Pending approvals</h2>
-        </div>
-        <div class="widget__body" id="pending-body">
-          <!-- filled by JS: counts, or "all caught up" -->
-        </div>
-      </section>
-    </div>
-
-    <!-- Upcoming leaves -->
-    <section class="card summary-section" id="upcoming-section" hidden>
-      <div class="report-section__header">
-        <h2 data-i18n="employee.summary.upcomingTitle">Upcoming leaves (next 30 days)</h2>
-      </div>
-      <ul class="summary-list" id="upcoming-list"></ul>
-      <p id="upcoming-empty" class="subtle center" hidden data-i18n="employee.summary.upcomingEmpty">No upcoming leaves in the next 30 days.</p>
-    </section>
-
-    <!-- Pending detail (expanded list when employer wants to act) -->
-    <section class="card summary-section" id="pending-section" hidden>
-      <div class="report-section__header">
-        <h2 data-i18n="employee.summary.pendingDetailTitle">Items awaiting your decision</h2>
-      </div>
-      <div id="pending-leaves-block" hidden>
-        <h3 class="subtle" data-i18n="widgets.pendingLeaves">Leave requests</h3>
-        <ul class="summary-list" id="pending-leaves-list"></ul>
-      </div>
-      <div id="pending-corrections-block" hidden>
-        <h3 class="subtle" data-i18n="widgets.pendingCorrections">Time corrections</h3>
-        <ul class="summary-list" id="pending-corrections-list"></ul>
-      </div>
-    </section>
-
-    <p id="error" class="subtle center" hidden></p>
+    <script type="module" src="/employee.js"></script>
   </main>
-
-  <script type="module" src="/employee.js"></script>
 </body>
 </html>

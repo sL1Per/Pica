@@ -1,356 +1,322 @@
 /**
- * Employee summary page (employer view).
+ * Employee detail (employer view) — M15, Plan 6.
  *
- * One round-trip via /api/employees/:id/summary returns everything we
- * need: profile, week + month hours and missing-hours, upcoming leaves,
- * pending approvals. We render in a single pass — no per-section loading
- * spinners because the underlying request is server-aggregated and
- * fast.
+ * One /summary round-trip (profile, week/month hours + missing, upcoming
+ * leaves, pending) PLUS a frontend fan-out to /api/punches/by-employee/:id
+ * (today, for the status pill + segments + Today stat; current month, for the
+ * Recent-days log). Inline approve/decline reuses leave-actions.js for leaves
+ * and a plain POST for corrections. Reset-password rides the shared modal.js
+ * shell. No backend change.
  */
-
 import { mountTopBar, mountFooter } from '/topbar.js';
-import { t, applyTranslations, fmtDate, fmtHours } from '/i18n.js';
+import { t, applyTranslations, fmtDate, fmtTime, fmtHours, translateError } from '/i18n.js';
 import { showMessage } from '/app.js';
+import { pairSessions, workedMs, classify } from '/team-status.js';
+import { createModal } from '/modal.js';
+import { approveLeaveWithCheck, rejectLeave } from '/leave-actions.js';
 
 mountTopBar();
 mountFooter();
 applyTranslations();
 
-const $ = (id) => document.getElementById(id);
-
-// Pull the employee id from /employees/<id>
 const segs = window.location.pathname.split('/').filter(Boolean);
 const employeeId = segs[segs.indexOf('employees') + 1];
 
-const headerSection = $('header-section');
-const avatar         = $('avatar');
-const avatarPlaceholder = $('avatar-placeholder');
-const nameEl         = $('name');
-const roleLine       = $('role-line');
-const positionLine   = $('position-line');
-const profileLink    = $('profile-link');
-const messageEl      = $('message');
-
-const statsGrid          = $('stats-grid');
-const weekHoursEl        = $('week-hours');
-const weekCaptionEl      = $('week-caption');
-const missWeekBignumEl   = $('missing-week-bignum');
-const missWeekCaptionEl  = $('missing-week-caption');
-const missMonthBignumEl  = $('missing-month-bignum');
-const missMonthCaptionEl = $('missing-month-caption');
-const pendingBody        = $('pending-body');
-
-const upcomingSection  = $('upcoming-section');
-const upcomingListEl   = $('upcoming-list');
-const upcomingEmptyEl  = $('upcoming-empty');
-
-const pendingSection            = $('pending-section');
-const pendingLeavesBlock        = $('pending-leaves-block');
-const pendingLeavesListEl       = $('pending-leaves-list');
-const pendingCorrectionsBlock   = $('pending-corrections-block');
-const pendingCorrectionsListEl  = $('pending-corrections-list');
-
+const $ = (id) => document.getElementById(id);
+const heroEl = $('ed-hero');
+const statsEl = $('ed-stats');
+const gridEl = $('ed-grid');
+const recentBody = $('ed-recent-body');
+const pendingBody = $('ed-pending-body');
+const pendingTitle = $('ed-pending-title');
+const upcomingBody = $('ed-upcoming-body');
+const messageEl = $('message');
 const errorEl = $('error');
 
-function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]));
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+const pad2 = (n) => String(n).padStart(2, '0');
+const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const todayYmd = () => ymd(new Date());
+function initials(name) { return (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?'; }
+function hue(s) { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; }
+function statusDot(key) { const d = el('span', `st-dot st-dot--${key}`); d.setAttribute('aria-hidden', 'true'); return d; }
+function hhmm(ms) { const tot = Math.max(0, Math.round(ms / 60000)); return `${Math.floor(tot / 60)}h${pad2(tot % 60)}`; }
+
+function avatar(name, hasPicture) {
+  const a = el('div', 'ed-avatar');
+  if (hasPicture) { const img = el('img'); img.src = `/api/employees/${encodeURIComponent(employeeId)}/picture`; img.alt = ''; a.appendChild(img); }
+  else { a.textContent = initials(name); a.style.setProperty('--hue', hue(name)); }
+  return a;
 }
 
-function fmtRange(startStr, endStr, unit) {
-  // YYYY-MM-DD or ISO ts. For days we show a date range; for hours
-  // we show start day with hour times.
-  const s = String(startStr);
-  const e = String(endStr);
-  if (unit === 'hours') {
-    const sDate = new Date(s);
-    const eDate = new Date(e);
-    return `${fmtDate(sDate)} ${formatTimeOnly(sDate)}–${formatTimeOnly(eDate)}`;
-  }
-  const sYmd = s.slice(0, 10);
-  const eYmd = e.slice(0, 10);
-  if (sYmd === eYmd) return fmtDate(sYmd);
-  return `${fmtDate(sYmd)} → ${fmtDate(eYmd)}`;
+const STATUS_LABEL = { working: 'team.status.working', break: 'team.status.break', done: 'team.status.done', leave: 'team.status.leave', off: 'team.status.off' };
+const KIND = { both: 'corrections.kindBoth', in: 'corrections.kindIn', out: 'corrections.kindOut' };
+
+function fmtRange(start, end, unit) {
+  const s = String(start), e = String(end);
+  if (unit === 'hours') return `${fmtDate(new Date(s))} ${fmtTime(s)}–${fmtTime(e)}`;
+  const sY = s.slice(0, 10), eY = e.slice(0, 10);
+  return sY === eY ? fmtDate(sY) : `${fmtDate(sY)} → ${fmtDate(eY)}`;
 }
 
-function formatTimeOnly(d) {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+let data = null;          // /summary payload
+let todayPunches = [];
+let monthPunches = [];
+
+async function getJson(url) {
+  const res = await fetch(url, { credentials: 'same-origin' });
+  if (!res.ok) { const e = new Error(`HTTP ${res.status}`); e.status = res.status; throw e; }
+  return res.json();
 }
 
-function renderHeader(data) {
+function isOnLeaveToday() {
+  const today = todayYmd();
+  return (data.upcomingLeaves || []).some((l) =>
+    String(l.start).slice(0, 10) <= today && today <= String(l.end).slice(0, 10));
+}
+
+function renderHero() {
   const profile = data.profile || {};
   const name = profile.fullName || data.username;
-  nameEl.textContent = name;
   document.title = `Pica — ${name}`;
 
-  // Role line: "Employer" / "Employee" via existing dictionary
-  roleLine.textContent = t('employee.role.' + data.role);
+  heroEl.replaceChildren();
+  heroEl.append(avatar(name, profile.hasPicture));
 
-  // Position is optional
-  if (profile.position) {
-    positionLine.textContent = profile.position;
-    positionLine.hidden = false;
-  }
+  const text = el('div', 'ed-hero__text');
+  const nameEl = el('h1', 'ed-name', name);
+  nameEl.append(el('span', 'ed-badge' + (data.role === 'employer' ? ' ed-badge--employer' : ''), t('employee.role.' + data.role)));
+  text.append(nameEl);
+  if (profile.position) text.append(el('div', 'ed-position', profile.position));
 
-  // Avatar
-  if (profile.hasPicture) {
-    avatar.src = `/api/employees/${encodeURIComponent(employeeId)}/picture`;
-    avatar.hidden = false;
-    avatarPlaceholder.hidden = true;
-  } else {
-    avatarPlaceholder.textContent = (name.charAt(0) || '?').toUpperCase();
-    avatarPlaceholder.hidden = false;
-    avatar.hidden = true;
-  }
+  const pairs = pairSessions(todayPunches);
+  const status = classify({ pairs, onLeave: isOnLeaveToday(), nowHour: new Date().getHours() });
+  const pill = el('div', 'ed-status ed-status--' + status);
+  pill.append(statusDot(status), document.createTextNode(t(STATUS_LABEL[status])));
+  text.append(pill);
 
-  // Profile link
-  profileLink.href = `/employees/${encodeURIComponent(employeeId)}/profile`;
+  const segText = pairs.length
+    ? pairs.map((p) => `${fmtTime(p.in.ts)}–${p.out ? fmtTime(p.out.ts) : '…'}`).join('   ·   ')
+    : t('employee.detail.segmentsNone');
+  text.append(el('div', 'ed-segments', segText));
+  heroEl.append(text);
 
-  headerSection.hidden = false;
+  const actions = el('div', 'ed-hero__actions');
+  const resetBtn = el('button', 'ed-btn', t('employee.summary.resetPw')); resetBtn.type = 'button';
+  resetBtn.addEventListener('click', openResetModal);
+  const editLink = el('a', 'ed-btn ed-btn--primary', t('employee.summary.viewProfile'));
+  editLink.href = `/employees/${encodeURIComponent(employeeId)}/profile`;
+  actions.append(resetBtn, editLink);
+  heroEl.append(actions);
 }
 
-function renderStats(data) {
-  // Week hours
-  const wh = data.week?.hours ?? 0;
-  weekHoursEl.textContent = fmtHours(wh);
-  if (data.week?.scheduled) {
-    weekCaptionEl.textContent = t('employee.summary.weekTarget', {
-      target: data.week.scheduled + 'h',
+function statBlock(label, hours, target, capText) {
+  const card = el('div', 'ed-stat');
+  card.append(el('div', 'ed-stat__label', label));
+  const num = el('div', 'ed-stat__num');
+  num.append(document.createTextNode(fmtHours(hours)));
+  num.append(el('small', null, target ? ` / ${fmtHours(target)}h` : ' h'));
+  card.append(num);
+  if (target) {
+    const track = el('div', 'ed-stat__track');
+    const fill = el('div', 'ed-stat__fill');
+    fill.style.setProperty('--pct', Math.min(100, Math.round((hours / target) * 100)));
+    track.append(fill);
+    card.append(track);
+  }
+  if (capText) card.append(el('div', 'ed-stat__cap', capText));
+  return card;
+}
+
+function missCap(missing) {
+  return (missing && missing > 0)
+    ? t('employee.detail.missingCap', { h: fmtHours(missing) })
+    : t('employee.detail.onTrack');
+}
+
+function renderStats() {
+  const w = data.week || {}, m = data.month || {};
+  const todayWorked = workedMs(pairSessions(todayPunches)) / 3600000;
+  const dailyTarget = w.scheduled ? Math.round((w.scheduled / 5) * 10) / 10 : null;
+  statsEl.replaceChildren(
+    statBlock(t('employee.detail.weekTitle'), w.hours ?? 0, w.scheduled, missCap(w.missing)),
+    statBlock(t('employee.detail.monthTitle'), m.hours ?? 0, m.scheduled, missCap(m.missing)),
+    statBlock(t('employee.detail.todayStat'), todayWorked, dailyTarget, t('employee.detail.loggedToday')),
+  );
+}
+
+function renderRecent() {
+  const byDay = new Map();
+  for (const p of monthPunches) {
+    const key = ymd(new Date(p.ts));
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(p);
+  }
+  const today = todayYmd();
+  const days = [...byDay.keys()].filter((k) => k < today).sort().reverse().slice(0, 7);
+  if (days.length === 0) { recentBody.replaceChildren(el('div', 'ed-empty', t('employee.detail.recentEmpty'))); return; }
+  const frag = document.createDocumentFragment();
+  for (const k of days) {
+    const pairs = pairSessions(byDay.get(k));
+    const row = el('div', 'ed-day');
+    row.append(el('div', 'ed-day__date', fmtDate(k)));
+    row.append(el('div', 'ed-day__sessions', pairs.map((p) => `${fmtTime(p.in.ts)}–${p.out ? fmtTime(p.out.ts) : '…'}`).join(', ')));
+    row.append(el('div', 'ed-day__total', `${fmtHours(workedMs(pairs) / 3600000)}h`));
+    frag.append(row);
+  }
+  recentBody.replaceChildren(frag);
+}
+
+function pendRow(when, detail, onApprove, onReject) {
+  const row = el('div', 'ed-pend');
+  const main = el('div', 'ed-pend__main');
+  main.append(el('div', 'ed-pend__when', when), el('div', 'ed-pend__detail', detail));
+  const acts = el('div', 'ed-pend__acts');
+  const ok = el('button', 'ed-act ed-act--approve', '✓'); ok.type = 'button'; ok.setAttribute('aria-label', t('corrections.inlineApprove'));
+  const no = el('button', 'ed-act ed-act--reject', '✗'); no.type = 'button'; no.setAttribute('aria-label', t('corrections.inlineReject'));
+  acts.append(ok, no);
+  const note = el('div', 'ed-note'); note.hidden = true;
+  const input = el('input'); input.type = 'text'; input.maxLength = 500; input.placeholder = t('corrections.rejectNotesPlaceholder');
+  const send = el('button', 'ed-act ed-act--reject', '✗'); send.type = 'button'; send.setAttribute('aria-label', t('corrections.inlineReject'));
+  note.append(input, send);
+  ok.addEventListener('click', async () => { ok.disabled = no.disabled = true; await onApprove(); });
+  no.addEventListener('click', () => { note.hidden = !note.hidden; if (!note.hidden) input.focus(); });
+  send.addEventListener('click', async () => { send.disabled = true; await onReject(input.value.trim()); });
+  row.append(main, acts, note);
+  return row;
+}
+
+async function decideCorrection(id, action, notes) {
+  try {
+    const res = await fetch(`/api/corrections/${encodeURIComponent(id)}/${action}`, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: action === 'reject' ? JSON.stringify({ notes: notes || '' }) : undefined,
     });
-  } else {
-    weekCaptionEl.textContent = '';
-  }
-
-  // Missing this week — raw scheduled-vs-worked shortfall.
-  const mw = data.week?.missing ?? 0;
-  missWeekBignumEl.innerHTML = mw === 0
-    ? `0<span class="widget__bignum-suffix">h</span>`
-    : `${escapeHtml(fmtHours(mw))}<span class="widget__bignum-suffix">h</span>`;
-  missWeekCaptionEl.textContent = mw === 0
-    ? t('employee.summary.missingZero')
-    : t('employee.summary.missingExplain', {
-        worked:    fmtHours(data.week?.hours ?? 0),
-        scheduled: fmtHours(data.week?.scheduled ?? 0),
-      });
-
-  // Missing this month — same logic against month totals.
-  const mm = data.month?.missing ?? 0;
-  missMonthBignumEl.innerHTML = mm === 0
-    ? `0<span class="widget__bignum-suffix">h</span>`
-    : `${escapeHtml(fmtHours(mm))}<span class="widget__bignum-suffix">h</span>`;
-  missMonthCaptionEl.textContent = mm === 0
-    ? t('employee.summary.missingZero')
-    : t('employee.summary.missingExplain', {
-        worked:    fmtHours(data.month?.hours ?? 0),
-        scheduled: fmtHours(data.month?.scheduled ?? 0),
-      });
-
-  // Pending counts (employer-actionable)
-  const pendingLeaves = data.pending?.leaves?.length ?? 0;
-  const pendingCorrs  = data.pending?.corrections?.length ?? 0;
-  if (pendingLeaves === 0 && pendingCorrs === 0) {
-    pendingBody.innerHTML = `<div class="widget__empty">${escapeHtml(t('employee.summary.pendingEmpty'))}</div>`;
-  } else {
-    pendingBody.innerHTML = `
-      <div class="widget__row">
-        <div class="widget__row-main"><div class="widget__row-name">${escapeHtml(t('widgets.pendingLeaves'))}</div></div>
-        <div class="widget__row-aside">
-          <span class="widget__count${pendingLeaves === 0 ? ' widget__count--zero' : ''}">${pendingLeaves}</span>
-        </div>
-      </div>
-      <div class="widget__row">
-        <div class="widget__row-main"><div class="widget__row-name">${escapeHtml(t('widgets.pendingCorrections'))}</div></div>
-        <div class="widget__row-aside">
-          <span class="widget__count${pendingCorrs === 0 ? ' widget__count--zero' : ''}">${pendingCorrs}</span>
-        </div>
-      </div>
-    `;
-  }
-
-  statsGrid.hidden = false;
+    if (!res.ok) { const d = await res.json().catch(() => ({})); showMessage(messageEl, translateError(d.errorCode, d.error || t('widgets.couldNotLoad')), 'error'); return false; }
+    return true;
+  } catch { showMessage(messageEl, t('widgets.couldNotLoad'), 'error'); return false; }
 }
 
-function renderUpcoming(data) {
-  const leaves = data.upcomingLeaves || [];
-  if (leaves.length === 0) {
-    upcomingListEl.innerHTML = '';
-    upcomingEmptyEl.hidden = false;
-  } else {
-    upcomingEmptyEl.hidden = true;
-    upcomingListEl.innerHTML = leaves.map((l) => `
-      <li class="summary-list__item">
-        <div class="summary-list__main">
-          <div class="summary-list__when">${escapeHtml(fmtRange(l.start, l.end, l.unit))}</div>
-          <div class="summary-list__detail">${escapeHtml(t('leaves.type.' + l.type))}</div>
-        </div>
-        <a class="summary-list__link" href="/leaves/${encodeURIComponent(l.id)}" data-i18n="employee.summary.viewLeave">View →</a>
-      </li>
-    `).join('');
-  }
-  upcomingSection.hidden = false;
-}
-
-function renderPending(data) {
+function renderPending() {
+  const firstName = (data.profile?.fullName || data.username || '').split(/\s+/)[0] || data.username;
+  pendingTitle.textContent = t('employee.detail.pendingFrom', { name: firstName });
   const leaves = data.pending?.leaves ?? [];
-  const corrs  = data.pending?.corrections ?? [];
+  const corrs = data.pending?.corrections ?? [];
 
   if (leaves.length === 0 && corrs.length === 0) {
-    // Don't render the detail card at all when nothing is pending.
-    pendingSection.hidden = true;
+    const wrap = el('div', 'ed-allcaught');
+    wrap.append(el('span', 'ed-allcaught__check', '✓'), document.createTextNode(t('employee.summary.pendingEmpty')));
+    pendingBody.replaceChildren(wrap);
     return;
   }
 
-  if (leaves.length > 0) {
-    pendingLeavesListEl.innerHTML = leaves.map((l) => `
-      <li class="summary-list__item">
-        <div class="summary-list__main">
-          <div class="summary-list__when">${escapeHtml(fmtRange(l.start, l.end, l.unit))}</div>
-          <div class="summary-list__detail">${escapeHtml(t('leaves.type.' + l.type))}</div>
-        </div>
-        <a class="summary-list__link" href="/leaves/${encodeURIComponent(l.id)}">${escapeHtml(t('employee.summary.review'))} →</a>
-      </li>
-    `).join('');
-    pendingLeavesBlock.hidden = false;
-  } else {
-    pendingLeavesBlock.hidden = true;
+  const frag = document.createDocumentFragment();
+  for (const l of leaves) {
+    frag.append(pendRow(fmtRange(l.start, l.end, l.unit), t('leaves.type.' + l.type),
+      async () => { const r = await approveLeaveWithCheck(l); if (r.ok) load(); },
+      async (notes) => { const r = await rejectLeave(l.id, notes); if (r.ok) load(); }));
   }
-
-  if (corrs.length > 0) {
-    const KIND_KEYS = { both: 'corrections.kindBoth', in: 'corrections.kindIn', out: 'corrections.kindOut' };
-    pendingCorrectionsListEl.innerHTML = corrs.map((c) => {
-      const hrs = fmtHours(c.hours || 0);
-      const kindLabel = t(KIND_KEYS[c.kind] || 'corrections.kindBoth');
-      return `
-        <li class="summary-list__item">
-          <div class="summary-list__main">
-            <div class="summary-list__when">${escapeHtml(fmtRange(c.start, c.end, 'hours'))}</div>
-            <div class="summary-list__detail">${escapeHtml(kindLabel)} · ${hrs}h</div>
-          </div>
-          <a class="summary-list__link" href="/corrections/${encodeURIComponent(c.id)}">${escapeHtml(t('employee.summary.review'))} →</a>
-        </li>
-      `;
-    }).join('');
-    pendingCorrectionsBlock.hidden = false;
-  } else {
-    pendingCorrectionsBlock.hidden = true;
+  for (const c of corrs) {
+    frag.append(pendRow(fmtRange(c.start, c.end, 'hours'), `${t(KIND[c.kind] || 'corrections.kindBoth')} · ${fmtHours(c.hours || 0)}h`,
+      async () => { const ok = await decideCorrection(c.id, 'approve'); if (ok) load(); },
+      async (notes) => { const ok = await decideCorrection(c.id, 'reject', notes); if (ok) load(); }));
   }
+  pendingBody.replaceChildren(frag);
+}
 
-  pendingSection.hidden = false;
+function renderUpcoming() {
+  const leaves = data.upcomingLeaves || [];
+  if (leaves.length === 0) { upcomingBody.replaceChildren(el('div', 'ed-empty', t('employee.summary.upcomingEmpty'))); return; }
+  const frag = document.createDocumentFragment();
+  for (const l of leaves) {
+    const status = l.status || 'approved';
+    const row = el('div', 'ed-leave');
+    row.append(el('div', 'ed-leave__bar' + (status === 'pending' ? ' ed-leave__bar--pending' : '')));
+    const main = el('div', 'ed-leave__main');
+    main.append(el('div', 'ed-leave__type', t('leaves.type.' + l.type)), el('div', 'ed-leave__when', fmtRange(l.start, l.end, l.unit)));
+    row.append(main);
+    const pill = el('a', 'ed-leave__pill ed-leave__pill--' + (status === 'pending' ? 'pending' : 'approved'), t('leaves.status.' + status));
+    pill.href = `/leaves/${encodeURIComponent(l.id)}`;
+    row.append(pill);
+    frag.append(row);
+  }
+  upcomingBody.replaceChildren(frag);
+}
+
+function openResetModal() {
+  const modal = createModal({ titleKey: 'employee.summary.resetPwModalTitle' });
+  modal.body.replaceChildren();
+  const help = el('p', 'muted', t('employee.summary.resetPwModalHelp'));
+  const msg = el('div', 'message');
+  const form = el('form'); form.autocomplete = 'off';
+  const l1 = el('label', null, t('employee.summary.resetPwNewLabel')); l1.htmlFor = 'rp-new';
+  const i1 = el('input'); i1.type = 'password'; i1.id = 'rp-new'; i1.autocomplete = 'new-password'; i1.minLength = 8; i1.required = true;
+  const l2 = el('label', null, t('employee.summary.resetPwConfirmLabel')); l2.htmlFor = 'rp-confirm';
+  const i2 = el('input'); i2.type = 'password'; i2.id = 'rp-confirm'; i2.autocomplete = 'new-password'; i2.minLength = 8; i2.required = true;
+  const btns = el('div', 'btn-row');
+  const cancel = el('button', 'secondary', t('employee.summary.resetPwCancel')); cancel.type = 'button';
+  const submit = el('button', null, t('employee.summary.resetPwSubmit')); submit.type = 'submit';
+  cancel.addEventListener('click', () => modal.close());
+  btns.append(cancel, submit);
+  form.append(l1, i1, l2, i2, btns);
+  modal.body.append(help, msg, form);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const np = i1.value, cf = i2.value;
+    if (np !== cf) { showMessage(msg, t('employee.summary.resetPwMismatch'), 'error'); return; }
+    if (np.length < 8) { showMessage(msg, t('errors.password_too_short'), 'error'); return; }
+    submit.disabled = true;
+    try {
+      const res = await fetch(`/api/employees/${encodeURIComponent(employeeId)}/password-reset`, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: np }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(translateError(d.errorCode, d.error || `HTTP ${res.status}`));
+      modal.close();
+      showMessage(messageEl, t('employee.summary.resetPwSuccess'), 'success');
+    } catch (err) {
+      showMessage(msg, err.message, 'error');
+      submit.disabled = false;
+    }
+  });
+
+  modal.open();
+  i1.focus();
 }
 
 async function load() {
   errorEl.hidden = true;
+  let summary;
   try {
-    const res = await fetch(`/api/employees/${encodeURIComponent(employeeId)}/summary`, {
-      credentials: 'same-origin',
-    });
-    if (res.status === 401) { window.location.href = '/login'; return; }
-    if (res.status === 403) {
-      // Employee viewing themselves via this URL — not allowed; send home.
-      window.location.href = '/';
-      return;
-    }
-    if (res.status === 404) {
-      errorEl.hidden = false;
-      errorEl.textContent = t('employee.summary.notFound');
-      return;
-    }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const data = await res.json();
-    renderHeader(data);
-    renderStats(data);
-    renderUpcoming(data);
-    renderPending(data);
-  } catch (err) {
-    errorEl.hidden = false;
-    errorEl.textContent = t('widgets.couldNotLoad');
+    summary = await getJson(`/api/employees/${encodeURIComponent(employeeId)}/summary`);
+  } catch (e) {
+    if (e.status === 401) { window.location.href = '/login'; return; }
+    if (e.status === 403) { window.location.href = '/'; return; }
+    if (e.status === 404) { errorEl.hidden = false; errorEl.textContent = t('employee.summary.notFound'); return; }
+    errorEl.hidden = false; errorEl.textContent = t('widgets.couldNotLoad'); return;
   }
+
+  const now = new Date();
+  const [today, month] = await Promise.allSettled([
+    getJson(`/api/punches/by-employee/${encodeURIComponent(employeeId)}?date=${todayYmd()}`),
+    getJson(`/api/punches/by-employee/${encodeURIComponent(employeeId)}?year=${now.getFullYear()}&month=${now.getMonth() + 1}`),
+  ]);
+  data = summary;
+  todayPunches = today.status === 'fulfilled' ? (today.value.punches ?? []) : [];
+  monthPunches = month.status === 'fulfilled' ? (month.value.punches ?? []) : [];
+
+  renderHero();
+  renderStats();
+  renderRecent();
+  renderPending();
+  renderUpcoming();
+  heroEl.hidden = false;
+  statsEl.hidden = false;
+  gridEl.hidden = false;
 }
-
-// "Reset password" — opens a modal where the employer types a
-// temporary password. POSTs to /api/employees/:id/password-reset and
-// surfaces success/error in the modal.
-const resetPwBtn      = $('reset-pw-btn');
-const resetPwModal    = $('reset-pw-modal');
-const resetPwForm     = $('reset-pw-form');
-const resetPwNew      = $('reset-pw-new');
-const resetPwConfirm  = $('reset-pw-confirm');
-const resetPwSubmit   = $('reset-pw-submit');
-const resetPwMessage  = $('reset-pw-message');
-
-function openResetModal() {
-  // Clear stale state when reopening.
-  resetPwForm?.reset();
-  if (resetPwMessage) {
-    resetPwMessage.textContent = '';
-    resetPwMessage.className = 'message';
-  }
-  if (resetPwModal) {
-    resetPwModal.hidden = false;
-    // Focus the first field for keyboard users.
-    resetPwNew?.focus();
-  }
-}
-
-function closeResetModal() {
-  if (resetPwModal) resetPwModal.hidden = true;
-}
-
-resetPwBtn?.addEventListener('click', openResetModal);
-
-// Wire any element with data-modal-close inside the modal to dismiss it.
-resetPwModal?.addEventListener('click', (e) => {
-  if (e.target.matches('[data-modal-close]')) closeResetModal();
-});
-
-// Close on Escape when the modal is open.
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && resetPwModal && !resetPwModal.hidden) {
-    closeResetModal();
-  }
-});
-
-resetPwForm?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const newPassword = resetPwNew?.value ?? '';
-  const confirm     = resetPwConfirm?.value ?? '';
-
-  if (newPassword !== confirm) {
-    showMessage(resetPwMessage, t('employee.summary.resetPwMismatch'), 'error');
-    return;
-  }
-  if (newPassword.length < 8) {
-    showMessage(resetPwMessage, t('errors.password_too_short'), 'error');
-    return;
-  }
-
-  setBusy(resetPwSubmit, true);
-  try {
-    const res = await fetch(`/api/employees/${encodeURIComponent(employeeId)}/password-reset`, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newPassword }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const fallback = data.error || `HTTP ${res.status}`;
-      // Use the i18n translateError if we have it; otherwise fall back.
-      const localizedKey = `errors.${data.errorCode}`;
-      const localized = data.errorCode && t(localizedKey) !== `[${localizedKey}]`
-        ? t(localizedKey)
-        : fallback;
-      throw new Error(localized);
-    }
-    closeResetModal();
-    // Surface success on the page-level message bar.
-    showMessage(messageEl, t('employee.summary.resetPwSuccess'), 'success');
-  } catch (err) {
-    showMessage(resetPwMessage, err.message, 'error');
-  }
-  setBusy(resetPwSubmit, false);
-});
 
 load();

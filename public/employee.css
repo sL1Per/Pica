@@ -1,156 +1,101 @@
-/* Employee summary page (employer view).
-   Reuses widget primitives from index.css for the stats row. The header
-   card and per-section list rows are page-specific. */
+/* Employee detail (employer view) — M15, Plan 6.
+   Hero + 3-up stat blocks + Recent days + Pending (inline decide) +
+   Upcoming leaves. Design tokens used directly. */
 
-/* -------- Header card -------- */
+.ed-back { display: inline-block; color: var(--muted); font-size: 13px; text-decoration: none; margin: 4px 0 16px; }
+.ed-back:hover { color: var(--ink); }
+.ed-error { color: var(--clay); padding: 20px 0; text-align: center; }
 
-.summary-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-4);
-  align-items: center;
-  justify-content: space-between;
+/* -------- Hero -------- */
+.ed-hero { display: flex; align-items: center; gap: 24px; background: var(--paper); border: 1px solid var(--line); border-radius: 20px; padding: 28px; flex-wrap: wrap; margin-bottom: 20px; }
+.ed-avatar { width: 88px; height: 88px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 600; overflow: hidden; background: oklch(0.86 0.06 var(--hue, 90)); color: oklch(0.34 0.08 var(--hue, 90)); }
+.ed-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.ed-hero__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ed-name { font-family: var(--font-serif); font-size: 34px; line-height: 1; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ed-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; background: var(--paper-2); color: var(--muted); }
+.ed-badge--employer { color: var(--plum); }
+.ed-position { color: var(--muted); font-size: 14px; }
+.ed-status { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; width: fit-content; background: var(--paper-2); color: var(--muted); border: 1px solid var(--line); }
+.ed-status--working { background: var(--sage-soft); color: var(--sage); border-color: var(--sage); }
+.ed-status--break { background: var(--clay-soft); color: var(--honey-deep); border-color: var(--honey); }
+.ed-status--leave { color: var(--plum); border-color: var(--plum); }
+.ed-segments { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+.ed-hero__actions { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+.ed-btn { display: inline-flex; align-items: center; justify-content: center; height: 38px; padding: 0 16px; border-radius: 10px; font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+.ed-btn:hover { background: var(--paper-2); }
+.ed-btn--primary { background: var(--honey); color: #FBF6EC; border-color: transparent; }
+.ed-btn--primary:hover { filter: brightness(1.03); }
+
+/* shared dot */
+.st-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: inline-block; flex-shrink: 0; }
+.st-dot--working { background: var(--sage); }
+.st-dot--break   { background: var(--honey); }
+.st-dot--done    { background: var(--muted); }
+.st-dot--leave   { background: var(--plum); }
+.st-dot--off     { background: var(--line); }
+
+/* -------- 3-up stat blocks -------- */
+.ed-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+.ed-stat { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+.ed-stat__label { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.ed-stat__num { font-family: var(--font-serif); font-size: 40px; line-height: 1; color: var(--ink); margin: 8px 0; }
+.ed-stat__num small { font-size: 18px; color: var(--muted); }
+.ed-stat__track { height: 6px; border-radius: 3px; background: var(--bg-2); overflow: hidden; margin: 8px 0 6px; }
+.ed-stat__fill { height: 100%; width: calc(var(--pct, 0) * 1%); border-radius: 3px; background: var(--sage); }
+.ed-stat__cap { font-size: 12px; color: var(--muted); }
+
+/* -------- Layout grid for the lower cards -------- */
+.ed-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+.ed-col { display: flex; flex-direction: column; gap: 20px; }
+.ed-card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+.ed-card__title { font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+
+/* Recent days */
+.ed-day { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.ed-day:first-child { border-top: none; }
+.ed-day__date { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink); width: 96px; flex-shrink: 0; }
+.ed-day__sessions { flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.ed-day__total { font-family: var(--font-mono); font-size: 13px; color: var(--ink); flex-shrink: 0; }
+
+/* Pending (inline decide) */
+.ed-pend { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-soft); flex-wrap: wrap; }
+.ed-pend:first-child { border-top: none; }
+.ed-pend__main { flex: 1; min-width: 0; }
+.ed-pend__when { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.ed-pend__detail { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.ed-pend__acts { display: flex; gap: 8px; flex-shrink: 0; }
+.ed-act { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; line-height: 1; }
+.ed-act--approve { color: var(--sage); }
+.ed-act--approve:hover { background: var(--sage-soft); border-color: var(--sage); }
+.ed-act--reject { color: var(--clay); }
+.ed-act--reject:hover { background: var(--clay-soft); border-color: var(--clay); }
+.ed-act:disabled { opacity: 0.5; cursor: progress; }
+.ed-note { display: flex; gap: 8px; margin-top: 8px; flex-basis: 100%; }
+.ed-note input { flex: 1; }
+.ed-allcaught { text-align: center; color: var(--muted); padding: 16px 0; font-size: 14px; }
+.ed-allcaught__check { display: block; color: var(--sage); font-size: 24px; margin-bottom: 4px; }
+
+/* Upcoming leaves */
+.ed-leave { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.ed-leave:first-child { border-top: none; }
+.ed-leave__bar { width: 4px; align-self: stretch; border-radius: 2px; background: var(--sage); flex-shrink: 0; }
+.ed-leave__bar--pending { background: var(--honey); }
+.ed-leave__main { flex: 1; min-width: 0; }
+.ed-leave__type { font-weight: 500; color: var(--ink); text-transform: capitalize; }
+.ed-leave__when { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ed-leave__pill { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; text-transform: capitalize; background: var(--paper-2); color: var(--muted); }
+.ed-leave__pill--approved { background: var(--sage-soft); color: var(--sage); }
+.ed-leave__pill--pending { background: var(--clay-soft); color: var(--honey-deep); }
+
+.ed-empty { color: var(--muted); font-size: 14px; padding: 10px 0; }
+
+@media (max-width: 900px) {
+  .ed-stats { grid-template-columns: 1fr; }
+  .ed-grid { grid-template-columns: 1fr; }
 }
-
-.summary-header__main {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-4);
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.summary-header__avatar-wrap {
-  flex-shrink: 0;
-}
-
-.summary-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--surface-2);
-  display: block;
-}
-
-.summary-avatar--placeholder {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.6rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-}
-
-.summary-header__text {
-  min-width: 0;
-}
-
-.summary-name {
-  margin: 0;
-  font-size: 1.6rem;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.summary-role {
-  margin: 0.2em 0 0;
-  font-size: var(--text-sm);
-  text-transform: capitalize;
-}
-
-.summary-position {
-  margin: 0.1em 0 0;
-  font-size: var(--text-sm);
-}
-
-.summary-header__actions {
-  display: flex;
-  gap: var(--gap-2);
-  flex-wrap: wrap;
-  flex-shrink: 0;
-}
-
-/* On narrow viewports, stack actions below the name block. */
 @media (max-width: 600px) {
-  .summary-header { flex-direction: column; align-items: stretch; }
-  .summary-header__actions { width: 100%; }
-  .summary-header__actions > * { flex: 1 1 auto; text-align: center; }
+  .ed-hero { flex-direction: column; align-items: flex-start; text-align: left; }
+  .ed-hero__actions { width: 100%; }
+  .ed-hero__actions > * { flex: 1; }
+  .ed-name { font-size: 28px; }
 }
-
-/* -------- Stats row -------- */
-
-.summary-stats {
-  /* Three columns at desktop, single column at mobile. The widget-grid
-     class from index.css already handles the responsive breakpoint at
-     900px. We override to get THREE equal columns instead of the
-     dashboard's 2-col layout. */
-  margin-top: var(--gap-4);
-}
-@media (min-width: 900px) {
-  .summary-stats { grid-template-columns: 1fr 1fr 1fr; }
-}
-
-/* -------- Section cards -------- */
-
-.summary-section {
-  margin-top: var(--gap-4);
-}
-
-/* -------- List rows shared by upcoming + pending sections -------- */
-
-.summary-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.summary-list__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gap-3);
-  padding: var(--gap-3) 0;
-  border-bottom: 1px solid var(--border);
-}
-.summary-list__item:last-child { border-bottom: none; }
-
-.summary-list__main {
-  min-width: 0;
-  flex: 1;
-}
-
-.summary-list__when {
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
-.summary-list__detail {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-  margin-top: 2px;
-  text-transform: capitalize;
-}
-
-.summary-list__link {
-  flex-shrink: 0;
-  color: var(--accent);
-  font-size: var(--text-sm);
-  text-decoration: none;
-  white-space: nowrap;
-}
-.summary-list__link:hover { text-decoration: underline; }
-
-/* The pending detail card has nested h3 sections. Style them down a
-   notch so they read as sub-headings. */
-.summary-section h3 {
-  margin: var(--gap-4) 0 var(--gap-2);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.summary-section h3:first-child { margin-top: 0; }
