@@ -21,7 +21,7 @@
  *     handles map absence gracefully.
  */
 
-const CACHE_VERSION = 'pica-cache-v52';
+const CACHE_VERSION = 'pica-cache-v53';
 // Pre-cache only static assets, NOT HTML pages. HTML pages need
 // server-side per-request locale injection (the <html lang> attribute
 // and the <meta name="pica-locale"> tag are written based on the
@@ -45,8 +45,10 @@ const PRECACHE_URLS = [
   '/security.js',
   '/modal.js',
   '/manual-time-modal.js',
+  '/request-leave-modal.js',
   '/modal.css',
   '/manual-time-modal.css',
+  '/request-leave-modal.css',
   '/icon.svg',
   '/manifest.json',
   '/i18n.js',
