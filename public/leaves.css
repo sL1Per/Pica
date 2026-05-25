@@ -1,252 +1,241 @@
+/* ============================================================================
+   Leaves list — M15 design (Plan 4)
+   Tokens from app.css: --paper, --paper-2, --ink, --ink-2, --muted,
+   --honey, --honey-deep, --sage, --sage-soft, --clay, --clay-soft,
+   --line, --line-soft, --font-mono, --font-serif.
+   Status / type coloring is class-driven (never inline color from JS).
+   Shares the row/card/pill vocabulary with corrections.css (lv- mirror of corr-).
+   ============================================================================ */
 
-.page-header {
+/* ---------- Page + header ------------------------------------------------- */
+
+.lv-page { display: flex; flex-direction: column; gap: 24px; }
+
+.lv-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  gap: var(--gap-3);
-  flex-wrap: wrap;
-  margin-bottom: var(--gap-4);
-}
-.header-actions {
-  display: flex;
-  gap: var(--gap-2);
+  gap: 12px;
   flex-wrap: wrap;
 }
+.lv-head__title { margin: 0; font-family: var(--font-serif); font-size: 1.75rem; line-height: 1.1; color: var(--ink); }
+.lv-head__sub { margin: 4px 0 0; font-size: var(--text-sm); color: var(--text-subtle); }
 
-/* Action links styled as buttons. Reuses tokens from app.css. */
-.btn-link {
-  display: inline-flex;
-  align-items: center;
-  height: 40px;
-  padding: 0 var(--gap-4);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: white;
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-}
-.btn-link:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: white; }
-.btn-link--secondary {
-  color: var(--text);
-  background: var(--bg);
-  border-color: var(--border);
-}
-.btn-link--secondary:hover {
-  background: var(--surface-2);
-  border-color: var(--border-strong);
-  color: var(--text);
-}
-
-/* ---------- Two-column layout ------------------------------------------- */
-
-.leaves-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--gap-5);
-  align-items: start;
-}
-
-@media (min-width: 900px) {
-  .leaves-layout {
-    grid-template-columns: minmax(420px, 55%) 1fr;
-  }
-}
-
-/* ---------- Balance panel ---------------------------------------------- */
-
-.leaves-balance {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: var(--gap-4);
-  box-shadow: var(--shadow-sm);
-  min-width: 0;    /* let the table shrink inside grid */
-}
-.leaves-balance__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gap-3);
-  margin-bottom: var(--gap-3);
-}
-.leaves-balance__title {
-  margin: 0;
-  font-size: var(--text-lg);
-}
-.leaves-balance__year select {
-  min-width: 90px;
-  width: auto;
-}
-.leaves-balance__note {
-  margin-top: var(--gap-3);
-  font-size: var(--text-xs);
-}
-
-/* Employee balance table — tighter than .data-table defaults.
- * table-layout:fixed + explicit widths prevents the header and body from
- * computing different column widths (which made them drift apart). */
-.balance-table {
-  width: 100%;
-  font-size: var(--text-sm);
-  table-layout: fixed;
-}
-.balance-table th,
-.balance-table td {
-  padding: var(--gap-2) var(--gap-2);
-}
-.balance-table th:first-child,
-.balance-table td:first-child { width: 28%; }
-.balance-table th:not(:first-child),
-.balance-table td:not(:first-child) { width: 18%; }
-.balance-table .balance-cell--pending { color: var(--warning); font-weight: 500; }
-.balance-table .balance-cell--remaining { font-weight: 700; }
-.balance-table .balance-row--over .balance-cell--remaining { color: var(--danger); }
-.balance-table .balance-cell--carry { color: var(--success, #2e7d32); font-weight: 600; margin-left: 0.25rem; cursor: help; }
-
-/* Employer matrix — horizontally scrollable when wide. */
-.balance-matrix__wrap {
-  overflow-x: auto;
-  margin: 0 calc(-1 * var(--gap-4));   /* bleed to the card edges */
-  padding: 0 var(--gap-4);
-}
-.balance-matrix {
-  width: 100%;
-  font-size: var(--text-sm);
-  min-width: 100%;
-}
-.balance-matrix th,
-.balance-matrix td {
-  padding: var(--gap-2);
-  white-space: nowrap;
-}
-.balance-matrix__cell { vertical-align: middle; }
-.balance-matrix__main {
-  display: inline-block;
-  font-variant-numeric: tabular-nums;
-}
-.balance-matrix__pending {
-  display: block;
-  margin-top: 2px;
-  font-size: var(--text-xs);
-  color: var(--warning);
-  font-weight: 500;
-}
-.balance-matrix__cell--over .balance-matrix__main strong { color: var(--danger); }
-
-/* Small "role" tag on employer matrix rows. */
-.type-tag--role {
-  margin-left: var(--gap-1);
-  background: var(--accent-soft);
-  color: var(--accent);
-  text-transform: lowercase;
-}
-
-/* ---------- List panel + filters --------------------------------------- */
-
-.leaves-list-panel { min-width: 0; }
-
-.filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap-1);
-  margin-bottom: var(--gap-3);
-  padding: 4px;
-  background: var(--surface-2);
-  border-radius: var(--radius);
-}
-.filter-bar .filter {
-  margin: 0;
-  padding: 6px var(--gap-3);
-  min-height: 32px;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  background: transparent;
-  color: var(--text-muted);
-  border: none;
-  border-radius: var(--radius-sm);
+.lv-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.lv-btn {
+  display: inline-flex; align-items: center; height: 40px;
+  margin-top: 0;
+  padding: 0 16px;
+  font-size: var(--text-sm); font-weight: 600;
+  color: #FBF6EC; background: var(--honey);
+  border: 1px solid var(--honey); border-radius: var(--radius);
   cursor: pointer;
 }
-.filter-bar .filter:hover { color: var(--text); background: var(--bg); }
-.filter-bar .filter.active {
-  background: var(--bg);
-  color: var(--accent);
-  box-shadow: var(--shadow-sm);
-}
+.lv-btn:hover { background: var(--honey-deep); border-color: var(--honey-deep); color: #FBF6EC; }
+.lv-btn--ghost { color: var(--ink); background: var(--paper); border-color: var(--line); }
+.lv-btn--ghost:hover { background: var(--paper-2); border-color: var(--border-strong); color: var(--ink); }
 
-.leave-list {
-  list-style: none;
+/* ---------- Cards --------------------------------------------------------- */
+
+.lv-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+}
+.lv-card + .lv-card { margin-top: 16px; }
+.lv-card--pending { border-color: var(--honey); }
+
+.lv-card__head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; margin-bottom: 16px;
+}
+.lv-card__title {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-2);
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted);
 }
-.leave-list .empty {
-  padding: var(--gap-4);
-  text-align: center;
-  color: var(--text-subtle);
-  background: var(--surface);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
+.lv-card__tag {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 6px;
+  font-size: 11px; font-weight: 700; line-height: 1.4;
+  padding: 2px 7px; border-radius: 999px;
+  background: var(--clay); color: #fff;
 }
 
-.leave-list__item {
-  display: block;
-  padding: var(--gap-3);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-}
-.leave-list__item:hover { border-color: var(--border-strong); background: var(--surface); }
-.leave-list__item--pending   { border-left-color: var(--warning); }
-.leave-list__item--approved  { border-left-color: var(--success); }
-.leave-list__item--rejected  { border-left-color: var(--danger); }
-.leave-list__item--cancelled { border-left-color: var(--text-subtle); opacity: 0.7; }
+/* ---------- Employee balance stat-blocks ---------------------------------- */
 
-.leave-list__row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--gap-2);
+.lv-bal {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
-.leave-list__title {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-2);
-  min-width: 0;
-  font-weight: 500;
-}
-.leave-list__meta {
-  margin-top: 4px;
-  font-size: var(--text-xs);
-  color: var(--text-subtle);
-}
+@media (min-width: 720px) { .lv-bal { grid-template-columns: repeat(4, 1fr); } }
 
-.type-tag {
+.lv-bal__block {
+  padding: 16px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.lv-bal__type {
   display: inline-block;
-  padding: 2px 8px;
-  background: var(--surface-2);
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-  font-weight: 600;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--paper); border: 1px solid var(--line);
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em;
+  text-transform: lowercase; color: var(--ink-2);
+}
+.lv-bal__nums { margin-top: 10px; display: flex; align-items: baseline; gap: 4px; }
+.lv-bal__num { font-family: var(--font-serif); font-size: 1.75rem; line-height: 1; color: var(--ink); }
+.lv-bal__total { font-size: var(--text-sm); color: var(--muted); }
+.lv-bal__bar {
+  margin-top: 10px; height: 6px;
+  background: var(--line); border-radius: 999px; overflow: hidden;
+}
+.lv-bal__fill {
+  height: 100%;
+  width: calc(var(--pct, 0) * 1%);
+  background: var(--sage);
   border-radius: 999px;
-  text-transform: lowercase;
-  letter-spacing: 0.02em;
+}
+.lv-bal__fill--over { background: var(--clay); }
+.lv-bal__meta { margin-top: 8px; font-size: var(--text-xs); color: var(--text-subtle); }
+.lv-bal__pending { color: var(--honey-deep); font-weight: 600; }
+
+/* ---------- Employer team matrix ------------------------------------------ */
+
+.lv-year select { min-width: 88px; width: auto; }
+
+.lv-matrix__wrap {
+  overflow-x: auto;
+  margin: 0 -24px; padding: 0 24px;   /* bleed to card edges */
+}
+.lv-matrix { width: 100%; min-width: 100%; font-size: var(--text-sm); border-collapse: collapse; }
+.lv-matrix th, .lv-matrix td { padding: 8px; white-space: nowrap; text-align: left; }
+.lv-matrix th { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
+.lv-matrix td { border-bottom: 1px solid var(--line-soft); }
+.lv-matrix th.right, .lv-matrix td.right { text-align: right; }
+.lv-matrix__main { font-variant-numeric: tabular-nums; }
+.lv-matrix__main strong { color: var(--ink); }
+.lv-matrix__pending { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--honey-deep); font-weight: 500; }
+.lv-matrix__cell--over .lv-matrix__main strong { color: var(--clay); }
+.lv-matrix .muted { color: var(--muted); }
+.lv-type--role {
+  margin-left: 4px; padding: 1px 6px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent);
+  font-size: 10px; font-weight: 600; text-transform: lowercase;
 }
 
-.status-badge {
-  padding: 2px 10px;
-  border-radius: 999px;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
+/* ---------- Filter / tab bar ---------------------------------------------- */
+
+.lv-filter {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  margin-bottom: 14px; padding: 4px;
+  background: var(--paper-2); border-radius: var(--radius);
 }
-.status-badge--pending   { background: var(--warning-soft); color: var(--warning); }
-.status-badge--approved  { background: var(--success-soft); color: var(--success); }
-.status-badge--rejected  { background: var(--danger-soft);  color: var(--danger); }
-.status-badge--cancelled { background: var(--surface-2);    color: var(--text-muted); }
+.lv-filter__btn {
+  margin: 0; margin-top: 0;
+  padding: 6px 12px; min-height: 32px;
+  font-size: var(--text-sm); font-weight: 500;
+  background: transparent; color: var(--text-muted);
+  border: none; border-radius: var(--radius-sm); cursor: pointer;
+}
+.lv-filter__btn:hover { color: var(--text); background: var(--paper); }
+.lv-filter__btn--active { background: var(--paper); color: var(--accent); box-shadow: var(--shadow-sm); }
+.lv-filter__count { margin-left: 4px; font-variant-numeric: tabular-nums; opacity: 0.7; }
+
+/* ---------- List + rows --------------------------------------------------- */
+
+.lv-list { list-style: none; padding: 0; margin: 0; }
+
+.lv-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px; align-items: center;
+  padding: 14px 0; position: relative;
+}
+.lv-row + .lv-row { border-top: 1px solid var(--line-soft); }
+
+.lv-row__link {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; min-width: 0;
+  color: inherit; text-decoration: none;
+}
+.lv-row__link:focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; border-radius: 4px; }
+
+.lv-row__accent {
+  position: absolute; left: -16px; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--line);
+}
+.lv-row--pending   .lv-row__accent { background: var(--honey); }
+.lv-row--approved  .lv-row__accent { background: var(--sage); }
+.lv-row--rejected  .lv-row__accent { background: var(--clay); }
+.lv-row--cancelled .lv-row__accent { background: var(--muted); }
+.lv-row--cancelled { opacity: 0.7; }
+
+.lv-row__main { min-width: 0; }
+.lv-row__who { font-weight: 500; font-size: 14px; color: var(--ink); line-height: 1.3; }
+.lv-row__when { margin-top: 2px; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lv-row__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.lv-row__days { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); flex-shrink: 0; white-space: nowrap; }
+
+/* Type chip (reused in rows + balance) */
+.lv-type {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  background: var(--paper-2); color: var(--muted);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  text-transform: lowercase; white-space: nowrap;
+}
+
+/* Status pill */
+.lv-status {
+  display: inline-flex; align-items: center;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 3px 8px; border-radius: 999px;
+  background: var(--paper-2); color: var(--muted);
+  text-transform: uppercase; white-space: nowrap;
+}
+.lv-status--pending   { background: #F4E4C7; color: var(--honey-deep); }
+.lv-status--approved  { background: var(--sage-soft); color: var(--sage); }
+.lv-status--rejected  { background: var(--clay-soft); color: var(--clay); }
+.lv-status--cancelled { background: var(--paper-2); color: var(--muted); }
+
+/* ---------- Inline employer actions --------------------------------------- */
+
+.lv-rowact { display: flex; align-items: center; gap: 6px; }
+.lv-act {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; margin-top: 0;
+  font-family: inherit; font-size: 16px; font-weight: 600; line-height: 1;
+  cursor: pointer;
+  border: 1px solid var(--line); background: var(--paper-2); color: var(--ink-2);
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+}
+.lv-act--approve { background: var(--sage); border-color: var(--sage); color: #fff; }
+.lv-act--approve:hover:not(:disabled) { opacity: 0.88; }
+.lv-act--reject { background: var(--paper-2); border-color: var(--line); color: var(--ink-2); }
+.lv-act--reject:hover:not(:disabled) { background: var(--clay-soft); border-color: var(--clay); color: var(--clay); }
+
+/* Inline reject note (revealed under a pending row) */
+.lv-reject { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.lv-reject__input { width: 100%; }
+.lv-reject__actions { display: flex; justify-content: flex-end; gap: 8px; }
+.lv-reject__actions .btn-ghost, .lv-reject__actions .btn-reject { margin-top: 0; }
+
+/* ---------- Empty states -------------------------------------------------- */
+
+.lv-empty { padding: 40px 24px; text-align: center; color: var(--muted); }
+
+/* ---------- Mobile ≤ 760px ----------------------------------------------- */
+
+@media (max-width: 760px) {
+  .lv-card { padding: 16px; border-radius: 12px; }
+  .lv-row__accent { left: -12px; }
+  .lv-row { grid-template-columns: 1fr; gap: 8px; }
+  .lv-row__link { flex-wrap: wrap; }
+  .lv-matrix__wrap { margin: 0 -16px; padding: 0 16px; }
+  .lv-bal { grid-template-columns: repeat(2, 1fr); }
+  .lv-rowact { justify-content: flex-start; }
+}
