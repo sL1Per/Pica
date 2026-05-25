@@ -2,6 +2,7 @@ import { postJson, showMessage, setBusy } from '/app.js';
 import { t, tn, translateError, applyTranslations, fmtHours, fmtDateTime, getLocale } from '/i18n.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
+import { monthMatrix } from '/calendar-grid.js';
 mountTopBar();
 mountFooter();
 applyTranslations();
@@ -302,27 +303,15 @@ function renderMiniCal() {
     }
   }
 
-  const now = new Date();
-  const todayYmd = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
-
-  // Leading blanks (Monday-first).
-  const firstDow = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();   // 0=Sun
-  const offset = (firstDow + 6) % 7;                              // Mon=0
-  for (let i = 0; i < offset; i++) {
-    const blank = document.createElement('div');
-    blank.className = 'ldet-mini__cell ldet-mini__cell--muted';
-    grid.appendChild(blank);
-  }
-
-  const daysInMonth = new Date(y, m, 0).getDate();
-  for (let d = 1; d <= daysInMonth; d++) {
-    const cellYmd = `${y}-${pad2(m)}-${pad2(d)}`;
+  // Day cells from the shared month-matrix helper (Mon-first, today flagged).
+  for (const c of monthMatrix(y, m - 1)) {
     const cell = document.createElement('div');
     let cls = 'ldet-mini__cell';
-    if (inRange.has(cellYmd)) cls += ' ldet-mini__cell--inrange';
-    if (cellYmd === todayYmd) cls += ' ldet-mini__cell--today';
+    if (!c.inMonth) cls += ' ldet-mini__cell--muted';
+    if (c.inMonth && inRange.has(c.ymd)) cls += ' ldet-mini__cell--inrange';
+    if (c.isToday) cls += ' ldet-mini__cell--today';
     cell.className = cls;
-    cell.textContent = String(d);
+    cell.textContent = c.inMonth ? String(c.date.getDate()) : '';
     grid.appendChild(cell);
   }
 
