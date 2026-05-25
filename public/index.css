@@ -301,3 +301,92 @@
   .emp-hero__big { font-size: 56px; }
   .emp-punch { height: 64px; }   /* most important action stays large on mobile */
 }
+
+/* ============================================================
+   Employer home (M15, Plan 6) — stat strip + Team-today +
+   Waiting-on-you (inline decide) + Hours-this-week.
+   Reuses the .emp-* card idiom + .emp-weekbars chart above.
+   ============================================================ */
+.eh-home { display: block; }
+.eh-head { margin: 8px 0 24px; }
+.eh-head__title { font-family: var(--font-serif); font-size: 40px; line-height: 1; letter-spacing: -0.01em; color: var(--ink); margin: 0; }
+.eh-head__title em { font-style: italic; }
+.eh-head__sub { color: var(--muted); margin-top: 8px; font-size: 15px; }
+
+/* Shared status dot (duplicated by name in employees.css / employee.css) */
+.st-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: inline-block; flex-shrink: 0; }
+.st-dot--working { background: var(--sage); }
+.st-dot--break   { background: var(--honey); }
+.st-dot--done    { background: var(--muted); }
+.st-dot--leave   { background: var(--plum); }
+.st-dot--off     { background: var(--line); }
+
+/* Stat strip — 4 clickable cards */
+.eh-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.eh-stat { display: flex; flex-direction: column; gap: 6px; text-align: left; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; cursor: pointer; transition: transform .15s, border-color .15s; color: inherit; font: inherit; }
+.eh-stat:hover { transform: translateY(-1px); border-color: var(--ink-2); }
+.eh-stat--alert { background: var(--clay-soft); border-color: var(--clay); }
+.eh-stat__label { display: inline-flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.eh-stat__num { font-family: var(--font-serif); font-size: 40px; line-height: 1; color: var(--ink); }
+.eh-stat__hint { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 2-col content grid */
+.eh-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+.eh-col { display: flex; flex-direction: column; gap: 20px; }
+.eh-card { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+.eh-card__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+.eh-card__title { font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.eh-card__link { font-size: 12.5px; color: var(--honey-deep); font-weight: 500; }
+
+/* Team-today rows */
+.eh-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-soft); }
+.eh-row:first-child { border-top: none; }
+.eh-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; background: oklch(0.86 0.06 var(--hue, 90)); color: oklch(0.34 0.08 var(--hue, 90)); overflow: hidden; }
+.eh-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.eh-row__main { min-width: 0; flex: 1; }
+.eh-row__name { font-weight: 500; color: var(--ink); display: flex; align-items: center; gap: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eh-row__status { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; }
+.eh-row__aside { flex-shrink: 0; text-align: right; }
+.eh-row__dur { font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
+.eh-row__meta { font-size: 11.5px; color: var(--muted); }
+
+.eh-badge { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: var(--paper-2); color: var(--muted); }
+.eh-badge--employer { color: var(--plum); }
+
+/* Waiting-on-you (inline decide) */
+.eh-pend { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line-soft); flex-wrap: wrap; }
+.eh-pend:first-child { border-top: none; }
+.eh-pend__main { min-width: 0; flex: 1; }
+.eh-pend__name { font-weight: 500; color: var(--ink); }
+.eh-pend__detail { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.eh-pend__acts { display: flex; gap: 8px; flex-shrink: 0; }
+.eh-act { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; line-height: 1; }
+.eh-act--approve { color: var(--sage); }
+.eh-act--approve:hover { background: var(--sage-soft); border-color: var(--sage); }
+.eh-act--reject { color: var(--clay); }
+.eh-act--reject:hover { background: var(--clay-soft); border-color: var(--clay); }
+.eh-act:disabled { opacity: 0.5; cursor: progress; }
+.eh-note { display: flex; gap: 8px; margin-top: 8px; flex-basis: 100%; }
+.eh-note input { flex: 1; }
+.eh-allcaught { text-align: center; color: var(--muted); padding: 18px 0; font-size: 14px; }
+.eh-allcaught__check { display: block; color: var(--sage); font-size: 24px; margin-bottom: 4px; }
+
+/* Hours-this-week */
+.eh-hours__big { font-family: var(--font-serif); font-size: 48px; line-height: 1; color: var(--ink); }
+.eh-hours__big small { font-size: 18px; color: var(--muted); }
+.eh-delta { font-size: 13px; font-weight: 600; margin-left: 10px; }
+.eh-delta--up { color: var(--sage); }
+.eh-delta--down { color: var(--clay); }
+
+.eh-empty { color: var(--muted); font-size: 14px; padding: 10px 0; }
+.eh-error { color: var(--clay); font-size: 13px; padding: 10px 0; }
+
+@media (max-width: 900px) {
+  .eh-stats { grid-template-columns: repeat(2, 1fr); }
+  .eh-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .eh-head__title { font-size: 30px; }
+  .eh-card { padding: 16px; border-radius: 14px; }
+  .eh-stat__num { font-size: 32px; }
+}

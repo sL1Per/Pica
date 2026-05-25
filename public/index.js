@@ -11,37 +11,8 @@ import { mountTopBar, mountFooter } from '/topbar.js';
 import { t, fmtDate, fmtTime, fmtHours, translateError } from '/i18n.js';
 import { clockPunch } from '/geo.js';
 import { toast } from '/app.js';
-
-// ---- Quick-nav cards (kept from earlier dashboard) -----------------------
-
-const NAV_EMPLOYEE = [
-  { href: '/punch',           titleKey: 'dashboard.card.punches.title',     descKey: 'dashboard.card.punches.desc' },
-  { href: '/leaves/calendar', titleKey: 'dashboard.card.calendar.title',    descKey: 'dashboard.card.calendar.desc' },
-  { href: '/leaves',          titleKey: 'dashboard.card.leaves.title',      descKey: 'dashboard.card.leavesEmployee.desc' },
-  { href: '/corrections',     titleKey: 'dashboard.card.corrections.title', descKey: 'dashboard.card.correctionsEmployee.desc' },
-  { href: '/reports',         titleKey: 'dashboard.card.reports.title',     descKey: 'dashboard.card.reportsEmployee.desc' },
-];
-
-const NAV_EMPLOYER = [
-  { href: '/employees',       titleKey: 'dashboard.card.employees.title',   descKey: 'dashboard.card.employees.desc' },
-  { href: '/leaves/calendar', titleKey: 'dashboard.card.calendar.title',    descKey: 'dashboard.card.calendar.desc' },
-  { href: '/leaves',          titleKey: 'dashboard.card.leaves.title',      descKey: 'dashboard.card.leaves.desc' },
-  { href: '/corrections',     titleKey: 'dashboard.card.corrections.title', descKey: 'dashboard.card.correctionsEmployer.desc' },
-  { href: '/punch',           titleKey: 'dashboard.card.punches.title',     descKey: 'dashboard.card.punches.desc' },
-  { href: '/reports',         titleKey: 'dashboard.card.reports.title',     descKey: 'dashboard.card.reportsEmployer.desc' },
-  { href: '/settings',        titleKey: 'dashboard.card.settings.title',    descKey: 'dashboard.card.settings.desc' },
-];
-
-function renderNavCards(role) {
-  const items = role === 'employer' ? NAV_EMPLOYER : NAV_EMPLOYEE;
-  const root = document.getElementById('nav-cards');
-  root.innerHTML = items.map((it) => `
-    <a class="nav-card" href="${it.href}">
-      <div class="nav-card__title">${escapeHtml(t(it.titleKey))}</div>
-      <div class="nav-card__desc">${escapeHtml(t(it.descKey))}</div>
-    </a>
-  `).join('');
-}
+import { pairSessions, workedMs, breakMs, groupByEmployee, classify, STATUS_SORT } from '/team-status.js';
+import { approveLeaveWithCheck, rejectLeave } from '/leave-actions.js';
 
 // ---- Helpers ------------------------------------------------------------
 
@@ -51,20 +22,6 @@ function escapeHtml(s) {
   }[c]));
 }
 
-/** "8h 30m" / "8h" / "0m" — terse human duration from a millisecond value. */
-function humanDuration(ms) {
-  if (!Number.isFinite(ms) || ms < 0) ms = 0;
-  const totalMin = Math.round(ms / 60_000);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  if (h > 0 && m > 0) return `${h}h ${m}m`;
-  if (h > 0) return `${h}h`;
-  return `${m}m`;
-}
-
-/** From an ISO timestamp, return the local HH:MM via the i18n fmtTime helper. */
-function timeOnly(iso) { return fmtTime(iso); }
-
 // ---- Fetch wrapper with error capture ----------------------------------
 
 async function fetchJson(url) {
@@ -73,312 +30,270 @@ async function fetchJson(url) {
   return res.json();
 }
 
-// ---- Punch grouping ----------------------------------------------------
+// ---- Employer home (M15, Plan 6) ---------------------------------------
 
-/**
- * Given an array of punches sorted by timestamp ascending, group them into
- * (in, out) pairs per employee. Returns an array of:
- *   { employeeId, username, fullName, pairs: [{ in, out }], openInPunch }
- *
- * `openInPunch` is the most recent in-punch with no matching out (i.e. the
- * employee is currently clocked in). Otherwise null.
- */
-function groupPunchesByEmployee(punches, employeesById) {
-  const byEmp = new Map();
-  for (const p of punches) {
-    if (!byEmp.has(p.employeeId)) {
-      const emp = employeesById.get(p.employeeId);
-      byEmp.set(p.employeeId, {
-        employeeId: p.employeeId,
-        username: p.username || emp?.username || null,
-        fullName: emp?.fullName || null,
-        pairs: [],
-        openInPunch: null,
-      });
+function ehYmd(d) { const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+function ehAnchor(off) { const d = new Date(); d.setDate(d.getDate() + off); return ehYmd(d); }
+
+function durHM(ms) {
+  if (!Number.isFinite(ms) || ms < 0) ms = 0;
+  const tot = Math.round(ms / 60000), h = Math.floor(tot / 60), m = tot % 60;
+  return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+}
+function ehInitials(name) {
+  return (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?';
+}
+function ehHue(s) { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; }
+function ehEl(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+function ehAvatar(emp, name, cls = 'eh-avatar') {
+  const a = ehEl('div', cls);
+  if (emp?.hasPicture) { const img = ehEl('img'); img.src = `/api/employees/${emp.id}/picture`; img.alt = ''; a.appendChild(img); }
+  else { a.textContent = ehInitials(name); a.style.setProperty('--hue', ehHue(name)); }
+  return a;
+}
+function ehStatusDot(key) { const d = ehEl('span', `st-dot st-dot--${key}`); d.setAttribute('aria-hidden', 'true'); return d; }
+
+const STATUS_LABEL = { working: 'team.status.working', break: 'team.status.break', done: 'team.status.done', leave: 'team.status.leave', off: 'team.status.off' };
+
+function renderEmployerHome(main, companyName) {
+  main.className = '';
+  main.replaceChildren();
+  const home = ehEl('div', 'eh-home');
+  const head = ehEl('div', 'eh-head');
+  head.append(ehEl('h1', 'eh-head__title', companyName), ehEl('p', 'eh-head__sub', t('home.empSub')));
+  const stats = ehEl('div', 'eh-stats');
+  const grid = ehEl('div', 'eh-grid');
+  const left = ehEl('div', 'eh-col'), right = ehEl('div', 'eh-col');
+
+  const teamCard = ehEl('section', 'eh-card');
+  const teamHead = ehEl('div', 'eh-card__head');
+  teamHead.append(ehEl('h2', 'eh-card__title', t('home.empTeamToday')));
+  const teamLink = ehEl('a', 'eh-card__link', t('widgets.viewAll')); teamLink.href = '/employees';
+  teamHead.append(teamLink);
+  const teamBody = ehEl('div', 'eh-card__body');
+  teamCard.append(teamHead, teamBody);
+  left.append(teamCard);
+
+  const waitCard = ehEl('section', 'eh-card');
+  const waitHead = ehEl('div', 'eh-card__head');
+  waitHead.append(ehEl('h2', 'eh-card__title', t('home.empWaiting')));
+  const waitBody = ehEl('div', 'eh-card__body');
+  waitCard.append(waitHead, waitBody);
+
+  const hoursCard = ehEl('section', 'eh-card');
+  const hoursHead = ehEl('div', 'eh-card__head');
+  hoursHead.append(ehEl('h2', 'eh-card__title', t('home.empHoursTitle')));
+  const hoursBody = ehEl('div', 'eh-card__body');
+  hoursCard.append(hoursHead, hoursBody);
+
+  right.append(waitCard, hoursCard);
+  grid.append(left, right);
+  home.append(head, stats, grid);
+  main.append(home);
+  return { stats, teamBody, waitBody, hoursBody, waitCard };
+}
+
+function ehStatHint(names) {
+  if (names.length === 0) return ' ';
+  const shown = names.slice(0, 2).join(', ');
+  return names.length > 2 ? t('home.empNamesMore', { names: shown, n: names.length - 2 }) : shown;
+}
+function ehStatCard({ key, labelKey, count, hint, href, alert, onClick }) {
+  const card = ehEl('button', 'eh-stat' + (alert ? ' eh-stat--alert' : '')); card.type = 'button';
+  const label = ehEl('span', 'eh-stat__label');
+  if (key) label.append(ehStatusDot(key));
+  label.append(document.createTextNode(t(labelKey)));
+  card.append(label, ehEl('span', 'eh-stat__num', String(count)), ehEl('span', 'eh-stat__hint', hint));
+  card.addEventListener('click', onClick || (() => { if (href) window.location.href = href; }));
+  return card;
+}
+
+function renderStatStrip(refs, rows, waitingCount) {
+  const byStatus = (s) => rows.filter((r) => r.status === s);
+  const firstNames = (rs) => rs.map((r) => (r.e.fullName || r.e.username || '').split(/\s+/)[0]).filter(Boolean);
+  const working = byStatus('working'), brk = byStatus('break'), lv = byStatus('leave');
+  refs.stats.replaceChildren(
+    ehStatCard({ key: 'working', labelKey: 'home.empWorkingNow', count: working.length, hint: ehStatHint(firstNames(working)), href: '/employees' }),
+    ehStatCard({ key: 'break', labelKey: 'home.empOnBreak', count: brk.length, hint: ehStatHint(firstNames(brk)), href: '/employees' }),
+    ehStatCard({ key: 'leave', labelKey: 'home.empOnLeave', count: lv.length, hint: ehStatHint(firstNames(lv)), href: '/leaves/calendar' }),
+    ehStatCard({ labelKey: 'home.empWaiting', count: waitingCount, hint: ' ', alert: waitingCount > 0, onClick: () => refs.waitCard.scrollIntoView({ behavior: 'smooth', block: 'start' }) }),
+  );
+}
+
+function renderTeamToday(body, rows, errored) {
+  if (errored) { body.replaceChildren(ehEl('div', 'eh-error', t('widgets.couldNotLoad'))); return; }
+  if (rows.length === 0) { body.replaceChildren(ehEl('div', 'eh-empty', t('home.empNobody'))); return; }
+  const sorted = [...rows].sort((a, b) => (STATUS_SORT[a.status] - STATUS_SORT[b.status])
+    || (a.e.fullName || a.e.username || '').localeCompare(b.e.fullName || b.e.username || ''));
+  const frag = document.createDocumentFragment();
+  for (const r of sorted) {
+    const name = r.e.fullName || r.e.username || '—';
+    const row = ehEl('div', 'eh-row');
+    row.append(ehAvatar(r.e, name));
+    const main = ehEl('div', 'eh-row__main');
+    const nameEl = ehEl('div', 'eh-row__name', name);
+    nameEl.append(ehEl('span', 'eh-badge' + (r.e.role === 'employer' ? ' eh-badge--employer' : ''), t('employee.role.' + r.e.role)));
+    const st = ehEl('div', 'eh-row__status');
+    st.append(ehStatusDot(r.status), document.createTextNode(t(STATUS_LABEL[r.status])));
+    main.append(nameEl, st);
+    const aside = ehEl('div', 'eh-row__aside');
+    if (r.status === 'working') {
+      aside.append(ehEl('div', 'eh-row__dur', durHM(r.worked)));
+      const since = r.pairs.find((p) => p.out === null)?.in?.ts;
+      if (since) aside.append(ehEl('div', 'eh-row__meta', t('widgets.sinceTime', { time: fmtTime(since) })));
+    } else if (r.status === 'break' || r.status === 'done') {
+      aside.append(ehEl('div', 'eh-row__dur', durHM(r.worked)));
+      const lastOut = r.pairs.length ? r.pairs[r.pairs.length - 1].out?.ts : null;
+      if (lastOut) aside.append(ehEl('div', 'eh-row__meta', t('home.empLeftAt', { time: fmtTime(lastOut) })));
+    } else {
+      aside.append(ehEl('div', 'eh-row__meta', '—'));
     }
-    const g = byEmp.get(p.employeeId);
-    if (p.type === 'in') {
-      g.openInPunch = p;          // becomes the new "open" until closed
-    } else if (p.type === 'out') {
-      if (g.openInPunch) {
-        g.pairs.push({ in: g.openInPunch, out: p });
-        g.openInPunch = null;
-      } else {
-        // Out without a prior in — orphan. Skip; UI doesn't need to surface
-        // these on the dashboard. (Corrections page handles those flows.)
-      }
-    }
+    row.append(main, aside);
+    frag.append(row);
   }
-  return [...byEmp.values()];
+  body.replaceChildren(frag);
 }
 
-/** Sum of (out - in) durations across closed pairs, in ms. */
-function workedMsFromPairs(pairs) {
-  let total = 0;
-  for (const p of pairs) {
-    total += new Date(p.out.ts).getTime() - new Date(p.in.ts).getTime();
-  }
-  return total;
+function ehPendRow(emp, name, detail, onApprove, onReject) {
+  const row = ehEl('div', 'eh-pend');
+  row.append(ehAvatar(emp, name));
+  const main = ehEl('div', 'eh-pend__main');
+  main.append(ehEl('div', 'eh-pend__name', name), ehEl('div', 'eh-pend__detail', detail));
+  const acts = ehEl('div', 'eh-pend__acts');
+  const ok = ehEl('button', 'eh-act eh-act--approve', '✓'); ok.type = 'button'; ok.setAttribute('aria-label', t('corrections.inlineApprove'));
+  const no = ehEl('button', 'eh-act eh-act--reject', '✗'); no.type = 'button'; no.setAttribute('aria-label', t('corrections.inlineReject'));
+  acts.append(ok, no);
+  const note = ehEl('div', 'eh-note'); note.hidden = true;
+  const input = ehEl('input'); input.type = 'text'; input.maxLength = 500; input.placeholder = t('corrections.rejectNotesPlaceholder');
+  const send = ehEl('button', 'eh-act eh-act--reject', '✗'); send.type = 'button'; send.setAttribute('aria-label', t('corrections.inlineReject'));
+  note.append(input, send);
+  ok.addEventListener('click', async () => { ok.disabled = no.disabled = true; await onApprove(); });
+  no.addEventListener('click', () => { note.hidden = !note.hidden; if (!note.hidden) input.focus(); });
+  send.addEventListener('click', async () => { send.disabled = true; await onReject(input.value.trim()); });
+  row.append(main, acts, note);
+  return row;
 }
 
-/**
- * Sum of break time between same-day sessions, in ms.
- * A break is the gap between consecutive (out → next in) — including
- * the gap from the last closed pair's out to a currently-open in.
- * Mirrors the helper on /punch and /punches/today.
- */
-function breakMsFromGroup(g) {
-  let total = 0;
-  for (let i = 1; i < g.pairs.length; i++) {
-    total += new Date(g.pairs[i].in.ts).getTime()
-           - new Date(g.pairs[i - 1].out.ts).getTime();
-  }
-  if (g.openInPunch && g.pairs.length > 0) {
-    const lastOut = g.pairs[g.pairs.length - 1].out.ts;
-    total += new Date(g.openInPunch.ts).getTime() - new Date(lastOut).getTime();
-  }
-  return Math.max(0, total);
+async function ehDecideCorrection(id, action, notes) {
+  try {
+    const res = await fetch(`/api/corrections/${encodeURIComponent(id)}/${action}`, {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: action === 'reject' ? JSON.stringify({ notes: notes || '' }) : undefined,
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast(translateError(d.errorCode, d.error || t('widgets.couldNotLoad')), 'error'); return false; }
+    return true;
+  } catch { toast(t('widgets.couldNotLoad'), 'error'); return false; }
 }
 
-/** Currently-working duration: from the open in-punch to now. */
-function openDurationMs(openInPunch) {
-  if (!openInPunch) return 0;
-  return Date.now() - new Date(openInPunch.ts).getTime();
+function ehRangeShort(l) {
+  const s = String(l.start).slice(0, 10), e = String(l.end).slice(0, 10);
+  if (l.unit === 'hours') return fmtDate(new Date(l.start));
+  return s === e ? fmtDate(s) : `${fmtDate(s)} → ${fmtDate(e)}`;
 }
 
-// ---- Widget framework --------------------------------------------------
-
-/**
- * Set the body of a widget while keeping its head. `body` is HTML (caller
- * is responsible for escaping). Used by all the renderXxx() functions.
- */
-function setWidgetBody(widgetEl, body) {
-  const bodyEl = widgetEl.querySelector('.widget__body');
-  if (bodyEl) bodyEl.innerHTML = body;
-}
-
-function widgetLoading(widgetEl) {
-  setWidgetBody(widgetEl, `<div class="widget__loading">${escapeHtml(t('widgets.loading'))}</div>`);
-}
-
-function widgetError(widgetEl, retry) {
-  setWidgetBody(widgetEl, `
-    <div class="widget__error">${escapeHtml(t('widgets.couldNotLoad'))}</div>
-    <div style="text-align:center"><button type="button" class="btn-ghost btn-sm" data-retry>${escapeHtml(t('widgets.retry'))}</button></div>
-  `);
-  const btn = widgetEl.querySelector('[data-retry]');
-  if (btn) btn.addEventListener('click', retry);
-}
-
-/** Build a widget shell: <section class="widget"> with a head and empty body. */
-function buildWidget({ titleKey, action, wide }) {
-  const w = document.createElement('section');
-  w.className = 'widget' + (wide ? ' widget--wide' : '');
-  const actionHtml = action
-    ? `<a class="widget__action" href="${action.href}">${escapeHtml(t(action.labelKey))}</a>`
-    : '';
-  w.innerHTML = `
-    <div class="widget__head">
-      <h2 class="widget__title">${escapeHtml(t(titleKey))}</h2>
-      ${actionHtml}
-    </div>
-    <div class="widget__body"></div>
-  `;
-  return w;
-}
-
-// ---- Renderers — employer ---------------------------------------------
-
-function renderPendingApprovalsEmployer(widgetEl, leaves, corrections) {
-  const pendingLeaves = leaves.filter((l) => l.status === 'pending');
-  const pendingCorrections = corrections.filter((c) => c.status === 'pending');
-  if (pendingLeaves.length === 0 && pendingCorrections.length === 0) {
-    setWidgetBody(widgetEl, `<div class="widget__empty">${escapeHtml(t('widgets.allCaughtUp'))}</div>`);
+function renderWaiting(refs, pendingLeaves, pendingCorrs, empById) {
+  const body = refs.waitBody;
+  const reload = () => loadEmployerHome(refs);
+  if (pendingLeaves.length === 0 && pendingCorrs.length === 0) {
+    const wrap = ehEl('div', 'eh-allcaught');
+    wrap.append(ehEl('span', 'eh-allcaught__check', '✓'), document.createTextNode(t('widgets.allCaughtUp')));
+    body.replaceChildren(wrap);
     return;
   }
-  setWidgetBody(widgetEl, `
-    <div class="widget__row">
-      <div class="widget__row-main">
-        <div class="widget__row-name">
-          <a href="/leaves">${escapeHtml(t('widgets.pendingLeaves'))}</a>
-        </div>
-      </div>
-      <div class="widget__row-aside">
-        <span class="widget__count${pendingLeaves.length === 0 ? ' widget__count--zero' : ''}">${pendingLeaves.length}</span>
-      </div>
-    </div>
-    <div class="widget__row">
-      <div class="widget__row-main">
-        <div class="widget__row-name">
-          <a href="/corrections">${escapeHtml(t('widgets.pendingCorrections'))}</a>
-        </div>
-      </div>
-      <div class="widget__row-aside">
-        <span class="widget__count${pendingCorrections.length === 0 ? ' widget__count--zero' : ''}">${pendingCorrections.length}</span>
-      </div>
-    </div>
-  `);
+  const frag = document.createDocumentFragment();
+  for (const l of pendingLeaves) {
+    const emp = empById.get(l.employeeId);
+    const name = emp?.fullName || emp?.username || '—';
+    const detail = `${t('leaves.type.' + l.type)} · ${ehRangeShort(l)}`;
+    frag.append(ehPendRow(emp, name, detail,
+      async () => { const r = await approveLeaveWithCheck(l); if (r.ok) reload(); },
+      async (notes) => { const r = await rejectLeave(l.id, notes); if (r.ok) reload(); }));
+  }
+  const KIND = { both: 'corrections.kindBoth', in: 'corrections.kindIn', out: 'corrections.kindOut' };
+  for (const c of pendingCorrs) {
+    const emp = empById.get(c.employeeId);
+    const name = emp?.fullName || emp?.username || '—';
+    const detail = `${t(KIND[c.kind] || 'corrections.kindBoth')} · ${fmtHours(c.hours || 0)}h`;
+    frag.append(ehPendRow(emp, name, detail,
+      async () => { const ok = await ehDecideCorrection(c.id, 'approve'); if (ok) reload(); },
+      async (notes) => { const ok = await ehDecideCorrection(c.id, 'reject', notes); if (ok) reload(); }));
+  }
+  body.replaceChildren(frag);
 }
 
-function renderWorkingTodayEmployer(widgetEl, punches, employeesById) {
-  const groups = groupPunchesByEmployee(punches, employeesById);
-  if (groups.length === 0) {
-    setWidgetBody(widgetEl, `<div class="widget__empty">${escapeHtml(t('widgets.noOneWorkingYet'))}</div>`);
-    return;
+function renderHoursWeek(body, wkThis, wkLast) {
+  if (wkThis.status !== 'fulfilled') { body.replaceChildren(ehEl('div', 'eh-error', t('widgets.couldNotLoad'))); return; }
+  const m = wkThis.value;
+  const total = m.grandTotal ?? (m.rows || []).reduce((acc, r) => acc + (r.total || 0), 0);
+  const lastTotal = wkLast.status === 'fulfilled' ? (wkLast.value.grandTotal ?? null) : null;
+
+  const wrap = document.createDocumentFragment();
+  const big = ehEl('div', 'eh-hours__big');
+  big.append(document.createTextNode(fmtHours(total)), ehEl('small', null, ' h'));
+  if (lastTotal != null) {
+    const delta = Math.round((total - lastTotal) * 10) / 10;
+    big.append(ehEl('span', 'eh-delta ' + (delta >= 0 ? 'eh-delta--up' : 'eh-delta--down'),
+      t('home.empHoursDelta', { delta: (delta >= 0 ? '+' : '−') + fmtHours(Math.abs(delta)) })));
   }
-  const working = groups.filter((g) => g.openInPunch);
-  const done    = groups.filter((g) => !g.openInPunch && g.pairs.length > 0);
+  wrap.append(big);
 
-  let html = '';
-
-  if (working.length > 0) {
-    html += `<div class="widget__section"><div class="widget__section-head">${escapeHtml(t('widgets.currentlyWorking'))}</div><ul class="widget__list">`;
-    for (const g of working) {
-      const inT = timeOnly(g.openInPunch.ts);
-      const dur = humanDuration(openDurationMs(g.openInPunch) + workedMsFromPairs(g.pairs));
-      let detail = t('widgets.sinceTime', { time: inT });
-      const brk = breakMsFromGroup(g);
-      if (brk > 0) detail += ` · ${t('punch.todayBreak', { dur: humanDuration(brk) })}`;
-      html += `
-        <li class="widget__row">
-          <div class="widget__row-main">
-            <div class="widget__row-name">${escapeHtml(g.fullName || g.username || '—')}</div>
-            <div class="widget__row-detail">${escapeHtml(detail)}</div>
-          </div>
-          <div class="widget__row-aside">${escapeHtml(dur)}</div>
-        </li>
-      `;
-    }
-    html += `</ul></div>`;
+  const bucketObjs = (m.buckets || []).map((k) => ({ key: k, hours: m.bucketTotals?.[k] || 0 }));
+  const bars = weekBars({ from: m.from, to: m.to }, bucketObjs, ehYmd(new Date())).filter((b) => b.dow >= 1 && b.dow <= 5);
+  const maxH = Math.max(8, ...bars.map((b) => b.hours));
+  const dayLetters = ['', 'M', 'T', 'W', 'T', 'F'];
+  const barsEl = ehEl('div', 'emp-weekbars');
+  for (const b of bars) {
+    const col = ehEl('div', 'emp-weekbars__col');
+    const bar = ehEl('div', 'emp-weekbars__bar' + (b.today ? ' emp-weekbars__bar--today' : '') + (b.hours ? '' : ' emp-weekbars__bar--empty'));
+    bar.style.height = `${Math.max(4, (b.hours / maxH) * 100)}%`;
+    col.append(bar, ehEl('div', 'emp-weekbars__day' + (b.today ? ' emp-weekbars__day--today' : ''), dayLetters[b.dow] || ''));
+    barsEl.append(col);
   }
-
-  if (done.length > 0) {
-    html += `<div class="widget__section"><div class="widget__section-head">${escapeHtml(t('widgets.doneForTheDay'))}</div><ul class="widget__list">`;
-    for (const g of done) {
-      const dur = humanDuration(workedMsFromPairs(g.pairs));
-      const pairsText = g.pairs
-        .map((p) => `${timeOnly(p.in.ts)}–${timeOnly(p.out.ts)}`)
-        .join(', ');
-      let detail = pairsText;
-      const brk = breakMsFromGroup(g);
-      if (brk > 0) detail += ` · ${t('punch.todayBreak', { dur: humanDuration(brk) })}`;
-      html += `
-        <li class="widget__row">
-          <div class="widget__row-main">
-            <div class="widget__row-name">${escapeHtml(g.fullName || g.username || '—')}</div>
-            <div class="widget__row-detail">${escapeHtml(detail)}</div>
-          </div>
-          <div class="widget__row-aside">${escapeHtml(dur)}</div>
-        </li>
-      `;
-    }
-    html += `</ul></div>`;
-  }
-
-  setWidgetBody(widgetEl, html);
+  wrap.append(barsEl);
+  body.replaceChildren(wrap);
 }
 
-function renderOnLeaveTodayEmployer(widgetEl, approvedLeaves) {
-  // /api/leaves/approved already enriches each leave with `fullName` and
-  // `username`, so we don't need the employeesById map here.
-  const today = new Date();
-  const todayYmd = today.toISOString().slice(0, 10);
-  const onLeave = approvedLeaves.filter((l) => {
-    // Each leave has start/end as YYYY-MM-DD (day-unit) or ISO ts (hours-unit).
-    // Normalize both ends to YYYY-MM-DD by slicing.
-    const startYmd = String(l.start).slice(0, 10);
-    const endYmd   = String(l.end).slice(0, 10);
-    return startYmd <= todayYmd && todayYmd <= endYmd;
-  });
-
-  if (onLeave.length === 0) {
-    setWidgetBody(widgetEl, `<div class="widget__empty">${escapeHtml(t('widgets.noOneOnLeave'))}</div>`);
-    return;
-  }
-
-  let html = `<ul class="widget__list">`;
-  for (const l of onLeave) {
-    const name = l.fullName || l.username || '—';
-    const typeLabel = t('leaves.type.' + l.type);
-    html += `
-      <li class="widget__row">
-        <div class="widget__row-main">
-          <div class="widget__row-name">${escapeHtml(name)}</div>
-          <div class="widget__row-detail">${escapeHtml(typeLabel)}</div>
-        </div>
-        <div class="widget__row-aside">
-          <a href="/leaves/${escapeHtml(l.id)}" class="widget__action">${escapeHtml(t('widgets.viewAll'))}</a>
-        </div>
-      </li>
-    `;
-  }
-  html += `</ul>`;
-  setWidgetBody(widgetEl, html);
-}
-
-// ---- Orchestration -----------------------------------------------------
-
-/** Build the widget shells in order, return references for the loaders. */
-function buildEmployerWidgets(grid) {
-  const pending  = buildWidget({ titleKey: 'widgets.pendingApprovals' });
-  const working  = buildWidget({ titleKey: 'widgets.workingToday',
-                                 action: { href: '/punches/today', labelKey: 'widgets.viewAll' } });
-  const onLeave  = buildWidget({ titleKey: 'widgets.onLeaveToday',
-                                 action: { href: '/leaves/calendar', labelKey: 'widgets.viewAll' },
-                                 wide: true });
-  grid.appendChild(pending);
-  grid.appendChild(working);
-  grid.appendChild(onLeave);
-  return { pending, working, onLeave };
-}
-
-async function loadEmployerWidgets(widgets) {
-  // Show loading state on each widget.
-  Object.values(widgets).forEach(widgetLoading);
-
-  // Fetch everything in parallel. Settled (not all) so one failure doesn't
-  // tank the others — each gets per-widget error treatment below.
-  const [emp, leaves, corrections, today, approved] = await Promise.allSettled([
+async function loadEmployerHome(refs) {
+  const [emp, today, leaves, corrs, approved, wkThis, wkLast] = await Promise.allSettled([
     fetchJson('/api/employees'),
+    fetchJson('/api/punches/today'),
     fetchJson('/api/leaves'),
     fetchJson('/api/corrections?status=pending'),
-    fetchJson('/api/punches/today'),
     fetchJson('/api/leaves/approved'),
+    fetchJson(`/api/reports/timesheets?scope=all&type=week&anchor=${ehAnchor(0)}`),
+    fetchJson(`/api/reports/timesheets?scope=all&type=week&anchor=${ehAnchor(-7)}`),
   ]);
 
-  // Build employee map from /api/employees if it succeeded; otherwise {}.
-  const employeesById = new Map();
-  if (emp.status === 'fulfilled') {
-    for (const e of (emp.value.employees ?? [])) {
-      employeesById.set(e.id, e);
-    }
+  const employees = emp.status === 'fulfilled' ? (emp.value.employees ?? []) : [];
+  const empById = new Map(employees.map((e) => [e.id, e]));
+  const todayPunches = today.status === 'fulfilled' ? (today.value.punches ?? []) : [];
+  const byEmp = groupByEmployee(todayPunches);
+  const ymd = ehYmd(new Date());
+  const approvedLeaves = approved.status === 'fulfilled' ? (approved.value.leaves ?? []) : [];
+  const onLeaveIds = new Set();
+  for (const l of approvedLeaves) {
+    const s = String(l.start).slice(0, 10), e = String(l.end).slice(0, 10);
+    if (s <= ymd && ymd <= e) onLeaveIds.add(l.employeeId);
   }
+  const nowHour = new Date().getHours();
+  const rows = employees.map((e) => {
+    const pairs = pairSessions(byEmp.get(e.id) ?? []);
+    const onLeave = onLeaveIds.has(e.id);
+    return { e, pairs, status: classify({ pairs, onLeave, nowHour }), worked: workedMs(pairs), brk: breakMs(pairs) };
+  });
+  const pendingLeaves = leaves.status === 'fulfilled' ? (leaves.value.leaves ?? []).filter((l) => l.status === 'pending') : [];
+  const pendingCorrs = corrs.status === 'fulfilled' ? (corrs.value.corrections ?? []) : [];
 
-  // Pending approvals widget.
-  if (leaves.status === 'fulfilled' && corrections.status === 'fulfilled') {
-    renderPendingApprovalsEmployer(widgets.pending,
-      leaves.value.leaves ?? [],
-      corrections.value.corrections ?? []);
-  } else {
-    widgetError(widgets.pending, () => loadEmployerWidgets(widgets));
-  }
-
-  // Working today widget.
-  if (today.status === 'fulfilled') {
-    renderWorkingTodayEmployer(widgets.working,
-      today.value.punches ?? [],
-      employeesById);
-  } else {
-    widgetError(widgets.working, () => loadEmployerWidgets(widgets));
-  }
-
-  // On-leave-today widget.
-  if (approved.status === 'fulfilled') {
-    renderOnLeaveTodayEmployer(widgets.onLeave,
-      approved.value.leaves ?? []);
-  } else {
-    widgetError(widgets.onLeave, () => loadEmployerWidgets(widgets));
-  }
+  renderStatStrip(refs, rows, pendingLeaves.length + pendingCorrs.length);
+  renderTeamToday(refs.teamBody, rows, today.status !== 'fulfilled');
+  renderWaiting(refs, pendingLeaves, pendingCorrs, empById);
+  renderHoursWeek(refs.hoursBody, wkThis, wkLast);
 }
 
 // ===== Employee home (M15) =================================================
@@ -640,19 +555,13 @@ async function loadEmployeeHome(refs, user) {
   }
 
   if (data.user.role === 'employer') {
-    // Employer home is redesigned in a later M15 plan — keep the widgets.
-    const grid = document.getElementById('widget-grid');
-    const widgets = buildEmployerWidgets(grid);
-    const loader = () => loadEmployerWidgets(widgets);
+    const main = document.querySelector('main');
+    const refs = renderEmployerHome(main, companyName);
+    const loader = () => loadEmployerHome(refs);
     loader();
-    // Refresh on tab visibility change. When the user comes back to this
-    // tab after working in another, the widgets should reflect what's
-    // current — punches drift, leaves get filed, corrections get
-    // approved. Cheap: only fires when the user is actually looking.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') loader();
     });
-    renderNavCards(data.user.role);
     return;
   }
 
