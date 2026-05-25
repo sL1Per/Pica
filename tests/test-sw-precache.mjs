@@ -12,10 +12,10 @@ const test = (n, f) => { try { f(); console.log(`  ✓ ${n}`); passed++; }
   catch (e) { console.error(`  ✗ ${n}\n    ${e.message}`); failed++; } };
 
 console.log('Service worker precache (M15)');
-test('CACHE_VERSION is at least v53', () => {
+test('CACHE_VERSION is at least v54', () => {
   const m = sw.match(/pica-cache-v(\d+)/);
   assert.ok(m, 'no CACHE_VERSION found');
-  assert.ok(Number(m[1]) >= 53, `expected >= v53, got v${m && m[1]}`);
+  assert.ok(Number(m[1]) >= 54, `expected >= v54, got v${m && m[1]}`);
 });
 for (const f of [
   '/fonts/instrument-serif-400.woff2', '/fonts/instrument-serif-400-italic.woff2',
@@ -25,7 +25,8 @@ for (const f of [
   test(`precaches ${f}`, () => assert.ok(sw.includes(`'${f}'`), `missing ${f}`));
 for (const f of ['/app.css', '/topbar.css', '/topbar.js', '/app.js', '/i18n.js', '/geo.js',
   '/modal.js', '/modal.css', '/manual-time-modal.js', '/manual-time-modal.css',
-  '/request-leave-modal.js', '/request-leave-modal.css'])
+  '/request-leave-modal.js', '/request-leave-modal.css',
+  '/calendar-grid.js', '/leave-actions.js'])
   test(`precaches shell asset ${f}`, () => assert.ok(sw.includes(`'${f}'`)));
 
 console.log(`\n${passed} passed, ${failed} failed`);
