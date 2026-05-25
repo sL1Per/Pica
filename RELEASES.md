@@ -14,6 +14,49 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.34.0] — 2026-05-25 — Punch / topbar CSS polish (two pre-existing bug fixes)
+
+### What changed
+
+Two small, pre-existing defects surfaced during the M15 punches work are now
+fixed. Both are styling / CSP-cleanliness only — **no behavior change**.
+
+- **Topbar avatar CSP violation (app-wide, since 0.27.0).** The shell built
+  the sidebar and mobile avatars as markup carrying an inline
+  `style="--hue:…"` attribute; once parsed, CSP `style-src 'self'` blocked it,
+  emitting **two console errors on every authenticated page**. The per-user
+  hue is now applied via CSSOM (`el.style.setProperty('--hue', …)` after the
+  shell is built), which CSP does not govern. Result: **zero console errors**
+  (verified live) and the avatar still renders its per-user colour.
+- **Missing `.sess__*` session-row styles (since 0.30.0).** `punch.js` (and,
+  since 0.33.0, `punches-today.js`) emit `.sess__timeval`, `.sess__addr`, and
+  `.sess__comment-inline`, but `punch.css` defined none of them — the inline
+  comment was fully unstyled, and a now-dead full-row `.sess__comment` rule
+  lingered. Added explicit rules for the time value (`--ink`, 14px), the
+  address (`--muted`, 12px), and the inline comment (italic, `--ink-2`,
+  12.5px); removed the dead `.sess__comment` rule (+ its mobile override).
+  Fixes both `/punch` and `/punches/today` at once.
+
+`CACHE_VERSION` v51 → v52 (`topbar.js` + `punch.css` are pre-cached). No new
+i18n, no new test suite.
+
+### Honest Disclosures
+
+- Purely a CSP-cleanliness + styling fix; the data flows and markup structure
+  are unchanged.
+- `.sess__time--out` deliberately has **no** modifier rule — the base
+  `.sess__time` pill is the intended neutral OUT look (only `--in` overrides
+  to sage); a code comment now says so.
+- The static `test-security-headers` suite guards inline styles in **HTML
+  files**; it cannot see a runtime inline style parsed from a JS-built markup
+  string, so this class of bug is caught by the **Playwright MCP** console
+  check, not an in-repo test. An automated DOM/console suite is still M16.
+- Remaining Plan-9 cleanup trivia (the M15 alias bridge, the dead
+  `title.correctionNew` locale key, the unstyled `mtm-modal` scoping class)
+  are still deferred to the final M15 cleanup.
+
+---
+
 ## [0.33.0] — 2026-05-24 — M15 employer `/punches/today` restyle
 
 ### What changed

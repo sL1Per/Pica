@@ -5,13 +5,13 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.33.0._
+_Last touched in 0.34.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.33.0 (released 2026-05-24)
+- **Latest version:** 0.34.0 (released 2026-05-25)
 - **Test count:** 46 suites (0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -44,6 +44,25 @@ _Last touched in 0.33.0._
   then Calendar/Employer-Home/Settings/Profile/Reports; see
   `docs/superpowers/plans/2026-05-2*-m15-*`); M16–M17 follow (M17
   deployment guide ships last)
+
+---
+
+## What just shipped (0.34.0)
+
+**Punch / topbar CSS polish** — two pre-existing bug fixes, no behavior change.
+(1) **Topbar avatar CSP fix:** the shell built avatars with an inline
+`style="--hue:…"` attribute that CSP `style-src 'self'` blocked → **2 console
+errors on every authenticated page since 0.27.0**. The hue is now applied via
+CSSOM `el.style.setProperty('--hue', …)` after the shell builds (CSP doesn't
+govern CSSOM). **Zero console errors** (Playwright-verified); the per-user
+avatar colour is preserved. (2) **`.sess__*` session-row styles:** added
+`.sess__timeval` / `.sess__addr` / `.sess__comment-inline` rules to `punch.css`
+(the inline comment was fully unstyled) and removed the dead full-row
+`.sess__comment` (+ mobile override) — fixes session rows on **both** `/punch`
+and `/punches/today`. `.sess__time--out` intentionally has no rule (base
+`.sess__time` = neutral OUT). `CACHE_VERSION` v51 → v52; no new i18n or test
+suite. Verified live via the Playwright MCP (console clean + computed styles).
+See RELEASES.md 0.34.0.
 
 ---
 

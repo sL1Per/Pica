@@ -361,7 +361,7 @@ corrupts an existing record) and gives us an audit log for free.
   helpers; +`test-punch-week` in 0.30.0 — clock-page day-grouping/pairing
   helpers; the 0.31.0 corrections restyle, the 0.32.0 manual-time modal,
   and the 0.33.0 employer-today restyle each added no new suite), passing
-  as of 0.33.0 except two pre-existing
+  as of 0.34.0 except two pre-existing
   flakes unrelated to any recent feature, both failing identically on
   the pre-feature baseline: `test-reports.mjs` overnight-split bucket
   count (host-timezone sensitive) and `test-auth.mjs` (~1/64
@@ -475,4 +475,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.33.0._
+_Last touched in 0.34.0._
