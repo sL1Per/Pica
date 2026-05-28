@@ -33,7 +33,7 @@ app in a usable state.
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
-| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0) |
+| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0 · employer home+team+detail 0.37.0) |
 | M16       | E2E browser tests                  | 📋 Planned    |
 | M17       | Deployment guide + TLS samples     | 📋 Planned    |
 
@@ -379,12 +379,20 @@ popover with employee "Request leave this day"; and a right rail with Out
 today/tomorrow + an employee balance card / employer pending-requests inline
 decide. Introduced shared `calendar-grid.js` [month-matrix, also adopted by the
 leave-detail mini-cal] and `leave-actions.js` [approve/reject, shared with the
-leaves list]).
+leaves list]). **Employer home + Team + Employee detail** (0.37.0 — Plan 6:
+4-card stat strip · Team-today everyone-sorted · Waiting-on-you inline decide ·
+Hours-this-week with delta · team list with search/chips/status/week+bar/today/
+pending · employee detail hero with status pill + segments, 3-up stats, recent
+days, inline decide, Reset-pw via shared `modal.js`. Introduced shared
+`team-status.js` [pairing + `classify` heuristic on-break/done at 18:00 cutoff],
+the canonical `.st-dot--*` palette across all three pages; no backend change).
 
 **Remaining M15 plans (in progress):**
-- **Plan 6 (next)** — Employer home + Team + Employee detail.
-- The remaining screen bodies (Settings + Security / Profile edit / Reports)
-  rebuilt per the plan series.
+- **Plan 7 (next)** — Settings + Security (employer Settings page rebuild +
+  Security page restyle).
+- Plan 8 — Profile edit + the remainder of Preferences (palette picker shipped
+  0.29.0).
+- Plan 9 — Reports re-skin + the final cleanup that removes the alias bridge.
 - Alias bridge removed in the final cleanup plan once all 16 stylesheets
   reference design tokens directly.
 
@@ -422,4 +430,4 @@ change.
 
 ---
 
-_Last touched in 0.36.0._
+_Last touched in 0.37.0._

@@ -14,6 +14,102 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.37.0] — 2026-05-28 — M15 employer home + team + employee detail
+
+### What changed
+
+**M15 Plan 6** rebuilds the three employer-facing screens — the employer side
+of `/`, `/employees`, and `/employees/:id` — to the design, preserving every
+shipped feature and adding the design's richer status / stat / inline-decide
+surfaces. **Zero backend changes**; everything is a frontend fan-out over
+endpoints we already had.
+
+- **Shared `team-status.js`** (pure, Node-importable like `calendar-grid.js`).
+  Exports `pairSessions` / `workedMs` / `breakMs` / `groupByEmployee` /
+  `classify` / `STATUS_SORT` / `BREAK_CUTOFF_HOUR`. The canonical status set is
+  **working / break / done / leave / off**; all three screens render the same
+  status dot + label vocabulary (`.st-dot--*`). New suite `test-team-status`.
+- **Employer home `/`** is rebuilt around a **4-card stat strip** (Working now /
+  On break / On leave / Waiting on you — each clickable; "Waiting on you" turns
+  clay-soft when > 0), a **2-column grid** with a **Team-today** card listing
+  **everyone** (sorted working → break → done → on-leave → not-in) and a right
+  column with the **Waiting-on-you** card (avatars, type/name/detail, inline
+  ✓ / ✗ per row) plus an **Hours-this-week** card (org-wide serif total + delta
+  vs last week + Mon–Fri bars, today's bar honey). The old `dashboard-welcome` +
+  3 widget cards + quick-nav cards are gone — the sidebar has been the nav
+  since 0.27.0. Employee home (0.28.0) is byte-identical.
+- **Team list `/employees`** gains a **toolbar** (search + status chips with
+  live counts) and a **table** (Person · Status · Week+bar · Today · pending
+  dot). Each row is still a real `<a>` to the detail page. Avatars / role
+  badges / `+ New employee` / no-profile hint preserved. Per-row status is the
+  shared `classify`; week hours come from `/api/reports/timesheets?scope=all&type=week`;
+  today from `/api/punches/today` paired client-side; pending counts from
+  `/api/leaves` (pending) + `/api/corrections?status=pending`.
+- **Employee detail `/employees/:id`** rebuilt: a **hero** card (88px avatar,
+  serif name + role badge, position, status pill + today's segments, Reset-pw +
+  Edit-profile buttons), a **3-up stat block row** (This week / This month /
+  Today — each serif number / target + progress bar + caption: "missing Xh" or
+  "on track"; "Today" derives a daily target = weekly/5), a **Recent days**
+  card (last 7 days with punches this month, mono date · sessions · total), a
+  **"Pending from {firstName}"** card with **inline ✓ / ✗** for both leave and
+  correction requests (reuses `leave-actions.js`; correction approve/reject is a
+  plain POST), and an **Upcoming leaves** card (accent bar + type + dates +
+  pill, link to `/leaves/:id`). New data: `/api/punches/by-employee/:id?date=today`
+  for the hero + Today stat, `?year&month` for Recent days.
+- **Reset-password modal** moved off its hand-rolled markup onto the shared
+  `modal.js` shell (`createModal({ titleKey })` → focus trap, Esc, backdrop).
+  The flow / validation / endpoint / success message are byte-equivalent.
+- **Inline decide** is consistent across home and detail (and matches `leaves.js`
+  / `corrections.js`): ✓ on leaves calls `approveLeaveWithCheck` (handles the
+  concurrent-overlap confirm); ✗ reveals an inline note → `rejectLeave`. ✓ on
+  corrections is a bare POST; ✗ posts with `{notes}`.
+- **Status model — heuristic "On break".** Pica's punch data cannot tell
+  "on a break, will return" from "done for the day". `classify` treats
+  clocked-out-with-sessions before `BREAK_CUTOFF_HOUR = 18` (local hour) as
+  **break** and at/after 18 as **done**. Honest Disclosure.
+
+### Numbers
+
+- New file: `public/team-status.js` (pure helpers).
+- New test suite: `tests/test-team-status.mjs` (14 cases).
+- Test count: 48 → **49**.
+- `CACHE_VERSION` `v54` → `v55` (precaches `/team-status.js`).
+- 38 new i18n keys per locale (en-US + pt-PT); `employees.title` → "Team" /
+  "Equipa" (value update on an existing key).
+
+### Honest Disclosures
+
+- **"On break" is a heuristic, not ground truth.** The 18:00 cutoff is a fixed
+  constant, not configurable; it's a reasonable approximation for a Mon–Fri
+  daytime workforce and reads wrong for shift work. The status vocabulary is
+  honest about its limits.
+- **Team-list week target is a flat 40h reference** for the progress bar (the
+  reports endpoint doesn't return per-employee targets and we deliberately did
+  not add a backend dependency). Operators with non-standard weeks will see a
+  bar that doesn't reflect their target — the worked-hours number is still
+  accurate.
+- **Recent-days window is the current calendar month only** (one
+  `by-employee?year&month` fetch). Early-month views show fewer than 7 days; we
+  do not fetch the prior month.
+- **Detail "missing hours" widgets are folded** into the new 3-up stat blocks
+  (`missing Xh` caption under the worked-vs-target bar). The number isn't lost
+  but it's no longer in its own card.
+- **Employer-home fan-out is wider** than before (7 parallel requests including
+  this-week + last-week timesheets matrices). Fine at ≤ 50 employees; the
+  endpoints all use existing server-aggregated stores.
+- **Stat-card clicks navigate** rather than filter in place (Working/Break →
+  `/employees`, On leave → `/leaves/calendar`, Waiting on you → scrolls to its
+  card). No anchor / sticky-filter persistence.
+- **`index.html`'s static `#widget-grid` + `#nav-cards`** are now dead markup
+  (both role paths replace `<main>`'s contents). Left in place to avoid
+  CSP-hash drift on the bootstrap; harmless.
+- **No DOM / E2E tests** — that's M16 (Playwright).
+- **`leave-actions.js` overlap-check confirm** uses `window.confirm`, same as
+  the calendar and leaves-list paths. Migrating to a styled modal is a Plan-9
+  polish item.
+
+---
+
 ## [0.36.0] — 2026-05-25 — M15 calendar restyle
 
 ### What changed

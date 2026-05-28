@@ -5,14 +5,14 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.36.0._
+_Last touched in 0.37.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.36.0 (released 2026-05-25)
-- **Test count:** 48 suites (0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
+- **Latest version:** 0.37.0 (released 2026-05-28)
+- **Test count:** 49 suites (0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
   pre-feature baseline (see notes.md): `test-reports.mjs`
@@ -33,6 +33,8 @@ _Last touched in 0.36.0._
   page added `test-punch-week`: 45 → 46. The 0.35.0 leaves restyle added
   `test-leaves-render` (day-count + status-partition): 46 → 47. The 0.36.0
   calendar restyle added `test-calendar-grid` (shared month-matrix): 47 → 48.
+  The 0.37.0 employer home + team + employee detail rebuild added
+  `test-team-status` (shared pairing + status classify): 48 → 49.
 - **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
   through 0.30.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
@@ -44,10 +46,60 @@ _Last touched in 0.36.0._
   **employer `/punches/today`** at 0.33.0 — which **completes the
   punches/corrections screen group**; **leaves** (list / request-leave modal /
   detail) at 0.35.0; **calendar** (toolbar/chips/scope, pending+approved grid,
-  anchored popover, right rail) at 0.36.0. Remaining screen-body plans in
-  progress (**next: Plan 6 Employer-Home + Team + Employee detail** — then
-  Settings/Profile/Reports; see `docs/superpowers/plans/2026-05-2*-m15-*`);
-  M16–M17 follow (M17 deployment guide ships last)
+  anchored popover, right rail) at 0.36.0; **employer home + team list +
+  employee detail** (Plan 6) at 0.37.0 (shared `team-status.js`; heuristic
+  on-break; inline decide everywhere; Reset-pw on `modal.js`). Remaining
+  screen-body plans in progress (**next: Plan 7 Settings + Security**; then
+  Plan 8 Profile-edit + Prefs redesign; Plan 9 Reports + alias-bridge removal;
+  see `docs/superpowers/plans/2026-05-2*-m15-*`); M16–M17 follow (M17
+  deployment guide ships last)
+
+---
+
+## What just shipped (0.37.0)
+
+**M15 employer home + team + employee detail (Plan 6).** The three
+employer-facing screens — the employer side of `/`, `/employees`, and
+`/employees/:id` — restyled to the design with zero backend change. New shared
+**`team-status.js`** (pure, Node-importable): `pairSessions` / `workedMs` /
+`breakMs` / `groupByEmployee` / `classify` / `STATUS_SORT` /
+`BREAK_CUTOFF_HOUR=18`. Canonical status set **working / break / done / leave /
+off** with a shared `.st-dot--*` palette across all three pages.
+
+- **Employer home** = 4-card **stat strip** (Working / On break / On leave /
+  Waiting on you — clickable; clay-soft alert when Waiting > 0) + **Team-today**
+  card (everyone, sorted by status) + **Waiting-on-you** card (inline ✓/✗ for
+  both leaves and corrections) + **Hours-this-week** card (org-wide serif total
+  + delta vs last week + Mon–Fri bars). Old `dashboard-welcome` + 3 widgets +
+  nav-cards markup removed (the sidebar has been the nav since 0.27.0). The
+  employee-home branch (0.28.0) is byte-identical.
+- **Team list** = **search** + status **chips** with live counts + a **table**
+  (Person / Status / Week+bar / Today / pending dot). Rows are real `<a>` to
+  the detail page. Per-employee week hours come from the existing
+  `scope=all&type=week` reports matrix; today + status from
+  `/api/punches/today`; pending from leaves + corrections fan-out.
+- **Employee detail** = **hero** (88px avatar, serif name + role badge,
+  position, status pill + today's segments, Reset-pw + Edit-profile actions),
+  **3-up stat block** row (This week / This month / Today — serif `/ target` +
+  progress bar + caption "missing Xh" or "on track"; today's daily target =
+  week/5), **Recent days** (last 7 days with punches this month), **"Pending
+  from {firstName}"** with inline ✓/✗ (reuses `leave-actions.js` for leaves;
+  bare POST for corrections), **Upcoming leaves** (accent bar + type + dates +
+  pill). New data from `/api/punches/by-employee/:id?date=today` and `?year&month`
+  alongside the existing `/summary`.
+- **Reset-password modal** migrated onto the shared `modal.js` shell (focus
+  trap / Esc / backdrop); behavior byte-equivalent.
+- **Heuristic "On break".** `classify` treats clocked-out-with-sessions before
+  18:00 local as **break** and at/after 18:00 as **done**. Honest Disclosure:
+  Pica can't truly distinguish "on a break, will return" from "gone home"; the
+  18:00 cutoff is a fixed constant. Team-list week target is a flat 40h
+  reference (no per-employee target from the reports endpoint). Recent-days
+  window is current-month only (early-month views show fewer days). Missing-
+  hours widgets folded into stat-block captions. No DOM/E2E tests (M16).
+
+38 new i18n keys per locale; `employees.title` updated to "Team"/"Equipa";
+`CACHE_VERSION` v54 → v55 (+precache `/team-status.js`); new suite
+`test-team-status` (48 → 49).
 
 ---
 
