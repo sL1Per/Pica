@@ -29,81 +29,82 @@
   <link rel="stylesheet" href="/preferences.css">
 </head>
 <body>
-  <main class="container container--wide">
-    <header class="page-header">
-      <div>
-        <h1 id="page-title">Preferences</h1>
-      </div>
-    </header>
+  <main class="container">
+    <div class="prefs-head">
+      <h1 id="page-title">Preferences</h1>
+      <p class="subtle" id="page-subtitle">These settings apply just to you.</p>
+    </div>
 
     <div id="message" class="message"></div>
 
-    <!-- Must-change banner (shown when mustChangePassword=true) -->
     <section id="must-change-banner" class="card card--warning" hidden>
       <h2 data-i18n="prefs.mustChangeTitle">Change your password</h2>
       <p data-i18n="prefs.mustChangeBody">Your password was reset by an administrator. Please choose a new one before continuing to use Pica.</p>
     </section>
 
-    <section id="account" class="card">
-      <p class="subtle" id="page-subtitle">These settings apply just to you.</p>
-
-      <form id="prefs-form" autocomplete="off">
-        <label for="locale" id="label-language">Language</label>
-        <select id="locale" name="locale">
-          <option value="en-US">English (US)</option>
-          <option value="pt-PT">Português (PT)</option>
-        </select>
-        <p class="subtle" id="hint-language">The page will reload after saving so the new language takes effect everywhere.</p>
-
-        <label id="label-colormode">Color mode</label>
-        <div class="radio-row">
-          <label class="radio"><input type="radio" name="colorMode" value="light"> <span id="label-light">Light</span></label>
-          <label class="radio"><input type="radio" name="colorMode" value="dark"> <span id="label-dark">Dark</span></label>
-          <label class="radio"><input type="radio" name="colorMode" value="system" checked> <span id="label-system">Follow system</span></label>
+    <!-- Card 1: General preferences -->
+    <form id="prefs-form" autocomplete="off">
+      <div class="prefs-card">
+        <div class="prefs-field">
+          <label for="locale" id="label-language">Language</label>
+          <select id="locale" name="locale">
+            <option value="en-US">English (US)</option>
+            <option value="pt-PT">Português (PT)</option>
+          </select>
+          <span class="helper" id="hint-language">The page will reload after saving so the new language takes effect everywhere.</span>
         </div>
 
-        <label id="label-palette">Palette</label>
-        <p class="subtle" id="hint-palette">The accent and surface tones used across the app.</p>
-        <!-- Cards built by preferences.js; each shows a 4-chip preview
-             (bg · primary · success · alert) for the currently-selected
-             color mode. Chip colors are set via CSSOM (no inline styles). -->
-        <div id="palette-row" class="palette-row" role="group" aria-labelledby="label-palette"></div>
+        <div class="prefs-field">
+          <label id="label-colormode">Color mode</label>
+          <div class="mode-row">
+            <label class="mode-card"><input type="radio" name="colorMode" value="light"><span class="mode-dot"></span><span class="mode-label" id="label-light">Light</span></label>
+            <label class="mode-card"><input type="radio" name="colorMode" value="dark"><span class="mode-dot"></span><span class="mode-label" id="label-dark">Dark</span></label>
+            <label class="mode-card"><input type="radio" name="colorMode" value="system" checked><span class="mode-dot"></span><span class="mode-label" id="label-system">Match system</span></label>
+          </div>
+        </div>
 
-        <label id="label-email-section">Email</label>
-        <label class="checkbox">
-          <input type="checkbox" id="email-notifications">
-          <span id="label-email-notifications">Email notifications</span>
-        </label>
-        <label class="checkbox">
-          <input type="checkbox" id="email-reminders">
-          <span id="label-email-reminders">Email reminders</span>
-        </label>
+        <div class="prefs-field">
+          <label id="label-palette">Palette</label>
+          <span class="helper" id="hint-palette">The accent and surface tones used across the app.</span>
+          <div id="palette-row" class="palette-row" role="group" aria-labelledby="label-palette"></div>
+        </div>
 
-        <button type="submit" class="block" id="save-btn">Save preferences</button>
-      </form>
-    </section>
+        <div class="prefs-field">
+          <label id="label-email-section">Email</label>
+          <label class="prefs-check"><input type="checkbox" id="email-notifications"><span id="label-email-notifications">Email notifications</span></label>
+          <label class="prefs-check"><input type="checkbox" id="email-reminders"><span id="label-email-reminders">Email reminders</span></label>
+        </div>
 
-    <!-- Password change (everyone, self-service) -->
-    <section id="password-card" class="card">
-      <h2 data-i18n="prefs.passwordHeading">Password</h2>
-      <p class="subtle" data-i18n="prefs.passwordHelp">Change your password. Other devices stay signed in until their cookies expire.</p>
+        <button type="submit" class="prefs-btn" id="save-btn">Save preferences</button>
+      </div>
+    </form>
 
-      <div id="password-message" class="message"></div>
+    <!-- Card 2: Password -->
+    <form id="password-form" autocomplete="off">
+      <div class="prefs-card">
+        <h2 data-i18n="prefs.passwordHeading">Password</h2>
+        <p class="card-sub" data-i18n="prefs.passwordHelp">Change your password. Other devices stay signed in until their cookies expire.</p>
 
-      <form id="password-form" autocomplete="off">
-        <label for="current-password" data-i18n="prefs.currentPassword">Current password</label>
-        <input type="password" id="current-password" name="currentPassword" autocomplete="current-password" required>
+        <div id="password-message" class="message"></div>
 
-        <label for="new-password" data-i18n="prefs.newPassword">New password</label>
-        <input type="password" id="new-password" name="newPassword" autocomplete="new-password" minlength="8" required>
-        <p class="subtle" data-i18n="prefs.newPasswordHint">At least 8 characters.</p>
+        <div class="prefs-field">
+          <label for="current-password" data-i18n="prefs.currentPassword">Current password</label>
+          <input type="password" id="current-password" name="currentPassword" autocomplete="current-password" required>
+        </div>
+        <div class="prefs-field">
+          <label for="new-password" data-i18n="prefs.newPassword">New password</label>
+          <input type="password" id="new-password" name="newPassword" autocomplete="new-password" minlength="8" required>
+          <span class="helper" data-i18n="prefs.newPasswordHint">At least 8 characters.</span>
+        </div>
+        <div class="prefs-field">
+          <label for="confirm-password" data-i18n="prefs.confirmPassword">Confirm new password</label>
+          <input type="password" id="confirm-password" name="confirmPassword" autocomplete="new-password" minlength="8" required>
+          <span class="prefs-mismatch" id="pw-mismatch" hidden data-i18n="prefs.passwordsDoNotMatch">Passwords don't match.</span>
+        </div>
 
-        <label for="confirm-password" data-i18n="prefs.confirmPassword">Confirm new password</label>
-        <input type="password" id="confirm-password" name="confirmPassword" autocomplete="new-password" minlength="8" required>
-
-        <button type="submit" class="block" id="change-password-btn" data-i18n="prefs.changePasswordButton">Change password</button>
-      </form>
-    </section>
+        <button type="submit" class="prefs-btn" id="change-password-btn" data-i18n="prefs.changePasswordButton">Change password</button>
+      </div>
+    </form>
   </main>
 
   <script type="module" src="/preferences.js"></script>
