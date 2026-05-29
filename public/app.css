@@ -21,7 +21,7 @@
    Design tokens + reset + common components. Mobile-first.
 
    Sections:
-     1. Design tokens (M15 — 6-combo cascade + alias bridge)
+     1. Design tokens (M15 — 6-combo cascade; canonical tokens only)
      2. Reset + base
      3. Typography
      4. Layout primitives (.container, .card)
@@ -53,18 +53,9 @@
   --clay: #B14B2A; --clay-soft: #EFD3C5;
   --plum: #6B4A6E;
 
-  /* --- Alias bridge: pre-M15 token names → new tokens.
-         Lets un-migrated stylesheets render in the new palette until each
-         screen plan rewrites them. Removed in roadmap Plan 8. --- */
-  --accent: var(--honey); --accent-hover: var(--honey-deep);
-  --accent-soft: var(--paper-2); --accent-ring: rgba(201,122,26,0.28);
-  --surface: var(--paper); --surface-2: var(--paper-2);
-  --border: var(--line); --border-strong: var(--line);
-  --text: var(--ink); --text-muted: var(--ink-2); --text-subtle: var(--muted);
-  --success: var(--sage); --success-soft: var(--sage-soft);
-  --warning: var(--honey); --warning-soft: var(--paper-2);
-  --danger: var(--clay); --danger-soft: var(--clay-soft);
-  --info: var(--plum); --info-soft: var(--paper-2);
+  /* Focus-ring color — per-theme rgba (no flat-token equivalent). Canonical;
+     overridden per theme/palette in the blocks below. */
+  --accent-ring: rgba(201,122,26,0.28);
 
   /* --- Non-color scales (unchanged — re-pasted from the old :root) --- */
   --font-sans: 'DM Sans', system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
