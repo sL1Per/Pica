@@ -89,7 +89,7 @@ _Last touched in 0.39.0._
   select — legitimate at creation; Identity/Contact/Internal-notes).
   `employee-new.js` unchanged (ids preserved); stale "(M11)" hint refreshed.
 
-~24 new i18n keys/locale; `CACHE_VERSION` v56 → v57. **No new test suite**
+~10 new i18n keys/locale (+1 reworded); `CACHE_VERSION` v56 → v57. **No new test suite**
 (stays 49). Note: the SW serves all CSS/JS **cache-first keyed by
 `CACHE_VERSION`** (not just the `PRECACHE_URLS` subset), so the bump — not
 precache membership — is what delivers the new CSS to returning clients.

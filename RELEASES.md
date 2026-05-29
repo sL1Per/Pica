@@ -51,7 +51,8 @@ changed.
   Internal-notes cards). Its `employee-new.js` logic is unchanged (all element
   ids preserved); the stale "(M11)" hint copy was refreshed.
 
-~24 new `prefs.*` / `employee.*` / `employeeNew.*` i18n keys per locale.
+~10 new `prefs.*` / `employee.*` / `employeeNew.*` i18n keys per locale (plus
+the reworded create-form password hint).
 `CACHE_VERSION` v56 → v57. No new test suite (count stays **49**, matching
 Plan 7). Verified live via the Playwright MCP (both roles).
 
