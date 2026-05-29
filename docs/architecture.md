@@ -199,6 +199,7 @@ pica/
 │   ├── test-leaves-render.mjs      # M15 leaves frontend pure helpers (day-count + partition)
 │   ├── test-calendar-grid.mjs      # M15 shared month-matrix helper (offsets, today, in/out-month)
 │   ├── test-team-status.mjs        # M15 shared session-pairing + status classify (0.37.0)
+│   ├── test-no-alias-tokens.mjs    # M15 guard: no alias token in CSS + bridge gone (0.41.0)
 │   ├── test-dek.mjs                # DEK wrap/unwrap + v1→v2 migration (0.23.0)
 │   ├── test-keyring.mjs            # multi-slot keyring operations (0.23.0)
 │   ├── test-rotate.mjs             # key rotation staged swap (0.23.0)
@@ -363,14 +364,17 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **49 suites** (+`test-employee-home` in 0.28.0 — employee-home
+- Total: **50 suites** (+`test-employee-home` in 0.28.0 — employee-home
   helpers; +`test-punch-week` in 0.30.0 — clock-page day-grouping/pairing
   helpers; the 0.31.0 corrections restyle, the 0.32.0 manual-time modal,
   and the 0.33.0 employer-today restyle each added no new suite;
   +`test-leaves-render` in 0.35.0 — leaves day-count + status-partition
   helpers; +`test-calendar-grid` in 0.36.0 — shared month-matrix helper;
-  +`test-team-status` in 0.37.0 — shared pairing + status classify),
-  passing as of 0.37.0 except two pre-existing
+  +`test-team-status` in 0.37.0 — shared pairing + status classify;
+  the 0.38.0–0.40.0 restyles added no new suite;
+  +`test-no-alias-tokens` in 0.41.0 — static guard that no stylesheet
+  references a removed alias token and the alias bridge block is gone),
+  passing as of 0.41.0 except two pre-existing
   flakes unrelated to any recent feature, both failing identically on
   the pre-feature baseline: `test-reports.mjs` overnight-split bucket
   count (host-timezone sensitive) and `test-auth.mjs` (~1/64
@@ -484,4 +488,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.40.0._
+_Last touched in 0.41.0._

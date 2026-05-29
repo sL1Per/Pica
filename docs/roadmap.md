@@ -33,7 +33,7 @@ app in a usable state.
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
-| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0 · employer home+team+detail 0.37.0 · settings+security 0.38.0 · preferences+profile edit 0.39.0 · reports re-skin 0.40.0) |
+| M15       | Full UI revamp                     | ✅ 0.41.0 (closed; foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0 · employer home+team+detail 0.37.0 · settings+security 0.38.0 · preferences+profile edit 0.39.0 · reports re-skin 0.40.0 · alias-removal+dedup+bell 0.41.0) |
 | M16       | E2E browser tests                  | 📋 Planned    |
 | M17       | Deployment guide + TLS samples     | 📋 Planned    |
 
@@ -387,17 +387,21 @@ days, inline decide, Reset-pw via shared `modal.js`. Introduced shared
 `team-status.js` [pairing + `classify` heuristic on-break/done at 18:00 cutoff],
 the canonical `.st-dot--*` palette across all three pages; no backend change).
 
-**Remaining M15 plans (in progress):**
+**M15 plans (all shipped — milestone closed):**
 - ✅ Plan 7 — Settings + Security (employer Settings rebuild + Security page
   restyle) — shipped 0.38.0.
 - ✅ Plan 8 — Profile edit + the remainder of Preferences (palette picker shipped
   0.29.0; the rest + profile editor + create-employee form) — shipped 0.39.0.
-- 🔄 Plan 9 — Reports re-skin + the final cleanup that removes the alias bridge.
-  Split into two releases: **Reports re-skin shipped 0.40.0** (part 1); the
-  alias-bridge removal + JS dedup + bell dropdown (part 2, 0.41.0) closes M15.
-  See `docs/superpowers/plans/2026-05-29-m15-reports-cleanup.md`.
-- Alias bridge removed in 0.41.0 once all stylesheets reference design tokens
-  directly.
+- ✅ Plan 9 — Reports re-skin + final cleanup, split into two releases:
+  **Reports re-skin shipped 0.40.0** (part 1); **alias-bridge removal + JS dedup
+  (flashSaved, pairSessions) + notification bell shipped 0.41.0** (part 2),
+  which **closed M15**. See
+  `docs/superpowers/plans/2026-05-29-m15-reports-cleanup.md`.
+- ✅ Alias bridge removed in 0.41.0 — all stylesheets reference design tokens
+  directly; `--accent-ring` kept as a canonical per-theme token, guarded by
+  `tests/test-no-alias-tokens.mjs`. **Deferred:** the `punch.js`→`/geo.js`
+  geolocation unification (the two implementations diverged by design; needs its
+  own focused change — see RELEASES.md 0.41.0).
 
 ### Milestones 16–17 — planned 📋
 

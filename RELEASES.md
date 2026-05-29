@@ -14,6 +14,88 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.41.0] — 2026-05-29 — M15 alias-bridge removal + JS dedup + bell — closes M15
+
+The second half of M15 Plan 9, and the **release that closes M15**: the
+transitional design-token alias bridge is removed, the divergent front-end
+helpers are consolidated, and the notification bell is finally wired.
+
+**Alias-bridge removal (no visual change).** The pre-M15 alias tokens
+(`--accent`, `--surface`, `--text`, `--border`, `--success`/`--warning`/
+`--danger`/`--info` and their `-soft` variants) are gone. Every usage across the
+9 remaining stylesheets (~195 references; `reports.css` was already done in
+0.40.0) was rewritten to the canonical token the bridge resolved it to
+(`--accent`→`--honey`, `--surface`→`--paper`, `--text`→`--ink`,
+`--text-muted`→`--ink-2`, `--success`→`--sage`, …), then the bridge block was
+deleted from `app.css`. Because each replacement is the literal current value,
+computed styles are identical across all six theme×palette combos — verified
+live (token resolution + zero console errors in Linen-light and Slate-dark).
+
+- **`--accent-ring` survives as a canonical token** — it is defined per theme
+  (rgba focus-ring values) with no flat-token equivalent, so it was promoted out
+  of the bridge block rather than removed. It is the one alias-looking name that
+  remains, by design.
+- **`--border-strong` collapsed to `--line`** (its current bridge target).
+- New durable guard: **`tests/test-no-alias-tokens.mjs`** scans `public/*.css`,
+  fails if any removed alias reappears, and asserts the bridge block is gone.
+  The obsolete "alias bridge" assertions in `test-theme-tokens.mjs` were dropped.
+  Test count **49 → 50**.
+
+**JS consolidation.** Two of the three planned dedups landed; the third was
+deferred (see below). The "duplicates" turned out to be *divergent*
+implementations, so each became a deliberate refactor rather than a copy delete:
+- **`flashSaved` → shared in `/app.js`.** The three former copies
+  (Preferences / Profile / Settings) had different signatures, CSS classes, and
+  content (word vs icon-html). Replaced with one parameterized helper
+  (`flashClass` / `word`|`html` / `startDisabled` / `restore` / `onComplete` /
+  `beforeFlash`); each page keeps its own flash CSS class, so the visual is
+  unchanged. Settings keeps a thin wrapper supplying its icon content.
+- **`pairSessions` → reused from `/team-status.js`.** `punches-today.js` had its
+  own copy returning a different shape (`{inTs,outTs,inGeo,…}` vs `{in,out}`); it
+  now adapts the shared (test-covered) pairing algorithm to its render shape.
+  Equivalence verified across normal / open / two-session / back-to-back-in /
+  empty cases.
+
+**Notification bell.** The previously-static bell now opens a **notifications
+panel** (reusing the user-menu popover machinery, refactored into a shared
+`positionPopover`) listing the viewer's pending items — employer: leaves +
+corrections awaiting their decision; employee: their own pending requests — each
+linking to its detail page. A **red dot** (CSS class, not an inline style)
+appears when the count > 0; the panel refreshes on mount and tab focus. No new
+backend — it aggregates the existing `/api/leaves` and
+`/api/corrections?status=pending`. New `notifications.*` i18n keys in both
+locales. Verified live (employer: red dot + both item types + links + outside-
+click/Esc close; zero console errors).
+
+`CACHE_VERSION` v58 → v59 (app.css, the 4 migrated page stylesheets, app.js,
+topbar.js, topbar.css, locales).
+
+**Honest Disclosures:**
+- **Geo unification was deferred.** The plan intended to fold `punch.js`'s fast
+  geolocation onto `/geo.js`, but the two had diverged by design — `punch.js`
+  uses `sessionStorage` + a "failed this session" sentinel (so the bootstrap
+  doesn't re-prompt a denied location every page load) and a module-level skip
+  reason, while `geo.js` uses `localStorage` + ts-freshness and a return value.
+  Merging them safely needs its own focused change with live clock-in/out
+  testing; forcing it into this cleanup release risked the punch page's geo UX,
+  so it stays as two implementations for now.
+- **`--accent-soft` / `--warning-soft` / `--info-soft` collapse to the neutral
+  `--paper-2`** — faithful to what the bridge already rendered. Giving them true
+  tinted "soft" backgrounds would be a visual change for a separate release.
+- **The bell is a focus-refreshed aggregator, not real-time/push.** New items
+  appear on the next focus or navigation. There is no "mark as read" and no
+  history — it mirrors current pending state only. Counts come from fanning out
+  the same endpoints the home widget uses (fine at the ≤50-employee target).
+- **No automated UI/E2E tests** for the restyle or bell — verified live via the
+  Playwright MCP against a throwaway instance. The in-repo browser suite is M16.
+
+With this release **M15 (Full UI revamp) is complete**: every screen body is
+restyled, the token vocabulary is canonical end-to-end, and the alias bridge is
+gone. Next is M16 (Playwright E2E — the project's first npm dependency), then
+M17 (deployment guide), which ships last.
+
+---
+
 ## [0.40.0] — 2026-05-29 — M15 Reports re-skin (Plan 9, part 1)
 
 The Reports page is restyled to the M15 design. **Every M13 behavior is

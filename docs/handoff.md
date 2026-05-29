@@ -5,14 +5,14 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.40.0._
+_Last touched in 0.41.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.40.0 (released 2026-05-29)
-- **Test count:** 49 suites (0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
+- **Latest version:** 0.41.0 (released 2026-05-29)
+- **Test count:** 50 suites (0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
   pre-feature baseline (see notes.md): `test-reports.mjs`
@@ -34,12 +34,16 @@ _Last touched in 0.40.0._
   `test-leaves-render` (day-count + status-partition): 46 → 47. The 0.36.0
   calendar restyle added `test-calendar-grid` (shared month-matrix): 47 → 48.
   The 0.37.0 employer home + team + employee detail rebuild added
-  `test-team-status` (shared pairing + status classify): 48 → 49.
+  `test-team-status` (shared pairing + status classify): 48 → 49. The 0.41.0
+  alias-bridge removal added `test-no-alias-tokens` (static guard: no alias
+  token in any stylesheet + bridge block gone): 49 → 50.
 - **Build artifact:** `pica-0.23.0-master-key-management.zip` (0.24.0
   through 0.30.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~7 KLoC across `src/`, `public/`, `tests/`
-- **Active milestone:** M15 (Full UI revamp) — foundation shipped at
+- **Active milestone:** **M15 (Full UI revamp) — COMPLETE, closed at 0.41.0.**
+  Next is M16 (Playwright E2E — first npm dependency), then M17 (deployment
+  guide, ships last). M15 progression: foundation shipped at
   0.27.0; **employee home** at 0.28.0; **palette picker** at 0.29.0;
   **employee punch (clock) page** at 0.30.0; **corrections list + detail**
   at 0.31.0; **manual-time modal** (`/corrections/new` retired) at 0.32.0;
@@ -56,11 +60,43 @@ _Last touched in 0.40.0._
   Delete; `/employees/new` shares `employee-profile.css`; zero backend change);
   **Reports re-skin** (Plan 9 part 1) at 0.40.0 (`reports.{css,js}` to the M15
   card/toolbar/`.data-table`/serif-totals/status-pill vocabulary; every M13
-  behavior byte-equivalent; `reports.css` now alias-free). **All 13 screen
-  bodies are now restyled.** Remaining M15 work (**next: Plan 9 part 2 — 0.41.0
-  alias-bridge removal + JS dedup + bell dropdown, which CLOSES M15**; see
-  `docs/superpowers/plans/2026-05-29-m15-reports-cleanup.md`); M16–M17 follow
-  (M17 deployment guide ships last)
+  behavior byte-equivalent; `reports.css` now alias-free); **alias-bridge
+  removal + JS dedup + notification bell** (Plan 9 part 2) at 0.41.0, **which
+  closes M15** (canonical tokens end-to-end, bridge gone, `flashSaved` +
+  `pairSessions` consolidated, bell wired). M16–M17 follow (M17 deployment guide
+  ships last)
+
+---
+
+## What just shipped (0.41.0)
+
+**M15 alias-bridge removal + JS dedup + bell — closes M15 (Plan 9, part 2).**
+
+- **Alias bridge removed (no visual change).** All ~195 pre-M15 alias-token
+  usages across 9 stylesheets were rewritten to the canonical token the bridge
+  resolved them to (`--accent`→`--honey`, `--surface`→`--paper`, `--text`→`--ink`,
+  …), then the bridge block was deleted from `app.css`. `--accent-ring` survives
+  as a canonical per-theme token (no flat equivalent); `--border-strong`→`--line`.
+  New guard `tests/test-no-alias-tokens.mjs` (49 → 50). Verified live: tokens
+  resolve correctly in Linen-light + Slate-dark, zero console errors.
+- **`flashSaved` shared in `/app.js`.** The 3 former copies had diverged
+  (signature/class/content); replaced with one parameterized helper, each page
+  keeping its own flash CSS class. Settings keeps a thin wrapper for its icon.
+- **`pairSessions` reused from `/team-status.js`** by `punches-today.js` (adapts
+  the shared algorithm to its `{inTs,outTs,…}` render shape; equivalence tested).
+- **Notification bell** now opens a panel of the viewer's pending items
+  (employer: leaves + corrections awaiting decision; employee: own pending),
+  each linking to its detail page, with a red dot (CSS class) when count > 0,
+  refreshed on mount + tab focus. Reuses the user-menu popover (shared
+  `positionPopover`). No new backend (`/api/leaves` + `/api/corrections`). New
+  `notifications.*` keys both locales.
+
+`CACHE_VERSION` v58 → v59. **Deferred (Honest Disclosure):** the geo
+unification (`punch.js` onto `/geo.js`) — the two had diverged by design
+(`sessionStorage` + failed-sentinel vs `localStorage` + ts-freshness), so a safe
+merge needs its own focused change with live clock-in/out testing; not forced
+into this cleanup release. Full disclosures in RELEASES.md 0.41.0. **M15 is now
+complete.**
 
 ---
 
@@ -1055,7 +1091,7 @@ Plus: length caps (500 chars) added to `leave.reason` and
 | —     | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13   | Reports revamp                           | ✅ 0.24.0  |
 | M14   | Add email notifications                  | ✅ 0.25.0  |
-| M15   | Full UI revamp                           | 🔄 in progress (foundation 0.27.0) |
+| M15   | Full UI revamp                           | ✅ 0.41.0 (closed) |
 | M16   | E2E browser tests (Playwright)           | 📋 planned |
 | M17   | Deployment guide + TLS samples           | 📋 planned |
 
