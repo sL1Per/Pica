@@ -89,6 +89,35 @@ export function setLoading(button, loading) {
   }
 }
 
+/**
+ * Transient "✓ saved" button flash, shared across Preferences / Profile /
+ * Settings. Adds `flashClass`; shows confirmation content (either `word` →
+ * "✓ word" via textContent, or caller-built `html`); then after `duration` ms
+ * removes the class, re-enables the button, and restores its label (calls
+ * `restore()` if a function, else sets `restore` as textContent). `onComplete`
+ * runs after restore (Preferences uses it to re-disable Change-password until
+ * the gate re-validates). `beforeFlash(btn)` runs first (Settings clears its
+ * data-label). Each page keeps its own flash CSS class — the visual is
+ * unchanged; only this timing/label-swap logic is shared.
+ */
+export function flashSaved(btn, opts = {}) {
+  if (!btn) return;
+  const { word, html, restore, flashClass = 'is-flashing',
+          startDisabled = true, duration = 1800, onComplete, beforeFlash } = opts;
+  if (typeof beforeFlash === 'function') beforeFlash(btn);
+  btn.disabled = startDisabled;
+  btn.classList.add(flashClass);
+  if (html != null) btn.innerHTML = html;   // caller-built, escaped (Settings)
+  else btn.textContent = '✓ ' + word;
+  setTimeout(() => {
+    btn.classList.remove(flashClass);
+    btn.disabled = false;
+    if (typeof restore === 'function') restore();
+    else if (restore != null) btn.textContent = restore;
+    if (typeof onComplete === 'function') onComplete();
+  }, duration);
+}
+
 // -- Toasts -----------------------------------------------------------------
 
 /**

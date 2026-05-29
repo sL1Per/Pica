@@ -1,5 +1,5 @@
 import { t, applyTranslations, fmtDateTime } from '/i18n.js';
-import { toast, setBusy } from '/app.js';
+import { toast, setBusy, flashSaved as flashBtn } from '/app.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 
 mountTopBar();
@@ -59,18 +59,16 @@ function card(titleText, subText, variant = '') {
   return sec;
 }
 
-/** Replace a save button's label with a transient "✓ Saved" flash. */
+/** Settings save-button flash. Delegates the timing/label-swap to the shared
+ *  flashSaved in /app.js, supplying Settings' icon content + set-btn--flash. */
 function flashSaved(btn, labelText) {
-  if (!btn) return;
-  btn.disabled = false;
-  delete btn.dataset.label;
-  btn.classList.add('set-btn--flash');
-  btn.innerHTML = svgIcon(ICONS.check, 16, 2.2)
-    + `<span>${escapeHtml(t('settings.flashSaved'))}</span>`;
-  setTimeout(() => {
-    btn.classList.remove('set-btn--flash');
-    btn.textContent = labelText;
-  }, 1800);
+  flashBtn(btn, {
+    html: svgIcon(ICONS.check, 16, 2.2) + `<span>${escapeHtml(t('settings.flashSaved'))}</span>`,
+    restore: labelText,
+    flashClass: 'set-btn--flash',
+    startDisabled: false,
+    beforeFlash: (b) => { delete b.dataset.label; },
+  });
 }
 
 /** Format a byte count: "1.2 KB" / "3.4 MB". (Ported byte-equivalent.) */

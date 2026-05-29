@@ -1,5 +1,5 @@
 import { t, translateError, applyTranslations } from '/i18n.js';
-import { showMessage, setBusy } from '/app.js';
+import { showMessage, setBusy, flashSaved } from '/app.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
@@ -28,16 +28,6 @@ const dangerZone= $('danger-zone');
 let me;
 let target;
 
-function flashSaved(btn, labelText, word) {
-  btn.disabled = true;
-  btn.classList.add('prof-btn--flash');
-  btn.textContent = '✓ ' + word;
-  setTimeout(() => {
-    btn.classList.remove('prof-btn--flash');
-    btn.disabled = false;
-    btn.textContent = labelText;
-  }, 1800);
-}
 
 function initials(name) {
   if (!name) return '?';
@@ -221,7 +211,7 @@ form.addEventListener('submit', async (e) => {
   if (res.ok) {
     target.profile = data.profile;
     titleEl.textContent = data.profile?.fullName || target.username;
-    flashSaved(saveBtn, t('employee.savePic'), t('employee.savedFlash'));
+    flashSaved(saveBtn, { word: t('employee.savedFlash'), restore: t('employee.savePic'), flashClass: 'prof-btn--flash' });
   } else {
     const msg = translateError(data.errorCode, data.error || 'Save failed');
     showMessage(message, msg, 'error');
