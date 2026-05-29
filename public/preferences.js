@@ -14,6 +14,19 @@ const emailNotifEl    = $('email-notifications');
 const emailRemEl      = $('email-reminders');
 const paletteRow      = $('palette-row');
 
+/** Replace a button's label with a transient sage "✓ <word>" flash. */
+function flashSaved(btn, labelText, word) {
+  const original = labelText;
+  btn.disabled = true;
+  btn.classList.add('prefs-btn--flash');
+  btn.textContent = '✓ ' + word;
+  setTimeout(() => {
+    btn.classList.remove('prefs-btn--flash');
+    btn.disabled = false;
+    btn.textContent = original;
+  }, 1800);
+}
+
 // M15 palette picker. The 4 preview chips per palette are (bg, primary,
 // success, alert) and swap with the selected color mode. Hex mirrors the
 // 6-combo token cascade in app.css.
@@ -168,11 +181,11 @@ form.addEventListener('submit', async (e) => {
       window.location.reload();
       return;
     }
-    showMessage(messageEl, t('prefs.saved'), 'success');
+    flashSaved(btn, t('prefs.save'), t('prefs.savedFlash'));
   } catch (err) {
     showMessage(messageEl, err.message, 'error');
+    setBusy(btn, false);
   }
-  setBusy(btn, false);
 });
 
 let data = null;
@@ -187,7 +200,21 @@ const newPasswordEl       = $('new-password');
 const confirmPasswordEl   = $('confirm-password');
 const changePasswordBtn   = $('change-password-btn');
 const mustChangeBanner    = $('must-change-banner');
-const passwordCard        = $('password-card');
+const pwMismatchEl        = $('pw-mismatch');
+
+function refreshPwGate() {
+  const cur = currentPasswordEl.value;
+  const nw  = newPasswordEl.value;
+  const cf  = confirmPasswordEl.value;
+  const mismatch = cf.length > 0 && cf !== nw;
+  if (pwMismatchEl) pwMismatchEl.hidden = !mismatch;
+  const valid = cur.length > 0 && nw.length >= 8 && nw === cf;
+  changePasswordBtn.disabled = !valid;
+}
+for (const el of [currentPasswordEl, newPasswordEl, confirmPasswordEl]) {
+  el?.addEventListener('input', refreshPwGate);
+}
+refreshPwGate(); // start disabled
 
 passwordForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -217,15 +244,15 @@ passwordForm?.addEventListener('submit', async (e) => {
       const fallback = respData.error || `HTTP ${res.status}`;
       throw new Error(translateError(respData.errorCode, fallback));
     }
-    showMessage(passwordMessageEl, t('prefs.passwordChanged'), 'success');
-    // Clear the form so a stray refresh doesn't leak the new password.
+    flashSaved(changePasswordBtn, t('prefs.changePasswordButton'), t('prefs.passwordChangedFlash'));
     passwordForm.reset();
+    refreshPwGate();
     // Hide the must-change banner — the flag has cleared on the backend.
     if (mustChangeBanner) mustChangeBanner.hidden = true;
   } catch (err) {
     showMessage(passwordMessageEl, err.message, 'error');
+    setBusy(changePasswordBtn, false);
   }
-  setBusy(changePasswordBtn, false);
 });
 
 (async () => {
@@ -244,8 +271,9 @@ passwordForm?.addEventListener('submit', async (e) => {
   // change their password. Also auto-scroll to the password card so
   // the next interaction is obvious.
   const me = await meRes.json();
-  if (me.mustChangePassword && mustChangeBanner && passwordCard) {
+  if (me.mustChangePassword && mustChangeBanner) {
     mustChangeBanner.hidden = false;
-    passwordCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scroll to the password form — the flag was set by an admin reset.
+    $('password-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 })();
