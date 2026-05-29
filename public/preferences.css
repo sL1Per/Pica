@@ -1,65 +1,113 @@
-.radio-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-2);
-  margin-top: var(--gap-1);
-}
+/* Preferences (M15 §12) — General + Password cards. */
 
-@media (min-width: 600px) {
-  .radio-row { flex-direction: row; gap: var(--gap-4); }
+.prefs-head { margin-bottom: 24px; }
+.prefs-head h1 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 44px; line-height: 1; margin: 0;
+  color: var(--ink); letter-spacing: -0.01em;
 }
+.prefs-head .subtle { color: var(--muted); margin-top: 8px; font-size: 14px; }
 
-/* ===== Palette picker (M15) — 3 swatch cards; chip colors set via JS ===== */
-.palette-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin: var(--gap-1) 0 var(--gap-2);
+.prefs-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 16px;
 }
+.prefs-card h2 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 26px; line-height: 1.1; margin: 0 0 4px;
+  color: var(--ink); letter-spacing: -0.01em;
+}
+.prefs-card .card-sub { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+
+.prefs-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+.prefs-field > label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.prefs-field .helper { font-size: 11.5px; color: var(--muted); }
+
+.prefs-field select,
+.prefs-field input[type="password"] {
+  height: 42px; padding: 0 14px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink); font: inherit; font-size: 14px;
+  outline: none;
+}
+.prefs-field select:focus,
+.prefs-field input[type="password"]:focus { border-color: var(--honey); }
+
+/* Color-mode radio cards. The real <input type=radio> is visually hidden;
+   its wrapping <label> is the card. */
+.mode-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.mode-card {
+  flex: 1 1 140px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer; color: var(--ink);
+  transition: border-color .12s, background .12s;
+}
+.mode-card input { position: absolute; opacity: 0; pointer-events: none; }
+.mode-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--line); background: var(--paper);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.mode-dot::after {
+  content: ''; width: 8px; height: 8px; border-radius: 50%; background: transparent;
+}
+.mode-card .mode-label { font-size: 14px; font-weight: 500; }
+/* :has() selects the card whose radio is checked (supported in all modern browsers). */
+.mode-card:has(input:checked) { background: var(--paper-2); border-color: var(--honey); }
+.mode-card:has(input:checked) .mode-dot { border-color: var(--honey); }
+.mode-card:has(input:checked) .mode-dot::after { background: var(--honey); }
+
+/* Palette swatch cards (shipped 0.29.0 — styling lives here). */
+.palette-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
 .palette-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  text-align: left;
-  color: var(--text);
-  background: var(--surface-2);
-  border: 1.5px solid var(--border);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: border-color var(--t-fast);
+  padding: 14px; background: var(--paper-2);
+  border: 1.5px solid var(--line); border-radius: 12px;
+  cursor: pointer; display: flex; flex-direction: column; gap: 10px;
+  position: relative; text-align: left; color: var(--ink);
+  transition: border-color .12s; font: inherit;
 }
-.palette-card:hover { border-color: var(--border-strong); }
-.palette-card--active { border-color: var(--accent); }
+.palette-card--active { border-color: var(--honey); }
 .palette-swatches {
-  display: flex;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border);
+  display: flex; gap: 0; align-items: center;
+  border-radius: 8px; overflow: hidden; border: 1px solid var(--line-soft);
 }
 .palette-chip { flex: 1; height: 36px; }
-.palette-name { font-size: var(--text-sm); font-weight: 600; }
-.palette-sub  { font-size: var(--text-xs); color: var(--text-subtle); }
+.palette-name { font-size: 14px; font-weight: 600; }
+.palette-sub { font-size: 11.5px; color: var(--muted); }
 .palette-check {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1.5px solid var(--border);
-  background: transparent;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
+  position: absolute; top: 10px; right: 10px;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid var(--line); background: transparent; color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 12px;
 }
-.palette-check--on { background: var(--accent); border-color: var(--accent); }
+.palette-check--on { background: var(--honey); border-color: var(--honey); }
+
+/* Email checkbox rows. */
+.prefs-check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); margin-bottom: 10px; cursor: pointer; }
+.prefs-check input { width: 16px; height: 16px; accent-color: var(--honey); }
+
+/* Primary button + Saved flash (mirrors settings.css .set-btn--flash). */
+.prefs-btn {
+  width: 100%; height: 46px; padding: 0 22px; margin-top: 6px;
+  background: var(--honey); color: #FBF6EC;
+  border: none; border-radius: 10px; font-weight: 600; font-size: 15px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  cursor: pointer; transition: opacity .12s;
+}
+.prefs-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.prefs-btn--flash { background: var(--sage); }
+
+.prefs-mismatch { font-size: 11.5px; color: var(--clay); }
 
 @media (max-width: 600px) {
+  .prefs-head h1 { font-size: 34px; }
   .palette-row { grid-template-columns: 1fr; }
 }
