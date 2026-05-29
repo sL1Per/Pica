@@ -18,7 +18,7 @@ dialog.modal.rlm-modal {
 .rlm-subtitle {
   margin: -4px 0 var(--gap-4);
   font-size: var(--text-sm);
-  color: var(--text-subtle);
+  color: var(--muted);
 }
 
 .rlm-form { display: block; }
@@ -31,12 +31,12 @@ dialog.modal.rlm-modal {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-subtle);
+  color: var(--muted);
 }
 
 .rlm-field { display: flex; flex-direction: column; gap: 6px; }
 .rlm-field + .rlm-field { margin-top: var(--gap-3); }
-.rlm-field label { font-size: var(--text-sm); font-weight: 500; color: var(--text-muted); }
+.rlm-field label { font-size: var(--text-sm); font-weight: 500; color: var(--ink-2); }
 
 .rlm-row {
   display: grid;
@@ -44,7 +44,7 @@ dialog.modal.rlm-modal {
   gap: var(--gap-3);
 }
 
-.rlm-helper { margin-top: 6px; font-size: var(--text-xs); color: var(--text-subtle); }
+.rlm-helper { margin-top: 6px; font-size: var(--text-xs); color: var(--muted); }
 
 /* ---------- Type cards ------------------------------------------------------ */
 
@@ -65,14 +65,14 @@ dialog.modal.rlm-modal {
   align-items: center;
   gap: 6px;
   padding: var(--gap-3) var(--gap-2);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--paper);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   cursor: pointer;
   text-align: center;
   transition: background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
 }
-.rlm-type:hover { border-color: var(--border-strong); }
+.rlm-type:hover { border-color: var(--line); }
 .rlm-type__radio {
   position: absolute;
   width: 1px; height: 1px;
@@ -84,20 +84,20 @@ dialog.modal.rlm-modal {
   width: 34px; height: 34px;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--text-muted);
+  background: var(--paper-2);
+  color: var(--ink-2);
   transition: background var(--t-fast), color var(--t-fast);
 }
-.rlm-type__label { font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); }
+.rlm-type__label { font-size: var(--text-sm); font-weight: 600; color: var(--ink-2); }
 
 /* Selected card uses the honey accent (matches request-leave.jsx). */
 .rlm-type--selected {
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset;
+  background: var(--paper-2);
+  border-color: var(--honey);
+  box-shadow: 0 0 0 1px var(--honey) inset;
 }
-.rlm-type--selected .rlm-type__icon { background: var(--accent); color: #FBF6EC; }
-.rlm-type--selected .rlm-type__label { color: var(--accent); }
+.rlm-type--selected .rlm-type__icon { background: var(--honey); color: #FBF6EC; }
+.rlm-type--selected .rlm-type__label { color: var(--honey); }
 /* Keyboard focus visible on the card. */
 .rlm-type__radio:focus-visible + .rlm-type__icon {
   outline: 2px solid var(--accent-ring);
@@ -111,8 +111,8 @@ dialog.modal.rlm-modal {
   gap: 4px;
   padding: 4px;
   margin-bottom: var(--gap-3);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--paper-2);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
 }
 .rlm-toggle__btn {
@@ -121,7 +121,7 @@ dialog.modal.rlm-modal {
   min-height: 34px;
   padding: 0 var(--gap-3);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--ink-2);
   border: none;
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
@@ -129,7 +129,7 @@ dialog.modal.rlm-modal {
   cursor: pointer;
 }
 .rlm-toggle__btn--active {
-  background: var(--accent);
+  background: var(--honey);
   color: #FBF6EC;
 }
 
@@ -143,7 +143,7 @@ dialog.modal.rlm-modal {
   flex-wrap: wrap;
   margin: var(--gap-3) 0 4px;
   padding: var(--gap-3) var(--gap-4);
-  background: var(--surface);
+  background: var(--paper);
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-lg);
 }
@@ -152,11 +152,11 @@ dialog.modal.rlm-modal {
   font-family: var(--font-serif);
   font-size: 1.75rem;
   line-height: 1;
-  color: var(--text);
+  color: var(--ink);
 }
-.rlm-summary__unit { font-size: var(--text-sm); color: var(--text-subtle); }
-.rlm-summary__after { font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); text-align: right; }
-.rlm-summary--over .rlm-summary__after { color: var(--danger); }
+.rlm-summary__unit { font-size: var(--text-sm); color: var(--muted); }
+.rlm-summary__after { font-size: var(--text-sm); font-weight: 600; color: var(--ink-2); text-align: right; }
+.rlm-summary--over .rlm-summary__after { color: var(--clay); }
 
 /* ---------- Conflict box ---------------------------------------------------- */
 
@@ -165,8 +165,8 @@ dialog.modal.rlm-modal {
   padding: var(--gap-2) var(--gap-3);
   font-size: var(--text-xs);
   color: var(--honey-deep);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
+  background: var(--paper-2);
+  border: 1px solid var(--honey);
   border-radius: var(--radius-sm);
 }
 
@@ -179,40 +179,40 @@ dialog.modal.rlm-modal {
   align-items: center;
   gap: var(--gap-3);
   padding: var(--gap-3);
-  background: var(--surface);
-  border: 1.5px dashed var(--border);
+  background: var(--paper);
+  border: 1.5px dashed var(--line);
   border-radius: var(--radius);
   cursor: pointer;
   text-align: left;
 }
-.rlm-drop:hover { border-color: var(--accent); }
-.rlm-drop--has-file { border-style: solid; border-color: var(--border-strong); }
+.rlm-drop:hover { border-color: var(--honey); }
+.rlm-drop--has-file { border-style: solid; border-color: var(--line); }
 .rlm-drop__icon {
   width: 38px; height: 38px;
   flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
 }
 .rlm-drop__text { flex: 1; min-width: 0; }
-.rlm-drop__title { font-size: var(--text-sm); font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rlm-drop__sub { margin-top: 2px; font-size: var(--text-xs); color: var(--text-subtle); }
+.rlm-drop__title { font-size: var(--text-sm); font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rlm-drop__sub { margin-top: 2px; font-size: var(--text-xs); color: var(--muted); }
 .rlm-drop__remove {
   flex-shrink: 0;
   margin-top: 0;
   width: 30px; height: 30px;
   padding: 0;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--paper-2);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  color: var(--text-muted);
+  color: var(--ink-2);
   font-size: var(--text-md);
   line-height: 1;
   cursor: pointer;
 }
-.rlm-drop__remove:hover { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); }
+.rlm-drop__remove:hover { background: var(--clay-soft); color: var(--clay); border-color: var(--clay); }
 .rlm-file-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
 
 /* ---------- Footer ---------------------------------------------------------- */
@@ -227,8 +227,8 @@ dialog.modal.rlm-modal {
   padding-top: var(--gap-4);
   border-top: 1px solid var(--line-soft);
 }
-.rlm-foot__hint { font-size: var(--text-xs); color: var(--text-subtle); }
-.rlm-foot__hint strong { color: var(--text-muted); }
+.rlm-foot__hint { font-size: var(--text-xs); color: var(--muted); }
+.rlm-foot__hint strong { color: var(--ink-2); }
 .rlm-foot__actions { display: flex; gap: var(--gap-2); }
 .rlm-foot__actions .btn-ghost,
 .rlm-foot__actions .btn-primary { margin-top: 0; }
@@ -241,20 +241,20 @@ dialog.modal.rlm-modal {
   margin: 0 auto var(--gap-3);
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 999px;
-  background: var(--success);
+  background: var(--sage);
   color: #fff;
 }
-.rlm-success__title { margin: 0; font-family: var(--font-serif); font-size: 2rem; line-height: 1.05; color: var(--text); }
-.rlm-success__blurb { margin-top: var(--gap-2); font-size: var(--text-sm); color: var(--text-subtle); }
+.rlm-success__title { margin: 0; font-family: var(--font-serif); font-size: 2rem; line-height: 1.05; color: var(--ink); }
+.rlm-success__blurb { margin-top: var(--gap-2); font-size: var(--text-sm); color: var(--muted); }
 .rlm-success__chip {
   display: inline-block;
   margin-top: var(--gap-3);
   padding: 4px 12px;
-  background: var(--surface-2);
+  background: var(--paper-2);
   border-radius: 999px;
   font-size: var(--text-xs);
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--ink-2);
 }
 .rlm-success__actions { margin-top: var(--gap-4); display: flex; justify-content: center; gap: var(--gap-2); }
 .rlm-success__actions .btn-ghost,

@@ -152,7 +152,7 @@ html, body {
   margin: 0;
   padding: 0;
   background: var(--bg);
-  color: var(--text);
+  color: var(--ink);
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: var(--leading-normal);
@@ -192,27 +192,27 @@ html, body, .card, .topbar, .btn, .form-control, input, select, textarea, button
 /* Keyboard focus visibility — same ring across all interactive controls.
  * :focus-visible ensures we don't flash the ring on mouse clicks. */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--honey);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
 
 /* Selection color */
-::selection { background: var(--accent-soft); color: var(--accent); }
+::selection { background: var(--paper-2); color: var(--honey); }
 
 /* Links */
-a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: none; color: var(--accent-hover); }
+a { color: var(--honey); text-decoration: none; }
+a:hover { text-decoration: none; color: var(--honey-deep); }
 
 /* Horizontal rule */
-hr { border: none; border-top: 1px solid var(--border); margin: var(--gap-5) 0; }
+hr { border: none; border-top: 1px solid var(--line); margin: var(--gap-5) 0; }
 
 /* Inline code */
 code {
   font-family: var(--font-mono);
   font-size: 0.92em;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--paper-2);
+  color: var(--honey);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
 }
@@ -221,7 +221,7 @@ code {
 
 h1, h2, h3, h4, h5, h6 {
   margin: 0;
-  color: var(--text);
+  color: var(--ink);
   font-weight: 700;
   line-height: var(--leading-tight);
   letter-spacing: -0.01em;
@@ -235,9 +235,9 @@ h4 { font-size: var(--text-md);  margin-top: var(--gap-3); margin-bottom: var(--
 p { margin: 0 0 var(--gap-3); }
 p:last-child { margin-bottom: 0; }
 
-.tagline { color: var(--accent); font-weight: 600; }
-.muted   { color: var(--text-muted); }
-.subtle  { color: var(--text-subtle); font-size: var(--text-sm); }
+.tagline { color: var(--honey); font-weight: 600; }
+.muted   { color: var(--ink-2); }
+.subtle  { color: var(--muted); font-size: var(--text-sm); }
 
 /* ----- 4. Layout primitives ----------------------------------------------- */
 
@@ -263,8 +263,8 @@ p:last-child { margin-bottom: 0; }
 }
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--paper);
+  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   padding: var(--gap-5);
   box-shadow: var(--shadow-sm);
@@ -279,7 +279,7 @@ label {
   margin-bottom: var(--gap-1);
   font-weight: 600;
   font-size: var(--text-sm);
-  color: var(--text);
+  color: var(--ink);
 }
 
 /* Unified form control — inputs, selects, textareas share these styles. */
@@ -302,8 +302,8 @@ textarea {
   font-size: var(--text-md);
   line-height: var(--leading-normal);
   background: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--border);
+  color: var(--ink);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   appearance: none;
   -webkit-appearance: none;
@@ -324,38 +324,38 @@ select {
 
 input::placeholder,
 textarea::placeholder {
-  color: var(--text-subtle);
+  color: var(--muted);
   opacity: 1; /* normalize Firefox */
 }
 
 input:hover:not(:disabled):not(:focus),
 select:hover:not(:disabled):not(:focus),
 textarea:hover:not(:disabled):not(:focus) {
-  border-color: var(--border-strong);
+  border-color: var(--line);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--honey);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 input:disabled,
 select:disabled,
 textarea:disabled {
-  background: var(--surface);
-  color: var(--text-subtle);
+  background: var(--paper);
+  color: var(--muted);
   cursor: not-allowed;
-  border-color: var(--border);
+  border-color: var(--line);
 }
 
 /* Invalid state — matches the red used in messages. */
 input[aria-invalid="true"],
 select[aria-invalid="true"],
 textarea[aria-invalid="true"] {
-  border-color: var(--danger);
+  border-color: var(--clay);
 }
 input[aria-invalid="true"]:focus,
 select[aria-invalid="true"]:focus,
@@ -375,7 +375,7 @@ input[type="radio"] {
   margin: 0;
   padding: 0;
   background: var(--bg);
-  border: 1.5px solid var(--border-strong);
+  border: 1.5px solid var(--line);
   vertical-align: -3px;
   cursor: pointer;
   flex-shrink: 0;
@@ -384,12 +384,12 @@ input[type="checkbox"] { border-radius: 4px; }
 input[type="radio"]    { border-radius: 50%; }
 
 input[type="checkbox"]:hover,
-input[type="radio"]:hover { border-color: var(--accent); }
+input[type="radio"]:hover { border-color: var(--honey); }
 
 input[type="checkbox"]:checked,
 input[type="radio"]:checked {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--honey);
+  border-color: var(--honey);
 }
 
 /* Checkmark — inline SVG as background. */
@@ -420,7 +420,7 @@ input[type="radio"]:focus-visible {
   margin-top: 0;
   font-weight: 400;
   font-size: var(--text-sm);
-  color: var(--text);
+  color: var(--ink);
   cursor: pointer;
   user-select: none;
 }
@@ -460,7 +460,7 @@ button,
   line-height: 1;
   border: 1px solid transparent;
   border-radius: var(--radius);
-  background: var(--accent);
+  background: var(--honey);
   color: white;
   cursor: pointer;
   transition: background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
@@ -470,14 +470,14 @@ button,
 }
 button:hover:not(:disabled),
 .btn:hover:not(:disabled),
-.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-primary:hover:not(:disabled) { background: var(--honey-deep); }
 /* Button-styled anchors must keep their original button text color on
-   hover — otherwise the global `a:hover { color: var(--accent-hover) }`
+   hover — otherwise the global `a:hover { color: var(--honey-deep) }`
    rule (set later in this file) would override it, making the text
    blend into the background on hover. */
 a.btn:hover, a.btn-primary:hover, a.btn-danger:hover,
 a.btn-approve:hover, a.btn-reject:hover { color: white; }
-a.btn-ghost:hover { color: var(--text); }
+a.btn-ghost:hover { color: var(--ink); }
 button:active:not(:disabled),
 .btn:active:not(:disabled) { transform: translateY(1px); }
 button:disabled,
@@ -496,25 +496,25 @@ button.block,
 button.secondary,
 .btn-secondary {
   background: var(--bg);
-  color: var(--text);
-  border-color: var(--border);
+  color: var(--ink);
+  border-color: var(--line);
 }
 button.secondary:hover:not(:disabled),
 .btn-secondary:hover:not(:disabled) {
-  background: var(--surface-2);
-  border-color: var(--border-strong);
+  background: var(--paper-2);
+  border-color: var(--line);
 }
 
-.btn-danger { background: var(--danger); color: white; }
+.btn-danger { background: var(--clay); color: white; }
 .btn-danger:hover:not(:disabled) { background: #8a2828; }
 
 .btn-ghost {
   background: transparent;
-  color: var(--text-muted);
+  color: var(--ink-2);
 }
 .btn-ghost:hover:not(:disabled) {
-  background: var(--surface-2);
-  color: var(--text);
+  background: var(--paper-2);
+  color: var(--ink);
 }
 
 .btn-sm {
@@ -542,7 +542,7 @@ button[data-loading="true"]::after {
   color: white;
 }
 .btn-secondary[data-loading="true"]::after,
-button.secondary[data-loading="true"]::after { color: var(--text); }
+button.secondary[data-loading="true"]::after { color: var(--ink); }
 @keyframes btn-spin { to { transform: rotate(360deg); } }
 
 /* Utility: row of actions */
@@ -566,27 +566,27 @@ table.data-table,
 .data-table td {
   padding: var(--gap-3) var(--gap-3);
   text-align: left;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line);
 }
 .data-table thead th {
-  background: var(--surface-2);
+  background: var(--paper-2);
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--ink-2);
   text-transform: uppercase;
   font-size: var(--text-xs);
   letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
 }
-.data-table tbody tr:hover { background: var(--surface); }
+.data-table tbody tr:hover { background: var(--paper); }
 .data-table tfoot th {
-  background: var(--surface-2);
+  background: var(--paper-2);
   font-weight: 700;
-  border-top: 1px solid var(--border-strong);
+  border-top: 1px solid var(--line);
 }
 .data-table .right { text-align: right; font-variant-numeric: tabular-nums; }
-.data-table .muted { color: var(--text-muted); }
+.data-table .muted { color: var(--ink-2); }
 
 /* ----- 8. Badges + status ------------------------------------------------ */
 
@@ -601,20 +601,20 @@ table.data-table,
   line-height: 1.5;
   text-transform: uppercase;
 }
-.badge--neutral { background: var(--surface-2); color: var(--text-muted); }
-.badge--success { background: var(--success-soft); color: var(--success); }
-.badge--warning { background: var(--warning-soft); color: var(--warning); }
-.badge--danger  { background: var(--danger-soft);  color: var(--danger); }
-.badge--info    { background: var(--info-soft);    color: var(--info); }
-.badge--accent  { background: var(--accent-soft);  color: var(--accent); }
+.badge--neutral { background: var(--paper-2); color: var(--ink-2); }
+.badge--success { background: var(--sage-soft); color: var(--sage); }
+.badge--warning { background: var(--paper-2); color: var(--honey); }
+.badge--danger  { background: var(--clay-soft);  color: var(--clay); }
+.badge--info    { background: var(--paper-2);    color: var(--plum); }
+.badge--accent  { background: var(--paper-2);  color: var(--honey); }
 
 /* Back-compat: existing .status pill. */
 .status {
   display: inline-block;
   padding: 2px 10px;
   border-radius: 999px;
-  background: var(--success-soft);
-  color: var(--success);
+  background: var(--sage-soft);
+  color: var(--sage);
   font-size: var(--text-sm);
   font-weight: 600;
 }
@@ -633,24 +633,24 @@ table.data-table,
 .message:empty,
 .alert:empty { display: none; }
 
-.message.error,  .alert--error   { background: var(--danger-soft);  color: var(--danger);  border-color: rgba(168, 50, 50, 0.18); }
-.message.success,.alert--success { background: var(--success-soft); color: var(--success); border-color: rgba(42, 122, 58, 0.22); }
-.alert--warning                  { background: var(--warning-soft); color: var(--warning); border-color: rgba(158, 107, 0, 0.25); }
-.alert--info                     { background: var(--info-soft);    color: var(--info);    border-color: rgba(31, 111, 148, 0.22); }
+.message.error,  .alert--error   { background: var(--clay-soft);  color: var(--clay);  border-color: rgba(168, 50, 50, 0.18); }
+.message.success,.alert--success { background: var(--sage-soft); color: var(--sage); border-color: rgba(42, 122, 58, 0.22); }
+.alert--warning                  { background: var(--paper-2); color: var(--honey); border-color: rgba(158, 107, 0, 0.25); }
+.alert--info                     { background: var(--paper-2);    color: var(--plum);    border-color: rgba(31, 111, 148, 0.22); }
 
 /* ----- 10. Empty state + skeletons --------------------------------------- */
 
 .empty-state {
   padding: var(--gap-6) var(--gap-4);
   text-align: center;
-  color: var(--text-subtle);
-  background: var(--surface);
-  border: 1px dashed var(--border);
+  color: var(--muted);
+  background: var(--paper);
+  border: 1px dashed var(--line);
   border-radius: var(--radius-lg);
 }
 .empty-state__title {
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--ink-2);
   font-size: var(--text-md);
   margin-bottom: var(--gap-1);
 }
@@ -659,7 +659,7 @@ table.data-table,
 /* Skeleton loader — pulse a subtle surface bar. */
 .skeleton {
   display: block;
-  background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface) 50%, var(--surface-2) 100%);
+  background: linear-gradient(90deg, var(--paper-2) 0%, var(--paper) 50%, var(--paper-2) 100%);
   background-size: 200% 100%;
   border-radius: var(--radius-sm);
   animation: skeleton-pulse 1.4s ease-in-out infinite;
@@ -675,8 +675,8 @@ table.data-table,
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid var(--border-strong);
-  border-top-color: var(--accent);
+  border: 2px solid var(--line);
+  border-top-color: var(--honey);
   border-radius: 50%;
   animation: btn-spin 0.6s linear infinite;
   vertical-align: -3px;
@@ -707,18 +707,18 @@ table.data-table,
   max-width: 360px;
   padding: var(--gap-3) var(--gap-4);
   background: var(--bg);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--honey);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  color: var(--text);
+  color: var(--ink);
   font-size: var(--text-sm);
   animation: toast-in 220ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
-.toast--success { border-left-color: var(--success); }
-.toast--error   { border-left-color: var(--danger); }
-.toast--warning { border-left-color: var(--warning); }
-.toast--info    { border-left-color: var(--info); }
+.toast--success { border-left-color: var(--sage); }
+.toast--error   { border-left-color: var(--clay); }
+.toast--warning { border-left-color: var(--honey); }
+.toast--info    { border-left-color: var(--plum); }
 
 .toast[data-dismissing="true"] { animation: toast-out 160ms cubic-bezier(0.4, 0, 0.2, 1) forwards; }
 
@@ -759,11 +759,11 @@ table.data-table,
   padding: var(--gap-4);
   text-align: center;
   font-size: var(--text-xs);
-  color: var(--text-subtle);
-  border-top: 1px solid var(--border);
+  color: var(--muted);
+  border-top: 1px solid var(--line);
 }
-.app-footer a { color: var(--text-subtle); }
-.app-footer a:hover { color: var(--accent); }
+.app-footer a { color: var(--muted); }
+.app-footer a:hover { color: var(--honey); }
 
 /* Margin utilities — kept minimal, only the gaps we actually use.
    Added in 0.20.0 to migrate inline style="" attributes off pages
