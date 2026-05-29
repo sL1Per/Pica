@@ -1,5 +1,5 @@
 import { t, translateError, applyTranslations } from '/i18n.js';
-import { postJson, showMessage, setBusy } from '/app.js';
+import { showMessage, setBusy } from '/app.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
@@ -58,7 +58,7 @@ function renderAvatar(emp, hasPicture) {
     removePic.hidden = false;
   } else {
     avatarEl.textContent = initials(emp.profile?.fullName || emp.username);
-    avatarEl.style.setProperty('--hue', hue(emp.id || emp.username));
+    avatarEl.style.setProperty('--hue', hue(emp.profile?.fullName || emp.username));
     removePic.hidden = true;
   }
 }
