@@ -484,4 +484,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.39.0._
+_Last touched in 0.40.0._

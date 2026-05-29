@@ -5,13 +5,13 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.39.0._
+_Last touched in 0.40.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.39.0 (released 2026-05-29)
+- **Latest version:** 0.40.0 (released 2026-05-29)
 - **Test count:** 49 suites (0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -53,10 +53,45 @@ _Last touched in 0.39.0._
   `/security`, zero backend change); **Preferences + Profile edit** (Plan 8) at
   0.39.0 (`/preferences` two-card with radio-cards + password-match gate;
   `/employees/:id/profile` four-card editor with read-only role badge + hard
-  Delete; `/employees/new` shares `employee-profile.css`; zero backend change).
-  Remaining screen-body work (**next: Plan 9 Reports re-skin + token alias-bridge
-  removal + final polish**; see `docs/superpowers/plans/2026-05-2*-m15-*`);
-  M16–M17 follow (M17 deployment guide ships last)
+  Delete; `/employees/new` shares `employee-profile.css`; zero backend change);
+  **Reports re-skin** (Plan 9 part 1) at 0.40.0 (`reports.{css,js}` to the M15
+  card/toolbar/`.data-table`/serif-totals/status-pill vocabulary; every M13
+  behavior byte-equivalent; `reports.css` now alias-free). **All 13 screen
+  bodies are now restyled.** Remaining M15 work (**next: Plan 9 part 2 — 0.41.0
+  alias-bridge removal + JS dedup + bell dropdown, which CLOSES M15**; see
+  `docs/superpowers/plans/2026-05-29-m15-reports-cleanup.md`); M16–M17 follow
+  (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.40.0)
+
+**M15 Reports re-skin (Plan 9, part 1).** `reports.{css,js}` restyled to the M15
+design with **zero backend change** — every M13 behavior byte-equivalent (the
+two report types, scope Everyone/One-person, Day/Week/Month/Year + ◀/▶ nav, the
+period-bucket × employee matrix, the single-person hours/leaves views, CSV
+download, Print→Save-as-PDF, server-enforced employee isolation).
+
+- **`reports.css`** rewritten against canonical tokens (alias-free): serif page
+  title, the shared chip/toolbar idiom, the shared `.data-table` look (matrix
+  keeps its sticky first column), **serif grand totals**, and a new
+  `.rpt-status--{approved,pending,rejected,cancelled}` pill for the leaves
+  single-view status column. Print stylesheet preserved.
+- **`reports.js`** emits the new classes — `data-table` on every table; the
+  leaves status cell wraps its (already-`esc()`d) text in a `.rpt-status` pill.
+  Four class-string lines changed; rendering/escaping/data flow untouched (kept
+  the escaped-`innerHTML` approach — already XSS-safe — rather than rewriting to
+  the DOM API).
+
+The design handoff never drew a Reports screen (prototype stub; M13 shipped the
+real one at 0.24.0), so this applies the established M15 vocabulary. No new i18n
+keys (reuses `reports.*` / `status.*` / `leaves.type.*`); `CACHE_VERSION` v57 →
+v58; **no new test suite** (logic covered by `test-reports` /
+`test-reports-team`; count stays 49). `reports.css` is now alias-free, retiring
+12 of the 195 alias usages ahead of the 0.41.0 bridge removal. Honest
+Disclosures (full list in RELEASES.md 0.40.0): escaped-`innerHTML` kept (not a
+DOM-API rewrite); no automated UI test (verified live via Playwright MCP, both
+roles); no backend change.
 
 ---
 

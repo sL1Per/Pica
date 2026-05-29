@@ -14,6 +14,57 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.40.0] — 2026-05-29 — M15 Reports re-skin (Plan 9, part 1)
+
+The Reports page is restyled to the M15 design. **Every M13 behavior is
+byte-equivalent** — no endpoint, payload, query, or report-logic change. This is
+the first of the two releases that make up M15 Plan 9; the second (0.41.0)
+removes the token alias bridge and closes M15.
+
+The design handoff never drew a Reports screen (the prototype stubbed it; Pica
+already shipped the real Reports page in the M13 revamp at 0.24.0), so this
+applies the now-established M15 vocabulary rather than inventing the prototype's
+missing one.
+
+**What changed (visual only):**
+- **`reports.css` rewritten** against the canonical token vocabulary — serif page
+  title, the chip/toolbar idiom shared with the calendar and leaves pages, the
+  shared `.data-table` look for the matrix and single-person tables (sticky
+  first column kept for the horizontally-scrolling matrix), **serif grand
+  totals**, and a new `.rpt-status--{approved,pending,rejected,cancelled}` pill
+  for the leaves single-view status column. The print stylesheet (landscape,
+  `printable-title`) is preserved.
+- **`reports.js`** emits the new classes (`data-table` on every table; the leaves
+  status cell wraps its text in a `.rpt-status` pill). Four class-string lines
+  changed; nothing else.
+
+**Preserved exactly:** Timesheets / Leaves report types; scope Everyone /
+One-person (employer picker; employees pinned to self server- and client-side);
+Day / Week / Month / Year presets with ◀/▶ nav (the local-component anchor math
+that avoids the UTC-midnight off-by-one); the matrix and both single-person
+shapes; CSV download; Print → Save-as-PDF; server-enforced employee isolation.
+
+**SW:** `CACHE_VERSION` v57 → v58 (`reports.css` is pre-cached; the SW serves all
+CSS cache-first keyed by the version, so the bump — not pre-cache membership — is
+what delivers the new CSS to returning clients). No new i18n keys (the restyle
+reuses existing `reports.*` / `status.*` / `leaves.type.*` keys). No new test
+suite — report logic is unchanged and covered by `test-reports` /
+`test-reports-team`. As a side effect, `reports.css` is now fully tokenized
+(alias-free), retiring its 12 alias usages ahead of the 0.41.0 bridge removal.
+
+**Honest Disclosures:**
+- **`reports.js` keeps its escaped-`innerHTML` rendering** — it was already
+  XSS-safe (every interpolated value goes through `esc()`), so this restyle did
+  not rewrite it to the `createElement`/`textContent` DOM API the way the 0.33.0
+  punches-today rebuild did. Lower-risk for a pure restyle; the status enum is
+  additionally `esc()`-wrapped inside the new pill class.
+- **No automated UI test.** Verified live via the Playwright MCP (both roles, both
+  report types, all four periods, matrix + single views, CSV link target, print
+  preview). The in-repo browser-test suite is still M16.
+- **No backend change** of any kind — this is purely a CSS/markup restyle.
+
+---
+
 ## [0.39.0] — 2026-05-29 — M15 Preferences + Profile edit restyle
 
 ### What changed
