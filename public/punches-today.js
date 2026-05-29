@@ -1,6 +1,7 @@
 import { showMessage } from '/app.js';
 import { t, applyTranslations } from '/i18n.js';
 import { reverseGeocode } from '/geocode.js';
+import { pairSessions as pairPunchSessions } from '/team-status.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
@@ -66,26 +67,17 @@ function humanDuration(ms) {
  * Returns [{inTs, outTs|null, inGeo, outGeo, inComment, outComment}].
  */
 function pairSessions(punches) {
-  const sessions = [];
-  let open = null;
-  for (const p of punches) {
-    if (p.type === 'in') {
-      // If an unclosed "in" already exists, close it implicitly before opening.
-      if (open) sessions.push(open);
-      open = { inTs: p.ts, outTs: null, inGeo: p.geo || null, outGeo: null, inComment: p.comment || null, outComment: null };
-    } else if (p.type === 'out') {
-      if (open) {
-        open.outTs = p.ts;
-        open.outGeo = p.geo || null;
-        open.outComment = p.comment || null;
-        sessions.push(open);
-        open = null;
-      }
-      // An "out" with no open "in" is a data anomaly — skip it silently.
-    }
-  }
-  if (open) sessions.push(open);
-  return sessions;
+  // The in→out pairing algorithm lives in /team-status.js (shared with the
+  // team + employee-detail pages). It returns {in, out} punch pairs; this page
+  // renders a flatter {inTs, outTs, inGeo, …} shape, so adapt here.
+  return pairPunchSessions(punches).map(({ in: i, out }) => ({
+    inTs: i.ts,
+    outTs: out ? out.ts : null,
+    inGeo: i.geo || null,
+    outGeo: out ? (out.geo || null) : null,
+    inComment: i.comment || null,
+    outComment: out ? (out.comment || null) : null,
+  }));
 }
 
 /**
