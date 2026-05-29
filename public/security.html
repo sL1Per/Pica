@@ -30,42 +30,87 @@
 </head>
 <body>
   <main class="container">
-    <h1 data-i18n="security.title">Security</h1>
+    <header class="sec-head">
+      <h1 class="sec-head__title" data-i18n="security.title">Security</h1>
+      <p class="sec-head__sub" data-i18n="security.subtitle">Passphrase, recovery code, and encryption-key rotation.</p>
+    </header>
+
     <p id="message" class="message" hidden></p>
 
-    <section class="card">
-      <h2 data-i18n="security.changePassTitle">Change passphrase</h2>
+    <!-- Change passphrase -->
+    <section class="sec-card">
+      <div class="sec-card__head">
+        <h2 class="sec-card__title" data-i18n="security.changePassTitle">Change passphrase</h2>
+        <p class="sec-card__sub" data-i18n="security.changePassSub">The passphrase encrypts all data and backups. Keep it safe — without it, your data can only be recovered with the recovery code below.</p>
+      </div>
       <form id="pass-form">
-        <label for="cp-current" data-i18n="security.currentPass">Current passphrase</label>
-        <input type="password" id="cp-current" autocomplete="current-password">
-        <small data-i18n="security.currentPassHint">If you unlocked with a recovery code, leave this blank.</small>
-        <label for="cp-new" data-i18n="security.newPass">New passphrase</label>
-        <input type="password" id="cp-new" autocomplete="new-password" minlength="8" required>
-        <button type="submit" data-i18n="security.changePassBtn">Change passphrase</button>
+        <div class="sec-field">
+          <label for="cp-current" data-i18n="security.currentPass">Current passphrase</label>
+          <input type="password" id="cp-current" autocomplete="current-password">
+          <p class="sec-helper" data-i18n="security.currentPassHint">If you unlocked with a recovery code, leave this blank.</p>
+        </div>
+        <div class="sec-field">
+          <label for="cp-new" data-i18n="security.newPass">New passphrase</label>
+          <input type="password" id="cp-new" autocomplete="new-password" minlength="12" required>
+          <p class="sec-helper" data-i18n="security.newPassHint">At least 12 characters. A passphrase of four random words works well.</p>
+        </div>
+        <div class="sec-field">
+          <label for="cp-confirm" data-i18n="security.confirmPass">Confirm new passphrase</label>
+          <input type="password" id="cp-confirm" autocomplete="new-password" required>
+          <p class="sec-mismatch" id="cp-mismatch" data-i18n="security.passMismatch" hidden>Passphrases don't match.</p>
+        </div>
+        <button type="submit" id="cp-submit" class="sec-btn sec-btn--primary" disabled data-i18n="security.changePassBtn">Change passphrase</button>
       </form>
     </section>
 
-    <section class="card">
-      <h2 data-i18n="security.recoveryTitle">Recovery code</h2>
-      <p data-i18n="security.recoveryIntro"></p>
+    <!-- Recovery code -->
+    <section class="sec-card">
+      <div class="sec-card__head">
+        <h2 class="sec-card__title" data-i18n="security.recoveryTitle">Recovery code</h2>
+        <p class="sec-card__sub" data-i18n="security.recoverySub">One-time code that can unlock your data if you forget the passphrase. Shown once — write it down and keep it somewhere safe (offline).</p>
+      </div>
+
+      <!-- Pre-generate state -->
       <form id="rec-form">
-        <label for="rc-current" data-i18n="security.currentPass">Current passphrase</label>
-        <input type="password" id="rc-current" autocomplete="current-password" required>
-        <button type="submit" data-i18n="security.genRecoveryBtn">Generate recovery code</button>
-        <button type="button" id="rc-remove" class="btn-danger" data-i18n="security.removeRecoveryBtn">Remove recovery code</button>
+        <div class="sec-field">
+          <label for="rc-current" data-i18n="security.currentPass">Current passphrase</label>
+          <input type="password" id="rc-current" autocomplete="current-password" required>
+        </div>
+        <div class="inline-row">
+          <button type="submit" id="rc-gen" class="sec-btn sec-btn--primary" disabled data-i18n="security.genRecoveryBtn">Generate recovery code</button>
+          <button type="button" id="rc-remove" class="sec-btn sec-btn--danger-ghost" data-i18n="security.removeRecoveryBtn">Remove recovery code</button>
+        </div>
+        <p class="sec-helper" id="rc-hint" data-i18n="security.recoveryInvalidatesHint" hidden>A recovery code is currently set. Generating a new one invalidates the old one.</p>
       </form>
-      <pre id="rc-output" class="recovery-code" hidden></pre>
+
+      <!-- Post-generate state -->
+      <div id="rc-result" hidden>
+        <pre id="rc-output" class="recovery-code"></pre>
+        <div class="inline-row">
+          <button type="button" id="rc-copy" class="sec-btn sec-btn--ghost" data-i18n="security.recoveryCopy">Copy to clipboard</button>
+          <button type="button" id="rc-done" class="sec-btn sec-btn--ghost" data-i18n="security.recoveryDone">Done — I've saved it</button>
+        </div>
+        <p class="sec-warn" data-i18n="security.recoveryWarn">Important: this code will not be shown again. If you lose both your passphrase and this code, your data cannot be recovered.</p>
+      </div>
     </section>
 
-    <section class="card">
-      <h2 data-i18n="security.rotateTitle">Rotate encryption key</h2>
-      <p data-i18n="security.rotateIntro"></p>
+    <!-- Rotate encryption key (danger zone) -->
+    <section class="sec-card sec-card--danger">
+      <span class="sec-danger-tag" data-i18n="security.dangerZone">Danger zone</span>
+      <div class="sec-card__head">
+        <h2 class="sec-card__title sec-card__title--clay" data-i18n="security.rotateTitle">Rotate encryption key</h2>
+        <p class="sec-card__sub" data-i18n="security.rotateSub">Generates a new key and re-encrypts all data. Use only after a suspected compromise. Old backups will no longer restore. The recovery code is cleared. Pica must restart.</p>
+      </div>
       <form id="rot-form">
-        <label for="rot-current" data-i18n="security.currentPass">Current passphrase</label>
-        <input type="password" id="rot-current" autocomplete="current-password" required>
-        <label for="rot-confirm" data-i18n="security.rotateConfirm">Type ROTATE to confirm</label>
-        <input type="text" id="rot-confirm" required>
-        <button type="submit" class="btn-danger" data-i18n="security.rotateBtn">Rotate key</button>
+        <div class="sec-field">
+          <label for="rot-current" data-i18n="security.currentPass">Current passphrase</label>
+          <input type="password" id="rot-current" autocomplete="current-password" required>
+        </div>
+        <div class="sec-field">
+          <label for="rot-confirm" data-i18n="security.rotateConfirm">Type ROTATE to confirm</label>
+          <input type="text" id="rot-confirm" placeholder="ROTATE" required>
+        </div>
+        <button type="submit" id="rot-submit" class="sec-btn sec-btn--danger" disabled data-i18n="security.rotateBtn">Rotate key</button>
       </form>
     </section>
   </main>

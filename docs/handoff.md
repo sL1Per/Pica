@@ -5,13 +5,13 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.37.0._
+_Last touched in 0.38.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.37.0 (released 2026-05-28)
+- **Latest version:** 0.38.0 (released 2026-05-29)
 - **Test count:** 49 suites (0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -48,11 +48,52 @@ _Last touched in 0.37.0._
   detail) at 0.35.0; **calendar** (toolbar/chips/scope, pending+approved grid,
   anchored popover, right rail) at 0.36.0; **employer home + team list +
   employee detail** (Plan 6) at 0.37.0 (shared `team-status.js`; heuristic
-  on-break; inline decide everywhere; Reset-pw on `modal.js`). Remaining
-  screen-body plans in progress (**next: Plan 7 Settings + Security**; then
-  Plan 8 Profile-edit + Prefs redesign; Plan 9 Reports + alias-bridge removal;
-  see `docs/superpowers/plans/2026-05-2*-m15-*`); M16–M17 follow (M17
-  deployment guide ships last)
+  on-break; inline decide everywhere; Reset-pw on `modal.js`); **Settings +
+  Security restyle** (Plan 7) at 0.38.0 (5-tab `/settings` shell + 3-card
+  `/security`, zero backend change). Remaining screen-body plans in progress
+  (**next: Plan 8 Profile-edit + Prefs redesign**; then Plan 9 Reports +
+  alias-bridge removal; see `docs/superpowers/plans/2026-05-2*-m15-*`);
+  M16–M17 follow (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.38.0)
+
+**M15 Settings + Security restyle (Plan 7).** The employer `/settings` page and
+the standalone `/security` page rebuilt to the design with **zero backend
+change** — every endpoint, payload, and validation is byte-equivalent.
+
+- **`/settings` = 5-tab page** (Company · Organization · Notifications · Backups
+  · Security). Sticky 220px icon-tab sidebar (honey active bar) on desktop;
+  horizontal chip row on mobile (≤760px). Active tab persists as `?tab=<id>`
+  (replaces the old `#hash` anchors); tab switch swaps the content container via
+  `replaceChildren()` with an `AbortController` per tab. `settings.js` is a tab
+  router + 5 per-tab renderers; the ~22 existing helpers (logo resize, blocked-
+  range editor, override tables, SMTP form, backup list/create/delete/restore/
+  schedule, lockdown banner) are ported byte-equivalent into the renderers.
+- **Org tab consolidates** the old two save buttons into one "Save organization
+  settings" (org form then working-time form, left-committed; error toast names
+  the failing form). Per-card **"Saved ✓" flash** replaces the success toast;
+  errors still toast.
+- **Security tab is an entry card** → `/security` (no inline forms — keeps the
+  recovery-lockdown screen minimal, per CLAUDE.md).
+- **`/security` = three M15 cards** (change passphrase w/ confirm + match gate +
+  `minlength` 8→12 on the new passphrase; recovery code generate/copy/done/
+  remove; clay Danger-zone rotate w/ ROTATE gate). Endpoints + post-rotate 503
+  lockdown unchanged.
+- **Dropped from the prototype** (would have needed backend): Company **tagline**
+  (no field), backup **Verify** button (no endpoint), Automatic/Manual chip (no
+  origin flag on list entries). Override tables stay `<table>` (a11y +
+  byte-equivalent collectors).
+- **Lockdown banner improved:** a fresh load during post-restore lockdown
+  (`/api/me` 503s) now detects state via the allowlisted `/api/backups/status`
+  and shows the "restart Pica" banner (old page showed a blank shell).
+
+~40 new `settings.*`/`security.*` i18n keys per locale; `CACHE_VERSION` v55 →
+v56 (no new pre-cached asset). No new test suite (count stays 49). **Verified
+live via the Playwright MCP** (all 5 tabs + `?tab=` routing + saves + `/security`
+gates + mobile chips + post-restore lockdown banner; zero console errors in the
+normal state — the 503s during lockdown come from the topbar shell, pre-existing).
 
 ---
 

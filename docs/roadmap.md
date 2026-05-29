@@ -33,7 +33,7 @@ app in a usable state.
 | —         | Master key management (envelope enc, passphrase change, rotation, recovery code) | ✅ 0.23.0 |
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
-| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0 · employer home+team+detail 0.37.0) |
+| M15       | Full UI revamp                     | 🔄 In progress (foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0 · employer home+team+detail 0.37.0 · settings+security 0.38.0) |
 | M16       | E2E browser tests                  | 📋 Planned    |
 | M17       | Deployment guide + TLS samples     | 📋 Planned    |
 
@@ -430,4 +430,4 @@ change.
 
 ---
 
-_Last touched in 0.37.0._
+_Last touched in 0.38.0._

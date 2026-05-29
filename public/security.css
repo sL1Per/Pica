@@ -1,11 +1,139 @@
-.recovery-code {
-  font-size: 1.25rem;
+/* M15 Plan 7 — Security page. Single-column 640px (.container). Token-based;
+   shares the Settings sec-card vocabulary but self-contained (this page links
+   security.css, not settings.css — it must survive recovery lockdown alone). */
+
+/* ---------- Header ------------------------------------------------------ */
+.sec-head { margin: 8px 0 24px; }
+.sec-head__title {
+  font-family: var(--font-serif);
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0;
+}
+.sec-head__sub { color: var(--muted); margin-top: 8px; font-size: 14px; }
+
+/* ---------- Cards ------------------------------------------------------- */
+.sec-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 14px;
+}
+.sec-card--danger { border-color: var(--clay); position: relative; }
+.sec-danger-tag {
+  position: absolute;
+  top: -10px; left: 20px;
+  background: var(--clay);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
   letter-spacing: 0.08em;
-  padding: 1rem;
-  background: var(--surface-2, #f4f4f5);
-  border: 1px dashed var(--border, #ccc);
-  border-radius: 6px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.sec-card__head { margin-bottom: 18px; }
+.sec-card--danger .sec-card__head { margin-top: 6px; }
+.sec-card__title {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0;
+}
+.sec-card__title--clay { color: var(--clay); }
+.sec-card__sub { color: var(--muted); font-size: 13px; margin-top: 4px; line-height: 1.5; }
+
+/* ---------- Fields ------------------------------------------------------ */
+.sec-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.sec-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.sec-helper { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin: 0; }
+.sec-mismatch { font-size: 11.5px; color: var(--clay); margin: 0; }
+.sec-warn { font-size: 12px; color: var(--clay); margin-top: 12px; line-height: 1.5; }
+
+.sec-card input[type="text"],
+.sec-card input[type="password"] {
+  height: 44px;
+  padding: 0 14px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+}
+.sec-card input:focus { border-color: var(--honey); box-shadow: 0 0 0 3px var(--accent-ring); }
+
+.inline-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* ---------- Recovery code block ----------------------------------------- */
+.recovery-code {
+  padding: 20px 24px;
+  background: var(--bg-2);
+  border: 1px dashed var(--honey);
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  text-align: center;
+  font-weight: 600;
+  margin: 0 0 14px;
   user-select: all;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+/* ---------- Buttons ----------------------------------------------------- */
+.sec-btn {
+  height: 46px;
+  padding: 0 22px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 14.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+}
+.sec-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.sec-btn--primary {
+  background: var(--honey);
+  color: #FBF6EC;
+  border-color: var(--honey);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .2) inset, 0 6px 14px -6px rgba(201, 122, 26, .55);
+}
+.sec-btn--primary:hover:not(:disabled) { background: var(--honey-deep); border-color: var(--honey-deep); }
+.sec-btn--ghost {
+  height: 40px;
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--line);
+  font-weight: 500;
+  font-size: 14px;
+}
+.sec-btn--ghost:hover { background: var(--paper-2); }
+.sec-btn--danger { background: var(--clay); color: #fff; border-color: var(--clay); }
+.sec-btn--danger:hover:not(:disabled) { filter: brightness(0.94); }
+.sec-btn--danger-ghost {
+  height: 40px;
+  background: transparent;
+  color: var(--clay);
+  border-color: var(--clay);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+@media (max-width: 760px) {
+  .sec-head__title { font-size: 32px; }
+  .sec-card { padding: 20px; }
 }

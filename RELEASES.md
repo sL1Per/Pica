@@ -14,6 +14,117 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.38.0] — 2026-05-29 — M15 Settings + Security restyle
+
+### What changed
+
+**M15 Plan 7** re-skins the employer **`/settings`** page and the standalone
+**`/security`** page to the design. **Zero backend changes** — every API
+surface, payload, and validation is byte-equivalent; this is a pure frontend
+rewrite around the new visual vocabulary.
+
+- **`/settings` is now a 5-tab page.** A serif header + a sticky 220px sidebar
+  of icon-tile tab buttons (honey active bar) on desktop; a horizontal
+  scrolling chip row on mobile (≤760px). The active tab persists in the URL as
+  `?tab=<id>` (replacing the old `#hash` anchors); switching tabs swaps the
+  content container in place via `replaceChildren()` with no full reload and an
+  `AbortController` per tab cancelling the previous tab's in-flight fetches.
+  Tabs, in order: **Company · Organization · Notifications · Backups ·
+  Security**.
+  - **Company** — name input + 88×88 logo tile (Choose / Remove + client-side
+    256×256 PNG resize). Save persists name (org PUT) + logo (branding
+    PUT/DELETE), exactly as before.
+  - **Organization** — three cards (Leave allowances + carry-over + per-employee
+    overrides · Leave policy concurrent + blocked-dates editor · Working time +
+    per-employee overrides) collapsed under **one** "Save organization settings"
+    button that saves the org form then the working-time form in sequence.
+  - **Notifications** — SMTP-server card (write-only password discipline
+    preserved: a blank password field keeps the stored secret) + Notification
+    events card (3 master switches). Status line reads the safe `mailConfigured`
+    boolean.
+  - **Backups** — Create card (with the post-restore lockdown banner up top) +
+    a CSS-grid backup list (date + **Latest** pill on the newest + mono ID chip
+    + size + Download / Delete) + Automatic-backups card (toggle + schedule +
+    retention) + a clay-bordered **Restore** card (dashed file drop-zone + type
+    `RESTORE` + a big clay button disabled until both gates are met).
+  - **Security** — a single entry card with an "Open security settings" button →
+    `/security`. **No forms here** (see Honest Disclosures).
+- **`/security` rebuilt to three M15 cards.** Change passphrase (current + new +
+  **confirm**, with an inline "Passphrases don't match" hint and a submit gated
+  until current present, new ≥ 12 chars, confirm matches), Recovery code
+  (generate → dashed-honey mono code block with Copy + "Done — I've saved it" +
+  "won't be shown again" warning; Remove), and a clay **Danger zone** Rotate
+  card (current + type `ROTATE`, both gated). All endpoints and the post-rotate
+  503 lockdown are unchanged.
+- **Per-card "Saved ✓" flash** replaces the old top-of-page success toast for
+  successful saves; errors still surface as toasts so they can't be missed.
+- **i18n:** ~40 new `settings.*` / `security.*` keys per locale (en-US + pt-PT).
+- **`CACHE_VERSION` v55 → v56** (`security.css` / `security.js` are pre-cached
+  and changed; `settings.*` are network-first). No new pre-cached asset.
+
+### Tests
+
+No new test suite — the rewrite is DOM + API plumbing over endpoints already
+covered by `test-org-settings`, `test-mail-config-store`, `test-backups`,
+`test-security-routes`, `test-rotate`, `test-keyring`, `test-dek`,
+`test-masterkey-envelope`. Locale parity holds (`test-i18n`); CSP cross-file
+inline-bootstrap hash invariant holds (`test-security-headers`). Full suite:
+48/49 green, the lone red being the pre-existing host-timezone-sensitive
+`test-reports.mjs` "overnight split" flake. **Verified live via the Playwright
+MCP** as employer: all 5 tabs render + `?tab=` updates + content swaps with
+**zero console errors**; Company/Org/Notifications/Backups all load + save;
+consolidated org save; `/security` three cards with the mismatch hint and the
+ROTATE gate enabling the button (rotation **not** executed); mobile chip row at
+600px; and the post-restore lockdown banner rendering after a real
+restore-then-reload.
+
+### Honest Disclosures
+
+- **5 tabs, not 4.** The prototype ships Company / Organization / Backups /
+  Security; we add **Notifications** as a 5th tab to preserve the 0.26.0 SMTP +
+  events surface. Deliberate deviation from the prototype.
+- **Security tab is an entry card, not inline forms.** Per the CLAUDE.md "things
+  that have bitten us" note: a data-heavy Settings page becomes a wall of 503s
+  during `passphraseResetRequired` lockdown. `/security` stays a standalone
+  minimal page; Settings → Security is a styled card with an "Open security
+  settings" button. (There is no home-page Security card in the codebase to
+  re-point; the only `/security` link was inside the old Settings page.)
+- **`/security` `minlength` tightened 8 → 12** on the *new* passphrase to match
+  the design copy. Existing 8–11-char passphrases continue to authenticate — the
+  rule is on new-passphrase entry, not on validating the in-use one.
+- **Org save consolidates.** The two old buttons ("Save organization" + "Save
+  working-time") become one "Save organization settings" that saves the org form
+  then the working-time form. If the org save fails the working-time save is
+  skipped and the error toast names which form failed; org-then-working-time is
+  left-committed (matches the old two-button semantics).
+- **Save flash, not toast (success only).** Per-card "Saved ✓" flash replaces
+  the top-of-page success toast. Errors still toast.
+- **No "tagline" field.** The prototype's Company tagline input is omitted — the
+  backend `company` object has only `name`; inventing a field would be a backend
+  change. Dropped rather than faked.
+- **No "Verify" backup button and no auto/manual chip.** The prototype shows a
+  per-row Verify action and an Automatic/Manual label, but there is **no**
+  `POST /api/backups/verify` endpoint and the backup list entries carry no
+  origin flag (`{id, filename, timestamp, sizeBytes, createdAt}`). Both were
+  dropped rather than add backend surface. Download + Delete are unchanged.
+- **Per-employee override tables stay `<table>` elements** (CSS-restyled), not
+  the prototype's grid divs, to keep screen-reader semantics and the existing
+  `data-uid`/`data-type`/`data-field` collectors byte-equivalent. They render
+  full (no virtualization) at the ≤ 50-employee target.
+- **Tab state in `?tab=`, not `#hash`.** The old `#company`/`#organization`/
+  `#security` anchors are gone; external links to those anchors load cleanly on
+  the default tab. `/settings?tab=security` is honored.
+- **Lockdown banner improved.** On a fresh load during post-restore lockdown
+  (`/api/me` returns 503), the page now detects the state via the allowlisted
+  `/api/backups/status` and renders the "restart Pica" banner — the old page
+  showed a blank shell in that case. During lockdown the **topbar** still emits
+  benign 503 console errors fetching `/api/me` / `/api/branding` (pre-existing
+  shell behavior, out of scope here).
+- **No DOM/E2E tests** for the new shell — that's M16. Verified live via the
+  Playwright MCP.
+
+---
+
 ## [0.37.0] — 2026-05-28 — M15 employer home + team + employee detail
 
 ### What changed
