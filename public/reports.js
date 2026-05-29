@@ -84,7 +84,7 @@ function renderMatrix(d, wrap, empty) {
   const foot = `<tr><th>${esc(t('reports.total'))}</th>` +
     d.rows.map((r) => `<th>${num(r.total)}</th>`).join('') +
     `<th class="grand">${num(d.grandTotal)}</th></tr>`;
-  wrap.innerHTML = `<table class="report-table"><thead>${head}</thead>` +
+  wrap.innerHTML = `<table class="data-table report-table"><thead>${head}</thead>` +
     `<tbody>${body}</tbody><tfoot>${foot}</tfoot></table>`;
 }
 
@@ -93,7 +93,7 @@ function renderHoursSingle(d, wrap, empty) {
   const body = d.buckets.map((b) =>
     `<tr><td>${esc(b.key)}</td><td>${fmtHours(b.hours)}</td></tr>`).join('');
   wrap.innerHTML =
-    `<table class="report-table"><thead><tr>` +
+    `<table class="data-table report-table"><thead><tr>` +
     `<th>${esc(t('reports.colBucket'))}</th><th>${esc(t('reports.colHours'))}</th>` +
     `</tr></thead><tbody>${body}</tbody><tfoot><tr>` +
     `<th>${esc(t('reports.total'))}</th><th>${fmtHours(d.totalHours)}</th>` +
@@ -114,9 +114,9 @@ function renderLeavesSingle(d, wrap, empty) {
     `<tr><td>${esc(t('leaves.type.' + l.type))}</td>` +
     `<td>${esc(l.start)}${l.end && l.end !== l.start ? ' → ' + esc(l.end) : ''}</td>` +
     `<td>${l.unit === 'hours' ? esc((l.hours ?? 0) + 'h') : ''}</td>` +
-    `<td>${esc(t('status.' + l.status))}</td></tr>`).join('');
+    `<td><span class="rpt-status rpt-status--${esc(l.status)}">${esc(t('status.' + l.status))}</span></td></tr>`).join('');
   wrap.innerHTML = grid +
-    `<table class="report-table"><thead><tr>` +
+    `<table class="data-table report-table"><thead><tr>` +
     `<th>${esc(t('reports.headerLeaves'))}</th><th>${esc(t('reports.colWhen'))}</th>` +
     `<th>${esc(t('reports.colDuration'))}</th><th>${esc(t('reports.colStatus'))}</th>` +
     `</tr></thead><tbody>${rows}</tbody></table>`;
