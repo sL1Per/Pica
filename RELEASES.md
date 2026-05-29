@@ -14,6 +14,89 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.39.0] — 2026-05-29 — M15 Preferences + Profile edit restyle
+
+### What changed
+
+**M15 Plan 8** re-skins the per-user **`/preferences`** page (§12), the
+**`/employees/:id/profile`** profile editor (§5), and the sibling
+**`/employees/new`** create-employee form to the design. **Zero backend
+changes** — every endpoint, payload, validation, and permission is
+byte-equivalent. Only markup, CSS, and two additive client-side behaviours
+changed.
+
+- **`/preferences` is now two cards.** A serif header over a **General
+  preferences** card (Language select — the two shipped locales; **Color mode**
+  as three radio-cards Light / Dark / Match system; the 0.29.0 **Palette** swatch
+  cards; the **Email** notification + reminder checkboxes) and a **Password**
+  card. One "Save preferences" button still PUTs `{locale, colorMode, palette,
+  email:{notifications,reminders}}` to `/api/settings/me`; locale change still
+  reloads. New: a per-card **"✓ Saved" flash** (sage) on the save buttons
+  replacing the success toast, and a **live password-match gate** — the Change
+  Password button is disabled until current is non-empty, new is ≥ 8, and confirm
+  matches, with an inline "Passwords don't match" hint. The must-change-password
+  banner is preserved.
+- **`/employees/:id/profile` is now four cards** — Identity (88px avatar with a
+  deterministic per-user hue, Upload/Remove picture, full name, username
+  read-only, DOB with live "X years old", address), Role (role rendered
+  **read-only as a badge** + position with the employer-set permission preserved),
+  Contact (email, phone), and Internal notes (comments, employer-editable). Save
+  gets the "✓ Saved" flash. The **danger zone keeps the existing hard Delete**
+  (employer-on-others only, confirm). All machinery — picture resize/upload/remove,
+  the `PUT /api/employees/:id` save, delete, `applyPermissions`, age display,
+  back-link context, 401/403/404 handling — is byte-identical.
+- **`/employees/new` shares `employee-profile.css`** and is restructured into the
+  same card vocabulary (Account card with username + initial password + role
+  select — role is legitimately set once at creation; Identity / Contact /
+  Internal-notes cards). Its `employee-new.js` logic is unchanged (all element
+  ids preserved); the stale "(M11)" hint copy was refreshed.
+
+~24 new `prefs.*` / `employee.*` / `employeeNew.*` i18n keys per locale.
+`CACHE_VERSION` v56 → v57. No new test suite (count stays **49**, matching
+Plan 7). Verified live via the Playwright MCP (both roles).
+
+### Why the CACHE_VERSION bump (corrected rationale)
+
+The service worker serves **all** `.css`/`.js` **cache-first**, keyed by
+`CACHE_VERSION` — not only the curated `PRECACHE_URLS` subset. `preferences.css`
+and `employee-profile.css` are *not* in the precache list, but a returning client
+would still be served its stale cache-first copy until the cache key changes.
+Bumping `CACHE_VERSION` is therefore what actually delivers the new CSS to
+returning users; it is required whenever any CSS/JS changes, regardless of
+precache membership.
+
+### Honest Disclosures
+
+- **The prototype's role-switch control is not built.** Pica has no role-change
+  endpoint, so role is rendered read-only. Changing a user's role after creation
+  is not possible from the UI (a future plan could add the endpoint + RBAC).
+- **No soft-deactivate.** The prototype's "Deactivate account" is the existing
+  **irreversible hard Delete**, restyled. There is no disable-login-keep-data
+  state.
+- **The Role card is titled generically "Role"**, not "Role at {org}" — this
+  avoids an extra org-name fetch on the profile page.
+- **Two locales, not six.** The Language select offers only the shipped en-US /
+  pt-PT, not the prototype's fictional six.
+- **The password-match gate is client-side UX only.** The server remains the
+  authority; the disabled-until-valid button is a convenience, not a security
+  control.
+- **The colour-mode radio-cards rely on CSS `:has()`** for the checked-state
+  styling. Supported in all current evergreen browsers; the existing `change`
+  listener (which re-tints the palette chips) would be the fallback if an older
+  target ever mattered.
+- **`flashSaved` is duplicated per page** (preferences.js, employee-profile.js,
+  and the pre-existing settings.js) with slightly different semantics. There is
+  no shared frontend util module beyond `app.js`/`i18n.js`; consolidating it is a
+  future-cleanup candidate, not done here.
+- **The profile avatar hue derives from the display name** (matching the 0.37.0
+  employee-detail and team pages), which differs from the topbar avatar's
+  id-based hue — a pre-existing inconsistency in the shell, not introduced here.
+- **No DOM/E2E tests.** Browser-behaviour coverage waits for M16 (Playwright);
+  this release is verified by a live Playwright-MCP walkthrough, not committed
+  tests.
+
+---
+
 ## [0.38.0] — 2026-05-29 — M15 Settings + Security restyle
 
 ### What changed

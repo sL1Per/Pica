@@ -5,13 +5,13 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.38.0._
+_Last touched in 0.39.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.38.0 (released 2026-05-29)
+- **Latest version:** 0.39.0 (released 2026-05-29)
 - **Test count:** 49 suites (0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -50,10 +50,55 @@ _Last touched in 0.38.0._
   employee detail** (Plan 6) at 0.37.0 (shared `team-status.js`; heuristic
   on-break; inline decide everywhere; Reset-pw on `modal.js`); **Settings +
   Security restyle** (Plan 7) at 0.38.0 (5-tab `/settings` shell + 3-card
-  `/security`, zero backend change). Remaining screen-body plans in progress
-  (**next: Plan 8 Profile-edit + Prefs redesign**; then Plan 9 Reports +
-  alias-bridge removal; see `docs/superpowers/plans/2026-05-2*-m15-*`);
+  `/security`, zero backend change); **Preferences + Profile edit** (Plan 8) at
+  0.39.0 (`/preferences` two-card with radio-cards + password-match gate;
+  `/employees/:id/profile` four-card editor with read-only role badge + hard
+  Delete; `/employees/new` shares `employee-profile.css`; zero backend change).
+  Remaining screen-body work (**next: Plan 9 Reports re-skin + token alias-bridge
+  removal + final polish**; see `docs/superpowers/plans/2026-05-2*-m15-*`);
   M16–M17 follow (M17 deployment guide ships last)
+
+---
+
+## What just shipped (0.39.0)
+
+**M15 Preferences + Profile edit (Plan 8).** The per-user `/preferences` page
+(§12), the `/employees/:id/profile` editor (§5), and the sibling
+`/employees/new` create form restyled to the design with **zero backend change**
+(every endpoint, payload, validation, permission byte-equivalent).
+
+- **`/preferences` = two cards.** General (Language [2 locales] · Color-mode
+  **radio-cards** Light/Dark/Match-system, styled via CSS `:has()` · the 0.29.0
+  Palette swatch cards · Email checkboxes) + Password. One save still PUTs
+  `{locale,colorMode,palette,email}`; locale change reloads. New: per-card
+  **"✓ Saved" flash** (sage) replacing the success toast, and a **live
+  password-match gate** (Change-Password disabled until current non-empty + new
+  ≥ 8 + confirm matches, inline mismatch hint). A review-fix ensures the gate
+  stays disabled after the flash timeout (the flash's `setTimeout` re-runs
+  `refreshPwGate` via an `onComplete` arg). Must-change banner preserved.
+- **`/employees/:id/profile` = four cards** (Identity · Role · Contact · Internal
+  notes). 88px avatar with a deterministic per-user hue via CSSOM (`--hue` from
+  the **display name**, matching the 0.37.0 detail/team pages). Role is
+  **read-only as a badge** (no role-switch — Pica has no role-change endpoint);
+  position keeps the employer-set permission. Save flash. Danger zone keeps the
+  existing **hard Delete** (employer-on-others only). All machinery
+  (picture resize/upload/remove, `PUT /api/employees/:id`, delete,
+  `applyPermissions`, age display, back-link, 401/403/404) byte-identical.
+- **`/employees/new`** switched its stylesheet to the shared
+  `employee-profile.css` and adopted the card vocabulary (Account incl. role
+  select — legitimate at creation; Identity/Contact/Internal-notes).
+  `employee-new.js` unchanged (ids preserved); stale "(M11)" hint refreshed.
+
+~24 new i18n keys/locale; `CACHE_VERSION` v56 → v57. **No new test suite**
+(stays 49). Note: the SW serves all CSS/JS **cache-first keyed by
+`CACHE_VERSION`** (not just the `PRECACHE_URLS` subset), so the bump — not
+precache membership — is what delivers the new CSS to returning clients.
+**Verified live via the Playwright MCP** (both roles: prefs flashes + password
+gate + palette/mode; profile 4 cards + avatar hue + picture + delete confirm;
+create flow). Honest Disclosures (full list in RELEASES.md 0.39.0): role-switch
+not built (read-only); no soft-deactivate (hard Delete); Role card titled
+generically; 2 locales not 6; password gate is client UX only; `:has()` reliance;
+`flashSaved` duplicated per page; no DOM/E2E tests (M16).
 
 ---
 
