@@ -1,101 +1,81 @@
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--gap-4);
-  margin-bottom: var(--gap-5);
-}
-.page-header h1 { margin-bottom: var(--gap-1); }
-.page-header a { color: var(--accent); text-decoration: none; }
-.page-header a:hover { text-decoration: underline; }
+/* Profile edit + create employee (M15 §5). Shared by employee-profile.html
+   and employee-new.html. */
 
-select {
-  display: block;
-  width: 100%;
-  margin-top: var(--gap-1);
-  padding: var(--gap-3);
-  font-family: inherit;
-  font-size: var(--text-md);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
+.prof-head { margin-bottom: 8px; }
+.prof-head h1 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 40px; line-height: 1.05; margin: 0;
+  color: var(--ink); letter-spacing: -0.01em;
 }
-select:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+.prof-back { display: inline-flex; align-items: center; gap: 6px; color: var(--honey-deep); font-size: 13px; font-weight: 500; margin-bottom: 16px; }
+
+.prof-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 16px;
+}
+.prof-card > h2 {
+  font-family: 'Instrument Serif', serif;
+  font-size: 24px; line-height: 1.1; margin: 0 0 18px;
+  color: var(--ink); letter-spacing: -0.01em;
 }
 
-textarea {
-  display: block;
-  width: 100%;
-  margin-top: var(--gap-1);
-  padding: var(--gap-3);
-  font-family: inherit;
-  font-size: var(--text-md);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-  resize: vertical;
+.prof-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.prof-field > label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.prof-field .helper, .prof-field .subtle { font-size: 11.5px; color: var(--muted); }
+.prof-field input, .prof-field select, .prof-field textarea {
+  padding: 0 14px; min-height: 42px;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 10px;
+  color: var(--ink); font: inherit; font-size: 14px; outline: none;
 }
-textarea:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-  border-color: var(--accent);
+.prof-field textarea { padding: 10px 14px; resize: vertical; }
+.prof-field input:focus, .prof-field select:focus, .prof-field textarea:focus { border-color: var(--honey); }
+.prof-field input[readonly], .prof-field textarea[readonly] { background: var(--bg); color: var(--muted); }
+
+/* Read-only display rows (username, role badge). */
+.readonly-field { padding: 10px 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; color: var(--ink-2); font-size: 14px; }
+.role-badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; background: var(--paper-2); border: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--ink-2); text-transform: capitalize; }
+
+/* Identity avatar block — mirrors employee.css .ed-avatar. */
+.avatar-block { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; }
+.prof-avatar {
+  width: 88px; height: 88px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 600; overflow: hidden;
+  background: oklch(0.86 0.06 var(--hue, 90));
+  color: oklch(0.34 0.08 var(--hue, 90));
+}
+.prof-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.avatar-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.dob-row { display: flex; align-items: center; gap: 12px; }
+.dob-age { font-size: 12.5px; color: var(--muted); }
+
+/* Footer save + flash. */
+.prof-btn {
+  width: 100%; height: 46px; padding: 0 22px; margin-top: 6px;
+  background: var(--honey); color: #FBF6EC;
+  border: none; border-radius: 10px; font-weight: 600; font-size: 15px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  transition: opacity .12s;
+}
+.prof-btn--flash { background: var(--sage); }
+
+/* Secondary (Upload/Remove) buttons. */
+.prof-btn-sec {
+  height: 38px; padding: 0 16px;
+  background: var(--paper-2); color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: 9px;
+  font-weight: 600; font-size: 13px; cursor: pointer;
 }
 
-/* Profile picture block */
+/* Danger zone (hard delete). */
+.danger-zone { border: 1px solid var(--clay); border-radius: 16px; padding: 22px 28px; }
+.danger-zone h3 { font-family: 'Instrument Serif', serif; font-size: 20px; margin: 0 0 12px; color: var(--clay); }
+.danger-zone button { height: 42px; padding: 0 18px; background: transparent; color: var(--clay); border: 1px solid var(--clay); border-radius: 10px; font-weight: 600; cursor: pointer; }
+.danger-zone .subtle { font-size: 12px; color: var(--muted); margin-top: 10px; }
 
-.avatar-block {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-4);
-  margin-bottom: var(--gap-5);
-}
-
-.avatar {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: var(--accent-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  color: var(--accent);
-  font-size: 1.8rem;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.avatar img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
-
-.avatar-actions button {
-  display: block;
-  margin-top: var(--gap-2);
-  font-size: var(--text-sm);
-  padding: var(--gap-2) var(--gap-4);
-}
-.avatar-actions .subtle { font-size: var(--text-xs); }
-
-.danger-zone {
-  margin-top: var(--gap-6);
-  padding-top: var(--gap-5);
-  border-top: 1px solid var(--border);
-}
-.danger-zone button {
-  background: var(--danger);
-}
-.danger-zone button:hover:not(:disabled) { background: #902e2e; }
-
-.readonly-field {
-  padding: var(--gap-3);
-  background: var(--accent-soft);
-  border-radius: var(--radius);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+@media (max-width: 600px) {
+  .prof-head h1 { font-size: 32px; }
 }
