@@ -15,15 +15,15 @@ const emailRemEl      = $('email-reminders');
 const paletteRow      = $('palette-row');
 
 /** Replace a button's label with a transient sage "✓ <word>" flash. */
-function flashSaved(btn, labelText, word) {
-  const original = labelText;
+function flashSaved(btn, labelText, word, onComplete) {
   btn.disabled = true;
   btn.classList.add('prefs-btn--flash');
   btn.textContent = '✓ ' + word;
   setTimeout(() => {
     btn.classList.remove('prefs-btn--flash');
     btn.disabled = false;
-    btn.textContent = original;
+    btn.textContent = labelText;
+    if (typeof onComplete === 'function') onComplete();
   }, 1800);
 }
 
@@ -244,7 +244,7 @@ passwordForm?.addEventListener('submit', async (e) => {
       const fallback = respData.error || `HTTP ${res.status}`;
       throw new Error(translateError(respData.errorCode, fallback));
     }
-    flashSaved(changePasswordBtn, t('prefs.changePasswordButton'), t('prefs.passwordChangedFlash'));
+    flashSaved(changePasswordBtn, t('prefs.changePasswordButton'), t('prefs.passwordChangedFlash'), refreshPwGate);
     passwordForm.reset();
     refreshPwGate();
     // Hide the must-change banner — the flag has cleared on the backend.
