@@ -28,10 +28,24 @@ const dangerZone= $('danger-zone');
 let me;
 let target;
 
+function flashSaved(btn, labelText, word) {
+  btn.disabled = true;
+  btn.classList.add('prof-btn--flash');
+  btn.textContent = '✓ ' + word;
+  setTimeout(() => {
+    btn.classList.remove('prof-btn--flash');
+    btn.disabled = false;
+    btn.textContent = labelText;
+  }, 1800);
+}
+
 function initials(name) {
   if (!name) return '?';
   return name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('');
 }
+
+// Deterministic avatar hue — mirrors public/employee.js hue().
+function hue(s) { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; }
 
 function renderAvatar(emp, hasPicture) {
   avatarEl.innerHTML = '';
@@ -44,6 +58,7 @@ function renderAvatar(emp, hasPicture) {
     removePic.hidden = false;
   } else {
     avatarEl.textContent = initials(emp.profile?.fullName || emp.username);
+    avatarEl.style.setProperty('--hue', hue(emp.id || emp.username));
     removePic.hidden = true;
   }
 }
@@ -206,12 +221,12 @@ form.addEventListener('submit', async (e) => {
   if (res.ok) {
     target.profile = data.profile;
     titleEl.textContent = data.profile?.fullName || target.username;
-    showMessage(message, 'Saved', 'success');
+    flashSaved(saveBtn, t('employee.savePic'), t('employee.savedFlash'));
   } else {
     const msg = translateError(data.errorCode, data.error || 'Save failed');
     showMessage(message, msg, 'error');
+    setBusy(saveBtn, false);
   }
-  setBusy(saveBtn, false);
 });
 
 // ---------------------------------------------------------------------------
