@@ -190,6 +190,9 @@ export default {
   'prefs.save':          'Save preferences',
   'prefs.saving':        'Saving…',
   'prefs.saved':         'Preferences saved.',
+  // M15 Plan 8 — flash + section headings
+  'prefs.savedFlash':            'Saved',
+  'prefs.passwordChangedFlash':  'Password changed',
 
   // ============================================================
   // Punch page
@@ -508,6 +511,11 @@ export default {
   'employee.failedSave': 'Failed to save profile.',
   'employee.failedDelete': 'Failed to delete employee.',
   'employee.profileSaved': 'Profile saved.',
+  'employee.cardIdentity': 'Identity',
+  'employee.cardRole':     'Role',
+  'employee.cardContact':  'Contact',
+  'employee.cardNotes':    'Internal notes',
+  'employee.savedFlash':   'Saved',
   'employee.title':              'Employee',
   'employee.backToEmployees':    '← Back to employees',
   'employee.profileHeading':     'Profile',
@@ -532,7 +540,7 @@ export default {
   'employeeNew.backToList': '← Back to list',
   'employeeNew.account': 'Account',
   'employeeNew.initialPwd': 'Initial password',
-  'employeeNew.pwdShareHint': 'Share this with the employee. They can change it later (M11).',
+  'employeeNew.pwdShareHint': 'Share this with the employee. They can change it later from their Preferences.',
   'employeeNew.profile': 'Profile',
   'employeeNew.dob': 'Date of birth',
   'employeeNew.positionPh': 'e.g. Backend Developer',
@@ -540,6 +548,9 @@ export default {
   'employeeNew.contactPhone': 'Contact phone',
   'employeeNew.address': 'Address',
   'employeeNew.comments': 'Comments',
+  'employeeNew.cardIdentity': 'Identity',
+  'employeeNew.cardContact':  'Contact',
+  'employeeNew.cardNotes':    'Internal notes',
   'employeeNew.failedToCreate': 'Failed to create employee.',
   'employeeNew.title':           'Add employee',
   'employeeNew.subtitle':        'Create a new employee account.',

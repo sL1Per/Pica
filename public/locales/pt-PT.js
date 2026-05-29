@@ -190,6 +190,9 @@ export default {
   'prefs.save':          'Guardar preferências',
   'prefs.saving':        'A guardar…',
   'prefs.saved':         'Preferências guardadas.',
+  // M15 Plan 8 — flash + section headings
+  'prefs.savedFlash':            'Guardado',
+  'prefs.passwordChangedFlash':  'Palavra-passe alterada',
 
   // ============================================================
   // Punch page
@@ -504,6 +507,11 @@ export default {
   'employee.failedSave': 'Falha ao guardar perfil.',
   'employee.failedDelete': 'Falha ao eliminar funcionário.',
   'employee.profileSaved': 'Perfil guardado.',
+  'employee.cardIdentity': 'Identidade',
+  'employee.cardRole':     'Função',
+  'employee.cardContact':  'Contacto',
+  'employee.cardNotes':    'Notas internas',
+  'employee.savedFlash':   'Guardado',
   'employee.title':              'Funcionário',
   'employee.backToEmployees':    '← Voltar aos funcionários',
   'employee.profileHeading':     'Perfil',
@@ -528,7 +536,7 @@ export default {
   'employeeNew.backToList': '← Voltar à lista',
   'employeeNew.account': 'Conta',
   'employeeNew.initialPwd': 'Palavra-passe inicial',
-  'employeeNew.pwdShareHint': 'Partilhe com o funcionário. Pode ser alterada mais tarde (M11).',
+  'employeeNew.pwdShareHint': 'Partilhe-a com o colaborador. Pode alterá-la mais tarde nas Preferências.',
   'employeeNew.profile': 'Perfil',
   'employeeNew.dob': 'Data de nascimento',
   'employeeNew.positionPh': 'ex: Programador back-end',
@@ -536,6 +544,9 @@ export default {
   'employeeNew.contactPhone': 'Telefone de contacto',
   'employeeNew.address': 'Morada',
   'employeeNew.comments': 'Comentários',
+  'employeeNew.cardIdentity': 'Identidade',
+  'employeeNew.cardContact':  'Contacto',
+  'employeeNew.cardNotes':    'Notas internas',
   'employeeNew.failedToCreate': 'Falha ao criar funcionário.',
   'employeeNew.title':           'Adicionar funcionário',
   'employeeNew.subtitle':        'Criar uma nova conta de funcionário.',
