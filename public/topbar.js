@@ -240,7 +240,7 @@ function buildBar({ user, branding, hasOwnPicture }) {
       <span class="appshell__crumb-date mono">${escapeHtml(dateLabel)}</span>
     </div>
     <div class="appshell__topactions">
-      <button class="appshell__iconbtn" type="button" aria-label="${escapeHtml(t('nav.notifications'))}">
+      <button class="appshell__iconbtn appshell__bell" type="button" aria-label="${escapeHtml(t('nav.notifications'))}" aria-haspopup="menu" aria-expanded="false">
         ${icon('bell', 17, 1.6)}
       </button>
     </div>`;
@@ -254,7 +254,7 @@ function buildBar({ user, branding, hasOwnPicture }) {
       ${brandMark}
       <span class="appshell__mobilebrand-name">${escapeHtml(name)}</span>
     </a>
-    <button class="appshell__iconbtn" type="button" aria-label="${escapeHtml(t('nav.notifications'))}">${icon('bell', 17, 1.6)}</button>
+    <button class="appshell__iconbtn appshell__bell" type="button" aria-label="${escapeHtml(t('nav.notifications'))}" aria-haspopup="menu" aria-expanded="false">${icon('bell', 17, 1.6)}</button>
     <button class="appshell__mobile-avatar" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="${escapeHtml(t('menu.account'))}">
       <span class="appshell__avatar">${avatarInner}</span>
     </button>`;
@@ -293,6 +293,15 @@ function buildBar({ user, branding, hasOwnPicture }) {
     <button class="appshell__usermenu-item appshell__usermenu-item--danger" role="menuitem" type="button" data-action="logout">
       ${icon('signout', 16, 1.7)}<span>${escapeHtml(t('menu.signOut'))}</span></button>`;
 
+  // -- Notifications panel (shared by desktop + mobile bell) --------------
+  const notif = document.createElement('div');
+  notif.className = 'appshell__notif';
+  notif.setAttribute('role', 'menu');
+  notif.hidden = true;
+  notif.innerHTML = `
+    <div class="appshell__notif-head">${escapeHtml(t('notifications.title'))}</div>
+    <div class="appshell__notif-list" aria-busy="true"></div>`;
+
   // -- Drawer scrim -------------------------------------------------------
   const scrim = document.createElement('div');
   scrim.className = 'appshell__scrim';
@@ -304,29 +313,31 @@ function buildBar({ user, branding, hasOwnPicture }) {
     host.querySelectorAll('.appshell__avatar').forEach((a) => a.style.setProperty('--hue', hue));
   }
 
-  return { sidebar, topbar, mobilebar, bottomnav, menu, scrim };
+  return { sidebar, topbar, mobilebar, bottomnav, menu, notif, scrim, user };
 }
 
-function wireEvents({ sidebar, mobilebar, bottomnav, menu, scrim }) {
+function wireEvents({ sidebar, mobilebar, bottomnav, menu, notif, scrim, user }) {
   const usertile  = sidebar.querySelector('.appshell__usertile');
   const drawerX   = sidebar.querySelector('.appshell__drawer-close');
   const burger    = mobilebar.querySelector('.appshell__burger');
   const mAvatar   = mobilebar.querySelector('.appshell__mobile-avatar');
   const moreBtn   = bottomnav.querySelector('[data-action="more"]');
   const logoutBtn = menu.querySelector('[data-action="logout"]');
+  const bells     = document.querySelectorAll('.appshell__bell');
+  const notifList = notif.querySelector('.appshell__notif-list');
 
   function closeMenu() { menu.hidden = true; usertile?.setAttribute('aria-expanded', 'false'); mAvatar?.setAttribute('aria-expanded', 'false'); }
+  function closeNotif() { notif.hidden = true; bells.forEach((b) => b.setAttribute('aria-expanded', 'false')); }
   function openDrawer() { sidebar.classList.add('appshell__sidebar--open'); scrim.hidden = false; burger?.setAttribute('aria-expanded', 'true'); }
   function closeDrawer() { sidebar.classList.remove('appshell__sidebar--open'); scrim.hidden = true; burger?.setAttribute('aria-expanded', 'false'); }
-  function closeAll() { closeMenu(); closeDrawer(); }
+  function closeAll() { closeMenu(); closeNotif(); closeDrawer(); }
 
-  // Position the popover near its trigger, clamped to the viewport.
-  function openMenu(trigger) {
-    closeDrawer();
-    menu.hidden = false;
-    trigger.setAttribute('aria-expanded', 'true');
+  // Position a popover (user menu or notifications) near its trigger, clamped
+  // to the viewport. Inline top/left via CSSOM (not a style= attribute, which
+  // CSP style-src 'self' would block from parsed markup).
+  function positionPopover(el, trigger) {
     const a = trigger.getBoundingClientRect();
-    const m = menu.getBoundingClientRect();
+    const m = el.getBoundingClientRect();
     const gap = 8, margin = 12;
     let top = a.bottom + gap;
     if (top + m.height + margin > window.innerHeight && a.top - m.height - gap > margin) top = a.top - m.height - gap;
@@ -334,13 +345,70 @@ function wireEvents({ sidebar, mobilebar, bottomnav, menu, scrim }) {
     let left = a.right - m.width;
     if (left < margin) left = a.left;
     left = Math.max(margin, Math.min(left, window.innerWidth - m.width - margin));
-    menu.style.top = `${Math.round(top)}px`;
-    menu.style.left = `${Math.round(left)}px`;
+    el.style.top = `${Math.round(top)}px`;
+    el.style.left = `${Math.round(left)}px`;
+  }
+  function openMenu(trigger) {
+    closeDrawer(); closeNotif();
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    positionPopover(menu, trigger);
   }
   function toggleMenu(trigger) { if (menu.hidden) openMenu(trigger); else closeMenu(); }
+  function openNotif(trigger) {
+    closeDrawer(); closeMenu();
+    notif.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    positionPopover(notif, trigger);
+  }
+  function toggleNotif(trigger) { if (notif.hidden) openNotif(trigger); else closeNotif(); }
+
+  // -- Notifications: aggregate the viewer's pending items (employer: awaiting
+  // their decision; employee: their own pending requests). Best-effort; refresh
+  // on mount + tab focus. No new backend — reuses /api/leaves + /api/corrections.
+  function renderNotifs(leaves, corrs) {
+    const count = leaves.length + corrs.length;
+    bells.forEach((b) => b.classList.toggle('appshell__bell--dot', count > 0));
+    notifList.removeAttribute('aria-busy');
+    if (count === 0) {
+      notifList.innerHTML = `<div class="appshell__notif-empty">${escapeHtml(t('notifications.empty'))}</div>`;
+      return;
+    }
+    const isEmployer = user.role === 'employer';
+    const rows = [];
+    for (const l of leaves) {
+      const label = isEmployer
+        ? t('notifications.leavePending', { name: l.fullName || l.username || '', type: t('leaves.type.' + l.type), when: l.start })
+        : t('notifications.leaveMine', { type: t('leaves.type.' + l.type), when: l.start });
+      rows.push(`<a class="appshell__notif-item" role="menuitem" href="/leaves/${encodeURIComponent(l.id)}">${escapeHtml(label)}</a>`);
+    }
+    for (const c of corrs) {
+      // c.start is an ISO datetime; slice to YYYY-MM-DD to match the leave
+      // format and avoid new Date() UTC-midnight day-shift.
+      const when = (c.date || c.start || '').slice(0, 10);
+      const label = isEmployer
+        ? t('notifications.correctionPending', { name: c.fullName || c.username || '', when })
+        : t('notifications.correctionMine', { when });
+      rows.push(`<a class="appshell__notif-item" role="menuitem" href="/corrections/${encodeURIComponent(c.id)}">${escapeHtml(label)}</a>`);
+    }
+    notifList.innerHTML = rows.join('');
+  }
+  async function loadNotifs() {
+    let leaves = [], corrs = [];
+    try {
+      const [lr, cr] = await Promise.all([
+        fetch('/api/leaves', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : { leaves: [] })),
+        fetch('/api/corrections?status=pending', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : { corrections: [] })),
+      ]);
+      leaves = (lr.leaves || []).filter((l) => l.status === 'pending');
+      corrs = cr.corrections || [];
+    } catch { /* best-effort; render whatever we have (likely empty) */ }
+    renderNotifs(leaves, corrs);
+  }
 
   usertile?.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(usertile); });
   mAvatar?.addEventListener('click', (e) => { e.stopPropagation(); toggleMenu(mAvatar); });
+  bells.forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); toggleNotif(b); }));
   burger?.addEventListener('click', (e) => { e.stopPropagation(); sidebar.classList.contains('appshell__sidebar--open') ? closeDrawer() : openDrawer(); });
   moreBtn?.addEventListener('click', (e) => { e.stopPropagation(); openDrawer(); });
   drawerX?.addEventListener('click', () => closeDrawer());
@@ -349,6 +417,7 @@ function wireEvents({ sidebar, mobilebar, bottomnav, menu, scrim }) {
 
   document.addEventListener('click', (e) => {
     if (!menu.contains(e.target) && !sidebar.contains(e.target) && !mobilebar.contains(e.target)) closeMenu();
+    if (!notif.contains(e.target) && ![...bells].some((b) => b.contains(e.target))) closeNotif();
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
 
@@ -356,6 +425,9 @@ function wireEvents({ sidebar, mobilebar, bottomnav, menu, scrim }) {
     try { await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }); } catch {}
     window.location.href = '/login';
   });
+
+  loadNotifs();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) loadNotifs(); });
 }
 
 /**
@@ -373,7 +445,7 @@ export async function mountTopBar() {
   if (data === REDIRECTING) return;
   if (!data) { window.location.href = '/login'; return; }
 
-  const { sidebar, topbar, mobilebar, bottomnav, menu, scrim } = buildBar(data);
+  const { sidebar, topbar, mobilebar, bottomnav, menu, notif, scrim, user } = buildBar(data);
   const main = document.querySelector('main');
 
   // Desktop grid: <div.appshell> [ sidebar | <div.appshell__content> [topbar, main, footer] ].
@@ -399,8 +471,9 @@ export async function mountTopBar() {
   document.body.appendChild(scrim);
   document.body.appendChild(bottomnav);
   document.body.appendChild(menu);
+  document.body.appendChild(notif);
 
-  wireEvents({ sidebar, mobilebar, bottomnav, menu, scrim });
+  wireEvents({ sidebar, mobilebar, bottomnav, menu, notif, scrim, user });
   return data;
 }
 

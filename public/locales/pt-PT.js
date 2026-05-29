@@ -25,6 +25,12 @@ export default {
   'nav.myLeaves': 'As minhas ausências',
   'nav.more':     'Mais',
   'nav.notifications': 'Notificações',
+  'notifications.title':             'Notificações',
+  'notifications.empty':             'Está tudo em dia.',
+  'notifications.leavePending':      '{name} · {type} · {when}',
+  'notifications.leaveMine':         'O seu pedido de {type} · {when}',
+  'notifications.correctionPending': '{name} · tempo manual · {when}',
+  'notifications.correctionMine':    'O seu pedido de tempo manual · {when}',
 
   'menu.profile':     'Ver o meu perfil',
   'menu.preferences': 'Preferências',

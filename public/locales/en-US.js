@@ -24,6 +24,12 @@ export default {
   'nav.myLeaves': 'My leaves',
   'nav.more':     'More',
   'nav.notifications': 'Notifications',
+  'notifications.title':             'Notifications',
+  'notifications.empty':             "You're all caught up.",
+  'notifications.leavePending':      '{name} · {type} · {when}',
+  'notifications.leaveMine':         'Your {type} request · {when}',
+  'notifications.correctionPending': '{name} · manual time · {when}',
+  'notifications.correctionMine':    'Your manual-time request · {when}',
 
   // ---- Avatar menu ----
   'menu.profile':     'View my profile',
