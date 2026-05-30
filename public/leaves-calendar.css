@@ -17,7 +17,7 @@
 /* ---------- Header -------------------------------------------------------- */
 
 .cal-head { margin-bottom: 16px; }
-.cal-head__title { margin: 0; font-family: var(--font-serif); font-size: 1.75rem; line-height: 1.1; color: var(--ink); }
+.cal-head__title { margin: 0; font-family: var(--font-serif); font-size: var(--page-title); line-height: 1; letter-spacing: -0.01em; color: var(--ink); }
 .cal-head__sub { margin: 4px 0 0; font-size: var(--text-sm); color: var(--muted); }
 
 /* ---------- Toolbar ------------------------------------------------------- */

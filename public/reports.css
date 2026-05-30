@@ -41,7 +41,6 @@
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: var(--gap-4); margin-bottom: var(--gap-5);
 }
-.page-header h1 { font-family: var(--font-serif); }
 
 /* Controls layout */
 .rpt-tabs, .rpt-scope, .rpt-period, .controls-actions {

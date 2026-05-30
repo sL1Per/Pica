@@ -6,9 +6,12 @@
 
 .appshell { min-height: 100vh; display: grid; grid-template-columns: 232px 1fr; background: var(--bg); }
 .appshell__content { display: flex; flex-direction: column; min-width: 0; }
-/* max-width caps the content column; horizontal centering of page bodies is
-   delegated to .container / .container--wide (margin:0 auto) used inside main. */
-.appshell__content > main { flex: 1 0 auto; padding: 24px 40px 60px; max-width: 1320px; width: 100%; }
+/* max-width caps the content column; margin-inline:auto centers the page body
+   in the 1fr content track. Centering lives here (not delegated to a per-page
+   .container) so a page that builds its own body and drops the container class
+   — e.g. the JS-rendered home (index.js) — still centers instead of pinning
+   flush-left and leaving an empty gap on the right. */
+.appshell__content > main { flex: 1 0 auto; padding: 24px 40px 60px; max-width: 1320px; width: 100%; margin-inline: auto; }
 
 /* --- Sidebar --- */
 .appshell__sidebar {
@@ -158,7 +161,12 @@
   .appshell__bottom-item, .appshell__nav-link, .appshell__usermenu-item { min-height: 44px; }
 }
 
-.appshell__svg { display: block; }
+/* flex-shrink:0 so an icon that is a *direct* flex child (e.g. the bell's
+   single SVG centred inside .appshell__iconbtn) keeps its intrinsic width
+   instead of collapsing to 0 on the main axis. Sidebar icons are wrapped in
+   .appshell__nav-icon (which carries its own flex-shrink:0); this covers the
+   unwrapped icon-button case. Icons never want to shrink, so it is global. */
+.appshell__svg { display: block; flex-shrink: 0; }
 
 /* -- Notifications panel (bell) — shares the user-menu popover chrome ------ */
 .appshell__notif {

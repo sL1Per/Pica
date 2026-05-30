@@ -19,7 +19,7 @@
 
 .punch-head__title {
   font-family: var(--font-serif);
-  font-size: 48px;
+  font-size: var(--page-title);
   line-height: 1;
   color: var(--ink);
   letter-spacing: -0.01em;
@@ -59,17 +59,25 @@
 /* ---------- Clock hero ---------------------------------------------------- */
 
 .clock-hero {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 18px;
-  align-items: center;
-  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 24px;
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 16px;
   margin-bottom: 16px;
   position: relative;
   overflow: hidden;
+}
+
+/* Top row of the hero: a centered control column (status · time · comment ·
+   button) on the left, the map preview on the right. `center` vertically
+   centers the shorter map against the taller control column. */
+.clock-hero__top {
+  display: flex;
+  align-items: center;
+  gap: 28px;
 }
 
 /* Working state: sage border */
@@ -91,12 +99,33 @@
   background: var(--sage);
 }
 
-/* Flex column for the left side content */
-.clock-hero__body {
+/* Left control column — grows to fill the row beside the map and centers its
+   children so the time lines up over the comment/button block. */
+.clock-hero__main {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Lead group: status pill, big readout, sub line — centered as one unit. */
+.clock-hero__lead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   min-width: 0;
+}
+
+/* Comment + button + feedback, capped to a tidy width. The centered time
+   above lines up with this block's center. */
+.clock-hero__form {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Status pill */
@@ -136,11 +165,11 @@
 /* Big mono clock readout */
 .clock-big {
   font-family: var(--font-mono);
-  font-size: 88px;
+  font-size: 68px;
   line-height: 1;
   color: var(--ink);
   letter-spacing: -0.03em;
-  margin-top: 10px;
+  margin-top: 8px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -179,19 +208,22 @@
 
 /* ---------- Punch actions ------------------------------------------------- */
 
-/* Row holding in/out buttons */
+/* Holds the single visible in/out button, stacked full-width directly under
+   the comment textarea inside the centered control column. */
 .punch-actions {
   display: flex;
   flex-direction: column;
   gap: 10px;
   align-items: stretch;
+  width: 100%;
+  margin-top: 14px;
 }
 
-/* Base punch button */
+/* Base punch button — full width within the centered control column. */
 .punch-btn {
   height: 64px;
   padding: 0 28px;
-  min-width: 180px;
+  width: 100%;
   background: var(--honey);
   color: #FBF6EC;
   border: none;
@@ -233,7 +265,7 @@
 
 .punch-comment__label {
   display: block;
-  margin-top: 16px;
+  margin-top: 0;            /* the control column's gap handles top spacing */
   margin-bottom: 6px;
   font-size: 12.5px;
   font-weight: 500;
@@ -285,7 +317,8 @@
 /* ---------- Map card (OSM preview — preserve; restyle to tokens) ---------- */
 
 .map-card {
-  margin-top: 16px;
+  width: 280px;              /* compact preview beside the time, not full-bleed */
+  flex-shrink: 0;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--paper);
@@ -294,7 +327,7 @@
 .map-card__frame {
   position: relative;
   width: 100%;
-  height: 180px;
+  height: 120px;
   background: var(--paper-2);
   display: flex;
   align-items: center;
@@ -659,13 +692,11 @@
 /* ---------- Mobile ≤ 760px ----------------------------------------------- */
 
 @media (max-width: 760px) {
-  .punch-head__title {
-    font-size: 36px;
-  }
 
-  /* Stack the hero: body above buttons */
-  .clock-hero {
-    grid-template-columns: 1fr;
+  /* Stack the hero's top row: time, then map, then button — each full-width. */
+  .clock-hero__top {
+    flex-direction: column;
+    align-items: stretch;
     gap: 16px;
   }
 
@@ -674,14 +705,15 @@
     font-size: 56px;
   }
 
-  /* Punch buttons: full width, stacked, still ≥64px tall */
-  .punch-actions {
+  /* Map preview spans full width when stacked */
+  .map-card {
     width: 100%;
   }
-  .punch-btn {
-    width: 100%;
-    min-width: unset;
-    height: 64px;           /* maintain the 64px minimum */
+
+  /* The centered control column already spans full width when stacked; the
+     comment + button cap relaxes to fill it on narrow screens. */
+  .clock-hero__form {
+    max-width: none;
   }
 
   /* Tabs scroll horizontally on narrow screens */

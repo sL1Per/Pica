@@ -209,10 +209,10 @@ function tickClock() {
 }
 
 /**
- * Repaint the clock hero from the punch status and lock the two buttons so
- * only the one that makes sense is clickable. The other stays `disabled` but
- * visually present. Manages the live readout interval (leak-safe: always
- * cleared before re-creating).
+ * Repaint the clock hero from the punch status. Only the button that makes
+ * sense is shown — the other is hidden entirely (Clock in when off the clock,
+ * Clock out when working), so the action is never ambiguous. Manages the live
+ * readout interval (leak-safe: always cleared before re-creating).
  */
 function paintStatus({ open, lastPunch }) {
   isOpen = open;
@@ -230,7 +230,9 @@ function paintStatus({ open, lastPunch }) {
     statusMeta.textContent = lastPunch
       ? t('punch.statusSince', { time: formatTime(lastPunch.ts), rel: relative(lastPunch.ts) })
       : '';
+    inBtn.hidden    = true;
     inBtn.disabled  = true;
+    outBtn.hidden   = false;
     outBtn.disabled = false;
   } else {
     statusLabel.textContent = t('punch.notClockedIn');
@@ -238,8 +240,10 @@ function paintStatus({ open, lastPunch }) {
     statusMeta.textContent = lastPunch
       ? t('punch.statusLast', { time: formatTime(lastPunch.ts), rel: relative(lastPunch.ts) })
       : t('punch.statusNoPunches');
-    inBtn.disabled  = false;
+    outBtn.hidden   = true;
     outBtn.disabled = true;
+    inBtn.hidden    = false;
+    inBtn.disabled  = false;
   }
 
   // Render once immediately so there's no 1s blank, then tick every second.

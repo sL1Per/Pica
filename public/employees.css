@@ -2,7 +2,7 @@
    Design tokens used directly (paper/line/ink/muted/sage/honey/clay/plum). */
 
 .tm-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin: 8px 0 20px; flex-wrap: wrap; }
-.tm-header__title { font-family: var(--font-serif); font-size: 40px; line-height: 1; letter-spacing: -0.01em; color: var(--ink); margin: 0; }
+.tm-header__title { font-family: var(--font-serif); font-size: var(--page-title); line-height: 1; letter-spacing: -0.01em; color: var(--ink); margin: 0; }
 .tm-header__sub { color: var(--muted); margin-top: 6px; font-size: 14px; }
 .tm-new { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: var(--honey); color: #FBF6EC; border-radius: 10px; font-weight: 600; font-size: 14px; text-decoration: none; box-shadow: 0 6px 18px -8px rgba(201,122,26,.7); }
 .tm-new:hover { filter: brightness(1.03); }
@@ -75,7 +75,6 @@
 .tm-empty { text-align: center; color: var(--muted); padding: 40px 0; }
 
 @media (max-width: 760px) {
-  .tm-header__title { font-size: 30px; }
   .tm-thead { display: none; }
   .tm-row { grid-template-columns: 1fr auto; gap: 8px 14px; }
   .tm-person { grid-column: 1; }

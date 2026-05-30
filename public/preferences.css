@@ -3,7 +3,7 @@
 .prefs-head { margin-bottom: 24px; }
 .prefs-head h1 {
   font-family: 'Instrument Serif', serif;
-  font-size: 44px; line-height: 1; margin: 0;
+  font-size: var(--page-title); line-height: 1; margin: 0;
   color: var(--ink); letter-spacing: -0.01em;
 }
 .prefs-head .subtle { color: var(--muted); margin-top: 8px; font-size: 14px; }
@@ -108,6 +108,5 @@
 .prefs-mismatch { font-size: 11.5px; color: var(--clay); }
 
 @media (max-width: 600px) {
-  .prefs-head h1 { font-size: 34px; }
   .palette-row { grid-template-columns: 1fr; }
 }

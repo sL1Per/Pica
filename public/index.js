@@ -60,12 +60,22 @@ function ehStatusDot(key) { const d = ehEl('span', `st-dot st-dot--${key}`); d.s
 
 const STATUS_LABEL = { working: 'team.status.working', break: 'team.status.break', done: 'team.status.done', leave: 'team.status.leave', off: 'team.status.off' };
 
-function renderEmployerHome(main, companyName) {
+function renderEmployerHome(main, user) {
   main.className = '';
   main.replaceChildren();
+  const first = (user.fullName || user.username || '').trim().split(/\s+/)[0] || user.username;
   const home = ehEl('div', 'eh-home');
   const head = ehEl('div', 'eh-head');
-  head.append(ehEl('h1', 'eh-head__title', companyName), ehEl('p', 'eh-head__sub', t('home.empSub')));
+  const headText = ehEl('div', 'eh-head__text');
+  const title = ehEl('h1', 'eh-head__title');
+  title.append(document.createTextNode(t(greetingKeyFor(new Date())) + ', '), ehEl('em', null, first));
+  headText.append(title, ehEl('p', 'eh-head__sub', t('home.empSub')));
+  const clock = ehEl('div', 'emp-clock');
+  clock.append(ehEl('span', 'emp-clock__dot'));
+  const liveClock = ehEl('span', null, fmtClock(new Date()));
+  liveClock.setAttribute('data-live-clock', '');
+  clock.append(liveClock);
+  head.append(headText, clock);
   const stats = ehEl('div', 'eh-stats');
   const grid = ehEl('div', 'eh-grid');
   const left = ehEl('div', 'eh-col'), right = ehEl('div', 'eh-col');
@@ -95,7 +105,7 @@ function renderEmployerHome(main, companyName) {
   grid.append(left, right);
   home.append(head, stats, grid);
   main.append(home);
-  return { stats, teamBody, waitBody, hoursBody, waitCard };
+  return { stats, teamBody, waitBody, hoursBody, waitCard, liveClock };
 }
 
 function ehStatHint(names) {
@@ -556,7 +566,9 @@ async function loadEmployeeHome(refs, user) {
 
   if (data.user.role === 'employer') {
     const main = document.querySelector('main');
-    const refs = renderEmployerHome(main, companyName);
+    const refs = renderEmployerHome(main, data.user);
+    const tick = () => { if (refs.liveClock) refs.liveClock.textContent = fmtClock(new Date()); };
+    setInterval(tick, 1000);
     const loader = () => loadEmployerHome(refs);
     loader();
     document.addEventListener('visibilitychange', () => {

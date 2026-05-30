@@ -219,7 +219,7 @@
 .emp-home { display: block; }
 
 .emp-greet { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin: 8px 0 28px; flex-wrap: wrap; }
-.emp-greet__title { font-family: var(--font-serif); font-size: 52px; line-height: 1; letter-spacing: -0.01em; color: var(--ink); margin: 0; }
+.emp-greet__title { font-family: var(--font-serif); font-size: var(--page-title); line-height: 1; letter-spacing: -0.01em; color: var(--ink); margin: 0; }
 .emp-greet__title em { font-style: italic; }
 .emp-greet__sub { color: var(--muted); margin-top: 8px; font-size: 15px; }
 .emp-clock { font-family: var(--font-mono); font-size: 14px; color: var(--muted); padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); display: inline-flex; align-items: center; gap: 8px; }
@@ -295,7 +295,6 @@
 }
 
 @media (max-width: 760px) {
-  .emp-greet__title { font-size: 30px; }
   .emp-grid { grid-template-columns: 1fr; gap: 14px; }
   .emp-card, .emp-hero { padding: 18px; border-radius: 14px; }
   .emp-hero__big { font-size: 56px; }
@@ -308,8 +307,8 @@
    Reuses the .emp-* card idiom + .emp-weekbars chart above.
    ============================================================ */
 .eh-home { display: block; }
-.eh-head { margin: 8px 0 24px; }
-.eh-head__title { font-family: var(--font-serif); font-size: 40px; line-height: 1; letter-spacing: -0.01em; color: var(--ink); margin: 0; }
+.eh-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin: 8px 0 24px; flex-wrap: wrap; }
+.eh-head__title { font-family: var(--font-serif); font-size: var(--page-title); line-height: 1; letter-spacing: -0.01em; color: var(--ink); margin: 0; }
 .eh-head__title em { font-style: italic; }
 .eh-head__sub { color: var(--muted); margin-top: 8px; font-size: 15px; }
 
@@ -386,7 +385,6 @@
   .eh-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
-  .eh-head__title { font-size: 30px; }
   .eh-card { padding: 16px; border-radius: 14px; }
   .eh-stat__num { font-size: 32px; }
 }

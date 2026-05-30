@@ -63,6 +63,10 @@
   --font-mono: 'JetBrains Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.125rem;
   --text-xl: 1.35rem; --text-2xl: 1.625rem; --text-3xl: 2rem;
+  /* Uniform page-title size — every page's primary serif heading uses this
+     single token so the sizes never drift apart. Shrinks on narrow viewports
+     via the media query near the typography section. */
+  --page-title: 60px;
   --leading-tight: 1.25; --leading-normal: 1.55;
   --gap-1: 4px; --gap-2: 8px; --gap-3: 12px; --gap-4: 16px;
   --gap-5: 24px; --gap-6: 32px; --gap-7: 48px; --gap-8: 64px;
@@ -219,6 +223,20 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 { font-size: var(--text-3xl); letter-spacing: -0.02em; }
+/* Pages whose title lives in a semantic .page-header (corrections, today,
+   new-employee, reports) get the uniform serif page-title here; bespoke
+   *-head__title classes reference --page-title directly. */
+.page-header h1 {
+  font-family: var(--font-serif);
+  font-size: var(--page-title);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+/* One breakpoint controls the page-title size everywhere — redefining the
+   token cascades to every heading that uses it. */
+@media (max-width: 760px) {
+  :root { --page-title: 34px; }
+}
 h2 { font-size: var(--text-2xl); margin-top: var(--gap-5); margin-bottom: var(--gap-2); }
 h3 { font-size: var(--text-lg);  margin-top: var(--gap-4); margin-bottom: var(--gap-2); font-weight: 600; }
 h4 { font-size: var(--text-md);  margin-top: var(--gap-3); margin-bottom: var(--gap-1); font-weight: 600; }

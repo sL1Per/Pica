@@ -5,13 +5,15 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.41.0._
+_Last touched in 0.42.1._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.41.0 (released 2026-05-29)
+- **Latest version:** 0.42.1 (released 2026-05-30) — employer home now
+  opens with a time-of-day greeting + live clock, matching the employee
+  home (was: company name as title, no clock). See RELEASES 0.42.1.
 - **Test count:** 50 suites (0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -65,6 +67,77 @@ _Last touched in 0.41.0._
   closes M15** (canonical tokens end-to-end, bridge gone, `flashSaved` +
   `pairSessions` consolidated, bell wired). M16–M17 follow (M17 deployment guide
   ships last)
+
+---
+
+## What just shipped (0.42.0)
+
+**UI polish: page centering (post-M15).** The home page content was pinned
+flush-left in the app-shell content column (empty gap on the right, most
+visible on wide screens); every other page was centered. Root cause: inside
+the shell `<main>` is both `.appshell__content > main` (caps width at 1320px)
+and `.container container--wide`, but centering came **only** from
+`.container`'s `margin:0 auto` — and the JS-rendered home (`index.js`) clears
+`main.className` for both employer/employee views (it builds its own
+`.eh-home`/`.emp-home` body), stripping `.container` and the centering. Fix
+(one line): centering now lives on the shell rule — `.appshell__content > main`
+gains `margin-inline: auto`, so any body centers whether or not it carries a
+container class. No width change; pages already centered are unaffected.
+`CACHE_VERSION` v59 → v60 (`topbar.css` pre-cached); no i18n/backend/new test.
+**Verified live via the Playwright MCP** (flush-left "before" vs centered
+"after" on the same employer home at 1920px). Honest Disclosures: centering
+only (grid/caps untouched); `index.js` still clears `className` (now harmless,
+left as-is); no automated UI test (M16); verified Linen-light at one viewport.
+
+**Second fix (folded into this release): notification bell icon was an empty
+box.** Since 0.41.0 the top-bar bell showed its red dot but no glyph. Cause:
+the bell `<svg>` is a *direct* flex child of `.appshell__iconbtn`
+(`inline-flex`) with size only on HTML attrs (no CSS width — CSP bars inline
+`style`); a bare SVG flex child with default `flex-shrink:1` collapses to
+**width 0** in Blink/WebKit (height stayed 17, so invisible). Sidebar icons
+escaped it via their `.appshell__nav-icon` wrapper (`flex-shrink:0`). Fix (one
+line): `.appshell__svg` gains `flex-shrink:0` — global, since icons never want
+to shrink; covers the mobile bell too. Confirmed in-browser `0×17` → `17×17`
+and glyph visible. Same `CACHE_VERSION` v60 (`topbar.css` carries both fixes).
+First two fixes in a UI-polish pass — more may fold in while uncommitted.
+
+**Third + fourth fixes (folded in): punch (clock) page hero.** The
+`.clock-hero` `1fr auto` grid had the comment field, OSM map, and feedback as
+direct grid children with no placement, so the browser auto-flowed them into
+stray cells — textarea beside the buttons, map full-bleed. Rebuilt the hero as
+a flex **column** of two rows: `.clock-hero__top` (flex row: **time · map ·
+button**, map to the right of the time with its address in `.map-card__meta`
+below the tile, button pushed far-right via `margin-left:auto`) and
+`.clock-hero__extra` (comment + feedback, full-width below, capped `600px`).
+Side-by-side ~halved the hero (~659→~340px desktop); map `280px`/`120px`-frame,
+readout `88→68px`. Also the hero showed **both** Clock in/out (one greyed);
+`paintStatus()` now toggles `hidden` so exactly one shows (Clock in off the
+clock, Clock out working) — out-button ships `hidden` for a clean first paint.
+Touches `punch.html/css/js`. `punch.css`/`punch.js` are pre-cached →
+`CACHE_VERSION` v60 → v61 → **v62** (each asset edit needs its own bump or a
+browser on the old cache runs stale assets against new markup — exactly the
+mid-dev bug where a v60-cached browser ran old `punch.js` against new HTML and
+showed the disabled Clock-in with no Clock-out). No backend/i18n/new test.
+**Verified live via Playwright MCP** by measuring hero geometry in both clock
+states.
+
+**Fifth fix (folded in): uniform page titles.** Each page's primary serif
+heading had drifted to its own hardcoded size — Calendar/Leaves `28px`
+(`1.75rem`), Reports the generic `32px` h1, employer home `40px`, Security
+`42px`, Preferences `44px`, Settings `48px`, employee home `52px` — so the
+pages looked mismatched (Calendar's `28px` worst). Fix: one `--page-title`
+token in `app.css` `:root` (`60px`, redefined to `34px` in a single
+`@media (max-width:760px)`). Every primary heading now reads
+`font-size: var(--page-title)` — the bespoke `*-head__title`/`*-head h1`
+classes (home ×2, Team, Leaves, Calendar, Profile/New, Preferences,
+Security, Settings, Clock) plus a new shared `.page-header h1` rule for the
+`.page-header` pages (Corrections, Today, New employee, Reports). Per-page
+mobile font-size overrides deleted; `reports.css`'s redundant
+`.page-header h1` font-family rule removed. **Excluded by design:** employee
+detail (`.ed-name`, set beside the 88px avatar) and leave detail
+(`.ldet-hero__label`, a colour-coded status word, not a title) keep their
+hero treatments. `app.css` + 10 pre-cached stylesheets → `CACHE_VERSION`
+v62 → **v63**. No backend/i18n/new test.
 
 ---
 

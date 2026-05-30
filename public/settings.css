@@ -15,7 +15,7 @@
 }
 .set-head__title {
   font-family: var(--font-serif);
-  font-size: 48px;
+  font-size: var(--page-title);
   line-height: 1;
   letter-spacing: -0.01em;
   color: var(--ink);
@@ -397,7 +397,6 @@
 
 /* ---------- Responsive -------------------------------------------------- */
 @media (max-width: 760px) {
-  .set-head__title { font-size: 34px; }
   .set-layout { grid-template-columns: 1fr; }
   .set-tabs { display: none; }
   .set-chips {

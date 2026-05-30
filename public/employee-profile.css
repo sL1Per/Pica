@@ -4,7 +4,7 @@
 .prof-head { margin-bottom: 8px; }
 .prof-head h1 {
   font-family: 'Instrument Serif', serif;
-  font-size: 40px; line-height: 1.05; margin: 0;
+  font-size: var(--page-title); line-height: 1; margin: 0;
   color: var(--ink); letter-spacing: -0.01em;
 }
 .prof-back { display: inline-flex; align-items: center; gap: 6px; color: var(--honey-deep); font-size: 13px; font-weight: 500; margin-bottom: 16px; }
@@ -75,7 +75,3 @@
 .danger-zone h3 { font-family: 'Instrument Serif', serif; font-size: 20px; margin: 0 0 12px; color: var(--clay); }
 .danger-zone button { height: 42px; padding: 0 18px; background: transparent; color: var(--clay); border: 1px solid var(--clay); border-radius: 10px; font-weight: 600; cursor: pointer; }
 .danger-zone .subtle { font-size: 12px; color: var(--muted); margin-top: 10px; }
-
-@media (max-width: 600px) {
-  .prof-head h1 { font-size: 32px; }
-}

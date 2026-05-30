@@ -43,45 +43,60 @@
     <!-- Clock hero — paintStatus() fills status + readout; doPunch() on buttons -->
     <section class="clock-hero" id="status-block">
       <div class="clock-hero__accent" aria-hidden="true"></div>
-      <div class="clock-hero__body">
-        <span class="clock-status" id="clock-status">
-          <span class="clock-status__dot"></span>
-          <span id="status-label" data-i18n="punch.checking">Checking…</span>
-        </span>
-        <div class="clock-big mono" id="clock-big">—</div>
-        <div class="clock-sub" id="status-meta"></div>
-        <div class="clock-loc" id="map-meta-line" hidden>
-          <span class="clock-loc__pin" aria-hidden="true"></span>
-          <span id="clock-loc-text"></span>
+      <!-- Top row: a centered column (status · time · comment · action button)
+           on the left, the OSM map preview on the right. The time, comment
+           textarea, and button share one centered axis so they read as a
+           single stacked control. -->
+      <div class="clock-hero__top">
+        <div class="clock-hero__main">
+          <!-- Lead: status pill, big readout, sub line — centered as a group. -->
+          <div class="clock-hero__lead">
+            <span class="clock-status" id="clock-status">
+              <span class="clock-status__dot"></span>
+              <span id="status-label" data-i18n="punch.checking">Checking…</span>
+            </span>
+            <div class="clock-big mono" id="clock-big">—</div>
+            <div class="clock-sub" id="status-meta"></div>
+            <div class="clock-loc" id="map-meta-line" hidden>
+              <span class="clock-loc__pin" aria-hidden="true"></span>
+              <span id="clock-loc-text"></span>
+            </div>
+          </div>
+
+          <!-- Form: comment + action button + feedback, stacked under the time
+               and capped to a tidy width that the centered time lines up with. -->
+          <div class="clock-hero__form">
+            <label for="comment" class="punch-comment__label" data-i18n="punch.commentLabelOptional">Comment (optional)</label>
+            <textarea id="comment" class="punch-comment" rows="2" maxlength="500"
+                      data-i18n-attr="placeholder:punch.commentPh" placeholder="e.g. Starting afternoon shift"></textarea>
+
+            <div class="punch-actions">
+              <button id="clock-in-btn"  type="button" class="punch-btn punch-btn--in"  disabled data-i18n="punch.clockIn">Check in</button>
+              <button id="clock-out-btn" type="button" class="punch-btn punch-btn--out" disabled hidden data-i18n="punch.clockOut">Check out</button>
+            </div>
+
+            <p id="queue-badge" class="queue-badge" hidden></p>
+            <p id="geo-status" class="geo-status subtle"></p>
+            <button id="retry-geo-btn" type="button" class="btn-ghost btn-sm" hidden data-i18n="punch.geoRetry">Retry location</button>
+            <div id="message" class="message"></div>
+          </div>
+        </div>
+
+        <!-- OSM map preview — sits to the right of the centered column; its
+             address renders in .map-card__meta directly below the tile.
+             renderMap()/hideMap() drive it. -->
+        <div id="map-card" class="map-card" hidden>
+          <div class="map-card__frame">
+            <img id="map-tile" class="map-card__tile" alt="" decoding="async">
+            <div class="map-card__pin" aria-hidden="true">📍</div>
+          </div>
+          <div id="map-meta" class="map-card__meta"></div>
+          <p class="map-card__attrib">
+            <span data-i18n="punch.mapData">Map data</span>
+            <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>
+          </p>
         </div>
       </div>
-
-      <div class="punch-actions">
-        <button id="clock-in-btn"  type="button" class="punch-btn punch-btn--in"  disabled data-i18n="punch.clockIn">Check in</button>
-        <button id="clock-out-btn" type="button" class="punch-btn punch-btn--out" disabled data-i18n="punch.clockOut">Check out</button>
-      </div>
-
-      <p id="queue-badge" class="queue-badge" hidden></p>
-
-      <label for="comment" class="punch-comment__label" data-i18n="punch.commentLabelOptional">Comment (optional)</label>
-      <textarea id="comment" class="punch-comment" rows="2" maxlength="500"
-                data-i18n-attr="placeholder:punch.commentPh" placeholder="e.g. Starting afternoon shift"></textarea>
-
-      <!-- OSM map preview — preserved; renderMap()/hideMap() drive it -->
-      <div id="map-card" class="map-card" hidden>
-        <div class="map-card__frame">
-          <img id="map-tile" class="map-card__tile" alt="" decoding="async">
-          <div class="map-card__pin" aria-hidden="true">📍</div>
-        </div>
-        <div id="map-meta" class="map-card__meta"></div>
-        <p class="map-card__attrib">
-          <span data-i18n="punch.mapData">Map data</span>
-          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>
-        </p>
-      </div>
-      <p id="geo-status" class="geo-status subtle"></p>
-      <button id="retry-geo-btn" type="button" class="btn-ghost btn-sm" hidden data-i18n="punch.geoRetry">Retry location</button>
-      <div id="message" class="message"></div>
     </section>
 
     <!-- Sub-tab strip: Today/This-week are panels here; My corrections is a route -->

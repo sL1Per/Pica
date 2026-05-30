@@ -14,6 +14,255 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.42.1] — 2026-05-30 — Employer home: time-of-day greeting + live clock
+
+A small consistency pass on the employer home page (`index.js`,
+`renderEmployerHome`). The employee home already opened with a
+time-of-day greeting ("Good evening, *Pedro*") and a live, ticking
+clock pill; the employer home did not — it showed the **company name**
+as its title and had no clock. The two role homes now match.
+
+**Changes.**
+- The employer home title is now `greetingKeyFor(new Date())` + the
+  signed-in user's first name (`<em>`-italicised, same markup as the
+  employee home), reusing the existing `home.greet.{morning,afternoon,
+  evening,late}` locale keys. The company name is no longer the title
+  (it still appears in the sidebar brand and, where present, the
+  legacy `#welcome` heading).
+- A live clock pill (`.emp-clock` + `.emp-clock__dot`, the same class
+  the employee home uses) sits at the top-right of the header. The
+  boot code starts a 1 s `setInterval` that rewrites the
+  `[data-live-clock]` span via `fmtClock()`, mirroring the employee
+  home tick.
+- `.eh-head` becomes a flex row (`justify-content: space-between`,
+  `align-items: flex-end`, `flex-wrap`) so the title/subtitle sit left
+  and the clock sits right; it wraps on narrow widths.
+
+CACHE_VERSION v64→v65 (`index.js` and `index.css` are both pre-cached).
+No new locale keys (the greeting + clock primitives already existed for
+the employee home). No backend, route, or storage changes. No new tests
+(pure presentational reuse of existing, tested primitives).
+
+**Honest Disclosures.**
+- The greeting time-of-day boundaries are the employee home's
+  (`<5` late, `<12` morning, `<18` afternoon, else evening) and use the
+  **browser's** local clock, not the server's — a client with a skewed
+  clock sees a skewed greeting and clock. This already applied to the
+  employee home; the employer home now inherits it.
+- The clock is wall-clock display only; it has no bearing on punch
+  timestamps (those are server-stamped).
+- The subtitle ("Here's how your team is doing today.", `home.empSub`)
+  is unchanged — only the title and the clock were touched. The
+  reference mock's summary subtitle ("N working now · …") was **not**
+  adopted; that data already lives in the stat cards below.
+- Not visually verified in a browser this session: the live install on
+  `:8080` owns the only `config.json`/`data/`, so an isolated smoke
+  would have required clobbering real state. The change is a faithful
+  reuse of the already-shipped employee-home clock/greeting and was
+  syntax-checked (`node --check`); confirm with a refresh on `:8080`.
+
+---
+
+## [0.42.0] — 2026-05-30 — UI polish: page centering + notification bell icon + punch hero layout + uniform page titles
+
+A post-M15 polish pass. First fix: the **home page content was pinned
+flush-left** inside the app-shell content column, leaving an empty gap on
+the right (most visible on wide screens). Every other page was centered;
+only the home looked off.
+
+**Root cause.** Inside the app shell, `<main>` is simultaneously
+`.appshell__content > main` (caps width at `1320px`, `width:100%`) and
+`.container container--wide`. The horizontal centering came **only** from
+`.container`'s `margin: 0 auto` — `topbar.css` explicitly delegated
+centering to the per-page container class. The JS-rendered home
+(`index.js`) clears `main.className` for both the employer and employee
+views (it builds its own `.eh-home` / `.emp-home` body), which stripped
+`.container` and therefore the centering. The content kept its `1320px`
+cap but lost `margin:auto`, so it sat flush-left in the wider `1fr`
+content track. The "shell owns width" comment was mistaken: the shell rule
+caps width at `1320px` regardless (higher specificity than `--wide`'s
+`1600px`), so stripping the class only ever removed the centering.
+
+**Fix (one line).** Centering now lives on the shell rule itself —
+`.appshell__content > main` gains `margin-inline: auto`. Every page body is
+centered in the content track whether or not it carries a `.container`
+class, so a page that builds its own body and drops the class still
+centers instead of pinning left. No width changed; pages already centered
+via `.container` are unaffected (the auto margins agree). The explanatory
+comment in `topbar.css` was rewritten to document the new contract.
+
+**Second fix: the notification bell rendered as an empty box.** The
+top-bar bell (and its mobile twin) showed its red pending-dot but **no
+bell glyph** since it shipped in 0.41.0 — just a blank rounded square.
+
+**Root cause.** `.appshell__iconbtn` is `display: inline-flex;
+justify-content: center` and the bell's `<svg>` sits **directly** inside
+it as the single flex child. The SVG carries its size only as `width`/
+`height` HTML attributes (no CSS width — CSP forbids inline `style`), and
+a bare SVG flex child with default `flex-shrink: 1` collapses to **0 on
+the main axis** in Blink/WebKit (the cross axis kept its `17px`, so the
+glyph was zero-width but full-height — invisible). The sidebar nav icons
+never hit this because they are wrapped in `.appshell__nav-icon`, which
+already carries `flex-shrink: 0`; the unwrapped icon-button was the gap.
+
+**Fix (one line).** `.appshell__svg` (the shared inline-icon class) gains
+`flex-shrink: 0`, so any icon that is a direct flex child keeps its
+intrinsic width instead of collapsing. Confirmed in-browser: the bell SVG
+goes from a measured `0×17` to `17×17`. Icons never want to shrink, so the
+rule is global and also covers the mobile bell and any future icon button.
+An explicit CSS `width` alone does **not** fix it (flex still shrinks past
+it); `flex-shrink: 0` / `flex: none` is the property that holds.
+
+**Third fix: the punch (clock) page hero was visually scrambled.** The
+`.clock-hero` is a `1fr auto` grid (status body | action buttons), but the
+comment field, OSM map preview, and feedback elements were **direct grid
+children** with no placement rules — so the browser auto-flowed them into
+stray cells. The result: the comment textarea landed *beside* the buttons
+(detached from its own "Comment (optional)" label), and the map sprawled
+**full-bleed** across the bottom of the card.
+
+**Fix.** `.clock-hero` is now a flex **column** of two explicit rows
+instead of an auto-placing grid. The top row (`.clock-hero__top`, a flex
+row) holds **time block · map preview · action button**, left to right —
+the map sits to the right of the time with its address in
+`.map-card__meta` directly below the tile, and the button is pushed to the
+far right (`.punch-actions { margin-left: auto }`). The bottom row
+(`.clock-hero__extra`) stacks the comment label + textarea + feedback
+full-width under everything, capped at `600px`. Side-by-side (rather than
+the stacked map) roughly **halves the hero height** — measured `659px` →
+`~340px` at desktop width; the map shrank to `280px`/`120px`-frame and the
+big readout from `88px` to `68px`. No JS drove the old scatter — it was
+pure grid auto-placement — so the markup + CSS restructure carries the
+whole fix.
+
+**Fourth fix (same page): only one action button shows at a time.** The
+hero previously rendered **both** Clock in and Clock out, greying out the
+inapplicable one via `disabled`. Two large buttons (one dimmed) read as
+ambiguous. `paintStatus()` now toggles the `hidden` attribute so exactly
+one button is present: **Clock in** when off the clock, **Clock out** when
+working. The out-button ships `hidden` in the markup so the first paint
+(before `/api/punches/status` resolves) shows only Clock in; `paintStatus`
+then corrects it. The `disabled` flags are kept as belt-and-suspenders
+alongside the existing `if (btn.disabled) return;` click guards.
+
+**Fifth fix (same page): the time, comment, and button now share one
+centered axis.** The earlier top-row layout pushed the action button to the
+**far right** of the hero (`.punch-actions { margin-left: auto }`), detached
+from the comment that sat in a separate full-width row below. The hero is
+still a flex column with the map on the right, but the left side is now a
+single **centered control column** (`.clock-hero__main`): the status pill,
+big readout, and sub line (`.clock-hero__lead`) center as a group directly
+over a capped (`600px`) `.clock-hero__form` that stacks **comment label →
+textarea → full-width button → feedback**. The button moved out of the top
+row and under the comment, full-width (`width: 100%`, no more `min-width:
+180px` / `margin-left: auto`), so the time reads as the heading of the same
+stacked control the operator acts on. The map preview stays to the right,
+vertically centered against the taller control column
+(`.clock-hero__top { align-items: center }`). Pure markup + CSS — `punch.js` is
+untouched (it addresses every element by `id`, so moving nodes in the DOM
+changes nothing). Mobile is unchanged in spirit: the column already stacked
+above the map; the form's `600px` cap simply relaxes to full width.
+
+`CACHE_VERSION` v59 → v60 → v61 → v62 → v63 → **v64**. The centering + bell fixes
+touched `topbar.css` (v60); the punch hero/button fixes touched `punch.css`
++ `punch.js` (v61); the hero **layout** refinement (map beside the time,
+shorter card) touched `punch.css` + `punch.html` again (v62); the uniform
+page-title token touched `app.css` plus ten per-page stylesheets (v63); the
+centered-control-column refinement touched `punch.css` + `punch.html` once
+more (v64). Each bump
+matters because the SW serves pre-cached `.js`/`.css` **cache-first**: a
+browser holding an older cache would run stale assets against newer markup.
+That is not hypothetical here — it bit us mid-development: after the v61 JS
+edit a browser still on the v60 cache ran the old `punch.js` (which only
+toggled `disabled`) against the new HTML (out-button shipped `hidden`), so a
+clocked-in user saw the disabled Clock-in button and no Clock-out until the
+bump invalidated the cache. No i18n, no backend, no new test suite (the
+existing shell/precache guards stay green; the punch suite covers pure
+week-grouping helpers, untouched here).
+**Verified live via the Playwright MCP**: the centering before/after on the
+same employer home at 1920px, the bell rendering the empty box "before" →
+the proper glyph "after", and the punch hero measured in both clock states —
+map below the address, textarea below its label, and exactly one button
+visible per state.
+
+**Fifth fix: page titles were every size but uniform.** Each page's
+primary serif heading had drifted to its own hardcoded `font-size` — the
+Leave calendar at `28px` (`1.75rem`), Leaves the same, Reports inheriting
+the generic `32px` h1, the employer home `40px`, Security `42px`,
+Preferences `44px`, Settings `48px`, the employee home `52px`. Side by
+side the pages looked like they belonged to different apps; the calendar's
+`28px` was the most obviously undersized.
+
+**Root cause.** There was no shared heading size. Every page defined its
+own `*-head__title` (or `*-head h1`) class with a literal `px`/`rem`
+value, plus its own mobile override at a mix of `600px`/`760px`
+breakpoints. Nothing kept them in sync, so each rebuild nudged a different
+number.
+
+**Fix.** A single source of truth: a `--page-title: 60px` token in
+`app.css`'s `:root`, redefined to `34px` inside one
+`@media (max-width: 760px)` block. Every primary heading now reads
+`font-size: var(--page-title)` — the bespoke title classes (home ×2,
+Team, Leaves, Calendar, Profile/New, Preferences, Security, Settings,
+Clock) plus a new shared `.page-header h1` rule that covers the pages
+whose title lives in a semantic `.page-header` (Corrections, Today,
+New employee, Reports). The per-page mobile font-size overrides were
+deleted so the token alone drives responsiveness; `reports.css`'s
+now-redundant `.page-header h1` font-family rule was removed too. Result:
+one number changes all eleven headings, and the `760px` breakpoint shrinks
+them together.
+
+**Honest Disclosures.**
+- **Scope is centering only.** This release does not touch the home's
+  internal grid, the `1320px` content cap, or the (now effectively
+  inert inside the shell) `640px` width on `.container` narrow forms —
+  inside the app shell every body is capped at `1320px` regardless of
+  container variant, and that pre-existing behavior is unchanged.
+- **`index.js` still clears `main.className`.** Those lines are now
+  harmless (the shell centers either way) and were left untouched to keep
+  the change surgical; the misleading "shell owns width" comment in
+  `index.js` was not rewritten.
+- **No automated UI/DOM test.** Both fixes are CSS-layout properties;
+  they are covered by live verification, not an in-repo suite (DOM/E2E
+  remain M16). The bell collapse is a rendered-geometry bug a static
+  CSS/markup test would not have caught.
+- Verified on Linen-light only at one viewport; both rules are
+  palette/theme-independent so other combos are expected to match.
+- **Bell glyph absence dated to 0.41.0**, the release that wired the bell
+  up — it was empty-box from the moment it shipped, not a later
+  regression. The dot-positioning and panel behavior were always correct;
+  only the icon was invisible.
+- **Punch hero scatter dated to 0.30.0**, the M15 clock-page rebuild — the
+  trailing elements were direct grid children from the start. It only
+  *looked* fine when the comment/map were empty/hidden; with a live map and
+  a focused comment the auto-placement was always going to scatter.
+- **Map is a fixed `280px`/`120px`-frame, not responsive to the fix's
+  accuracy or zoom.** It stays a single static OSM tile (no pan/zoom, no
+  API key); the smaller frame just crops a touch more. Below `760px` the
+  top row stacks (time → map → button) and the map goes full-width.
+- **The geocoded address renders twice** — once in the chip under the
+  time (`.clock-loc`) and once under the map tile (`.map-card__meta`). This
+  duplication is deliberate (it matches the requested layout) and both are
+  fed by the same reverse-geocode; it is not two lookups.
+- **One-button-at-a-time is presentational only.** The backend already
+  rejects a clock-in while open (and vice-versa); hiding the wrong button
+  removes the dead control but is not the enforcement boundary. If
+  `paintStatus` never runs (status fetch hangs), the markup default leaves
+  **only Clock in** showing — a deliberate fail-safe, though it could be the
+  wrong button for an already-working user until the fetch resolves.
+- **No automated DOM test for the hero.** Same as the other two fixes:
+  verified by live geometry measurement, not an in-repo suite (E2E is M16).
+- **The stale-cache button bug shipped briefly during development.** The
+  punch JS/HTML were edited without bumping `CACHE_VERSION` past v60, so a
+  browser that had already cached v60 ran the old `punch.js` against the new
+  markup — a clocked-in user saw the disabled Clock-in button and no
+  Clock-out. Caught on the live install and fixed by the v61 bump. The
+  standalone preview used for geometry verification bypassed the service
+  worker, so it could not have surfaced this — the SW cache-first path is
+  exactly the gap an in-repo test does not cover (M16).
+
+---
+
 ## [0.41.0] — 2026-05-29 — M15 alias-bridge removal + JS dedup + bell — closes M15
 
 The second half of M15 Plan 9, and the **release that closes M15**: the
