@@ -1,7 +1,8 @@
-**/.DS_Store
 data/
 backups/
 docs/superpowers/
 config.json
 CLAUDE.md
 .claude/
+.playwright-mcp/
+screenshots/old/
