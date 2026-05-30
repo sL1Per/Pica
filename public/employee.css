@@ -21,7 +21,11 @@
 .ed-status--leave { color: var(--plum); border-color: var(--plum); }
 .ed-segments { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
 .ed-hero__actions { display: flex; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
-.ed-btn { display: inline-flex; align-items: center; justify-content: center; height: 38px; padding: 0 16px; border-radius: 10px; font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+/* min-height + margin-top reset: the <button> (Reset password) inherits
+   app.css's bare `button` rule (margin-top:16px, min-height:40px); the <a>
+   (Go to profile) does not — without these resets the two actions render
+   16px / 2px out of alignment. */
+.ed-btn { display: inline-flex; align-items: center; justify-content: center; height: 38px; min-height: 38px; margin-top: 0; padding: 0 16px; border-radius: 10px; font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
 .ed-btn:hover { background: var(--paper-2); }
 .ed-btn--primary { background: var(--honey); color: #FBF6EC; border-color: transparent; }
 .ed-btn--primary:hover { filter: brightness(1.03); }

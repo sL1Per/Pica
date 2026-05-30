@@ -5,13 +5,27 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.42.3._
+_Last touched in 0.42.4._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.42.3 (released 2026-05-30) — employer-home
+- **Latest version:** 0.42.4 (released 2026-05-31) — employee-detail hero
+  button alignment + app.css editor-lint cleanups. The `/employees/:id`
+  hero's Reset-password (`<button>`) and Go-to-profile (`<a>`) sat 16px
+  out of alignment: the bare `<button>` inherits app.css's global
+  `button` rule (`margin-top:16px; min-height:40px`), the `<a>` doesn't,
+  so `.ed-btn` now resets `margin-top:0` + pins `min-height:38px`. Also
+  cleared three Microsoft Edge Tools CSS findings in `app.css`
+  (`-webkit-user-select` added before `user-select`; `-webkit-appearance`
+  reordered before `appearance` in the two reset rules); the
+  `-webkit-text-size-adjust` line was left prefixed-only on purpose
+  (adding the standard property makes Edge Tools flag it as unsupported in
+  FF/Safari). Also spaced the reset-password modal's Cancel/Reset action
+  row off the confirm field (`btn-row` + `mt-5`, 0px → 24px gap).
+  `CACHE_VERSION` v67 → v68. See RELEASES 0.42.4.
+  (0.42.3: employer-home
   "Hours this week" fix: `.eh-delta` was inheriting `--font-serif` from
   `.eh-hours__big`, and Instrument Serif has no bold weight, so the
   `+Xh vs last week` delta rendered as faux-bold serif. Switched
@@ -25,7 +39,7 @@ _Last touched in 0.42.3._
   "Search by name or position…"; and the table's last column is a fixed
   64px so Status/Week/Today align row-to-row regardless of pending
   badge. See RELEASES 0.42.2. 0.42.1: employer home greeting + live
-  clock, matching the employee home.)
+  clock, matching the employee home.))
 - **Test count:** 50 suites (0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the

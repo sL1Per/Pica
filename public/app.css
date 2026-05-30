@@ -314,8 +314,8 @@ textarea {
   color: var(--ink);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  appearance: none;
   -webkit-appearance: none;
+  appearance: none;
 }
 
 textarea {
@@ -376,8 +376,8 @@ textarea[aria-invalid="true"]:focus {
 
 input[type="checkbox"],
 input[type="radio"] {
-  appearance: none;
   -webkit-appearance: none;
+  appearance: none;
   display: inline-block;
   width: 18px;
   height: 18px;
@@ -431,6 +431,7 @@ input[type="radio"]:focus-visible {
   font-size: var(--text-sm);
   color: var(--ink);
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
 }
 .checkbox input,

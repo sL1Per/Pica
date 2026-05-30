@@ -254,7 +254,7 @@ function openResetModal() {
   const i1 = el('input'); i1.type = 'password'; i1.id = 'rp-new'; i1.autocomplete = 'new-password'; i1.minLength = 8; i1.required = true;
   const l2 = el('label', null, t('employee.summary.resetPwConfirmLabel')); l2.htmlFor = 'rp-confirm';
   const i2 = el('input'); i2.type = 'password'; i2.id = 'rp-confirm'; i2.autocomplete = 'new-password'; i2.minLength = 8; i2.required = true;
-  const btns = el('div', 'btn-row');
+  const btns = el('div', 'btn-row mt-5'); // mt-5: separate the actions from the confirm-password field above
   const cancel = el('button', 'secondary', t('employee.summary.resetPwCancel')); cancel.type = 'button';
   const submit = el('button', null, t('employee.summary.resetPwSubmit')); submit.type = 'submit';
   cancel.addEventListener('click', () => modal.close());

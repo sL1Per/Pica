@@ -14,6 +14,62 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.42.4] — 2026-05-31 — Employee-detail hero button alignment + app.css linter cleanups + reset-modal spacing
+
+Three small presentational/tooling fixes, no behavior change.
+
+**1. Employee-detail hero: Reset-password / Go-to-profile buttons aligned.**
+On `/employees/:id` the two hero actions sat 16 px out of vertical
+alignment (and 2 px apart in height). Root cause: "Reset password" is a
+`<button class="ed-btn">` and "Go to profile" is an `<a class="ed-btn
+ed-btn--primary">`. The bare `<button>` inherits app.css's global button
+rule (`margin-top: 16px; min-height: 40px`); the `<a>` does not, so it sat
+flush at 38 px while the button was pushed down and rendered 40 px tall.
+Fix: `.ed-btn` now explicitly resets `margin-top: 0` and pins
+`min-height: 38px` (matching its `height: 38px`), so both elements render
+identically regardless of tag. Confirmed live (Playwright MCP): both
+actions now share `top` and `height`. (`public/employee.css`.)
+
+**2. app.css: cleared the editor (Microsoft Edge Tools) CSS lint findings.**
+The operator's editor flagged three real items in `app.css`:
+- `user-select: none` on `.checkbox`/`.radio` without the `-webkit-`
+  prefix (an **error** — unsupported on Safari/iOS). Added
+  `-webkit-user-select: none;` ahead of it.
+- `appearance: none` listed **before** `-webkit-appearance: none` in two
+  rules (the form-control reset and the checkbox/radio reset) — a warning
+  about prefix ordering. Reordered so the prefixed property comes first.
+
+Deliberately **not** changed: the `-webkit-text-size-adjust` line (adding
+the standard `text-size-adjust` makes Edge Tools flag *that* as
+unsupported in Firefox/Safari — net worse, so left prefixed-only); the
+`★` "transform/opacity in @keyframes triggers Composite/Paint" perf hints
+(animating transform/opacity is the GPU-friendly approach — not a defect);
+and cSpell "unknown word" notices (`topbar`, `textareas`, `nums`, … are
+legitimate identifiers, not CSS issues).
+
+**3. Reset-password modal: space the action row off the confirm field.**
+In the employer's "Reset employee password" modal (`employee.js`
+`openResetModal`) the Cancel / Reset-password `.btn-row` sat flush against
+the "Confirm new password" input (0 px gap — `.btn-row > *` zeroes the
+buttons' `margin-top` and `.btn-row` itself has none). Added the existing
+`mt-5` utility to that row (`margin-top: var(--gap-5)` = 24 px) so the
+actions are clearly separated from the field above. Scoped to this one row
+(not the global `.btn-row`). Confirmed live: 0 px → 24 px.
+
+`CACHE_VERSION` v67 → v68 (`app.css` + `employee.css` are pre-cached; the
+`employee.js` edit is also served cache-first keyed by this version). No
+backend, no i18n, no new test suite (count stays 50).
+
+**Honest Disclosures.** Presentational/tooling only. The global bare-
+`button` rule that leaks `margin-top`/`min-height` onto component buttons
+is left as-is (other component button classes that set their own geometry
+should likewise reset these two; this fix only touches `.ed-btn`). The
+lint cleanups silence findings from one editor (Edge Tools) — a different
+linter may surface a different set. Verified at one viewport in
+Linen-light only; no automated UI test (that's M16).
+
+---
+
 ## [0.42.3] — 2026-05-30 — Employer home: fix "Hours this week" delta font
 
 A one-widget presentational fix. The employer-home "Hours this week"
