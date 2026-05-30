@@ -245,7 +245,7 @@ function renderHoursWeek(body, wkThis, wkLast) {
 
   const wrap = document.createDocumentFragment();
   const big = ehEl('div', 'eh-hours__big');
-  big.append(document.createTextNode(fmtHours(total)), ehEl('small', null, ' h'));
+  big.append(document.createTextNode(fmtHours(total)), ehEl('small', null, 'h'));
   if (lastTotal != null) {
     const delta = Math.round((total - lastTotal) * 10) / 10;
     big.append(ehEl('span', 'eh-delta ' + (delta >= 0 ? 'eh-delta--up' : 'eh-delta--down'),

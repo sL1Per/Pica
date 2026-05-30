@@ -41,9 +41,11 @@
     <div id="message" class="message"></div>
 
     <div class="tm-toolbar">
-      <input type="search" id="tm-search" class="tm-search"
-             data-i18n-attr="placeholder:team.searchPlaceholder" placeholder="Search people…"
-             autocomplete="off">
+      <div class="tm-search-wrap">
+        <input type="search" id="tm-search" class="tm-search"
+               data-i18n-attr="placeholder:team.searchPlaceholder" placeholder="Search by name or position…"
+               autocomplete="off">
+      </div>
       <div id="tm-chips" class="tm-chips"><!-- filter chips built in JS --></div>
     </div>
 

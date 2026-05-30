@@ -14,6 +14,111 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.42.3] — 2026-05-30 — Employer home: fix "Hours this week" delta font
+
+A one-widget presentational fix. The employer-home "Hours this week"
+card renders a big serif number, a small `h` unit, and a `+Xh vs last
+week` delta. `.eh-hours__big` sets `font-family: var(--font-serif)`
+(Instrument Serif), and both the unit and the delta inherited it.
+Instrument Serif ships **only a 400 weight** — no bold — so the delta's
+`font-weight: 600` triggered the browser's faux-bold synthesis on a
+serif face, producing the heavy, ungainly bold-serif `+7.3h vs last
+week` text instead of the intended clean sans-serif.
+
+Changes (`public/index.css`, `public/index.js`):
+
+- `.eh-delta` now sets `font-family: var(--font-sans)` (DM Sans), so the
+  delta renders as crisp sans-serif bold in sage/clay — matching the
+  rest of the app's metadata text and the intended design.
+- The `h` unit kept its leading space (`' h'`) where every other
+  `<small>h</small>` unit in the file (`.emp-stat__val`,
+  `.emp-hero__big`) sits flush against the number. Removed the space so
+  the employer-home unit reads `15.3h`, consistent with those widgets.
+
+The unit `h` itself stays serif on purpose — that is the house style
+for value+unit pairs across the home/stat cards, and it matches the
+serif number it annotates.
+
+CACHE_VERSION v66→v67 (`index.css` is a pre-cached shell asset).
+
+### Honest Disclosures
+
+- Purely cosmetic. No behavior, data, or API change. The computed
+  numbers are identical; only typography moved.
+- Scope is deliberately the employer-home `.eh-hours` widget only. The
+  employee-home `.emp-stat__val` / `.emp-hero__big` units were already
+  serif-by-design and are untouched.
+- Not verified in a running browser this session — the live instance on
+  :8080 required a login I did not have. The fix is grounded in the CSS
+  inheritance chain (serif inherited by `.eh-delta`) and the known
+  absence of a bold weight in Instrument Serif, not in a live capture.
+  Worth an eyeball on next employer-home load.
+- No new i18n keys, no locale changes, no test added — there is no
+  headless way to assert a rendered font face without the M16 Playwright
+  harness (not yet landed).
+
+---
+
+## [0.42.2] — 2026-05-30 — Team page: search/filter toolbar + column alignment
+
+A presentational pass on the Team list toolbar and table
+(`employees.css`, `employees.html`, `employees.js`, both locales).
+
+**Changes.**
+- **Search bar no longer stretches.** `.tm-search` was `flex: 1`, so it
+  grew to fill the toolbar row and pushed the filter chips to the far
+  right, leaving a wide dead gap. The search is now `flex: 0 1 340px`
+  (wrapped in a `.tm-search-wrap`), so the input and the chip group sit
+  together, left-aligned.
+- **Search box restyled with an icon and the right surface.** A
+  magnifying-glass icon now sits at the left of the input, drawn as a
+  CSS `mask` filled with `var(--muted)` so it tracks every theme/palette
+  (no hard-coded colour). The input padding-left makes room for it.
+  Crucially, `app.css`'s `input[type="search"]` rule (specificity
+  `(0,1,1)`) was silently overriding the single-class `.tm-search`
+  `(0,1,0)` — forcing the grey `--bg` background and the default
+  padding (which made the icon overlap the placeholder). The rules are
+  now scoped as `.tm-search-wrap .tm-search` `(0,2,0)` so they win:
+  surface is `var(--paper)`, padding leaves room for the icon.
+- **Search box and chips share one height and shape.** Both are now
+  `44px` tall with a `12px` radius (chips were full `999px` pills at
+  ~33px). With the toolbar centring them, their edges line up — fixes
+  the vertical-offset look.
+- **Filter chips show `Label · N`.** The count span now renders
+  `· {n}` (e.g. `All · 6`) with a muted separator, instead of a faded
+  bare number. Active chip keeps the dark fill / light count.
+- **Placeholder copy.** `team.searchPlaceholder` changed from
+  "Search people…" to "Search by name or position…" (and the pt-PT
+  equivalent) — it already searches name, username, and position.
+- **Table columns align row-to-row.** `.tm-thead` and each `.tm-row`
+  are *independent* CSS grids, and the last column was sized `auto`.
+  Rows carrying a pending badge got a wider last column, which stole
+  width from the `fr` columns and shifted *every* cell in that row — so
+  Status now / This week / Today drifted between rows with and without
+  a badge. The last column is now a fixed `64px`, so the `fr` tracks
+  are identical across the header and all rows.
+
+CACHE_VERSION v65→v66 (`employees.css`, the two `locales/*.js`, and the
+runtime-cached `employees.js` are all served cache-first).
+
+**Honest Disclosures.**
+- Presentational only — no route, storage, or status-logic changes; no
+  new tests (nothing testable changed). `employees.js` changed only in
+  how the chip count string is built.
+- "White" search background = `var(--paper)`, the app's surface token
+  (warm cream in the *linen* default palette, near-white in *slate*).
+  It is deliberately not a hard-coded `#fff`, to stay theme-correct;
+  the contrast against `--bg` is subtle in the linen palette.
+- The `64px` last table column fits the pending badge + chevron with
+  margin; an extreme zoom or a future multi-icon end cell could crowd
+  it. Fine for the current single badge + chevron.
+- Verified by rendering the toolbar in isolation against the real
+  stylesheets at desktop width (screenshot), not in the full
+  authenticated page (no live-install credentials this session). The
+  table-column fix was reviewed in code, not re-screenshotted.
+
+---
+
 ## [0.42.1] — 2026-05-30 — Employer home: time-of-day greeting + live clock
 
 A small consistency pass on the employer home page (`index.js`,

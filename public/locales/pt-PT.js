@@ -1058,7 +1058,7 @@ export default {
   'home.empNamesMore':       '{names} +{n} mais',
   'home.empNobody':          'Ningu\u00e9m para mostrar ainda.',
   'home.empLeftAt':          'saiu \u00e0s {time}',
-  'team.searchPlaceholder':  'Procurar pessoas\u2026',
+  'team.searchPlaceholder':  'Procurar por nome ou fun\u00e7\u00e3o\u2026',
   'team.colPerson':          'Pessoa',
   'team.colStatus':          'Estado agora',
   'team.colWeek':            'Esta semana',

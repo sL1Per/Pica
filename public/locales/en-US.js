@@ -1059,7 +1059,7 @@ export default {
   'home.empNamesMore':       '{names} +{n} more',
   'home.empNobody':          'No one to show yet.',
   'home.empLeftAt':          'left at {time}',
-  'team.searchPlaceholder':  'Search people\u2026',
+  'team.searchPlaceholder':  'Search by name or position\u2026',
   'team.colPerson':          'Person',
   'team.colStatus':          'Status now',
   'team.colWeek':            'This week',

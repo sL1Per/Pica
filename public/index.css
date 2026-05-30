@@ -373,7 +373,7 @@
 /* Hours-this-week */
 .eh-hours__big { font-family: var(--font-serif); font-size: 48px; line-height: 1; color: var(--ink); }
 .eh-hours__big small { font-size: 18px; color: var(--muted); }
-.eh-delta { font-size: 13px; font-weight: 600; margin-left: 10px; }
+.eh-delta { font-family: var(--font-sans); font-size: 13px; font-weight: 600; margin-left: 10px; }
 .eh-delta--up { color: var(--sage); }
 .eh-delta--down { color: var(--clay); }
 

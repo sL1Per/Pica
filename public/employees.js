@@ -77,7 +77,7 @@ function renderChips() {
     const chip = el('button', 'tm-chip' + (activeFilter === f.key ? ' tm-chip--active' : ''));
     chip.type = 'button';
     chip.append(document.createTextNode(t(f.labelKey)));
-    chip.append(el('span', 'tm-chip__count', String(c[f.key])));
+    chip.append(el('span', 'tm-chip__count', `· ${c[f.key]}`));
     chip.addEventListener('click', () => { activeFilter = f.key; renderChips(); renderRows(); });
     chipsEl.append(chip);
   }

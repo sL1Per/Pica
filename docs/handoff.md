@@ -5,15 +5,27 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.42.1._
+_Last touched in 0.42.3._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.42.1 (released 2026-05-30) — employer home now
-  opens with a time-of-day greeting + live clock, matching the employee
-  home (was: company name as title, no clock). See RELEASES 0.42.1.
+- **Latest version:** 0.42.3 (released 2026-05-30) — employer-home
+  "Hours this week" fix: `.eh-delta` was inheriting `--font-serif` from
+  `.eh-hours__big`, and Instrument Serif has no bold weight, so the
+  `+Xh vs last week` delta rendered as faux-bold serif. Switched
+  `.eh-delta` to `--font-sans` and dropped the stray leading space in
+  the `h` unit. See RELEASES 0.42.3. (0.42.2: Team list toolbar
+  + table polish: search no longer stretches (now `.tm-search-wrap`,
+  `flex: 0 1 340px`) and gained a masked magnifying-glass icon + the
+  `--paper` surface (scoped `.tm-search-wrap .tm-search` to beat
+  app.css's `input[type="search"]`); search and chips share a 44px /
+  12px-radius shape; chips show `Label · N`; placeholder is now
+  "Search by name or position…"; and the table's last column is a fixed
+  64px so Status/Week/Today align row-to-row regardless of pending
+  badge. See RELEASES 0.42.2. 0.42.1: employer home greeting + live
+  clock, matching the employee home.)
 - **Test count:** 50 suites (0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
