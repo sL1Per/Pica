@@ -104,4 +104,9 @@ ok('STATUS_SORT orders working before off', () => {
   assert.ok(STATUS_SORT.leave < STATUS_SORT.off);
 });
 
+ok('STATUS_SORT places deactivated last', () => {
+  assert.equal(STATUS_SORT.deactivated, 5);
+  assert.ok(STATUS_SORT.off < STATUS_SORT.deactivated);
+});
+
 console.log(`test-team-status: ${passed} passed`);
