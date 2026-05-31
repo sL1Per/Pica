@@ -29,92 +29,115 @@
   <link rel="stylesheet" href="/employee-profile.css">
 </head>
 <body>
-  <main class="container">
+  <main class="prof-page container--wide">
     <a id="back-link" class="prof-back" href="/" data-i18n="employee.back">← Back</a>
 
-    <div class="prof-head">
-      <h1 id="page-title" data-i18n="employee.profile">Profile</h1>
-    </div>
+    <header class="prof-header">
+      <h1 id="page-title">—</h1>
+      <p id="profile-subtitle" class="prof-subtitle"></p>
+    </header>
 
     <div id="message" class="message"></div>
 
     <form id="profile-form" autocomplete="off" novalidate>
       <!-- Identity -->
-      <div class="prof-card">
-        <h2 data-i18n="employee.cardIdentity">Identity</h2>
+      <section class="prof-card">
+        <h2 class="prof-card__label" data-i18n="employee.cardIdentity">Identity</h2>
         <div class="avatar-block">
           <div id="avatar" class="prof-avatar">?</div>
           <div class="avatar-actions">
-            <input type="file" id="picture-input" accept="image/*" hidden>
-            <button id="upload-btn" type="button" class="prof-btn-sec" data-i18n="employee.uploadPicture">Upload picture</button>
-            <button id="remove-pic-btn" type="button" class="prof-btn-sec" hidden data-i18n="employee.remove">Remove</button>
-            <p class="subtle" data-i18n="employee.maxPictureHint">Max 400×400, resized in your browser.</p>
+            <div class="avatar-btns">
+              <input type="file" id="picture-input" accept="image/*" hidden>
+              <button id="upload-btn" type="button" class="prof-btn-sec" data-i18n="employee.uploadPicture">Upload picture</button>
+              <button id="remove-pic-btn" type="button" class="prof-btn-sec prof-btn-sec--danger" hidden data-i18n="employee.remove">Remove</button>
+            </div>
+            <p class="subtle" data-i18n="employee.pictureHint">JPG or PNG, square works best. Max 4 MB — we resize it for you.</p>
           </div>
         </div>
 
-        <div class="prof-field">
-          <label data-i18n="employee.fieldUsername">Username</label>
-          <div id="username-display" class="readonly-field">—</div>
-        </div>
-        <div class="prof-field">
-          <label for="fullName" data-i18n="employee.fieldFullName">Full name</label>
-          <input type="text" id="fullName" name="fullName" required>
-        </div>
-        <div class="prof-field">
-          <label for="dateOfBirth" data-i18n="employee.fieldDob">Date of birth</label>
-          <div class="dob-row">
-            <input type="date" id="dateOfBirth" name="dateOfBirth" required>
-            <span id="age-display" class="dob-age" hidden></span>
+        <div class="prof-grid">
+          <div class="prof-field">
+            <label for="fullName" data-i18n="employee.fieldFullName">Full name</label>
+            <input type="text" id="fullName" name="fullName" required>
+          </div>
+          <div class="prof-field">
+            <label for="username-display" data-i18n="employee.fieldUsername">Username</label>
+            <div id="username-display" class="readonly-field">—</div>
+            <p class="subtle" data-i18n="employee.usedToSignIn">Used to sign in.</p>
+          </div>
+          <div class="prof-field">
+            <label for="dateOfBirth" data-i18n="employee.fieldDob">Date of birth</label>
+            <div class="dob-row">
+              <input type="date" id="dateOfBirth" name="dateOfBirth" required>
+              <span id="age-display" class="dob-age" hidden></span>
+            </div>
+          </div>
+          <div class="prof-field">
+            <label for="address" data-i18n="employeeNew.address">Address</label>
+            <input type="text" id="address" name="address" required>
           </div>
         </div>
-        <div class="prof-field">
-          <label for="address" data-i18n="employeeNew.address">Address</label>
-          <input type="text" id="address" name="address" required>
-        </div>
-      </div>
+      </section>
 
       <!-- Role -->
-      <div class="prof-card">
-        <h2 data-i18n="employee.cardRole">Role</h2>
-        <div class="prof-field">
-          <label data-i18n="employee.fieldRole">Role</label>
-          <div><span id="role-display" class="role-badge">—</span></div>
+      <section class="prof-card">
+        <h2 id="role-card-label" class="prof-card__label" data-i18n="employee.cardRole">Role</h2>
+        <div class="prof-grid">
+          <div class="prof-field">
+            <label data-i18n="employee.fieldRole">Role</label>
+            <div id="role-segmented" class="seg" role="group" aria-disabled="true">
+              <span class="seg__opt" data-role="employee" data-i18n="employee.role.employee">Employee</span>
+              <span class="seg__opt" data-role="employer" data-i18n="employee.role.employer">Employer</span>
+            </div>
+            <p class="subtle" data-i18n="employee.roleReadonlyHint">Role is set at account creation and can’t be changed here.</p>
+          </div>
+          <div class="prof-field">
+            <label for="position"><span data-i18n="employee.fieldPosition">Position</span> <span id="position-hint" class="subtle" hidden data-i18n="employee.employerSet">(employer-set)</span></label>
+            <input type="text" id="position" name="position" required>
+            <p class="subtle" data-i18n="employee.positionHintEg">e.g. Baker, Counter, Owner.</p>
+          </div>
         </div>
-        <div class="prof-field">
-          <label for="position"><span data-i18n="employee.fieldPosition">Position</span> <span id="position-hint" class="subtle" hidden data-i18n="employee.employerSet">(employer-set)</span></label>
-          <input type="text" id="position" name="position" required>
-        </div>
-      </div>
+      </section>
 
       <!-- Contact -->
-      <div class="prof-card">
-        <h2 data-i18n="employee.cardContact">Contact</h2>
-        <div class="prof-field">
-          <label for="contactEmail" data-i18n="employeeNew.contactEmail">Contact email</label>
-          <input type="email" id="contactEmail" name="contactEmail" required>
+      <section class="prof-card">
+        <h2 class="prof-card__label" data-i18n="employee.cardContact">Contact</h2>
+        <div class="prof-grid">
+          <div class="prof-field">
+            <label for="contactEmail" data-i18n="employeeNew.contactEmail">Email</label>
+            <input type="email" id="contactEmail" name="contactEmail" required>
+          </div>
+          <div class="prof-field">
+            <label for="contactPhone" data-i18n="employeeNew.contactPhone">Phone</label>
+            <input type="text" id="contactPhone" name="contactPhone" required>
+          </div>
         </div>
-        <div class="prof-field">
-          <label for="contactPhone" data-i18n="employeeNew.contactPhone">Contact phone</label>
-          <input type="text" id="contactPhone" name="contactPhone" required>
-        </div>
-      </div>
+      </section>
 
       <!-- Internal notes -->
-      <div class="prof-card">
-        <h2><span data-i18n="employee.cardNotes">Internal notes</span> <span id="comments-hint" class="subtle" hidden data-i18n="employee.employerSet">(employer-set)</span></h2>
+      <section class="prof-card">
+        <h2 class="prof-card__label"><span data-i18n="employee.cardNotes">Internal notes</span> <span id="comments-hint" class="subtle" hidden data-i18n="employee.employerSet">(employer-set)</span></h2>
         <div class="prof-field">
           <textarea id="comments" name="comments" rows="3"></textarea>
         </div>
-      </div>
+      </section>
 
-      <button id="save-btn" type="submit" class="prof-btn" data-i18n="employee.savePic">Save profile</button>
+      <!-- Footer action bar -->
+      <div class="prof-actions">
+        <button id="deactivate-btn" type="button" class="prof-btn-danger" hidden data-i18n="employee.deactivate">Deactivate account</button>
+        <div class="prof-actions__right">
+          <a id="cancel-link" class="prof-btn-cancel" href="/employees" data-i18n="employee.cancel">Cancel</a>
+          <button id="save-btn" type="submit" class="prof-btn" data-i18n="employee.savePic">Save profile</button>
+        </div>
+      </div>
     </form>
 
-    <div id="danger-zone" class="danger-zone" hidden>
+    <!-- Danger zone (permanent delete) — only when account is deactivated -->
+    <section id="danger-zone" class="danger-zone" hidden>
       <h3 data-i18n="employee.dangerZone">Danger zone</h3>
-      <button id="delete-btn" type="button" data-i18n="employee.delete">Delete employee</button>
-      <p class="subtle" data-i18n="employee.deleteHint">This removes the user account, profile, and picture. Not reversible.</p>
-    </div>
+      <button id="delete-btn" type="button" data-i18n="employee.deletePermanent">Delete permanently</button>
+      <p class="subtle" data-i18n="employee.deleteDangerHint">Permanently erases the account, profile, picture, and history. This cannot be undone.</p>
+    </section>
   </main>
 
   <script type="module" src="/employee-profile.js"></script>
