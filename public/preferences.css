@@ -73,6 +73,9 @@
   cursor: pointer; display: flex; flex-direction: column; gap: 10px;
   position: relative; text-align: left; color: var(--ink);
   transition: border-color .12s; font: inherit;
+  /* The global `button` rule sets align-items:center; without this the
+     zero-basis swatch bar collapses to 0 width and the text centers. */
+  align-items: stretch;
 }
 .palette-card--active { border-color: var(--honey); }
 .palette-swatches {

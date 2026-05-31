@@ -43,6 +43,9 @@ dialog.modal.rlm-modal {
   grid-template-columns: 1fr 1fr;
   gap: var(--gap-3);
 }
+/* Columns inside a row are adjacent siblings, so the stacked-field
+   margin above would otherwise push the second column down. */
+.rlm-row .rlm-field + .rlm-field { margin-top: 0; }
 
 .rlm-helper { margin-top: 6px; font-size: var(--text-xs); color: var(--muted); }
 

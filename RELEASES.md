@@ -14,6 +14,48 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.42.6] — 2026-05-31 — Book-leave modal + Preferences palette alignment
+
+Two presentational fixes, no behavior change.
+
+**Start and End now sit on the same row in the book-leave modal.** On the
+request-leave modal's "Full days" view, the **End** label and its date
+picker were pushed slightly lower than **Start**, so the two columns no
+longer lined up. Root cause: `.rlm-field + .rlm-field` adds a
+`margin-top` so that vertically-stacked fields breathe — but the two date
+columns live in a `.rlm-row` grid, where they are *also* adjacent
+siblings, so the second column (End) inherited that top margin and dropped
+below the first. Fix: a scoped `.rlm-row .rlm-field + .rlm-field
+{ margin-top: 0 }` reset, so columns inside a row keep their grid-aligned
+top edge while stacked fields elsewhere are unaffected. Same fix covers
+the "Hours" view's From/To row, which uses the same `.rlm-row` markup.
+(`public/request-leave-modal.css`.)
+
+**Preferences palette swatches were invisible.** On `/preferences.html`
+the three palette cards (Linen / Slate / Olive) rendered with blank,
+zero-width colour bars and centred labels instead of the full-width
+4-colour swatch + left-aligned text. Root cause: the cards are
+`<button class="palette-card">` elements, and the global `button` rule in
+`app.css` sets `align-items: center`. `.palette-card` is a flex column but
+never re-declared `align-items`, so the button rule's `center` won — and
+since the swatch bar's chips are `flex: 1` with no flex-basis (zero
+intrinsic width), centring let the whole `.palette-swatches` container
+shrink-wrap to 0 width. The chip background colours were set correctly the
+whole time (confirmed via computed style); they were just painted into a
+0 px-wide box. Fix: `.palette-card { align-items: stretch }`, so the swatch
+bar fills the card and labels sit left. Verified live (isolated Playwright
+instance, port 8099): swatch bar 266 px wide, four 66 px chips with the
+expected hexes. (`public/preferences.css`.)
+
+**Honest Disclosures.** Both fixes are CSS-only; no JS, markup, or backend
+change. The leave-modal fix touches only two-column `.rlm-row` rows
+(single-column stacked fields are unaffected) and was verified by reading
+the cascade, not re-screenshotted. The palette fix was confirmed live.
+`CACHE_VERSION` bumped v69→v70 once (both `request-leave-modal.css` and
+`preferences.css` are pre-cached shell assets).
+
+---
+
 ## [0.42.5] — 2026-05-31 — Leave-calendar rail alignment + grey toolbar band
 
 Two presentational fixes, no behavior change.
