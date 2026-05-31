@@ -66,6 +66,7 @@ export function registerEmployeeRoutes(router, {
         id: u.id,
         username: u.username,
         role: u.role,
+        active: u.active !== false,
         hasProfile: !!p,
         fullName: p?.fullName ?? null,
         position: p?.position ?? null,
@@ -139,6 +140,7 @@ export function registerEmployeeRoutes(router, {
       id: user.id,
       username: user.username,
       role: user.role,
+      active: user.active !== false,
       createdAt: user.createdAt,
       profile: profileWithPic,
     });
@@ -304,10 +306,13 @@ export function registerEmployeeRoutes(router, {
   }));
 
   // --------------------------------------------------------------------------
-  // DELETE /api/employees/:id — remove employee (employer only).
+  // DELETE /api/employees/:id — permanent erase (employer only).
   //
-  // Forbidden to delete self — avoids locking the employer out of their
-  // own app. TODO(M11): prevent deleting the last employer account.
+  // Gated behind deactivation: refuses unless the account is already
+  // deactivated. This makes permanent loss a deliberate two-step
+  // (deactivate → erase), never a one-click on an active employee.
+  // Forbidden to delete self — avoids locking the employer out.
+  // TODO(M11): prevent deleting the last employer account.
   // --------------------------------------------------------------------------
   router.delete('/api/employees/:id', requireRole('employer')(async (req, res) => {
     if (rejectIfBadId(req, res)) return;
@@ -316,6 +321,9 @@ export function registerEmployeeRoutes(router, {
     }
     const user = usersStore.findById(req.params.id);
     if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
+    if (user.active !== false) {
+      return res.badRequest('Deactivate the account before deleting it', { errorCode: 'not_deactivated' });
+    }
 
     employeesStore.remove(user.id);
     usersStore.deleteById(user.id);
@@ -327,6 +335,43 @@ export function registerEmployeeRoutes(router, {
       details: { role: user.role },
     });
 
+    res.json({ ok: true });
+  }));
+
+  // POST /api/employees/:id/deactivate — block login + revoke sessions (employer).
+  // --------------------------------------------------------------------------
+  router.post('/api/employees/:id/deactivate', requireRole('employer')(async (req, res) => {
+    if (rejectIfBadId(req, res)) return;
+    if (req.params.id === req.user.id) {
+      return res.badRequest('You cannot deactivate your own account', { errorCode: 'cannot_deactivate_self' });
+    }
+    const user = usersStore.findById(req.params.id);
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
+
+    usersStore.setActive(user.id, false);
+    auditStore?.appendRecord({
+      ...auditContext(req),
+      event: 'employee.deactivated',
+      target: { userId: user.id, username: user.username },
+      details: { role: user.role },
+    });
+    res.json({ ok: true });
+  }));
+
+  // POST /api/employees/:id/reactivate — restore login (employer).
+  // --------------------------------------------------------------------------
+  router.post('/api/employees/:id/reactivate', requireRole('employer')(async (req, res) => {
+    if (rejectIfBadId(req, res)) return;
+    const user = usersStore.findById(req.params.id);
+    if (!user) return res.notFound('Employee not found', { errorCode: 'not_found' });
+
+    usersStore.setActive(user.id, true);
+    auditStore?.appendRecord({
+      ...auditContext(req),
+      event: 'employee.reactivated',
+      target: { userId: user.id, username: user.username },
+      details: { role: user.role },
+    });
     res.json({ ok: true });
   }));
 
