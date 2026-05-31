@@ -14,6 +14,52 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.42.5] — 2026-05-31 — Leave-calendar rail alignment + grey toolbar band
+
+Two presentational fixes, no behavior change.
+
+**Right rail now starts level with the calendar toolbar/grid.** On
+`/leaves-calendar.html` the right-hand rail (Pending requests / Out today
+/ Out tomorrow) sat at the very top of the page, level with the "Leave
+calendar" title — leaving the calendar grid starting well below it and the
+two columns visibly misaligned. Root cause: the `<header class="cal-head">`
+(title + subtitle) lived *inside* `.cal-main`, so the two-column
+`.cal-page` grid put the title and the rail's first card on the same top
+edge. Fix: the header is now a direct child of `.cal-page` spanning the
+full width (`grid-column: 1 / -1`), so the title occupies its own row above
+a clean two-column row — `[toolbar + grid]` on the left, rail on the right
+— and the rail's top now lines up with the toolbar. Its `margin-bottom`
+was zeroed since the grid's 20 px row-gap now handles the title→body
+spacing. Confirmed live at 1280 px (Playwright MCP): rail top sits level
+with the month-nav toolbar. (`public/leaves-calendar.html`,
+`public/leaves-calendar.css`.)
+
+**Toolbar is now a grey header band capping the calendar card.** The
+month-nav + filter-chip toolbar previously floated on the page background
+above the grid. It now reads as the top of the calendar: `.cal-toolbar`
+gets `background: var(--bg-2)` (the same subtle grey as weekend columns),
+a full `--line-soft` border with `border-radius` on the top corners only,
+and `padding: 12px 14px` — its `margin-bottom` dropped to 0 so it butts
+against the weekday header, whose top border + top corner-rounding were
+removed (`.cal-weekhead`: `border-top: none; border-radius: 0`). The
+toolbar's bottom border becomes the divider between the grey band and the
+white weekday row. (`public/leaves-calendar.css`.)
+
+CACHE_VERSION v68→v69 (`leaves-calendar.css` is pre-cached).
+
+**Honest Disclosures.**
+- Pure layout/CSS — no JS, no data, no API touched. The rail's content,
+  the toolbar's controls, and the calendar's behavior are unchanged.
+- The grey band uses `--bg-2`, so it tracks the active palette/theme
+  (linen/slate/olive, light/dark) automatically — no hard-coded colour.
+- The single-column mobile layout (≤ 980 px) is unaffected: the header
+  spanning `1 / -1` collapses to full width in a one-column grid, so the
+  stacking order (header → calendar → rail cards) is identical to before.
+- Only the leaves calendar was touched. No audit of other pages for the
+  same header-inside-column pattern was done in this release.
+
+---
+
 ## [0.42.4] — 2026-05-31 — Employee-detail hero button alignment + app.css linter cleanups + reset-modal spacing
 
 Three small presentational/tooling fixes, no behavior change.

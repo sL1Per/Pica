@@ -5,13 +5,26 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.42.4._
+_Last touched in 0.42.5._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.42.4 (released 2026-05-31) — employee-detail hero
+- **Latest version:** 0.42.5 (released 2026-05-31) — leave-calendar layout
+  polish (two presentational fixes). (1) Right rail aligned with the grid,
+  not the title: the `<header class="cal-head">` lived inside `.cal-main`,
+  so the two-column `.cal-page` grid put the title and the rail's first
+  card on the same top edge. Moved the header to a direct child of
+  `.cal-page` spanning `grid-column: 1 / -1` (margin-bottom zeroed; the
+  20px row-gap handles title→body spacing), so the rail now lines up with
+  the month-nav toolbar. (2) Toolbar is now a grey header band capping the
+  calendar card: `.cal-toolbar` gets `background: var(--bg-2)`, a
+  `--line-soft` border rounded on the top corners, and `12px 14px` padding;
+  `.cal-weekhead` lost its top border + top rounding so the toolbar's
+  bottom border is the divider. Pure CSS/markup — no JS/data/API.
+  `CACHE_VERSION` v68 → v69. See RELEASES 0.42.5.
+- **0.42.4** (2026-05-31) — employee-detail hero
   button alignment + app.css editor-lint cleanups. The `/employees/:id`
   hero's Reset-password (`<button>`) and Go-to-profile (`<a>`) sat 16px
   out of alignment: the bare `<button>` inherits app.css's global
