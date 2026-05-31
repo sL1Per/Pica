@@ -364,7 +364,9 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **50 suites** (+`test-employee-home` in 0.28.0 — employee-home
+- Total: **52 suites** (+`test-user-active` and `test-employee-deactivation`
+  in 0.43.0 — soft-deactivate store/rbac and routes/login-refusal;
+  +`test-employee-home` in 0.28.0 — employee-home
   helpers; +`test-punch-week` in 0.30.0 — clock-page day-grouping/pairing
   helpers; the 0.31.0 corrections restyle, the 0.32.0 manual-time modal,
   and the 0.33.0 employer-today restyle each added no new suite;
@@ -488,4 +490,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.42.6._
+_Last touched in 0.43.0._

@@ -14,6 +14,74 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.43.0] — 2026-06-01 — Profile redesign + soft-deactivate
+
+Two things ship together: the employee **profile editor** is redesigned to a
+wide, two-column card layout, and employee **off-boarding** becomes a reversible
+**soft-deactivate** (with permanent delete gated behind it).
+
+**Profile redesign (`/employees/:id/profile`).** The page widens from the 640px
+form to a 1040px layout. The page title is the person's name with an
+"Editing profile · {Role}" subtitle. Card headings became small uppercase
+section labels ("IDENTITY", "ROLE AT {org}", "CONTACT", "INTERNAL NOTES");
+fields are laid out in a responsive two-column grid (collapses to one column on
+mobile). Inline helpers were added ("Used to sign in." under Username, age beside
+the date of birth, "e.g. Baker, Counter, Owner." under Position). The footer is a
+single action bar: **Deactivate account** (clay, left) · **Cancel** · **Save
+profile** (honey). The sibling `/employees/new` create form adopts the same card
+and grid vocabulary (keeping its role `<select>` — role IS settable at creation).
+
+**Role is a read-only segmented control.** The Employee | Employer toggle shows
+the current role (honey-filled) but is inert — Pica still has no role-change
+endpoint. It is presentational only.
+
+**Soft-deactivate (real backend).** A new `active` flag lives in
+`data/users.json` (absence = active, so every existing record keeps working
+untouched). `usersStore.setActive(id, active)` flips it and stamps/clears a
+`deactivatedAt` timestamp. Enforcement is at the single auth choke point:
+`authenticate()` in `src/auth/rbac.js` now returns null when `active === false`.
+Because Pica's sessions are stateless signed cookies (no server-side session
+store), this rejection revokes **all** of a deactivated user's sessions at once.
+Login (`POST /api/login`) refuses a deactivated account with HTTP 403
+`account_deactivated` rather than issuing a cookie. New employer-only endpoints
+`POST /api/employees/:id/deactivate` and `POST /api/employees/:id/reactivate`
+(audited `employee.deactivated` / `employee.reactivated`; cannot deactivate self).
+`GET /api/employees` and `GET /api/employees/:id` now include `active`.
+
+**Reactivation** happens from the **team list** (`/employees`): deactivated rows
+render greyed with a "Deactivated" pill and an inline **Reactivate** button; they
+sort last and don't inflate the working/break/leave chip counts.
+
+**Permanent delete, gated.** `DELETE /api/employees/:id` is retained but now
+refuses with `not_deactivated` unless the target is already deactivated — a
+deliberate two-step off-boarding. On the profile page the permanent-delete
+**Danger zone** appears only when viewing a deactivated account; for an active
+account the footer shows Deactivate instead.
+
+`CACHE_VERSION` v70 → v71. ~17 new i18n keys per locale. Two new test suites
+(`test-user-active`, `test-employee-deactivation`); total 50 → 52.
+
+### Honest Disclosures (0.43.0)
+
+- The Role control is a read-only segmented **look**. Pica still has no
+  role-change endpoint; it displays the current role and cannot change it.
+- Deactivation is enforced by rejecting in `authenticate()`. Sessions are
+  stateless signed cookies, so this revokes all sessions on the **next**
+  request — a request already mid-handler is not interrupted.
+- Deactivated users still appear in reports/CSV exports and the team list
+  (greyed) by design; their data is preserved, not hidden.
+- Permanent Delete requires deactivation first (two-step). There is no
+  one-click erase of an active employee, and no bulk deactivate.
+- The only "last employer" guard is cannot-deactivate-self / cannot-delete-
+  self; an employer could still deactivate another employer.
+- Not verified in a live browser (operator chose tests-only); covered by
+  `test-user-active`, `test-employee-deactivation`, and the existing suites.
+- The "Role at {org}" label falls back to the generic "Role" when the org
+  name isn't available to the page (e.g. an employee viewing their own
+  profile, where `/api/settings/org` is employer-only and 403s).
+
+---
+
 ## [0.42.6] — 2026-05-31 — Book-leave modal + Preferences palette alignment
 
 Two presentational fixes, no behavior change.

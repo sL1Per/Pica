@@ -5,13 +5,29 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.42.5._
+_Last touched in 0.43.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.42.5 (released 2026-05-31) — leave-calendar layout
+- **Latest version:** 0.43.0 (released 2026-06-01) — **profile redesign +
+  soft-deactivate.** The `/employees/:id/profile` editor was rebuilt to a wide
+  1040px two-column card layout (name title + "Editing profile · {Role}"
+  subtitle, uppercase section labels, inline helpers, footer action bar
+  Deactivate · Cancel · Save; read-only Employee|Employer segmented control —
+  no role-change endpoint exists). Employee off-boarding is now a reversible
+  **soft-deactivate**: an `active` flag in `users.json` (absence = active),
+  rejected at the `authenticate()` choke point (revokes all stateless-cookie
+  sessions), login refused with `account_deactivated`, employer-only
+  deactivate/reactivate POST endpoints, reactivation from the greyed team-list
+  rows. Permanent `DELETE` is retained but **gated behind deactivation**
+  (`not_deactivated` otherwise) and surfaces as the profile Danger zone only
+  for already-deactivated accounts. `/employees/new` adopts the same card/grid
+  vocabulary. `CACHE_VERSION` v70 → v71; +2 test suites (50 → 52). Verified by
+  unit suites (operator chose tests-only — no live browser pass). See
+  RELEASES 0.43.0.
+- **0.42.5** (2026-05-31) — leave-calendar layout
   polish (two presentational fixes). (1) Right rail aligned with the grid,
   not the title: the `<header class="cal-head">` lived inside `.cal-main`,
   so the two-column `.cal-page` grid put the title and the rail's first
@@ -53,7 +69,8 @@ _Last touched in 0.42.5._
   64px so Status/Week/Today align row-to-row regardless of pending
   badge. See RELEASES 0.42.2. 0.42.1: employer home greeting + live
   clock, matching the employee home.))
-- **Test count:** 50 suites (0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
+- **Test count:** 52 suites (0.43.0 added `test-user-active` +
+  `test-employee-deactivation`; 0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
   pre-feature baseline (see notes.md): `test-reports.mjs`
