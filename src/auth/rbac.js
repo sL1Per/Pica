@@ -22,6 +22,7 @@ export function createRBAC({ sessionKey, usersStore, cookieName = 'pica_session'
     if (!session) return null;
     const user = usersStore.findById(session.uid);
     if (!user) return null; // user was deleted — session is stale
+    if (user.active === false) return null; // deactivated — revokes all sessions
 
     // Reject sessions issued before the user's last password change.
     // `passwordChangedAt` is only present on users who have ever

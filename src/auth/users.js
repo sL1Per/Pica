@@ -110,6 +110,7 @@ export function createUsersStore(dataDir) {
         username,
         passwordHash,
         role,
+        active: true,
         createdAt: new Date().toISOString(),
       };
       saveAll({ users: [...data.users, user] });
@@ -129,6 +130,32 @@ export function createUsersStore(dataDir) {
       if (users.length === before) return false;
       saveAll({ users });
       return true;
+    },
+
+    /**
+     * Activate or deactivate a user. Deactivation blocks login and (via the
+     * rbac authenticate() check) invalidates all existing sessions, because
+     * sessions are stateless signed cookies with no server-side store to purge.
+     * Data is untouched. Absence of `active` means active (legacy records).
+     * Throws { code: 'not_found' } if the user doesn't exist. Returns the
+     * updated record without the password hash.
+     */
+    setActive(id, active) {
+      const data = loadAll();
+      const idx = data.users.findIndex((u) => u.id === id);
+      if (idx === -1) {
+        const e = new Error('User not found');
+        e.code = 'not_found';
+        throw e;
+      }
+      const updated = { ...data.users[idx], active: !!active };
+      if (active) delete updated.deactivatedAt;
+      else updated.deactivatedAt = new Date().toISOString();
+      const users = [...data.users];
+      users[idx] = updated;
+      saveAll({ users });
+      const { passwordHash: _omit, ...safe } = updated;
+      return safe;
     },
 
     /**
