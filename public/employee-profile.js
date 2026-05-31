@@ -14,6 +14,7 @@ const employeeId = _segs[_segs.indexOf('employees') + 1];
 
 const $ = (id) => document.getElementById(id);
 const titleEl   = $('page-title');
+const subtitleEl = $('profile-subtitle');
 const backLink  = $('back-link');
 const message   = $('message');
 const avatarEl  = $('avatar');
@@ -24,6 +25,10 @@ const form      = $('profile-form');
 const saveBtn   = $('save-btn');
 const deleteBtn = $('delete-btn');
 const dangerZone= $('danger-zone');
+const deactivateBtn = $('deactivate-btn');
+const cancelLink = $('cancel-link');
+const roleSeg   = $('role-segmented');
+const roleCardLabel = $('role-card-label');
 
 let me;
 let target;
@@ -53,7 +58,7 @@ function renderAvatar(emp, hasPicture) {
   }
 }
 
-function applyPermissions(isEmployer, isSelf) {
+function applyPermissions(isEmployer, isSelf, isActive) {
   // Employees can't edit position or comments on any profile.
   const readonlyForEmployee = ['position', 'comments'];
   if (!isEmployer) {
@@ -69,14 +74,22 @@ function applyPermissions(isEmployer, isSelf) {
       if (hint) hint.hidden = false;
     }
   }
-  // Delete button only for employers, and not on self.
-  dangerZone.hidden = !(isEmployer && !isSelf);
+  const canManage = isEmployer && !isSelf;
+  // Active account → show Deactivate in the footer, hide danger zone.
+  // Deactivated account → hide Deactivate, reveal permanent-delete danger zone.
+  deactivateBtn.hidden = !(canManage && isActive);
+  dangerZone.hidden    = !(canManage && !isActive);
 }
 
 function populateForm(emp) {
   $('username-display').textContent = emp.username;
-  $('role-display').textContent = emp.role;
   titleEl.textContent = emp.profile?.fullName || emp.username;
+  subtitleEl.textContent = t('employee.editingProfile', { role: t('employee.role.' + emp.role) });
+
+  // Segmented role control — mark the current role "on"; control is inert.
+  for (const opt of roleSeg.querySelectorAll('.seg__opt')) {
+    opt.classList.toggle('seg__opt--on', opt.dataset.role === emp.role);
+  }
 
   const p = emp.profile ?? {};
   $('fullName').value     = p.fullName     ?? '';
@@ -106,7 +119,7 @@ function updateAgeDisplay() {
   const monthDiff = today.getMonth() - birth.getMonth();
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
   if (age < 0 || age > 130) { out.hidden = true; return; }
-  out.textContent = `${age} years old`;
+  out.textContent = t('employee.ageYears', { n: age });
   out.hidden = false;
 }
 
@@ -223,8 +236,22 @@ form.addEventListener('submit', async (e) => {
 // Delete
 // ---------------------------------------------------------------------------
 
+deactivateBtn.addEventListener('click', async () => {
+  if (!confirm(t('employee.deactivateConfirm', { name: target.profile?.fullName || target.username }))) return;
+  const res = await fetch(`/api/employees/${employeeId}/deactivate`, {
+    method: 'POST',
+    credentials: 'same-origin',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.ok) {
+    window.location.href = '/employees';
+  } else {
+    showMessage(message, translateError(data.errorCode, data.error || 'Failed'), 'error');
+  }
+});
+
 deleteBtn.addEventListener('click', async () => {
-  if (!confirm(`Delete ${target.username}? This cannot be undone.`)) return;
+  if (!confirm(t('employee.deleteConfirm', { name: target.profile?.fullName || target.username }))) return;
   const res = await fetch(`/api/employees/${employeeId}`, {
     method: 'DELETE',
     credentials: 'same-origin',
@@ -233,7 +260,7 @@ deleteBtn.addEventListener('click', async () => {
   if (res.ok) {
     window.location.href = '/employees';
   } else {
-    showMessage(message, data.error || 'Delete failed', 'error');
+    showMessage(message, translateError(data.errorCode, data.error || 'Delete failed'), 'error');
   }
 });
 
@@ -242,9 +269,10 @@ deleteBtn.addEventListener('click', async () => {
 // ---------------------------------------------------------------------------
 
 (async () => {
-  const [meRes, empRes] = await Promise.all([
+  const [meRes, empRes, orgRes] = await Promise.all([
     fetch('/api/me', { credentials: 'same-origin' }),
     fetch(`/api/employees/${employeeId}`, { credentials: 'same-origin' }),
+    fetch('/api/settings/org', { credentials: 'same-origin' }).catch(() => null),
   ]);
 
   if (meRes.status === 401) { window.location.href = '/login'; return; }
@@ -262,21 +290,33 @@ deleteBtn.addEventListener('click', async () => {
   }
   target = await empRes.json();
 
+  // Role card label: "Role at {org}" when we can read the org name.
+  try {
+    if (orgRes && orgRes.ok) {
+      const org = await orgRes.json();
+      const name = org?.settings?.company?.name;
+      if (name) roleCardLabel.textContent = t('employee.cardRoleAt', { org: name });
+    }
+  } catch { /* keep the generic "Role" label */ }
+
   const isSelf = me.id === target.id;
   const isEmployer = me.role === 'employer';
-  // Back-link target depends on context:
-  //   - employer viewing someone else's profile → that employee's summary
-  //   - employer viewing own profile → home (no summary makes sense for self)
+  const isActive = target.active !== false;
+  // Back-link / cancel target depends on context:
+  //   - employer viewing someone else's profile → that employee's detail
+  //   - employer viewing own profile → home
   //   - non-employer (employee viewing own) → home
   if (isEmployer && !isSelf) {
     backLink.href = `/employees/${encodeURIComponent(employeeId)}`;
+    cancelLink.href = '/employees';
   } else {
     backLink.href = '/';
+    cancelLink.href = '/';
   }
   if (isSelf) backLink.textContent = '← Home';
 
   populateForm(target);
   renderAvatar(target, target.profile?.hasPicture ?? false);
 
-  applyPermissions(isEmployer, isSelf);
+  applyPermissions(isEmployer, isSelf, isActive);
 })();
