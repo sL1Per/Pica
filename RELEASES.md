@@ -14,6 +14,35 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.43.1] — 2026-06-01 — Settings tabs left-alignment fix
+
+CSS-only point fix. The Settings page sidebar tabs (Company, Organization,
+Notifications, Backups, Security) were rendering with their icon+label content
+horizontally staggered — each row sat at a different left offset depending on
+its label length, so the icons did not form a clean vertical column.
+
+**Cause.** The global `button` base rule in `app.css` sets
+`justify-content: center`. `.set-tab` overrode `display: flex` and
+`align-items: center` but never `justify-content`, so each tab inherited
+`center` and centred its `[icon][label]` pair within the full-width button.
+Because the labels differ in length, every row centred to a different x — the
+visible cascade. The buttons themselves were correctly aligned (same x, same
+width); only their inner content drifted.
+
+**Fix.** Added `justify-content: flex-start;` to `.set-tab` in `settings.css`.
+All five tabs now hang flush-left and share one icon column. Verified in the
+live browser: every tab's icon now reports the same `getBoundingClientRect().x`.
+
+`CACHE_VERSION` v72 → v73 (`settings.css` is a pre-cached SW asset).
+
+**Honest Disclosures.** This is a one-line cosmetic CSS change; no markup,
+JS, backend, or behaviour changed. No automated test guards tab content
+alignment — the fix was verified visually and by reading computed
+`justify-content`/bounding boxes in the running app, not by a new suite. The
+mobile chip row (≤ 760px) was never affected and is untouched.
+
+---
+
 ## [0.43.0] — 2026-06-01 — Profile redesign + soft-deactivate
 
 Two things ship together: the employee **profile editor** is redesigned to a

@@ -5,13 +5,19 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.43.0._
+_Last touched in 0.43.1._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.43.0 (released 2026-06-01) — **profile redesign +
+- **Latest version:** 0.43.1 (released 2026-06-01) — **Settings tabs
+  left-alignment fix.** CSS-only: `.set-tab` inherited the global button
+  `justify-content: center`, centring each tab's icon+label so rows staggered
+  by label length. Added `justify-content: flex-start` in `settings.css`; all
+  five tabs now share one icon column. Verified live in-browser (equal
+  `getBoundingClientRect().x`). `CACHE_VERSION` v72 → v73. See RELEASES 0.43.1.
+- **0.43.0** (2026-06-01) — **profile redesign +
   soft-deactivate.** The `/employees/:id/profile` editor was rebuilt to a wide
   1040px two-column card layout (name title + "Editing profile · {Role}"
   subtitle, uppercase section labels, inline helpers, footer action bar

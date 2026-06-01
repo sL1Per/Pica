@@ -45,6 +45,10 @@
 .set-tab {
   display: flex;
   align-items: center;
+  /* Override the global button rule's justify-content:center (app.css),
+     which would centre each row's icon+label and stagger them by label
+     length. Tabs must hang flush-left so icons share one column. */
+  justify-content: flex-start;
   gap: 12px;
   padding: 11px 12px;
   border-radius: 9px;
