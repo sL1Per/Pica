@@ -249,7 +249,10 @@ export default {
   'punch.todayBreak':    'break {dur}',
   'punch.tabToday':       'Today',
   'punch.tabWeek':        'This week',
-  'punch.tabCorrections': 'My corrections',
+  'punch.tabCorrections': 'Corrections',
+  'punch.tabManual':     'MANUAL',
+  'punch.weekSearchPh':  'Search address or comment…',
+  'punch.weekPersonAll': 'All employees',
   'punch.forgotShort':    '+ Forgot to clock?',
   'punch.workingNow':     'Working now',
   'punch.notClockedIn':   'Not clocked in',
@@ -635,6 +638,7 @@ export default {
   'manualTime.filed':          'Your manual time entry was submitted for approval.',
 
   // Detail page.
+  'correction.modalTitle': 'Correction',
   'correction.backToList':  '← Back to corrections',
   'correction.title':       'Correction',
   'correction.titleFor':    'Correction — {name}',

@@ -249,7 +249,10 @@ export default {
   'punch.todayBreak':    'pausa {dur}',
   'punch.tabToday':       'Hoje',
   'punch.tabWeek':        'Esta semana',
-  'punch.tabCorrections': 'As minhas correções',
+  'punch.tabCorrections': 'Correções',
+  'punch.tabManual':     'MANUAL',
+  'punch.weekSearchPh':  'Procurar morada ou comentário…',
+  'punch.weekPersonAll': 'Todos os colaboradores',
   'punch.forgotShort':    '+ Esqueceu-se de marcar?',
   'punch.workingNow':     'A trabalhar',
   'punch.notClockedIn':   'Sem registo',
@@ -631,6 +634,7 @@ export default {
   'manualTime.filed':          'A sua marcação manual foi submetida para aprovação.',
 
   // Detail page.
+  'correction.modalTitle': 'Correção',
   'correction.backToList':  '← Voltar às correções',
   'correction.title':       'Correção',
   'correction.titleFor':    'Correção — {name}',
