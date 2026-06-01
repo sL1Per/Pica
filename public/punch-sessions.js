@@ -120,12 +120,18 @@ export function buildTimeRow(p, kind, addrSink) {
   }
   row.appendChild(mid);
 
-  // Origin badge — all current punches are auto-recorded by the clock; the
-  // data layer carries no manual flag yet (manual entries arrive via
-  // corrections, a later plan). Show the auto badge for clarity.
+  // Origin badge — correction-materialized punches carry a clientId of
+  // `correction:<id>:in|out`; isManual() detects that prefix and renders
+  // the honey-tinted MANUAL badge. All other punches (auto clock events)
+  // show the plain "Auto" badge.
   const origin = document.createElement('span');
   origin.className = 'sess__origin';
-  origin.textContent = t('punch.originAuto');
+  if (isManual(p.clientId)) {
+    origin.classList.add('sess__origin--manual');
+    origin.textContent = t('punch.tabManual');   // "MANUAL"
+  } else {
+    origin.textContent = t('punch.originAuto');   // "Auto"
+  }
   row.appendChild(origin);
 
   return row;
