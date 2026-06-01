@@ -6,6 +6,7 @@ import {
   formatTime, relative, formatElapsed, buildSessCard, totalWorkedMs,
   totalBreakMs, formatDuration, groupPunchesByDay, pairDay,
 } from '/punch-sessions.js';
+import { renderEmployerToday } from '/punch-today-employer.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
@@ -31,7 +32,6 @@ const outBtn      = $('clock-out-btn');
 const messageEl   = $('message');
 const listEl      = $('today-list');
 const weekListEl  = $('week-list');
-const allLink     = $('all-today-link');
 const mapCard     = $('map-card');
 const mapTile     = $('map-tile');
 const mapMeta     = $('map-meta');
@@ -42,6 +42,14 @@ let me = null;
 let lastFix = null;     // most recent {lat, lng, accuracy, ts} from a real geolocation reading
 let openSinceTs = null; // ISO ts of the open "in" punch while working (for the live readout)
 let clockTimer = null;  // setInterval handle driving the hero's live elapsed / wall clock
+
+// Cached employees list — fetched once on first employer Today render or picker
+// populate, then reused by Part B's person-picker so we don't double-fetch.
+let employeesCache = null;
+
+// Most recently loaded week punches — stored so applyWeekFilter() can re-filter
+// at the DOM level without re-fetching.
+let weekPunches = [];
 
 // -------- sessionStorage cache --------------------------------------------
 // Cache the last successful fix per browser session so navigating between
@@ -465,11 +473,41 @@ async function refresh() {
   paintStatus(status);
 
   const today = await todayRes.json();
-  // For an employer, /today returns all users — on this page we only care
-  // about the current user. Filter client-side.
-  const mine = today.punches.filter((p) => p.employeeId === me.id);
-  renderList(mine);
-  paintSubLine(status, mine);
+
+  // The clock hero (paintStatus / paintSubLine) runs for both roles.
+  // Today panel rendering diverges: employer shows per-employee cards;
+  // employee shows their own session list.
+  if (me && me.role === 'employer') {
+    // Hide the employee-specific elements; show the grouped cards container.
+    listEl.hidden = true;
+    document.getElementById('today-total').hidden = true;
+    document.getElementById('punch-reminder').hidden = true;
+    document.getElementById('employer-today-groups').hidden = false;
+
+    // Fetch employees once and cache for the person-picker in Part B.
+    if (!employeesCache) {
+      try {
+        const empRes = await fetch('/api/employees', { credentials: 'same-origin' });
+        if (empRes.ok) {
+          const empData = await empRes.json();
+          employeesCache = empData.employees || [];
+        }
+      } catch { /* non-fatal — employer cards render without display names */ }
+    }
+    const nameById = new Map(
+      (employeesCache || []).map((e) => [e.id, e.fullName || e.username])
+    );
+    renderEmployerToday(document.getElementById('employer-today-groups'), today.punches, nameById);
+
+    // paintSubLine still uses the employer's own punches for the hero sub-line.
+    const mine = today.punches.filter((p) => p.employeeId === me.id);
+    paintSubLine(status, mine);
+  } else {
+    // Employee: existing behavior — filter to self, render session list.
+    const mine = today.punches.filter((p) => p.employeeId === me.id);
+    renderList(mine);
+    paintSubLine(status, mine);
+  }
 }
 
 /**
@@ -608,7 +646,12 @@ function ymdOf(d) { return d.toISOString().slice(0, 10); }
  * Uses UTC-day boundaries to stay consistent with the reports/home views and
  * the `groupPunchesByDay` helper (which slices the ISO string at UTC).
  */
-async function loadWeek() {
+async function loadWeek(empId) {
+  // Default to the current user's id when not specified (employee path, or
+  // employer looking at their own clock). Task 8's router passes an explicit
+  // empId when the person-picker selects a different employee.
+  const targetId = empId !== undefined ? empId : me.id;
+
   // Monday of this week (UTC). getUTCDay(): 0=Sun..6=Sat → days since Monday.
   const now = new Date();
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -627,7 +670,7 @@ async function loadWeek() {
   let punches = [];
   try {
     for (const { y, m } of months.values()) {
-      const res = await fetch(`/api/punches/by-employee/${me.id}?year=${y}&month=${pad2(m)}`, { credentials: 'same-origin' });
+      const res = await fetch(`/api/punches/by-employee/${targetId}?year=${y}&month=${pad2(m)}`, { credentials: 'same-origin' });
       if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) continue;
       const data = await res.json();
@@ -642,14 +685,17 @@ async function loadWeek() {
     return;
   }
 
-  // Keep only this employee's punches within the Mon–Sun window. The IN/OUT
-  // pairing is handled per day by pairDay.
-  const mine = punches.filter((p) => p.employeeId === me.id);
-  const inWeek = mine.filter((p) => {
+  // Keep only the target employee's punches within the Mon–Sun window.
+  // The by-employee endpoint may return punches for other employees if the
+  // employer has access, so filter to targetId to be safe.
+  const empPunches = punches.filter((p) => p.employeeId === targetId);
+  const inWeek = empPunches.filter((p) => {
     const ymd = ymdOf(new Date(p.ts));
     return ymd >= weekStart && ymd <= weekEnd;
   });
 
+  // Store for DOM-level filtering by applyWeekFilter().
+  weekPunches = inWeek;
   renderWeek(inWeek);
 }
 
@@ -703,6 +749,39 @@ function renderWeek(punches) {
   }
 }
 
+// -------- This-week search + person-picker ----------------------------------
+
+/**
+ * Filter the rendered #week-list cards by the current #week-search value.
+ * Works at the DOM level after renderWeek() has built the markup — avoids
+ * re-doing async reverse-geocoding on every keystroke. A session card (.sess)
+ * is hidden when its full textContent (lowercased) doesn't include the query.
+ * An empty query restores all cards to visible.
+ */
+function applyWeekFilter() {
+  const query = document.getElementById('week-search').value.trim().toLowerCase();
+  // .day-group li elements that are .sess cards
+  const cards = weekListEl.querySelectorAll('.sess');
+  cards.forEach((card) => {
+    card.hidden = query.length > 0 && !card.textContent.toLowerCase().includes(query);
+  });
+}
+
+/**
+ * Return the employee id the This-week panel should load.
+ * For employers: the value of the visible person-picker (if populated).
+ * For employees (picker always hidden): the current user's id.
+ * Called by Task 8's tab router when it switches to the week panel.
+ */
+function weekPersonId() {
+  const picker = document.getElementById('week-person');
+  if (picker && !picker.hidden && picker.value) return picker.value;
+  return me ? me.id : null;
+}
+
+// Wire the search input — runs filter on every keystroke.
+document.getElementById('week-search').addEventListener('input', applyWeekFilter);
+
 // -------- Manual-time modal wiring ------------------------------------------
 // Both .punch-forgot and .punch-reminder are anchor fallbacks to
 // /corrections/new. When JS is running we intercept and open the modal
@@ -728,7 +807,36 @@ document.querySelectorAll('.punch-forgot, .punch-reminder').forEach((anchor) => 
   const meRes = await fetch('/api/me', { credentials: 'same-origin' });
   if (meRes.status === 401) { window.location.href = '/login'; return; }
   me = await meRes.json();
-  if (me.role === 'employer') allLink.hidden = false;
+
+  // Employer: populate the This-week person-picker and un-hide it.
+  // employeesCache may already be set if refresh() ran first, but bootstrap
+  // order means we populate here explicitly so the picker is ready before
+  // Task 8's router can call loadWeek(weekPersonId()).
+  if (me.role === 'employer') {
+    if (!employeesCache) {
+      try {
+        const empRes = await fetch('/api/employees', { credentials: 'same-origin' });
+        if (empRes.ok) {
+          const empData = await empRes.json();
+          employeesCache = empData.employees || [];
+        }
+      } catch { /* non-fatal */ }
+    }
+    const picker = document.getElementById('week-person');
+    if (picker && employeesCache && employeesCache.length > 0) {
+      for (const emp of employeesCache) {
+        const opt = document.createElement('option');
+        opt.value = emp.id;
+        opt.textContent = emp.fullName || emp.username;
+        picker.appendChild(opt);
+      }
+      picker.hidden = false;
+      picker.addEventListener('change', async () => {
+        await loadWeek(picker.value);
+        applyWeekFilter();
+      });
+    }
+  }
 
   // Fetch the daily-hours target before refresh() so the today-total
   // renders with "/ Xh" on first paint instead of plain hours.

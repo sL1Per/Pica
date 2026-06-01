@@ -1066,3 +1066,261 @@
     justify-content: flex-start;
   }
 }
+
+/* ============================================================================
+   Employer "everyone today" cards — ported from punches-today.css (0.33.0)
+   Tokens: --paper, --paper-2, --ink, --ink-2, --muted, --sage, --sage-soft,
+           --line, --line-soft, --font-mono, --font-serif.
+   NOTE: .sess* rules live above; these .ptoday-* rules extend the layout for
+   the employer grouped view rendered by punch-today-employer.js.
+   ============================================================================ */
+
+/* ---------- Page wrapper --------------------------------------------------- */
+
+/*
+ * Vertical stack of per-employee cards. Gap chosen to match the spacing
+ * rhythm used across M15 card pages (corrections.css .corr-page uses 24px).
+ */
+.ptoday {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- Per-employee card ---------------------------------------------- */
+
+/*
+ * 16px radius matches the clock-hero and corr-card shapes used across M15.
+ * overflow:hidden lets the --paper-2 head background meet the rounded border
+ * without a gap at the top corners.
+ */
+.ptoday-emp {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* ---------- Person header -------------------------------------------------- */
+
+/*
+ * Ported from pStyles.personHead in the design handoff (punches.jsx ~L257-261):
+ * flex row, center-aligned, 12px gap, 14px 18px padding, paper-2 bg,
+ * line-soft bottom border.
+ */
+.ptoday-emp__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+/* Name — pStyles.personName: 600 weight, 14px, --ink */
+.ptoday-emp__name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+/* Role sub-label — pStyles.personRole: 12px, --muted */
+.ptoday-emp__role {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/*
+ * Stats aside — pStyles.personStats: pushed to the right (margin-left:auto),
+ * flex row with 14px gap, mono font for tabular readout, 13px, --ink.
+ * Contains worked · break totals rendered by JS.
+ */
+.ptoday-emp__stats {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Status pill ---------------------------------------------------- */
+
+/*
+ * Ported from pStyles.statusPill (punches.jsx ~L151-158).
+ * Small inline-flex pill with a leading dot. Two states: working / done.
+ * Pulse animation reuses the @keyframes pulse already defined above.
+ */
+.ptoday-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--paper-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  width: fit-content;
+  white-space: nowrap;
+}
+
+/* Working state: sage-soft background, sage text and border */
+.ptoday-status--working {
+  background: var(--sage-soft);
+  color: var(--sage);
+  border-color: var(--sage);
+}
+
+/* Done / clocked-out state: neutral muted look */
+.ptoday-status--done {
+  background: var(--paper-2);
+  color: var(--muted);
+  border-color: var(--line);
+}
+
+/* Leading dot inside the pill */
+.ptoday-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/*
+ * Pulsing dot for the working state.
+ * Reuses the @keyframes pulse defined above (sage glow ring).
+ * Only applied on --working so done dots are static.
+ */
+.ptoday-status--working .ptoday-status__dot {
+  background: var(--sage);
+  animation: pulse 2s infinite;
+}
+
+/* ---------- Session rows wrapper ------------------------------------------ */
+
+/*
+ * Wraps the .sess rows (defined above) inside a card.
+ * Padding gives the rows visual breathing room under the person head.
+ * No bottom padding needed — .sess has its own margin-bottom: 10px.
+ */
+.ptoday-sessions {
+  padding: 12px 14px 4px;
+}
+
+/* ---------- Empty state ---------------------------------------------------- */
+
+/*
+ * Shown when no employee has clocked in today.
+ * Matches the style of .punch-empty above and .corr-empty in corrections.css
+ * — centered, muted, serif title for the heading.
+ */
+.ptoday-empty {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.ptoday-empty__title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+/* ---------- Mobile ≤ 760px (ptoday-* rules) -------------------------------- */
+
+@media (max-width: 760px) {
+  /*
+   * Stack the person head so name/role sit above the stats row.
+   * Stats lose margin-left:auto (meaningless in a column layout) and
+   * instead sit flush to the left, matching the name/role above them.
+   */
+  .ptoday-emp__head {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  /* Push stats to its own row below name+role+pill */
+  .ptoday-emp__stats {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .ptoday-sessions {
+    padding: 10px 10px 2px;
+  }
+}
+
+/* ============================================================================
+   This-week toolbar — search box + employer person-picker (Task 6)
+   Tokens: --paper, --ink, --ink-2, --line, --line-soft, --muted, --honey.
+   ============================================================================ */
+
+/* Toolbar row: search and picker side-by-side with a gap, 16px bottom margin. */
+.week-toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+/*
+ * Search box — mirrors the app.css input[type="search"] canonical look
+ * (--paper bg, --line border, --ink text, 36px height, 8px radius).
+ * Grows to fill available space; min-width prevents it from collapsing
+ * when the person-picker is also visible.
+ */
+.week-search {
+  flex: 1 1 0;
+  min-width: 120px;
+  height: 36px;
+  padding: 0 12px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.week-search::placeholder {
+  color: var(--muted);
+}
+
+.week-search:focus {
+  outline: 2px solid var(--honey);
+  outline-offset: 1px;
+  border-color: var(--honey);
+}
+
+/*
+ * Person picker — a normal <select> that matches the search field height.
+ * flex: 0 1 auto keeps it from growing past its natural content width.
+ */
+.week-person {
+  flex: 0 1 auto;
+  height: 36px;
+  padding: 0 8px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.week-person:focus {
+  outline: 2px solid var(--honey);
+  outline-offset: 1px;
+  border-color: var(--honey);
+}
