@@ -72,10 +72,12 @@
 /* Footer action bar. */
 .prof-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; padding-top: 4px; }
 .prof-actions__right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-.prof-btn { height: 46px; padding: 0 22px; background: var(--honey); color: #FBF6EC; border: none; border-radius: 10px; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: opacity .12s; }
+/* margin-top:0 resets app.css's global `button { margin-top: var(--gap-4) }`,
+   which otherwise pushes the bare <button>s 16px below the Cancel <a>. */
+.prof-btn { height: 46px; margin-top: 0; padding: 0 22px; background: var(--honey); color: #FBF6EC; border: none; border-radius: 10px; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: opacity .12s; }
 .prof-btn--flash { background: var(--sage); }
 .prof-btn-cancel { height: 46px; padding: 0 20px; display: inline-flex; align-items: center; background: var(--paper); color: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; font-weight: 600; font-size: 14px; }
-.prof-btn-danger { height: 46px; padding: 0 18px; background: transparent; color: var(--clay); border: 1px solid var(--clay); border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; }
+.prof-btn-danger { height: 46px; margin-top: 0; padding: 0 18px; background: transparent; color: var(--clay); border: 1px solid var(--clay); border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; }
 
 /* Danger zone (hard delete, deactivated accounts only). */
 .danger-zone { border: 1px solid var(--clay); border-radius: 16px; padding: 22px 28px; margin-top: 20px; }

@@ -58,7 +58,11 @@ deliberate two-step off-boarding. On the profile page the permanent-delete
 **Danger zone** appears only when viewing a deactivated account; for an active
 account the footer shows Deactivate instead.
 
-`CACHE_VERSION` v70 → v71. ~17 new i18n keys per locale. Two new test suites
+`CACHE_VERSION` v70 → v71 → **v72** (the v72 bump is a footer-button alignment
+follow-up: the bare `<button>` Save/Deactivate inherit app.css's global
+`button { margin-top: var(--gap-4) }`, which pushed them 16px below the Cancel
+`<a>` in the flex action bar; `.prof-btn` / `.prof-btn-danger` now reset
+`margin-top: 0`). ~17 new i18n keys per locale. Two new test suites
 (`test-user-active`, `test-employee-deactivation`); total 50 → 52.
 
 ### Honest Disclosures (0.43.0)
