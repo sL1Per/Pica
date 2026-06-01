@@ -29,6 +29,7 @@
   <link rel="stylesheet" href="/punch.css">
   <link rel="stylesheet" href="/modal.css">
   <link rel="stylesheet" href="/manual-time-modal.css">
+  <link rel="stylesheet" href="/correction-detail-modal.css">
 </head>
 <body>
   <main class="container container--wide">
@@ -99,20 +100,23 @@
       </div>
     </section>
 
-    <!-- Sub-tab strip: Today/This-week are panels here; My corrections is a route -->
     <nav class="punch-tabs" aria-label="Punch views">
-      <button type="button" class="punch-tab punch-tab--active" id="tab-today"  data-i18n="punch.tabToday">Today</button>
-      <button type="button" class="punch-tab"                   id="tab-week"   data-i18n="punch.tabWeek">This week</button>
-      <a class="punch-tab" href="/corrections" data-i18n="punch.tabCorrections">My corrections</a>
+      <button type="button" class="punch-tab punch-tab--active" id="tab-today"       data-i18n="punch.tabToday">Today</button>
+      <button type="button" class="punch-tab"                   id="tab-corrections"
+              data-i18n="punch.tabCorrections">Corrections<span id="corr-tab-count" class="punch-tab__count" hidden></span></button>
+      <button type="button" class="punch-tab"                   id="tab-week"         data-i18n="punch.tabWeek">This week</button>
     </nav>
 
     <section id="panel-today">
+      <!-- Employee: own session cards (#today-list). Employer: per-employee
+           groups (#employer-today-groups). punch.js shows exactly one. -->
       <div class="today-section__head">
         <h2 class="sr-only" data-i18n="punch.title">Today</h2>
         <span id="today-total" class="today-total" hidden></span>
       </div>
       <ul id="today-list" class="punch-list"><li class="subtle" data-i18n="punch.loading">Loading…</li></ul>
-      <a class="punch-reminder" href="/corrections/new">
+      <div id="employer-today-groups" hidden></div>
+      <a class="punch-reminder" id="punch-reminder" href="/corrections/new">
         <span class="punch-reminder__icon" aria-hidden="true">+</span>
         <span class="punch-reminder__text">
           <span class="punch-reminder__title" data-i18n="punch.reminderTitle">Missing a punch?</span>
@@ -121,13 +125,28 @@
       </a>
     </section>
 
-    <section id="panel-week" hidden>
-      <ul id="week-list" class="punch-list"><li class="subtle" data-i18n="punch.loading">Loading…</li></ul>
+    <section id="panel-corrections" hidden>
+      <div class="corr-toolbar">
+        <span id="pending-tag" class="corr-pending-tag" hidden></span>
+        <a class="btn-primary" id="new-correction" href="/corrections/new" data-i18n="corrections.newButton">Register manual time</a>
+      </div>
+      <div class="card">
+        <h2 id="list-heading" class="corr-card__title" data-i18n="corrections.pendingHeading.own">Pending corrections</h2>
+        <ul id="pending-list" class="corr-list"></ul>
+      </div>
+      <div class="card">
+        <h2 class="corr-card__title" data-i18n="corrections.historyHeading">History</h2>
+        <ul id="history-list" class="corr-list"></ul>
+      </div>
     </section>
 
-    <p class="subtle center mt-3">
-      <a href="/punches/today" id="all-today-link" hidden data-i18n="punch.seeAllToday">See everyone’s punches today →</a>
-    </p>
+    <section id="panel-week" hidden>
+      <div class="week-toolbar">
+        <input type="search" id="week-search" class="week-search" data-i18n-attr="placeholder:punch.weekSearchPh" placeholder="Search address or comment…">
+        <select id="week-person" class="week-person" hidden></select>
+      </div>
+      <ul id="week-list" class="punch-list"><li class="subtle" data-i18n="punch.loading">Loading…</li></ul>
+    </section>
   </main>
 
   <script type="module" src="/punch.js"></script>
