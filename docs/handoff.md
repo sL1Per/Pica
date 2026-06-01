@@ -5,13 +5,32 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.43.1._
+_Last touched in 0.43.2._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.43.1 (released 2026-06-01) — **Settings tabs
+- **Latest version:** 0.43.2 (released 2026-06-01) — **Avatars on
+  notifications + leave pending lists.** The notifications bell dropdown, the
+  Leaves **Pending approval** list, and the calendar **Pending requests** rail
+  now show the requester's round, hue-tinted avatar (uploaded picture or
+  coloured initials), matching the dashboard's "Waiting on you" card.
+  `GET /api/leaves` + `GET /api/corrections` now carry a per-record
+  `hasPicture` boolean (best-effort disk stat in each route's `enrich()`).
+  Topbar hue is applied via `data-hue` + `style.setProperty` (inline
+  `style` attrs are CSP-blocked by `style-src 'self'`). **Avatars unified
+  app-wide:** all pages now derive colour from the additive `(h+charCode)`
+  hue seeded on `fullName||username`, and initials from the first two words —
+  topbar's `hueFor` (was `h*31`, seeded on `user.id`) and `initialsFor` (was
+  first+last word) were brought into line, so a person looks identical on the
+  user-tile, lists, dashboard, leaves, calendar, and profile. Helpers remain
+  per-script copies (no shared module); the `.cal-pop__av` day-popover badge
+  is deliberately left as a square neutral initials badge. `CACHE_VERSION`
+  v73 → v74. Verified by unit suites (leaves/corrections/render/
+  security-headers/frontend-imports/sw-precache all green); **live in-browser
+  pass still pending** (operator to verify). See RELEASES 0.43.2.
+- **0.43.1** (2026-06-01) — **Settings tabs
   left-alignment fix.** CSS-only: `.set-tab` inherited the global button
   `justify-content: center`, centring each tab's icon+label so rows staggered
   by label length. Added `justify-content: flex-start` in `settings.css`; all

@@ -233,6 +233,13 @@
 /* Employer pending card rows + inline actions */
 .cal-pend__row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line-soft); }
 .cal-pend__row:first-of-type { border-top: none; }
+.cal-pend__av {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: 13px; font-weight: 600;
+  background: oklch(0.86 0.06 var(--hue, 90)); color: oklch(0.34 0.08 var(--hue, 90));
+}
+.cal-pend__av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .cal-pend__body { flex: 1; min-width: 0; }
 .cal-pend__name { font-weight: 500; font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-pend__meta { font-size: 11.5px; color: var(--muted); font-family: var(--font-mono); }

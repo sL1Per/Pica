@@ -62,10 +62,14 @@ const NAV_EMPLOYER = [
   { href: '/punch',            labelKey: 'nav.punches',  icon: 'clock' },
   { href: '/reports',          labelKey: 'nav.reports',  icon: 'chart' },
 ];
-// Deterministic avatar hue (oklch) from a string — matches the design's hue scheme.
+// Deterministic avatar hue (oklch) from a string. The additive (h + charCode)
+// algorithm is shared verbatim with employees.js / employee.js / index.js /
+// leaves.js / leaves-calendar.js / employee-profile.js so a given person gets
+// the same avatar colour on every page (user-tile, notifications, team list,
+// dashboard, leaves, calendar, profile). Keep these copies identical.
 function hueFor(s) {
   let h = 0; const str = String(s || '');
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
+  for (const ch of str) h = (h + ch.charCodeAt(0)) % 360;
   return h;
 }
 
@@ -75,12 +79,27 @@ function escapeHtml(s) {
   }[c]));
 }
 
-/** Returns initials for a fallback avatar, 1–2 chars. */
+// Initials for a fallback avatar — first letter of the first two words, to
+// match the shared scheme in employees.js / index.js / leaves.js / etc.
 function initialsFor(name) {
-  if (!name) return '?';
-  const parts = String(name).trim().split(/\s+/);
-  if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? '?';
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?';
+}
+
+/**
+ * Avatar HTML for a notification row: uploaded picture, else hue-tinted
+ * initials. The hue rides on `data-hue` (not an inline `style` attribute,
+ * which CSP `style-src 'self'` blocks) and is applied in `renderNotifs`.
+ */
+function notifAvatar(name, id, hasPicture) {
+  const ini = escapeHtml(initialsFor(name));
+  const hue = hueFor(name);
+  // Picture wins; initials are the fallback. `data-hue`/`data-initials` ride on
+  // the span (inline `style` attrs are CSP-blocked) so renderNotifs can tint it
+  // and rebuild the initials if the picture fails to load.
+  if (hasPicture && id) {
+    return `<span class="appshell__notif-av" data-hue="${hue}" data-initials="${ini}"><img src="/api/employees/${encodeURIComponent(id)}/picture" alt=""></span>`;
+  }
+  return `<span class="appshell__notif-av" data-hue="${hue}">${ini}</span>`;
 }
 
 /**
@@ -188,7 +207,9 @@ function buildBar({ user, branding, hasOwnPicture }) {
   const allHrefs = items.map((x) => x.href).concat(user.role === 'employer' ? ['/settings'] : []);
   const name = branding.name || 'Pica';
   const sub = escapeHtml(t('app.suffix'));
-  const hue = hueFor(user.id || user.username);
+  // Seed from the display name (not the id) so the user-tile avatar colour
+  // matches this same person's avatar in the team list / dashboard / etc.
+  const hue = hueFor(user.fullName || user.username);
   const displayName = escapeHtml(user.fullName || user.username);
   const role = escapeHtml(user.role);
 
@@ -377,21 +398,32 @@ function wireEvents({ sidebar, mobilebar, bottomnav, menu, notif, scrim, user })
     const isEmployer = user.role === 'employer';
     const rows = [];
     for (const l of leaves) {
+      const name = l.fullName || l.username || '';
       const label = isEmployer
-        ? t('notifications.leavePending', { name: l.fullName || l.username || '', type: t('leaves.type.' + l.type), when: l.start })
+        ? t('notifications.leavePending', { name, type: t('leaves.type.' + l.type), when: l.start })
         : t('notifications.leaveMine', { type: t('leaves.type.' + l.type), when: l.start });
-      rows.push(`<a class="appshell__notif-item" role="menuitem" href="/leaves/${encodeURIComponent(l.id)}">${escapeHtml(label)}</a>`);
+      rows.push(`<a class="appshell__notif-item" role="menuitem" href="/leaves/${encodeURIComponent(l.id)}">${notifAvatar(name, l.employeeId, l.hasPicture)}<span class="appshell__notif-text">${escapeHtml(label)}</span></a>`);
     }
     for (const c of corrs) {
       // c.start is an ISO datetime; slice to YYYY-MM-DD to match the leave
       // format and avoid new Date() UTC-midnight day-shift.
       const when = (c.date || c.start || '').slice(0, 10);
+      const name = c.fullName || c.username || '';
       const label = isEmployer
-        ? t('notifications.correctionPending', { name: c.fullName || c.username || '', when })
+        ? t('notifications.correctionPending', { name, when })
         : t('notifications.correctionMine', { when });
-      rows.push(`<a class="appshell__notif-item" role="menuitem" href="/corrections/${encodeURIComponent(c.id)}">${escapeHtml(label)}</a>`);
+      rows.push(`<a class="appshell__notif-item" role="menuitem" href="/corrections/${encodeURIComponent(c.id)}">${notifAvatar(name, c.employeeId, c.hasPicture)}<span class="appshell__notif-text">${escapeHtml(label)}</span></a>`);
     }
     notifList.innerHTML = rows.join('');
+    // Apply hue via DOM property — CSP `style-src 'self'` blocks inline
+    // `style` attributes, so we can't set it in the innerHTML string.
+    notifList.querySelectorAll('.appshell__notif-av[data-hue]').forEach((av) => {
+      av.style.setProperty('--hue', av.dataset.hue);
+    });
+    // Picture fails to load → fall back to the tinted initials.
+    notifList.querySelectorAll('.appshell__notif-av img').forEach((img) => {
+      img.addEventListener('error', () => { img.parentElement.textContent = img.parentElement.dataset.initials || '?'; });
+    });
   }
   async function loadNotifs() {
     let leaves = [], corrs = [];

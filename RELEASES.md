@@ -14,6 +14,90 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.43.2] — 2026-06-01 — Avatars on notifications + leave pending lists
+
+The notifications bell dropdown, the Leaves page **Pending approval** list, and
+the Leave calendar **Pending requests** rail showed the requester's name as
+plain text with no avatar — unlike the dashboard's "Waiting on you" card, which
+renders a round, hue-tinted avatar (uploaded picture, or coloured initials).
+This release brings those three surfaces in line with the dashboard.
+
+**Backend.** `GET /api/leaves`, `GET /api/corrections`, and the single-record
+reads now carry a `hasPicture` boolean per record (added to the `enrich()`
+helper in both routes). It's a best-effort `employeesStore.hasPicture()` disk
+stat per record — acceptable at the project's ≤ 50-employee scale and consistent
+with the existing "decrypt every profile to render the list" posture. No new
+endpoints; the picture itself is still streamed by the existing owner-or-employer
+`GET /api/employees/:id/picture`.
+
+**Frontend.**
+- `topbar.js` notification rows gain an avatar (`notifAvatar`). The hue rides on
+  a `data-hue` attribute and is applied via `el.style.setProperty` after
+  `innerHTML` — an inline `style="--hue:…"` attribute would be blocked by the
+  `style-src 'self'` CSP, which has no `'unsafe-inline'`.
+- `leaves.js` pending/all-requests rows (the employer's `showName` rows) prepend
+  a `.lv-row__av`. Employee history rows (no name shown) are unchanged.
+- `leaves-calendar.js` pending-request rows prepend a `.cal-pend__av`.
+
+**Picture takes priority; initials are strictly the fallback.** Every one of
+these avatars renders the uploaded picture when the record's `hasPicture` is
+true, and the hue-tinted initials only when it isn't. A picture that *fails to
+load* (e.g. deleted between the list fetch and the image request) now degrades
+to the tinted initials via an `img` `error` handler, rather than leaving a
+broken-image box — so "no usable picture → initials" holds in every case.
+(Operator note: the `hasPicture` field is new, so a running server must be
+restarted to serve it; until then the frontend correctly falls back to
+initials because the field is absent.)
+
+**Uniform avatars across all pages.** The whole app now derives avatar colour
+and initials identically, so a given person looks the same everywhere
+(user-tile, notifications, team list, dashboard, leaves, calendar, employee
+detail, profile editor):
+- **Hue:** every copy uses the additive `(h + charCode)` algorithm. The top-bar
+  `hueFor`, previously the lone outlier on `h*31`, was switched to additive to
+  match `employees.js` / `employee.js` / `index.js` / `leaves.js` /
+  `leaves-calendar.js` / `employee-profile.js`.
+- **Hue seed:** the user-tile now seeds from the display name
+  (`fullName || username`) instead of `user.id`, so *your* user-tile colour
+  equals *your* colour in any row avatar. (All other avatars already seeded on
+  the name.)
+- **Initials:** the top-bar `initialsFor` now takes the first letter of the
+  first two words (matching everywhere else) instead of first + last word — so
+  e.g. "Carlos Alberto Martins" is **CA** everywhere, not **CM** on the
+  user-tile and **CA** in lists.
+
+The now-redundant `rowHue` helper added during the first cut of this release was
+removed; notification rows call the unified `hueFor`.
+
+CACHE_VERSION v73 → v74 (`topbar.js` / `topbar.css` are pre-cached shell assets).
+
+**Honest Disclosures.**
+- **Six duplicated helper copies, not one shared module.** The `hue` and
+  `initials` functions are now byte-identical across the page scripts, but
+  they're still *copies* — the project's per-page-script convention (and the
+  inline-reimplementation pattern its Node tests rely on) was kept rather than
+  introducing a shared `/avatar.js` module. Identical today; a comment on each
+  `hueFor`/`hue` asks future editors to keep them in sync. Drift is possible if
+  that's ignored.
+- **Calendar day-popover + "Out today" badges unchanged.** The `.cal-pop__av`
+  (day-detail popover) stays a square, neutral-background, initials-only badge
+  by design — "uniform" here means the round hue avatars share one colour/
+  initials scheme, not that every avatar-like element was redrawn round and
+  tinted.
+- **Per-record disk stat.** `hasPicture` is an `fs.existsSync` per leave /
+  correction in the list responses. Fine at ≤ 50 employees; it would not be at
+  thousands.
+- **No avatars added to the calendar popover or "Out today" rails.** Scope was
+  the three surfaces shown to need it. The day-popover (`.cal-pop__av`) and
+  "Out today / tomorrow" rows still render their existing square, initials-only
+  badges — untouched here.
+- **Initials fallback unchanged in substance.** Where no picture exists, the
+  avatar is still just coloured initials; this adds picture *support* to these
+  rows, it does not change what a picture-less employee looks like beyond the
+  new round, hue-tinted treatment.
+
+---
+
 ## [0.43.1] — 2026-06-01 — Settings tabs left-alignment fix
 
 CSS-only point fix. The Settings page sidebar tabs (Company, Organization,

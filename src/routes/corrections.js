@@ -51,13 +51,16 @@ export function registerCorrectionRoutes(router, {
     return map;
   }
 
-  /** Add username + fullName for the UI. */
+  /** Add username + fullName + avatar flag for the UI. */
   function enrich(correction, users, names) {
     const user = users.get(correction.employeeId);
     return {
       ...correction,
       username: user?.username ?? null,
       fullName: names.get(correction.employeeId) ?? null,
+      // Lets notifications render the requester's avatar without a second
+      // request. Best-effort disk stat — fine at this scale.
+      hasPicture: employeesStore?.hasPicture?.(correction.employeeId) ?? false,
     };
   }
 

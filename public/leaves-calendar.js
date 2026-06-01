@@ -45,6 +45,24 @@ function monthLabel(year, month) {
 function initials(name) {
   return String(name || '?').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 }
+function hue(s) { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; }
+// Round, hue-tinted avatar (uploaded picture when present, else initials).
+function pendAvatar(l, name) {
+  const a = document.createElement('span');
+  a.className = 'cal-pend__av';
+  // Picture wins; initials only when there's no picture (or it fails to load).
+  a.style.setProperty('--hue', hue(name));
+  if (l.hasPicture && l.employeeId) {
+    const img = document.createElement('img');
+    img.src = `/api/employees/${encodeURIComponent(l.employeeId)}/picture`;
+    img.alt = '';
+    img.addEventListener('error', () => { a.textContent = initials(name); });
+    a.appendChild(img);
+  } else {
+    a.textContent = initials(name);
+  }
+  return a;
+}
 
 // -- Leaves → day -----------------------------------------------------------
 
@@ -399,11 +417,13 @@ function renderRail() {
 function renderPendingRow(l) {
   const row = document.createElement('div');
   row.className = 'cal-pend__row';
+  const displayName = l.fullName || l.username || '—';
+  const av = pendAvatar(l, displayName);
   const body = document.createElement('div');
   body.className = 'cal-pend__body';
   const name = document.createElement('div');
   name.className = 'cal-pend__name';
-  name.textContent = l.fullName || l.username || '—';
+  name.textContent = displayName;
   const meta = document.createElement('div');
   meta.className = 'cal-pend__meta';
   meta.textContent = rangeText(l);
@@ -435,7 +455,7 @@ function renderPendingRow(l) {
     else { no.disabled = false; showMessage(messageEl, res.data?.error || t('leaves.actionFailed'), 'error'); }
   });
   actions.append(ok, no);
-  row.append(body, actions);
+  row.append(av, body, actions);
   return row;
 }
 

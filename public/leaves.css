@@ -174,7 +174,14 @@
 .lv-row--cancelled .lv-row__accent { background: var(--muted); }
 .lv-row--cancelled { opacity: 0.7; }
 
-.lv-row__main { min-width: 0; }
+.lv-row__av {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: 14px; font-weight: 600;
+  background: oklch(0.86 0.06 var(--hue, 90)); color: oklch(0.34 0.08 var(--hue, 90));
+}
+.lv-row__av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.lv-row__main { min-width: 0; flex: 1; }
 .lv-row__who { font-weight: 500; font-size: 14px; color: var(--ink); line-height: 1.3; }
 .lv-row__when { margin-top: 2px; font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .lv-row__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }

@@ -96,6 +96,10 @@ export function registerLeaveRoutes(router, {
       ...leave,
       username: u?.username ?? null,
       fullName: namesById.get(leave.employeeId) ?? null,
+      // Lets the UI render the requester's avatar (picture or initials) in
+      // notifications / pending lists without a second round-trip. Best-effort
+      // disk stat per leave — fine at this scale (≤ 50 employees).
+      hasPicture: employeesStore?.hasPicture?.(leave.employeeId) ?? false,
       _partition: undefined,
     };
   }

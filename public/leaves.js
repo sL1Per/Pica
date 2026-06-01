@@ -39,6 +39,30 @@ let currentYear = new Date().getFullYear();
 
 function fmt(n) { return fmtHours(n); }
 
+function initials(name) {
+  return (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?';
+}
+function hue(s) { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; }
+// Round, hue-tinted avatar (uploaded picture when present, else initials) —
+// matches the team list / dashboard avatars.
+function avatar(l, name) {
+  const a = document.createElement('div');
+  a.className = 'lv-row__av';
+  // Picture wins; initials are only the fallback (no picture, or one that
+  // fails to load). Pre-set the hue so the initials fallback is already tinted.
+  a.style.setProperty('--hue', hue(name));
+  if (l.hasPicture && l.employeeId) {
+    const img = document.createElement('img');
+    img.src = `/api/employees/${encodeURIComponent(l.employeeId)}/picture`;
+    img.alt = '';
+    img.addEventListener('error', () => { a.textContent = initials(name); });
+    a.appendChild(img);
+  } else {
+    a.textContent = initials(name);
+  }
+  return a;
+}
+
 function formatRange(leave) {
   if (leave.unit === 'days') {
     return leave.start === leave.end ? leave.start : `${leave.start} → ${leave.end}`;
@@ -125,7 +149,8 @@ function renderRow(l, { showName, withActions }) {
   status.textContent = t('status.' + l.status);
   aside.append(days, status);
 
-  a.append(main, aside);
+  if (showName) a.append(avatar(l, l.fullName || l.username || l.employeeId), main, aside);
+  else a.append(main, aside);
   row.appendChild(a);
 
   if (withActions) row.appendChild(buildInlineActions(l, li));
