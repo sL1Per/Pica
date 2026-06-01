@@ -5,13 +5,25 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.45.0._
+_Last touched in 0.45.1._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.45.0 (released 2026-06-01) — **"Forgot to clock?" modal
+- **Latest version:** 0.45.1 (released 2026-06-01) — **Punch map fills the hero
+  height.** CSS-only (`punch.css`): the OSM map preview on the punch page now
+  stretches to the full height of the clock hero's top row instead of a short
+  120px card centred against the taller control column. `.clock-hero__top`
+  switched `align-items: center` → `stretch`; `.map-card` is now a flex column
+  and `.map-card__frame` grows (`flex: 1 1 auto`, `height` → `min-height:
+  120px`), so the tile fills edge-to-edge with the address + attribution pinned
+  at the bottom. The card is also pulled left toward the action button
+  (`margin-right: 32px`), widening the right-edge gap (24px → ~56px). Mobile
+  (≤ 760px stacked) unchanged — the frame falls back to its 120px `min-height`
+  and the right margin resets to 0. `CACHE_VERSION` v77 → v78. Verified live via Playwright
+  MCP (frame grew 120px → ~397px). See RELEASES 0.45.1.
+- **0.45.0** (2026-06-01) — **"Forgot to clock?" modal
   redesign.** Presentational + client-side only (`manual-time-modal.{js,css}` +
   its two callers + i18n; **no backend** — the `POST /api/corrections` payload is
   byte-equivalent). The manual-time correction modal was rebuilt: the

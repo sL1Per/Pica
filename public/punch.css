@@ -72,11 +72,12 @@
 }
 
 /* Top row of the hero: a centered control column (status · time · comment ·
-   button) on the left, the map preview on the right. `center` vertically
-   centers the shorter map against the taller control column. */
+   button) on the left, the map preview on the right. `stretch` makes the map
+   column match the full height of the taller control column so the map tile
+   fills the section edge-to-edge. */
 .clock-hero__top {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 28px;
 }
 
@@ -319,15 +320,21 @@
 .map-card {
   width: 280px;              /* compact preview beside the time, not full-bleed */
   flex-shrink: 0;
+  margin-right: 32px;        /* pull left toward the action button; leaves a wider gap on the section's right edge */
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--paper);
   overflow: hidden;
+  /* Column so the tile frame can flex-grow to fill the section height while the
+     address + attribution stay at their natural height at the bottom. */
+  display: flex;
+  flex-direction: column;
 }
 .map-card__frame {
   position: relative;
   width: 100%;
-  height: 120px;
+  flex: 1 1 auto;            /* grow to fill the stretched card height */
+  min-height: 120px;        /* floor for short layouts (e.g. stacked mobile) */
   background: var(--paper-2);
   display: flex;
   align-items: center;
@@ -705,9 +712,10 @@
     font-size: 56px;
   }
 
-  /* Map preview spans full width when stacked */
+  /* Map preview spans full width when stacked — drop the desktop right margin */
   .map-card {
     width: 100%;
+    margin-right: 0;
   }
 
   /* The centered control column already spans full width when stacked; the

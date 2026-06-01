@@ -14,6 +14,44 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.45.1] — 2026-06-01 — Punch map fills the hero height
+
+The OSM map preview on the punch page now stretches to the full height of the
+clock hero's top row instead of sitting as a short 120px-tall card centred
+against the taller control column. **CSS-only** (`punch.css`); no markup, JS,
+or backend change.
+
+**What changed.**
+
+- **`.clock-hero__top` now stretches its columns** (`align-items: center` →
+  `stretch`), so the map column matches the height of the taller control column
+  (status · time · comment · button) beside it.
+- **`.map-card` became a flex column** and **`.map-card__frame` grows to fill**
+  (`flex: 1 1 auto`, fixed `height: 120px` → `min-height: 120px`). The tile now
+  fills the available height edge-to-edge while the address line and OSM
+  attribution stay at their natural height pinned to the bottom of the card.
+- **Map pulled left toward the action button** with `margin-right: 32px` on
+  `.map-card`, widening the gap to the section's right edge (24px → ~56px). Reset
+  to `0` in the mobile stacked layout, where the card is full-width.
+
+CACHE_VERSION v77 → v78 (`punch.css` is a pre-cached SW asset).
+
+**Honest Disclosures.**
+
+- **Purely presentational.** The map only renders after a successful
+  geolocation fix; nothing about when/whether it appears, the tile source, the
+  pin maths, or the address lookup changed.
+- **The pin stays centred in the frame** (`top: 50%`, translate to the tip), so
+  in the taller frame it sits at the vertical centre rather than over the exact
+  fix point — same approximation as before, just over a larger tile.
+- **Mobile is unchanged.** When the hero stacks (≤ 760px), the map-card has no
+  parent height to stretch into, so the frame falls back to its `min-height`
+  (120px) — the original stacked look.
+- **No new tests.** This is a layout tweak with no testable logic; verified
+  visually against the live install (frame grew 120px → ~397px).
+
+---
+
 ## [0.45.0] — 2026-06-01 — "Forgot to clock?" modal redesign
 
 The manual-time correction modal (the one reached from the punch page's
