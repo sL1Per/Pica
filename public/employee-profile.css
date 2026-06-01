@@ -1,45 +1,57 @@
-/* Profile edit + create employee (M15 §5). Shared by employee-profile.html
-   and employee-new.html. */
+/* Profile edit + create employee (M15 §5, redesigned 0.43.0). Shared by
+   employee-profile.html and employee-new.html. Wide two-column card layout. */
 
-.prof-head { margin-bottom: 8px; }
-.prof-head h1 {
+.prof-page { max-width: 1040px; }
+
+.prof-back { display: inline-flex; align-items: center; gap: 6px; color: var(--honey-deep); font-size: 13px; font-weight: 500; margin-bottom: 14px; }
+
+.prof-header { margin-bottom: 22px; }
+.prof-header h1 {
   font-family: 'Instrument Serif', serif;
   font-size: var(--page-title); line-height: 1; margin: 0;
   color: var(--ink); letter-spacing: -0.01em;
 }
-.prof-back { display: inline-flex; align-items: center; gap: 6px; color: var(--honey-deep); font-size: 13px; font-weight: 500; margin-bottom: 16px; }
+.prof-subtitle { margin: 6px 0 0; font-size: 13.5px; color: var(--muted); }
 
 .prof-card {
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 16px;
-  padding: 28px;
+  padding: 26px 28px;
   margin-bottom: 16px;
 }
-.prof-card > h2 {
-  font-family: 'Instrument Serif', serif;
-  font-size: 24px; line-height: 1.1; margin: 0 0 18px;
-  color: var(--ink); letter-spacing: -0.01em;
+.prof-card__label {
+  font-family: var(--font-sans, inherit);
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted);
+  margin: 0 0 20px;
 }
 
-.prof-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+/* Two-column field grid; collapses on mobile. */
+.prof-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; }
+@media (max-width: 760px) { .prof-grid { grid-template-columns: 1fr; } }
+
+.prof-field { display: flex; flex-direction: column; gap: 6px; }
 .prof-field > label { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
-.prof-field .helper, .prof-field .subtle { font-size: 11.5px; color: var(--muted); }
+.prof-field .subtle { font-size: 11.5px; color: var(--muted); margin: 0; }
 .prof-field input, .prof-field select, .prof-field textarea {
-  padding: 0 14px; min-height: 42px;
+  padding: 0 14px; min-height: 44px;
   background: var(--paper-2); border: 1px solid var(--line); border-radius: 10px;
   color: var(--ink); font: inherit; font-size: 14px; outline: none;
 }
-.prof-field textarea { padding: 10px 14px; resize: vertical; }
+.prof-field textarea { padding: 10px 14px; resize: vertical; min-height: 90px; }
 .prof-field input:focus, .prof-field select:focus, .prof-field textarea:focus { border-color: var(--honey); }
 .prof-field input[readonly], .prof-field textarea[readonly] { background: var(--bg); color: var(--muted); }
 
-/* Read-only display rows (username, role badge). */
-.readonly-field { padding: 10px 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; color: var(--ink-2); font-size: 14px; }
-.role-badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 999px; background: var(--paper-2); border: 1px solid var(--line); font-size: 13px; font-weight: 600; color: var(--ink-2); text-transform: capitalize; }
+.readonly-field { padding: 0 14px; min-height: 44px; display: flex; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; color: var(--ink-2); font-size: 14px; }
 
-/* Identity avatar block — mirrors employee.css .ed-avatar. */
-.avatar-block { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; }
+/* Read-only segmented role control — looks like a toggle, not interactive. */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
+.seg__opt { text-align: center; padding: 9px 0; font-size: 13.5px; font-weight: 600; color: var(--ink-2); border-radius: 7px; user-select: none; }
+.seg__opt--on { background: var(--honey); color: #FBF6EC; }
+
+/* Identity avatar block. */
+.avatar-block { display: flex; align-items: center; gap: 18px; margin-bottom: 24px; }
 .prof-avatar {
   width: 88px; height: 88px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
@@ -49,29 +61,32 @@
 }
 .prof-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 .avatar-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.avatar-btns { display: flex; gap: 8px; }
 .dob-row { display: flex; align-items: center; gap: 12px; }
 .dob-age { font-size: 12.5px; color: var(--muted); }
 
-/* Footer save + flash. */
-.prof-btn {
-  width: 100%; height: 46px; padding: 0 22px; margin-top: 6px;
-  background: var(--honey); color: #FBF6EC;
-  border: none; border-radius: 10px; font-weight: 600; font-size: 15px;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
-  transition: opacity .12s;
-}
+/* Buttons. */
+.prof-btn-sec { height: 38px; padding: 0 16px; background: var(--paper-2); color: var(--ink-2); border: 1px solid var(--line); border-radius: 9px; font-weight: 600; font-size: 13px; cursor: pointer; }
+.prof-btn-sec--danger { color: var(--clay); border-color: color-mix(in oklab, var(--clay) 40%, var(--line)); }
+
+/* Footer action bar. */
+.prof-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; padding-top: 4px; }
+.prof-actions__right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+/* margin-top:0 resets app.css's global `button { margin-top: var(--gap-4) }`,
+   which otherwise pushes the bare <button>s 16px below the Cancel <a>. */
+.prof-btn { height: 46px; margin-top: 0; padding: 0 22px; background: var(--honey); color: #FBF6EC; border: none; border-radius: 10px; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: opacity .12s; }
 .prof-btn--flash { background: var(--sage); }
+.prof-btn-cancel { height: 46px; padding: 0 20px; display: inline-flex; align-items: center; background: var(--paper); color: var(--ink-2); border: 1px solid var(--line); border-radius: 10px; font-weight: 600; font-size: 14px; }
+.prof-btn-danger { height: 46px; margin-top: 0; padding: 0 18px; background: transparent; color: var(--clay); border: 1px solid var(--clay); border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; }
 
-/* Secondary (Upload/Remove) buttons. */
-.prof-btn-sec {
-  height: 38px; padding: 0 16px;
-  background: var(--paper-2); color: var(--ink-2);
-  border: 1px solid var(--line); border-radius: 9px;
-  font-weight: 600; font-size: 13px; cursor: pointer;
-}
-
-/* Danger zone (hard delete). */
-.danger-zone { border: 1px solid var(--clay); border-radius: 16px; padding: 22px 28px; }
+/* Danger zone (hard delete, deactivated accounts only). */
+.danger-zone { border: 1px solid var(--clay); border-radius: 16px; padding: 22px 28px; margin-top: 20px; }
 .danger-zone h3 { font-family: 'Instrument Serif', serif; font-size: 20px; margin: 0 0 12px; color: var(--clay); }
-.danger-zone button { height: 42px; padding: 0 18px; background: transparent; color: var(--clay); border: 1px solid var(--clay); border-radius: 10px; font-weight: 600; cursor: pointer; }
+.danger-zone button { height: 42px; padding: 0 18px; background: var(--clay); color: #FBF6EC; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
 .danger-zone .subtle { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+@media (max-width: 760px) {
+  .prof-actions { flex-direction: column; align-items: stretch; }
+  .prof-actions__right { flex-direction: column; }
+  .prof-btn, .prof-btn-cancel, .prof-btn-danger { width: 100%; }
+}

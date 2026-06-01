@@ -40,7 +40,7 @@ function avatar(emp, name) {
 function statusDot(key) { const d = el('span', `st-dot st-dot--${key}`); d.setAttribute('aria-hidden', 'true'); return d; }
 function hhmm(ms) { const tot = Math.max(0, Math.round(ms / 60000)); return `${Math.floor(tot / 60)}h${pad2(tot % 60)}`; }
 
-const STATUS_LABEL = { working: 'team.status.working', break: 'team.status.break', done: 'team.status.done', leave: 'team.status.leave', off: 'team.status.off' };
+const STATUS_LABEL = { working: 'team.status.working', break: 'team.status.break', done: 'team.status.done', leave: 'team.status.leave', off: 'team.status.off', deactivated: 'team.status.deactivated' };
 const FILTERS = [
   { key: 'all', labelKey: 'team.filterAll' },
   { key: 'working', labelKey: 'team.filterWorking' },
@@ -65,7 +65,7 @@ function visible() {
 }
 
 function counts() {
-  const c = { all: model.length, working: 0, break: 0, done: 0, leave: 0, off: 0 };
+  const c = { all: model.length, working: 0, break: 0, done: 0, leave: 0, off: 0, deactivated: 0 };
   for (const r of model) c[r.status]++;
   return c;
 }
@@ -85,7 +85,8 @@ function renderChips() {
 
 function rowEl(r) {
   const name = nameOf(r) || '—';
-  const a = el('a', 'tm-row'); a.href = `/employees/${r.emp.id}`;
+  const isDeactivated = r.emp.active === false;
+  const a = el('a', 'tm-row' + (isDeactivated ? ' tm-row--deactivated' : '')); a.href = `/employees/${r.emp.id}`;
 
   const person = el('div', 'tm-person');
   person.append(avatar(r.emp, name));
@@ -96,7 +97,11 @@ function rowEl(r) {
   person.append(ptext);
 
   const status = el('div', 'tm-status');
-  status.append(statusDot(r.status), document.createTextNode(t(STATUS_LABEL[r.status])));
+  if (isDeactivated) {
+    status.append(el('span', 'tm-deact-pill', t('team.deactivatedPill')));
+  } else {
+    status.append(statusDot(r.status), document.createTextNode(t(STATUS_LABEL[r.status])));
+  }
 
   const week = el('div', 'tm-week');
   const nums = el('div', 'tm-week__nums');
@@ -113,12 +118,25 @@ function rowEl(r) {
     : el('div', 'tm-today tm-today--none', '—');
 
   const end = el('div', 'tm-end');
-  if (r.pending > 0) {
-    const dot = el('span', 'tm-pending', String(r.pending));
-    dot.title = t('team.pendingTitle', { n: r.pending });
-    end.append(dot);
+  if (isDeactivated) {
+    const re = el('button', 'tm-reactivate', t('team.reactivate'));
+    re.type = 'button';
+    re.addEventListener('click', async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (re.disabled) return;
+      re.disabled = true;
+      const res = await fetch(`/api/employees/${r.emp.id}/reactivate`, { method: 'POST', credentials: 'same-origin' });
+      if (res.ok) load(); else re.disabled = false;
+    });
+    end.append(re);
+  } else {
+    if (r.pending > 0) {
+      const dot = el('span', 'tm-pending', String(r.pending));
+      dot.title = t('team.pendingTitle', { n: r.pending });
+      end.append(dot);
+    }
+    end.append(el('span', 'tm-chev', '›'));
   }
-  end.append(el('span', 'tm-chev', '›'));
 
   a.append(person, status, week, today, end);
   return a;
@@ -177,9 +195,12 @@ async function load() {
   const nowHour = new Date().getHours();
   model = employees.map((emp) => {
     const pairs = pairSessions(byEmp.get(emp.id) ?? []);
+    const status = emp.active === false
+      ? 'deactivated'
+      : classify({ pairs, onLeave: onLeaveIds.has(emp.id), nowHour });
     return {
       emp,
-      status: classify({ pairs, onLeave: onLeaveIds.has(emp.id), nowHour }),
+      status,
       weekHours: weekById.get(emp.id) || 0,
       todayMs: workedMs(pairs),
       pending: pending.get(emp.id) || 0,

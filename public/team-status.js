@@ -15,7 +15,7 @@
 export const BREAK_CUTOFF_HOUR = 18;
 
 // Render/sort order for the five statuses.
-export const STATUS_SORT = { working: 0, break: 1, done: 2, leave: 3, off: 4 };
+export const STATUS_SORT = { working: 0, break: 1, done: 2, leave: 3, off: 4, deactivated: 5 };
 
 /**
  * Pair an employee's day of punches into [{in, out}] sessions, sorted by time.

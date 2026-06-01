@@ -29,82 +29,92 @@
   <link rel="stylesheet" href="/employee-profile.css">
 </head>
 <body>
-  <main class="container">
-    <header class="page-header">
-      <div>
-        <h1 data-i18n="employeeNew.title">New employee</h1>
-        <p class="muted"><a href="/employees" data-i18n="employeeNew.backToList">← Back to list</a></p>
-      </div>
+  <main class="prof-page container--wide">
+    <a class="prof-back" href="/employees" data-i18n="employeeNew.backToList">← Back to list</a>
+
+    <header class="prof-header">
+      <h1 data-i18n="employeeNew.title">New employee</h1>
     </header>
 
     <form id="new-form" autocomplete="off" novalidate>
       <!-- Account -->
-      <div class="prof-card">
-        <h2 data-i18n="employeeNew.account">Account</h2>
-        <div class="prof-field">
-          <label for="username" data-i18n="employeeNew.username">Username</label>
-          <input type="text" id="username" name="username" required autocomplete="off" minlength="2" maxlength="64">
-        </div>
-        <div class="prof-field">
-          <label for="password" data-i18n="employeeNew.initialPwd">Initial password</label>
-          <input type="password" id="password" name="password" required autocomplete="new-password" minlength="8">
-          <span class="subtle" data-i18n="employeeNew.pwdShareHint">Share this with the employee. They can change it later from their Preferences.</span>
-        </div>
-        <div class="prof-field">
-          <label for="role" data-i18n="employeeNew.role">Role</label>
-          <select id="role" name="role">
-            <option value="employee" selected data-i18n="employee.role.employee">Employee</option>
-            <option value="employer" data-i18n="employee.role.employer">Employer</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Identity -->
-      <div class="prof-card">
-        <h2 data-i18n="employeeNew.cardIdentity">Identity</h2>
-        <div class="prof-field">
-          <label for="fullName" data-i18n="employeeNew.fullName">Full name</label>
-          <input type="text" id="fullName" name="fullName" required>
-        </div>
-        <div class="prof-field">
-          <label for="dateOfBirth" data-i18n="employeeNew.dob">Date of birth</label>
-          <div class="dob-row">
-            <input type="date" id="dateOfBirth" name="dateOfBirth" required>
-            <span id="age-display" class="dob-age" hidden></span>
+      <section class="prof-card">
+        <h2 class="prof-card__label" data-i18n="employeeNew.account">Account</h2>
+        <div class="prof-grid">
+          <div class="prof-field">
+            <label for="username" data-i18n="employeeNew.username">Username</label>
+            <input type="text" id="username" name="username" required autocomplete="off" minlength="2" maxlength="64">
+          </div>
+          <div class="prof-field">
+            <label for="role" data-i18n="employeeNew.role">Role</label>
+            <select id="role" name="role">
+              <option value="employee" selected data-i18n="employee.role.employee">Employee</option>
+              <option value="employer" data-i18n="employee.role.employer">Employer</option>
+            </select>
+          </div>
+          <div class="prof-field">
+            <label for="password" data-i18n="employeeNew.initialPwd">Initial password</label>
+            <input type="password" id="password" name="password" required autocomplete="new-password" minlength="8">
+            <span class="subtle" data-i18n="employeeNew.pwdShareHint">Share this with the employee. They can change it later from their Preferences.</span>
           </div>
         </div>
-        <div class="prof-field">
-          <label for="position" data-i18n="employeeNew.position">Position</label>
-          <input type="text" id="position" name="position" required data-i18n-attr="placeholder:employeeNew.positionPh" placeholder="e.g. Backend Developer">
+      </section>
+
+      <!-- Identity -->
+      <section class="prof-card">
+        <h2 class="prof-card__label" data-i18n="employeeNew.cardIdentity">Identity</h2>
+        <div class="prof-grid">
+          <div class="prof-field">
+            <label for="fullName" data-i18n="employeeNew.fullName">Full name</label>
+            <input type="text" id="fullName" name="fullName" required>
+          </div>
+          <div class="prof-field">
+            <label for="dateOfBirth" data-i18n="employeeNew.dob">Date of birth</label>
+            <div class="dob-row">
+              <input type="date" id="dateOfBirth" name="dateOfBirth" required>
+              <span id="age-display" class="dob-age" hidden></span>
+            </div>
+          </div>
+          <div class="prof-field">
+            <label for="position" data-i18n="employeeNew.position">Position</label>
+            <input type="text" id="position" name="position" required data-i18n-attr="placeholder:employeeNew.positionPh" placeholder="e.g. Backend Developer">
+          </div>
+          <div class="prof-field">
+            <label for="address" data-i18n="employeeNew.address">Address</label>
+            <input type="text" id="address" name="address" required>
+          </div>
         </div>
-        <div class="prof-field">
-          <label for="address" data-i18n="employeeNew.address">Address</label>
-          <input type="text" id="address" name="address" required>
-        </div>
-      </div>
+      </section>
 
       <!-- Contact -->
-      <div class="prof-card">
-        <h2 data-i18n="employeeNew.cardContact">Contact</h2>
-        <div class="prof-field">
-          <label for="contactEmail" data-i18n="employeeNew.contactEmail">Contact email</label>
-          <input type="email" id="contactEmail" name="contactEmail" required>
+      <section class="prof-card">
+        <h2 class="prof-card__label" data-i18n="employeeNew.cardContact">Contact</h2>
+        <div class="prof-grid">
+          <div class="prof-field">
+            <label for="contactEmail" data-i18n="employeeNew.contactEmail">Contact email</label>
+            <input type="email" id="contactEmail" name="contactEmail" required>
+          </div>
+          <div class="prof-field">
+            <label for="contactPhone" data-i18n="employeeNew.contactPhone">Contact phone</label>
+            <input type="text" id="contactPhone" name="contactPhone" required>
+          </div>
         </div>
-        <div class="prof-field">
-          <label for="contactPhone" data-i18n="employeeNew.contactPhone">Contact phone</label>
-          <input type="text" id="contactPhone" name="contactPhone" required>
-        </div>
-      </div>
+      </section>
 
       <!-- Internal notes -->
-      <div class="prof-card">
-        <h2 data-i18n="employeeNew.cardNotes">Internal notes</h2>
+      <section class="prof-card">
+        <h2 class="prof-card__label" data-i18n="employeeNew.cardNotes">Internal notes</h2>
         <div class="prof-field">
           <textarea id="comments" name="comments" rows="3"></textarea>
         </div>
-      </div>
+      </section>
 
-      <button id="submit-btn" type="submit" class="prof-btn" data-i18n="employeeNew.submit">Create employee</button>
+      <div class="prof-actions">
+        <div class="prof-actions__right">
+          <a class="prof-btn-cancel" href="/employees" data-i18n="employee.cancel">Cancel</a>
+          <button id="submit-btn" type="submit" class="prof-btn" data-i18n="employeeNew.submit">Create employee</button>
+        </div>
+      </div>
       <div id="message" class="message"></div>
     </form>
   </main>

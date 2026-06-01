@@ -87,6 +87,16 @@ export function registerAuthRoutes(router, {
       return res.json({ error: 'Invalid username or password', errorCode: 'invalid_credentials' }, 401);
     }
 
+    if (user.active === false) {
+      auditStore?.appendRecord({
+        event: 'auth.login_failure',
+        actorId: null, actorUsername: null, actorRole: null, actorIp: ip,
+        target: { username }, outcome: 'failure',
+        details: { deactivated: true },
+      });
+      return res.json({ error: 'This account has been deactivated.', errorCode: 'account_deactivated' }, 403);
+    }
+
     // Successful login — reset the limiter for this IP.
     loginLimiter.reset(ip);
 

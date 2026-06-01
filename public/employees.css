@@ -98,3 +98,10 @@
   .tm-end { grid-column: 1 / -1; justify-content: flex-start; }
   .tm-chev { display: none; }
 }
+
+/* Deactivated team rows. */
+.tm-row--deactivated { opacity: 0.62; }
+.tm-row--deactivated .tm-person__name { color: var(--ink-2); }
+.tm-deact-pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--muted); }
+.tm-reactivate { height: 32px; padding: 0 12px; background: var(--paper-2); color: var(--honey-deep); border: 1px solid var(--line); border-radius: 8px; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+.tm-reactivate:hover { border-color: var(--honey); }
