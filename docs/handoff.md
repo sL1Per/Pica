@@ -5,13 +5,28 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.43.3._
+_Last touched in 0.44.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.43.3 (released 2026-06-01) — **Live clock in the
+- **Latest version:** 0.44.0 (released 2026-06-01) — **Full company name +
+  collapsible sidebar.** Presentational app-shell change (`topbar.js` /
+  `topbar.css` + 4 i18n keys; no backend). (1) The sidebar company name now
+  **wraps** onto multiple lines (`overflow-wrap: anywhere`) instead of
+  truncating with an ellipsis — the whole name is always visible. (2) A
+  **"Collapse sidebar"** control at the bottom of the rail shrinks the 232px
+  sidebar to a **72px icon-only rail** and back; the choice persists in
+  `localStorage` (`pica-sidebar-collapsed`) and re-applies before paint, so it
+  holds across pages/reloads. Desktop-only (scoped `@media (min-width:761px)`;
+  the control is hidden ≤760px so the mobile drawer is untouched). The
+  active-nav marker is hidden in the rail (would clip); `.appshell__collapse`
+  resets the global `<button>` chrome to read as a nav row. `CACHE_VERSION`
+  v75 → v76. **Verified live via the Playwright MCP** on an isolated throwaway
+  instance (51-char name wraps to 4 legible lines; collapse→72px + persistence
+  + expand all confirmed); touched unit suites green. See RELEASES 0.44.0.
+- **0.43.3** (2026-06-01) — **Live clock in the
   top-bar crumb.** The content top-bar crumb's leading role label
   (`Overview` / `My day`) is replaced by a live `HH:MM:SS` clock + pulsing sage
   dot, so the clock now shows on **every** authenticated page (the date stays:

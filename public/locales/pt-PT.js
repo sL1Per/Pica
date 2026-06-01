@@ -25,6 +25,8 @@ export default {
   'nav.myLeaves': 'As minhas ausências',
   'nav.more':     'Mais',
   'nav.notifications': 'Notificações',
+  'nav.collapse': 'Recolher barra lateral',
+  'nav.expand':   'Expandir barra lateral',
   'notifications.title':             'Notificações',
   'notifications.empty':             'Está tudo em dia.',
   'notifications.leavePending':      '{name} · {type} · {when}',

@@ -24,6 +24,8 @@ export default {
   'nav.myLeaves': 'My leaves',
   'nav.more':     'More',
   'nav.notifications': 'Notifications',
+  'nav.collapse': 'Collapse sidebar',
+  'nav.expand':   'Expand sidebar',
   'notifications.title':             'Notifications',
   'notifications.empty':             "You're all caught up.",
   'notifications.leavePending':      '{name} · {type} · {when}',

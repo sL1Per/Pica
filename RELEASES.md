@@ -14,6 +14,70 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.44.0] — 2026-06-01 — Full company name + collapsible sidebar
+
+Two sidebar (app-shell) changes. Both are presentational — `topbar.js` /
+`topbar.css` only, plus four i18n keys; **no backend, route, or data change.**
+
+**What changed.**
+
+- **The company name is now fully visible.** `.appshell__brand-name` used
+  `white-space: nowrap; overflow: hidden; text-overflow: ellipsis`, so a name
+  longer than the ~150px brand column was truncated with an ellipsis (e.g.
+  "Maria Augusta – Q…"). It now wraps onto as many lines as it needs
+  (`overflow-wrap: anywhere` so an over-long single word still breaks); the
+  flex item already had `min-width: 0`, so it shrinks to the column width and
+  the whole name is always legible. `.appshell__brand-link` gained
+  `flex-shrink: 0` so the logo mark keeps its size beside a multi-line name.
+- **The sidebar is collapsible (desktop).** A new "Collapse sidebar" control
+  sits at the bottom of the rail (below the user tile). Clicking it shrinks the
+  232px sidebar to a **72px icon-only rail** — brand text, nav labels, the
+  user-tile text, and the control's own label are hidden; the brand mark, nav
+  icons, avatar, and a flipped chevron stay centred — and the content column
+  reclaims the space. Clicking again expands it. The choice is **persisted in
+  `localStorage` (`pica-sidebar-collapsed`)** and re-applied before the shell
+  paints, so it holds across pages and reloads without a flash. The control's
+  `aria-label`/`title` toggle between Collapse/Expand.
+
+**Implementation notes.**
+
+- The collapsed rules are scoped to `@media (min-width: 761px)` and the control
+  is hidden at `≤760px`, so the mobile off-canvas drawer (which reuses
+  `.appshell__sidebar` full-width) is untouched even when the flag is set.
+- `.appshell__collapse` resets the global `<button>` chrome (honey fill, white
+  text, centring, `margin-top`, 40px min-height) so it reads as a subtle nav
+  row, not a call-to-action.
+- The active-nav marker (`.appshell__nav-bar`, `left:-14px`) is hidden in the
+  collapsed rail where it would clip against the narrow edge — the active
+  link's background already marks it.
+- New i18n keys `nav.collapse` / `nav.expand` (en-US + pt-PT).
+  `CACHE_VERSION` v75 → v76 (`topbar.js`/`topbar.css`/locales are pre-cached).
+
+**Verification.** Verified live in a browser via the Playwright MCP on an
+isolated throwaway instance (separate data dir/port — the real install was not
+touched): a 51-character company name wraps to four fully-legible lines; the
+collapse toggle shrinks the rail to 72px and back; the state persists across a
+navigation (`localStorage` "1", `aria-label` "Expand sidebar") and the expand
+toggle restores it. Touched unit suites green (`test-sw-precache`,
+`test-theme-bootstrap`, `test-security-headers`).
+
+**Honest Disclosures.**
+
+- **Collapse is desktop-only.** On mobile the sidebar remains the existing
+  off-canvas drawer; the collapse control is hidden there by design.
+- **No CSS transition on the width.** The rail snaps between 72px and 232px;
+  animating a CSS-grid track width is unreliable, so it was left instant.
+- **The persisted flag is per-browser, not per-user.** It lives in
+  `localStorage`, so it does not follow the account to another device and is
+  not a server-side preference.
+- **No automated UI test.** The behaviour is verified live (Playwright MCP),
+  not by an in-repo E2E suite — that arrives with M16.
+- **Tooltips on the collapsed icons were not added.** In the icon-only rail the
+  nav labels are hidden with no hover tooltip; the icons are the only affordance
+  (the same icons already label the mobile bottom nav).
+
+---
+
 ## [0.43.3] — 2026-06-01 — Live clock in the top-bar crumb
 
 The content top-bar crumb used to read `Overview · <date>` (employer) or

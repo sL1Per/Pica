@@ -37,6 +37,8 @@ const ICON_PATHS = {
   signout: '<path d="M15 17l5-5-5-5M20 12H9M12 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h7"/>',
   burger: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   more: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+  // Chevron-left; CSS rotates it 180° in the collapsed state to point right.
+  collapse: '<path d="M14 7l-5 5 5 5"/>',
 };
 function icon(name, size = 18, sw = 1.7) {
   return `<svg class="appshell__svg" width="${size}" height="${size}" viewBox="0 0 24 24" `
@@ -255,6 +257,10 @@ function buildBar({ user, branding, hasOwnPicture }) {
         <span class="appshell__usertile-role">${role}</span>
       </span>
       <span class="appshell__usertile-chev">${icon('chevron', 14, 1.8)}</span>
+    </button>
+    <button class="appshell__collapse" type="button" aria-label="${escapeHtml(t('nav.collapse'))}" title="${escapeHtml(t('nav.collapse'))}">
+      <span class="appshell__collapse-icon">${icon('collapse', 18, 1.8)}</span>
+      <span class="appshell__collapse-label">${escapeHtml(t('nav.collapse'))}</span>
     </button>`;
 
   // -- Desktop content top bar (crumb + bell) -----------------------------
@@ -500,6 +506,14 @@ export async function mountTopBar() {
   // Desktop grid: <div.appshell> [ sidebar | <div.appshell__content> [topbar, main, footer] ].
   const appshell = document.createElement('div');
   appshell.className = 'appshell';
+
+  // Restore the persisted collapsed (icon-only rail) state before the sidebar
+  // is laid out, so it never flashes expanded first. Desktop-only behaviour;
+  // the CSS scopes the collapsed rules to ≥761px so the mobile drawer is
+  // unaffected even when the flag is set.
+  let collapsed = false;
+  try { collapsed = localStorage.getItem('pica-sidebar-collapsed') === '1'; } catch {}
+  if (collapsed) appshell.classList.add('appshell--collapsed');
   const content = document.createElement('div');
   content.className = 'appshell__content';
 
@@ -523,6 +537,23 @@ export async function mountTopBar() {
   document.body.appendChild(notif);
 
   wireEvents({ sidebar, mobilebar, bottomnav, menu, notif, scrim, user });
+
+  // Collapse toggle: shrink the sidebar to an icon-only rail and back, persisting
+  // the choice across pages. Labels/brand-text/user-tile text are hidden by CSS
+  // (.appshell--collapsed); here we only flip the class + the stored flag + a11y.
+  const collapseBtn = sidebar.querySelector('.appshell__collapse');
+  collapseBtn?.addEventListener('click', () => {
+    const isCol = appshell.classList.toggle('appshell--collapsed');
+    try { localStorage.setItem('pica-sidebar-collapsed', isCol ? '1' : '0'); } catch {}
+    const label = isCol ? t('nav.expand') : t('nav.collapse');
+    collapseBtn.setAttribute('aria-label', label);
+    collapseBtn.setAttribute('title', label);
+  });
+  if (collapsed && collapseBtn) {
+    collapseBtn.setAttribute('aria-label', t('nav.expand'));
+    collapseBtn.setAttribute('title', t('nav.expand'));
+  }
+
   return data;
 }
 

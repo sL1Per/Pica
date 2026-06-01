@@ -20,7 +20,7 @@
   position: sticky; top: 0; height: 100vh; overflow-y: auto;
 }
 .appshell__brand { display: flex; align-items: center; gap: 12px; padding: 6px 8px; }
-.appshell__brand-link { display: flex; }
+.appshell__brand-link { display: flex; flex-shrink: 0; }
 .appshell__brand-mark {
   width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
   background: linear-gradient(135deg, var(--honey) 0%, var(--honey-deep) 100%);
@@ -30,7 +30,11 @@
 }
 .appshell__brand-mark--img { object-fit: cover; font-size: 0; background: var(--paper-2); }
 .appshell__brand-text { line-height: 1.15; min-width: 0; }
-.appshell__brand-name { font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Wrap long company names onto multiple lines (the brand row's flex item can
+   shrink to the column width — min-width:0 on .appshell__brand-text — and
+   overflow-wrap breaks an over-long single word) instead of truncating with
+   an ellipsis. The whole name is always legible. */
+.appshell__brand-name { font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.2; overflow-wrap: anywhere; }
 .appshell__brand-sub { font-size: 12px; color: var(--muted); }
 .appshell__drawer-close { display: none; margin-left: auto; width: 32px; height: 32px; border-radius: 8px; font-size: 22px; color: var(--ink-2); }
 
@@ -65,6 +69,40 @@
 .appshell__usertile-name { display: block; font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .appshell__usertile-role { display: block; font-size: 11.5px; color: var(--muted); text-transform: capitalize; }
 .appshell__usertile-chev { display: inline-flex; color: var(--muted); }
+
+/* --- Collapse toggle (desktop icon-only rail) --- */
+/* Resets the global <button> chrome (honey fill, white text, centring,
+   margin-top, 40px min-height) so it reads as a subtle nav row, not a CTA. */
+.appshell__collapse {
+  display: flex; align-items: center; justify-content: flex-start; gap: 12px;
+  margin-top: 0; min-height: 0; padding: 9px 10px; border-radius: 8px; width: 100%;
+  background: transparent; border: none; color: var(--muted);
+  font-weight: 500; font-size: 13px;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.appshell__collapse:hover:not(:disabled) { background: var(--paper-2); color: var(--ink-2); }
+.appshell__collapse-icon { display: inline-flex; flex-shrink: 0; transition: transform var(--t-fast); }
+
+/* Collapsed state — narrow icon-only rail. Scoped to ≥761px so the flag never
+   affects the mobile drawer (which reuses .appshell__sidebar full-width). */
+@media (min-width: 761px) {
+  .appshell--collapsed { grid-template-columns: 72px 1fr; }
+  .appshell--collapsed .appshell__sidebar { padding-left: 10px; padding-right: 10px; }
+  .appshell--collapsed .appshell__brand-text,
+  .appshell--collapsed .appshell__brand-sub,
+  .appshell--collapsed .appshell__nav-label,
+  .appshell--collapsed .appshell__usertile-info,
+  .appshell--collapsed .appshell__usertile-chev,
+  .appshell--collapsed .appshell__collapse-label { display: none; }
+  .appshell--collapsed .appshell__brand,
+  .appshell--collapsed .appshell__nav-link,
+  .appshell--collapsed .appshell__usertile,
+  .appshell--collapsed .appshell__collapse { justify-content: center; }
+  /* The active marker hangs at left:-14px; in the narrow rail that would clip
+     against the sidebar edge — the link's own background already marks active. */
+  .appshell--collapsed .appshell__nav-bar { display: none; }
+  .appshell--collapsed .appshell__collapse-icon { transform: rotate(180deg); }
+}
 
 /* --- Desktop content top bar --- */
 .appshell__topbar { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px 0; }
@@ -133,6 +171,7 @@
   }
   .appshell__sidebar--open { transform: translateX(0); }
   .appshell__drawer-close { display: inline-flex; align-items: center; justify-content: center; }
+  .appshell__collapse { display: none; }   /* drawer is full-width; rail toggle is desktop-only */
 
   .appshell__scrim { position: fixed; inset: 0; z-index: 40; background: rgba(20,14,5,0.45); backdrop-filter: blur(2px); }
 
