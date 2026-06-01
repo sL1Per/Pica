@@ -37,10 +37,6 @@ export default {
   'menu.signOut':     'Sign out',
   'menu.account': 'Your account',
 
-  // ---- Breadcrumbs ----
-  'crumb.overview': 'Overview',
-  'crumb.myDay':    'My day',
-
   // ============================================================
   // Page titles (browser tab)
   // ============================================================

@@ -5,13 +5,24 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.43.2._
+_Last touched in 0.43.3._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.43.2 (released 2026-06-01) — **Avatars on
+- **Latest version:** 0.43.3 (released 2026-06-01) — **Live clock in the
+  top-bar crumb.** The content top-bar crumb's leading role label
+  (`Overview` / `My day`) is replaced by a live `HH:MM:SS` clock + pulsing sage
+  dot, so the clock now shows on **every** authenticated page (the date stays:
+  `● 12:52:43 · Thu · 15 May 2026`). The redundant home-hero clock (`.emp-clock`,
+  both roles) and its two `setInterval` tick loops were removed; the unused
+  `crumb.overview`/`crumb.myDay` i18n keys and the now-dead `.emp-clock` rules +
+  orphaned `@keyframes pulse` in `index.css` were pruned (`pulse` now lives in
+  `topbar.css`, on every page). No backend change. `CACHE_VERSION` v74 → v75.
+  Green on the touched unit suites; **live in-browser pass pending** (operator
+  to verify — needs an authed session). See RELEASES 0.43.3.
+- **0.43.2** (2026-06-01) — **Avatars on
   notifications + leave pending lists.** The notifications bell dropdown, the
   Leaves **Pending approval** list, and the calendar **Pending requests** rail
   now show the requester's round, hue-tinted avatar (uploaded picture or

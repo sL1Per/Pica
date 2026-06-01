@@ -222,8 +222,6 @@
 .emp-greet__title { font-family: var(--font-serif); font-size: var(--page-title); line-height: 1; letter-spacing: -0.01em; color: var(--ink); margin: 0; }
 .emp-greet__title em { font-style: italic; }
 .emp-greet__sub { color: var(--muted); margin-top: 8px; font-size: 15px; }
-.emp-clock { font-family: var(--font-mono); font-size: 14px; color: var(--muted); padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); display: inline-flex; align-items: center; gap: 8px; }
-.emp-clock__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sage); box-shadow: 0 0 0 0 var(--sage); animation: pulse 2s infinite; }
 
 .emp-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px; }
 .emp-col { display: flex; flex-direction: column; gap: 20px; }
@@ -287,12 +285,6 @@
 .emp-book { width: 100%; margin-top: 16px; height: 44px; border-radius: 10px; border: 1px dashed var(--line); color: var(--ink-2); font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px; background: transparent; }
 .emp-book:hover { background: var(--paper-2); }
 .emp-empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
-
-@keyframes pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(92,122,78,.6); }
-  70%  { box-shadow: 0 0 0 8px rgba(92,122,78,0); }
-  100% { box-shadow: 0 0 0 0 rgba(92,122,78,0); }
-}
 
 @media (max-width: 760px) {
   .emp-grid { grid-template-columns: 1fr; gap: 14px; }

@@ -37,10 +37,6 @@ export default {
   'menu.signOut':     'Terminar sessão',
   'menu.account': 'A sua conta',
 
-  // ---- Breadcrumbs ----
-  'crumb.overview': 'Visão geral',
-  'crumb.myDay':    'O meu dia',
-
   // ============================================================
   // Page titles
   // ============================================================

@@ -85,6 +85,14 @@ function initialsFor(name) {
   return (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?';
 }
 
+// HH:MM:SS for the top-bar crumb clock. Mirrors index.js's fmtClock (the
+// home-hero clock it replaces) so the time reads identically — local 24h,
+// zero-padded. The crumb shows this on every authenticated page.
+function fmtClock(d) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 /**
  * Avatar HTML for a notification row: uploaded picture, else hue-tinted
  * initials. The hue rides on `data-hue` (not an inline `style` attribute,
@@ -256,7 +264,10 @@ function buildBar({ user, branding, hasOwnPicture }) {
   try { dateLabel = fmtDate(new Date()); } catch { dateLabel = ''; }
   topbar.innerHTML = `
     <div class="appshell__crumb">
-      <span>${escapeHtml(t(user.role === 'employer' ? 'crumb.overview' : 'crumb.myDay'))}</span>
+      <span class="appshell__crumb-clock mono">
+        <span class="appshell__crumb-dot" aria-hidden="true"></span>
+        <span data-live-clock>${escapeHtml(fmtClock(new Date()))}</span>
+      </span>
       <span class="appshell__crumb-sep">&middot;</span>
       <span class="appshell__crumb-date mono">${escapeHtml(dateLabel)}</span>
     </div>
@@ -265,6 +276,12 @@ function buildBar({ user, branding, hasOwnPicture }) {
         ${icon('bell', 17, 1.6)}
       </button>
     </div>`;
+
+  // Tick the crumb clock every second. The shell lives for the whole page
+  // lifetime, so this interval is intentionally never cleared (same pattern
+  // as the home-hero clock this replaces). textContent only — no re-render.
+  const liveClock = topbar.querySelector('[data-live-clock]');
+  if (liveClock) setInterval(() => { liveClock.textContent = fmtClock(new Date()); }, 1000);
 
   // -- Mobile top app bar -------------------------------------------------
   const mobilebar = document.createElement('header');

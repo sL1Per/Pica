@@ -69,8 +69,18 @@
 /* --- Desktop content top bar --- */
 .appshell__topbar { display: flex; align-items: center; justify-content: space-between; padding: 20px 40px 0; }
 .appshell__crumb { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.appshell__crumb-clock { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.appshell__crumb-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sage); box-shadow: 0 0 0 0 var(--sage); animation: pulse 2s infinite; }
 .appshell__crumb-sep { opacity: 0.5; }
 .appshell__crumb-date { font-size: 12px; }
+
+/* Pulsing dot for the crumb clock. topbar.css loads on every authenticated
+   page, so the keyframes live here (index/punch each carry their own copy). */
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(92,122,78,.6); }
+  70%  { box-shadow: 0 0 0 8px rgba(92,122,78,0); }
+  100% { box-shadow: 0 0 0 0 rgba(92,122,78,0); }
+}
 .appshell__iconbtn {
   width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--paper); color: var(--ink-2);

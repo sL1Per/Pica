@@ -14,6 +14,65 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.43.3] — 2026-06-01 — Live clock in the top-bar crumb
+
+The content top-bar crumb used to read `Overview · <date>` (employer) or
+`My day · <date>` (employee) — a static role label followed by today's date.
+The home page (both roles) separately showed a live ticking clock in its hero
+(`HH:MM:SS` beside a pulsing green dot). With the clock now in the top-bar — and
+therefore visible on **every** authenticated page — the hero copy was redundant.
+
+**What changed.**
+
+- **Top-bar crumb** (`topbar.js` / `topbar.css`): the leading role label
+  (`crumb.overview` / `crumb.myDay`) is replaced by a live `HH:MM:SS` clock with
+  a pulsing sage dot, mirroring the home-hero clock it supersedes. The date
+  stays: the crumb now reads `● 12:52:43 · Thu · 15 May 2026`. The clock ticks
+  once a second via a `setInterval` that is intentionally never cleared — the
+  shell lives for the whole page lifetime (same pattern as the old hero clock).
+  `fmtClock()` is duplicated into `topbar.js` (local 24h, zero-padded) to match
+  `index.js` byte-for-byte. The `@keyframes pulse` and dot styles were added to
+  `topbar.css`, which loads on every authenticated page (`index.css` / `punch.css`
+  each keep their own copy).
+- **Home hero** (`index.js` / `index.css`): the `.emp-clock` pill (employer
+  `eh-head`, employee `emp-greet`) and both per-page `setInterval` tick loops
+  were removed, along with the `liveClock` element ref and the now-unused
+  `fmtClock()` helper. The dead `.emp-clock` / `.emp-clock__dot` rules and the
+  orphaned `@keyframes pulse` were pruned from `index.css`.
+- **i18n**: the unused `crumb.overview` / `crumb.myDay` keys were removed from
+  both locales (no other reference existed).
+
+No backend change; no new endpoints, payloads, or permissions. `CACHE_VERSION`
+v74 → v75 (`topbar.js`, `topbar.css`, `index.js`, `index.css`, and both locale
+files are pre-cached). No new test suite — the existing suites
+(`test-i18n`, `test-theme-bootstrap`, `test-sw-precache`, `test-security-headers`,
+`test-frontend-imports`, `test-employee-home`) stay green (count stays 52).
+
+**Honest Disclosures.**
+
+- **Live in-browser pass pending.** Verified by unit suites and a JS syntax
+  check only; the live install on :8080 needs an authenticated session to
+  exercise the crumb, and a from-scratch smoke would require wiping
+  `data/`/`config.json` (refused). Operator to confirm the ticking clock + dot
+  in a browser (Linen-light and Slate-dark, both roles, desktop + mobile crumb).
+- **Two `fmtClock()` copies.** `topbar.js` and `index.js` now each carry the
+  helper. Pica's frontend can't share modules across absolute-path scripts
+  without a build step, so the duplication is deliberate (and `index.js` still
+  uses its copy for `fmtHM` siblings — kept local for consistency).
+- **Uncleared interval, by design.** The crumb clock's `setInterval` is never
+  cleared. The shell is mounted once per page load and never torn down, so there
+  is no leak in practice; clearing it would need a teardown hook the shell
+  doesn't have.
+- **The pulse keyframes are now duplicated a third time** (`topbar.css` joins
+  `index.css`/`punch.css`/`punches-today.css`). A shared animation in `app.css`
+  would consolidate all four — deferred to avoid touching unrelated stylesheets
+  in a point release.
+- **Single clock format.** 24h `HH:MM:SS` regardless of locale (the home hero
+  was the same); no 12h/AM-PM variant. The date beside it remains
+  locale-formatted via `fmtDate`.
+
+---
+
 ## [0.43.2] — 2026-06-01 — Avatars on notifications + leave pending lists
 
 The notifications bell dropdown, the Leaves page **Pending approval** list, and

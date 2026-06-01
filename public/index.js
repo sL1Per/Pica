@@ -70,12 +70,9 @@ function renderEmployerHome(main, user) {
   const title = ehEl('h1', 'eh-head__title');
   title.append(document.createTextNode(t(greetingKeyFor(new Date())) + ', '), ehEl('em', null, first));
   headText.append(title, ehEl('p', 'eh-head__sub', t('home.empSub')));
-  const clock = ehEl('div', 'emp-clock');
-  clock.append(ehEl('span', 'emp-clock__dot'));
-  const liveClock = ehEl('span', null, fmtClock(new Date()));
-  liveClock.setAttribute('data-live-clock', '');
-  clock.append(liveClock);
-  head.append(headText, clock);
+  // The live clock moved to the top-bar crumb (shown on every page), so it's
+  // no longer duplicated in the home hero.
+  head.append(headText);
   const stats = ehEl('div', 'eh-stats');
   const grid = ehEl('div', 'eh-grid');
   const left = ehEl('div', 'eh-col'), right = ehEl('div', 'eh-col');
@@ -105,7 +102,7 @@ function renderEmployerHome(main, user) {
   grid.append(left, right);
   home.append(head, stats, grid);
   main.append(home);
-  return { stats, teamBody, waitBody, hoursBody, waitCard, liveClock };
+  return { stats, teamBody, waitBody, hoursBody, waitCard };
 }
 
 function ehStatHint(names) {
@@ -350,10 +347,6 @@ function hhmm(ms) {
   const totalMin = Math.max(0, Math.round(ms / 60000));
   return { h: Math.floor(totalMin / 60), m: totalMin % 60 };
 }
-function fmtClock(d) {
-  const p = (n) => String(n).padStart(2, '0');
-  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
 function fmtHM(iso) {
   const d = new Date(iso); const p = (n) => String(n).padStart(2, '0');
   return `${p(d.getHours())}:${p(d.getMinutes())}`;
@@ -369,7 +362,6 @@ function renderEmployeeHomeShell(main, user) {
           <h1 class="emp-greet__title">${escapeHtml(t(greetingKeyFor(new Date())))}, <em>${escapeHtml(first)}</em></h1>
           <div class="emp-greet__sub">${escapeHtml(fmtDate(new Date()))}</div>
         </div>
-        <div class="emp-clock"><span class="emp-clock__dot"></span><span data-live-clock>${fmtClock(new Date())}</span></div>
       </div>
       <div class="emp-grid">
         <section class="emp-hero" data-hero aria-live="polite"></section>
@@ -381,7 +373,6 @@ function renderEmployeeHomeShell(main, user) {
     </div>
   `;
   return {
-    liveClock: main.querySelector('[data-live-clock]'),
     hero: main.querySelector('[data-hero]'),
     week: main.querySelector('[data-week]'),
     leaves: main.querySelector('[data-leaves]'),
@@ -567,8 +558,6 @@ async function loadEmployeeHome(refs, user) {
   if (data.user.role === 'employer') {
     const main = document.querySelector('main');
     const refs = renderEmployerHome(main, data.user);
-    const tick = () => { if (refs.liveClock) refs.liveClock.textContent = fmtClock(new Date()); };
-    setInterval(tick, 1000);
     const loader = () => loadEmployerHome(refs);
     loader();
     document.addEventListener('visibilitychange', () => {
@@ -581,8 +570,6 @@ async function loadEmployeeHome(refs, user) {
   const main = document.querySelector('main');
   main.className = '';                 // drop .container--wide; the shell owns width
   const refs = renderEmployeeHomeShell(main, data.user);
-  const tick = () => { if (refs.liveClock) refs.liveClock.textContent = fmtClock(new Date()); };
-  setInterval(tick, 1000);
   await loadEmployeeHome(refs, data.user);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') loadEmployeeHome(refs, data.user);
