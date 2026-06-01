@@ -14,6 +14,87 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.45.0] — 2026-06-01 — "Forgot to clock?" modal redesign
+
+The manual-time correction modal (the one reached from the punch page's
+"Forgot to clock?" / "Missing a punch?" links and from the corrections list's
+"Register manual time" button) was rebuilt to a clearer, friendlier layout.
+**Presentational + client-side only** — `manual-time-modal.{js,css}`, the two
+callers, and i18n; the `POST /api/corrections` payload is byte-equivalent, so
+**no backend, route, or storage change.**
+
+**What changed.**
+
+- **Segmented "What did you miss?" control.** The three "what was missed"
+  options (Both / Clock-in / Clock-out) moved from a vertical stack of radio
+  cards to a single horizontal **segmented control**, each segment a bold label
+  over a one-line hint ("Whole shift" / "Forgot to start" / "Forgot to end").
+  The radios are visually hidden (`.sr-only`) but stay in the DOM and focusable,
+  so arrow-key group navigation and the single accessible name are preserved;
+  the checked segment is filled via `:has(:checked)`.
+- **Day + Start time + End time.** The two `datetime-local` inputs became a
+  single **Day** date picker plus separate **Start time** / **End time** time
+  pickers — fewer keystrokes and no fiddly combined widget. The submit handler
+  recombines `day + time` into the same ISO `start` / `end` timestamps the API
+  already expected (interpreted in the user's local timezone, then
+  `toISOString()`), so the request body is unchanged.
+- **Friendlier copy + footer.** The justification field is now labelled
+  **"Why?"** with the hint "(optional but helps your manager decide)"; the
+  submit button reads **"Send for approval"** with a leading checkmark; the
+  actions sit on a footer bar with a full-bleed top divider. The punch-page
+  entry titles the modal **"Forgot to clock?"** with the subtitle "Tell your
+  manager what you actually worked. They'll review it." (a new per-open
+  `titleKey`/`subtitleKey` option on `openManualTimeModal`); the corrections
+  list keeps "Register manual time".
+- **The accent follows the user's palette.** The active segment and the primary
+  button use the `--honey` accent token, which the palette cascade redefines per
+  theme — amber on Linen, **blue on Slate**, olive on Olive — so the modal
+  matches whichever palette the user has chosen rather than a hardcoded colour.
+
+**Implementation notes.**
+
+- The checkmark is built with `createElementNS` (SVG, `stroke="currentColor"`,
+  no inline `style` attribute) so it inherits the button text colour and stays
+  within the `style-src 'self'` CSP that `test-security-headers.mjs` enforces.
+- New i18n keys `correctionNew.day` / `.startTime` / `.endTime` /
+  `.forgotTitle` / `.forgotSubtitle` (en-US + pt-PT); existing `kind*` /
+  `justification*` / `submit` text reworded; the now-unused `startBoth` /
+  `endBoth` / `startIn` / `endOut` keys were removed (both locales stay in
+  parity — `test-i18n.mjs` green). `CACHE_VERSION` v76 → v77
+  (`manual-time-modal.{js,css}` and the locale files are pre-cached). No new
+  test suite — the form logic is exercised end-to-end by the existing
+  `POST /api/corrections` route tests.
+
+**Verification.** Verified live in a browser via the Playwright MCP on an
+isolated throwaway instance (separate data dir `/tmp/pica-verify/data` + port
+8123 — the real install was **not** touched). The modal renders to match the
+target in the Linen palette (amber accent) and the Slate palette (blue accent,
+`--honey` resolving to `#2563EB`); a real submit (Both, 09:00→17:00 on
+2026-06-01) closed the modal with no error and created a `pending` correction
+with `start 07:00Z` / `end 15:00Z` — i.e. the local→UTC day+time recombination
+is correct. Touched unit suites green (`test-i18n`, `test-sw-precache`,
+`test-security-headers`, `test-theme-tokens`).
+
+**Honest Disclosures.**
+
+- **Overnight windows are now implicit, not explicit.** A single Day can't
+  directly express a shift that crosses midnight the way two `datetime-local`
+  inputs could. For the "Both" kind, when the End time is at or before the Start
+  time the handler assumes the shift crossed midnight and rolls the end onto the
+  next day. That covers the common overnight case but is a heuristic: a genuine
+  zero/negative-length entry can't be expressed, and a user who mistypes an end
+  earlier than the start gets a next-day window rather than a validation error.
+  ("Clock-in only" and "Clock-out only" have a single time, so they're
+  unaffected.)
+- **The corrections-list entry shares the new layout** but keeps its own
+  "Register manual time" title/subtitle — only the punch-page entry reads
+  "Forgot to clock?".
+- **No automated DOM/E2E test** for the modal — covered by the live Playwright
+  pass above; an in-repo browser suite waits for M16.
+- **Two locales (en-US, pt-PT)**, not the broader set some strings imagine.
+
+---
+
 ## [0.44.0] — 2026-06-01 — Full company name + collapsible sidebar
 
 Two sidebar (app-shell) changes. Both are presentational — `topbar.js` /

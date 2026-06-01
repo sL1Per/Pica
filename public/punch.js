@@ -969,6 +969,8 @@ document.querySelectorAll('.punch-forgot, .punch-reminder').forEach((anchor) => 
   anchor.addEventListener('click', (e) => {
     e.preventDefault();
     openManualTimeModal({
+      titleKey: 'correctionNew.forgotTitle',
+      subtitleKey: 'correctionNew.forgotSubtitle',
       onFiled: () => {
         showMessage(messageEl, t('manualTime.filed'), 'success');
       },

@@ -5,13 +5,34 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.44.0._
+_Last touched in 0.45.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.44.0 (released 2026-06-01) — **Full company name +
+- **Latest version:** 0.45.0 (released 2026-06-01) — **"Forgot to clock?" modal
+  redesign.** Presentational + client-side only (`manual-time-modal.{js,css}` +
+  its two callers + i18n; **no backend** — the `POST /api/corrections` payload is
+  byte-equivalent). The manual-time correction modal was rebuilt: the
+  Both/Clock-in/Clock-out picker is now a horizontal **segmented control** (hidden
+  `.sr-only` radios, `:has(:checked)` fill); the two `datetime-local` inputs split
+  into a single **Day** + **Start time** + **End time** (the submit handler
+  recombines `day + time` → the same ISO `start`/`end`, with an overnight roll for
+  "Both" when end ≤ start); the justification is relabelled **"Why?"**, submit
+  reads **"Send for approval"** with a checkmark; the punch entry titles it
+  **"Forgot to clock?"** via a new per-open `titleKey`/`subtitleKey` on
+  `openManualTimeModal` (corrections list keeps "Register manual time"). The
+  active segment + primary button use `--honey`, so the accent **follows the
+  user's palette** (amber Linen / blue Slate / olive Olive). New i18n keys
+  `correctionNew.day/startTime/endTime/forgotTitle/forgotSubtitle`; unused
+  `startBoth/endBoth/startIn/endOut` removed (locale parity held). `CACHE_VERSION`
+  v76 → v77. **Verified live via the Playwright MCP** on an isolated throwaway
+  instance (port 8123, separate data dir — real install untouched): matches the
+  target in both Linen and Slate, and a real Both/09:00→17:00 submit created a
+  `pending` correction at `07:00Z`/`15:00Z` (correct local→UTC). No new test
+  suite (route tests already cover the payload). See RELEASES 0.45.0.
+- **0.44.0** (2026-06-01) — **Full company name +
   collapsible sidebar.** Presentational app-shell change (`topbar.js` /
   `topbar.css` + 4 i18n keys; no backend). (1) The sidebar company name now
   **wraps** onto multiple lines (`overflow-wrap: anywhere`) instead of

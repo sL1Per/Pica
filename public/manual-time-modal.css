@@ -1,12 +1,19 @@
 /* ============================================================================
-   Manual-time modal — form-specific styles (M15).
+   Manual-time modal — form-specific styles (M15; redesigned 0.45.0).
 
    The generic modal shell (dialog, panel, backdrop, title bar, close button)
    is handled by modal.css. This file styles only the form elements inside
    the modal body (.mtm-* classes).
 
-   Tokens from app.css: --paper-2, --ink, --muted, --honey, --line, --radius,
-   --gap-2, --gap-3, --gap-4, --t-fast, --text-sm, --text-md, --leading-tight.
+   Layout (0.45.0): a horizontal segmented control (Both / Clock-in / Clock-out)
+   over a Day date + Start time + End time, a "Why?" note, and a footer action
+   bar. The active segment + primary button use --honey, which the palette
+   cascade redefines per theme (amber on Linen, blue on Slate, olive on Olive),
+   so the accent follows the user's chosen palette.
+
+   Tokens from app.css: --paper, --paper-2, --ink, --ink-2, --muted, --honey,
+   --line, --line-soft, --radius, --radius-sm, --gap-*, --text-sm, --text-md,
+   --leading-tight, --t-fast.
 
    No inline styles. [hidden] semantics (display:none !important) are enforced
    globally by app.css — the hidden attribute is used in manual-time-modal.js
@@ -16,114 +23,144 @@
 /* ---------- Subtitle -------------------------------------------------------- */
 
 .mtm-subtitle {
-  margin: 0 0 16px;
-  font-size: var(--text-sm);
+  margin: 0 0 var(--gap-5);
+  font-size: var(--text-md);
   color: var(--muted);
+  line-height: var(--leading-tight);
 }
 
-/* ---------- Kind group (radio cards) --------------------------------------- */
+/* ---------- Kind segmented control ----------------------------------------- */
 
 /*
- * Rendered as a <fieldset> to keep the legend/radio semantics accessible.
- * Visual reset: remove the default fieldset border/padding; the cards provide
- * their own visual affordance.
+ * Rendered as a <fieldset> to keep the radio-group semantics (arrow-key
+ * navigation, one accessible name). Visual reset: drop the default fieldset
+ * border/padding; the .mtm-seg container provides the visual affordance.
  */
-.mtm-kinds {
+.mtm-kind-group {
   border: none;
   padding: 0;
-  margin: 0 0 var(--gap-4) 0;
+  margin: 0 0 var(--gap-5);
+}
+
+/* "What did you miss?" — a normal field-label sitting above the control.
+   float+width:100% reliably puts the legend on its own line above the flex
+   container (legends are otherwise awkward flex/grid items). */
+.mtm-legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin: 0 0 var(--gap-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* The bordered track holding the three segments. */
+.mtm-seg {
+  display: flex;
+  gap: var(--gap-1);
+  padding: var(--gap-1);
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+/* Each segment: a label wrapping a visually-hidden radio + two text lines. */
+.mtm-seg__opt {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-2);
-}
-
-.mtm-kinds legend {
-  padding: 0;
-  margin-bottom: var(--gap-2);
-  font-weight: 600;
-  font-size: var(--text-sm);
-  color: var(--muted);
-  float: left;    /* lets the legend sit above the flex children in Firefox */
-  width: 100%;
-}
-
-/* Card-style radio label. Ported from .kind-radio in corrections.css. */
-.mtm-kind {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--gap-2);
-  padding: var(--gap-2) var(--gap-3);
-  border: 1px solid var(--line);
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: var(--gap-2) var(--gap-2);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background var(--t-fast), border-color var(--t-fast);
+  text-align: center;
+  transition: background var(--t-fast), color var(--t-fast);
 }
 
-.mtm-kind:hover {
-  background: var(--paper-2);
+.mtm-seg__opt:hover:not(:has(:checked)) {
+  background: color-mix(in oklab, var(--ink) 5%, transparent);
 }
 
-/* Selected state — honey accent border to match the pending/action colour. */
-.mtm-kind:has(:checked) {
-  border-color: var(--honey);
-  background: var(--paper-2);
-}
-
-.mtm-kind input[type="radio"] {
-  /* Align the radio with the first line of the title text, not the top of the
-     card. 4px nudge is calibrated for the default 16px font-size. */
-  margin-top: 4px;
-  flex-shrink: 0;
-}
-
-/* Text column: stacks title (strong) above description (span). Mirrors the
-   anonymous <div> inside .kind-radio in correction-new.html. */
-.mtm-kind__text {
-  display: flex;
-  flex-direction: column;
-}
-
-.mtm-kind strong {
-  display: block;
+.mtm-seg__main {
   font-size: var(--text-md);
+  font-weight: 600;
   color: var(--ink);
   line-height: var(--leading-tight);
 }
 
-.mtm-kind span {
-  display: block;
+.mtm-seg__sub {
   font-size: var(--text-sm);
   color: var(--muted);
-  margin-top: 2px;
+  line-height: var(--leading-tight);
 }
 
-/* ---------- Datetime fields ------------------------------------------------ */
+/* Selected segment — filled with the palette accent. */
+.mtm-seg__opt:has(:checked) {
+  background: var(--honey);
+}
+.mtm-seg__opt:has(:checked) .mtm-seg__main { color: #FBF6EC; }
+.mtm-seg__opt:has(:checked) .mtm-seg__sub  { color: rgba(251, 246, 236, 0.85); }
+
+/* Keyboard focus ring on the segment (the radio itself is .sr-only). */
+.mtm-seg__opt:has(:focus-visible) {
+  outline: 2px solid var(--honey);
+  outline-offset: 2px;
+}
+
+/* ---------- Day / time fields ---------------------------------------------- */
 
 /*
- * Each field is a <div> wrapper containing a <label> + <input type=datetime-local>.
- * app.css provides base label/input styling; we only need the block spacing here.
+ * Each field is a <div> wrapper containing a <label> + native date/time input.
+ * app.css provides the base input chrome; we add the block spacing, a bold
+ * label, and a full-width input.
  */
 .mtm-field {
-  margin-bottom: var(--gap-4);
+  margin-bottom: var(--gap-5);
 }
 
-/* ---------- Actions row ---------------------------------------------------- */
+.mtm-field > label {
+  display: block;
+  margin-bottom: var(--gap-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.mtm-field input {
+  width: 100%;
+}
+
+/* ---------- Justification ("Why?") ----------------------------------------- */
+
+/* The "(optional but helps your manager decide)" hint after the bold label. */
+#mtm-form label .subtle {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* ---------- Actions row (footer bar) --------------------------------------- */
 
 /*
- * Flex row, right-aligned, containing the Cancel (btn-ghost) and Submit
- * (btn-primary) buttons.
+ * Right-aligned Cancel (btn-ghost) + Submit (btn-primary). Rendered as a footer
+ * bar: a full-bleed top divider (negative margins cancel the .modal__body
+ * padding of var(--gap-5) vertical / var(--gap-6) horizontal) with its own
+ * inner padding restored.
  *
- * IMPORTANT: app.css has `button { margin-top: 16px }` globally. When buttons
- * live inside a flex row they should not carry that margin — it breaks vertical
- * alignment. Neutralize it here just as .corr-act and .punch-tab do in their
- * respective stylesheets.
+ * IMPORTANT: app.css has `button { margin-top: 16px }` globally; neutralized
+ * here so the buttons stay vertically centred in the row.
  */
 .mtm-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--gap-2);
-  margin-top: var(--gap-4);
+  gap: var(--gap-3);
+  margin: var(--gap-5) calc(var(--gap-6) * -1) calc(var(--gap-5) * -1);
+  padding: var(--gap-4) var(--gap-6);
+  border-top: 1px solid var(--line-soft);
 }
 
 .mtm-actions button,
@@ -131,13 +168,24 @@
   margin-top: 0;   /* neutralize global button { margin-top: 16px } */
 }
 
+/* Submit checkmark — never shrink it. */
+.mtm-check {
+  flex-shrink: 0;
+}
+
 /* ---------- Mobile ≤ 480px ------------------------------------------------- */
 
 @media (max-width: 480px) {
+  /* Match the shell's tighter mobile body padding (var(--gap-5)) for the
+     full-bleed footer divider. */
+  .mtm-actions {
+    margin-inline: calc(var(--gap-5) * -1);
+    padding-inline: var(--gap-5);
+  }
+
   /* Stack action buttons vertically and stretch to full width on very narrow
-     viewports (e.g. 375px iPhone SE). The submit button comes first visually
-     when stacked, so we use column-reverse to keep the natural DOM order
-     (cancel before submit) without reordering in markup. */
+     viewports (e.g. 375px iPhone SE). column-reverse keeps the natural DOM
+     order (cancel before submit) while showing submit on top. */
   .mtm-actions {
     flex-direction: column-reverse;
     align-items: stretch;
@@ -147,5 +195,11 @@
   .mtm-actions a {
     width: 100%;
     text-align: center;
+  }
+
+  /* The two-line segments get cramped on the narrowest phones — keep them
+     legible by tightening the inner padding. */
+  .mtm-seg__opt {
+    padding-inline: var(--gap-1);
   }
 }
