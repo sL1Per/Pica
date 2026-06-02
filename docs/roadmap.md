@@ -367,7 +367,11 @@ on pending rows), the **manual-time modal** (0.32.0 — a reusable
 `<dialog>` shell + the manual-time form; `/corrections/new` retired to a
 redirect that auto-opens the modal), and the **employer `/punches/today`**
 restyle (0.33.0 — per-employee cards + status + session pairs). The
-**punches/corrections screen group is now complete.** **Leaves** (0.35.0 —
+**punches/corrections screen group is now complete.** _(Post-M15, 0.46.0
+consolidated this group into one page: `/punches/today` and the `/corrections`
+list were folded into Today/Corrections/This-week tabs on `/punch` — both old
+routes now 404; the `/corrections/:id` detail page stays as a deep-link
+fallback and also opens as a modal from the Corrections tab.)_ **Leaves** (0.35.0 —
 Plan 4: list with employee balance stat-blocks / employer pending inbox +
 *inline* approve/decline + team matrix; a **request-leave modal** reusing the
 0.32.0 shell with balance-after + conflict box + success state, retiring
@@ -437,4 +441,4 @@ change.
 
 ---
 
-_Last touched in 0.40.0._
+_Last touched in 0.46.0._

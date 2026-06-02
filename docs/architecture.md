@@ -143,8 +143,10 @@ pica/
 │   ├── login.{html,js}      # login + setup pages (no top-bar)
 │   ├── setup.{html,js}
 │   ├── index.{html,js,css}  # dashboard with widgets
-│   ├── punch.{html,js,css}  # clock-in/out
-│   ├── punches-today.{html,js}
+│   ├── punch.{html,js,css}  # clock hub: clock hero + Today/Corrections/This-week tabs (0.46.0)
+│   ├── punch-sessions.js              # shared .sess card builders + isManual() (0.46.0)
+│   ├── punch-corrections.js           # Corrections tab panel: list + inline decide (0.46.0)
+│   ├── punch-today-employer.js        # employer "Today = everyone" render (0.46.0)
 │   ├── leaves.{html,js,css}  # M15 list: balance blocks / pending inbox + inline decide (0.35.0)
 │   ├── leaves-calendar.{html,js,css}  # M15 calendar: toolbar/chips/scope, grid, popover, rail (0.36.0)
 │   ├── leave.{html,js,css}  # leave detail: status hero + mini-calendar + timeline (0.35.0)
@@ -153,8 +155,8 @@ pica/
 │   ├── employee-new.{html,js}
 │   ├── employee.{html,js,css}          # employer's per-employee summary
 │   ├── employee-profile.{html,js,css}  # full profile editor (sub-route)
-│   ├── corrections.{html,js,css}
-│   ├── correction.{html,js,css}  # correction detail
+│   ├── correction.{html,js,css}  # correction detail page (deep-link fallback; list folded into /punch in 0.46.0)
+│   ├── correction-detail-modal.{js,css}  # correction detail modal, opened from the Corrections tab (0.46.0)
 │   ├── modal.{js,css}                # generic reusable <dialog> shell (0.32.0)
 │   ├── manual-time-modal.{js,css}    # manual-time form modal; /corrections/new retired (0.32.0)
 │   ├── request-leave-modal.{js,css}  # leave-request modal; /leaves/new retired (0.35.0)
@@ -192,6 +194,7 @@ pica/
 │   ├── test-leaves-approved.mjs    # /api/leaves/approved privacy model
 │   ├── test-leaves-carry.mjs       # vacation carry-forward + MM-DD expiry
 │   ├── test-punch-totals.mjs       # punch-page worked + break helpers
+│   ├── test-punch-manual.mjs       # isManual() clientId-prefix predicate (MANUAL badge) (0.46.0)
 │   ├── test-leaves-blocked.mjs     # employer blocked-days: helpers, store, route
 │   ├── test-employee-picture-route.mjs  # picture upload: 400 not 500 when no profile
 │   ├── test-leaves-concurrent.mjs  # no-concurrent-leave enforcement at booking
@@ -213,7 +216,7 @@ pica/
 │   ├── test-mail-routes.mjs        # POST /api/mail/test route (employer-only) (0.25.0); GET org mail view + PUT /api/settings/mail (0.26.0)
 │   ├── test-mail-config-store.mjs  # encrypted SMTP config store: round-trip, AAD, never-throws, write-only pass, abort-not-clobber (0.26.0)
 │   ├── test-theme-tokens.mjs       # design-token cascade: all 6 theme×palette combos defined, alias bridge present (0.27.0)
-│   ├── test-theme-bootstrap.mjs    # inline bootstrap byte-identical across all HTML (20 after /corrections/new retired in 0.32.0), resolves mode+palette; no third-party CDN URLs in public/ (0.27.0)
+│   ├── test-theme-bootstrap.mjs    # inline bootstrap byte-identical across all HTML (17 after /punches/today + /corrections list retired in 0.46.0), resolves mode+palette; no third-party CDN URLs in public/ (0.27.0)
 │   └── test-sw-precache.mjs        # font woff2 files in SW pre-cache list; all listed assets exist on disk (0.27.0)
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
@@ -364,7 +367,9 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **52 suites** (+`test-user-active` and `test-employee-deactivation`
+- Total: **53 suites** (+`test-punch-manual` in 0.46.0 — `isManual()`
+  clientId-prefix predicate behind the This-week MANUAL badge;
+  +`test-user-active` and `test-employee-deactivation`
   in 0.43.0 — soft-deactivate store/rbac and routes/login-refusal;
   +`test-employee-home` in 0.28.0 — employee-home
   helpers; +`test-punch-week` in 0.30.0 — clock-page day-grouping/pairing
@@ -394,7 +399,7 @@ corrupts an existing record) and gives us an audit log for free.
   bringing the total to 41. The 0.27.0 M15 foundation added three more
   — `test-theme-tokens.mjs` (design-token cascade: all 6 combos,
   alias bridge), `test-theme-bootstrap.mjs` (inline bootstrap
-  byte-identical across all 21 HTML, no CDN URL leak), and
+  byte-identical across all 17 HTML, no CDN URL leak), and
   `test-sw-precache.mjs` (font woff2 files in SW pre-cache list,
   all assets on disk) — bringing the total to 44.
 
@@ -490,4 +495,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.43.2._
+_Last touched in 0.46.0._

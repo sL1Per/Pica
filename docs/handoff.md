@@ -5,13 +5,31 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.45.1._
+_Last touched in 0.46.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.45.1 (released 2026-06-01) — **Punch map fills the hero
+- **Latest version:** 0.46.0 (released 2026-06-02) — **Two pages folded into
+  `/punch` tabs.** The employer `/punches/today` view and the `/corrections`
+  list page were eliminated **as pages** (no feature lost) by folding them into
+  **Today · Corrections · This week** tabs on `/punch`. Employer Today now shows
+  everyone (new `punch-today-employer.js`); the Corrections tab is role-aware
+  (employee = own, employer = everyone + inline ✓/✗ + a pending-count badge),
+  with rows opening a **detail modal** (`correction-detail-modal.{js,css}`) while
+  the `/corrections/:id` page stays as a deep-link fallback; This-week gained a
+  **MANUAL** badge (client-side, off the `correction:` `clientId` prefix — zero
+  backend) + a **search** box + an employer **person picker**. Both old routes
+  now **404**; `/corrections/new` redirects to `/punch?tab=corrections&new=1`;
+  `?tab=`/`?id=`/`?new=` deep-links supported + query-stripped. Six files deleted;
+  shared `.sess` builders extracted to `punch-sessions.js`. **No API change.**
+  `CACHE_VERSION` v78 → v79; +1 suite (`test-punch-manual`, total 53). Built
+  subagent-driven with two-stage review per task; **verified live via Playwright
+  MCP** on a throwaway instance (both roles; one bug found+fixed: the tab-count
+  span was wiped by `applyTranslations` and was de-nested from the `data-i18n`
+  button). See RELEASES 0.46.0.
+- **0.45.1** (2026-06-01) — **Punch map fills the hero
   height.** CSS-only (`punch.css`): the OSM map preview on the punch page now
   stretches to the full height of the clock hero's top row instead of a short
   120px card centred against the taller control column. `.clock-hero__top`
@@ -153,7 +171,7 @@ _Last touched in 0.45.1._
   64px so Status/Week/Today align row-to-row regardless of pending
   badge. See RELEASES 0.42.2. 0.42.1: employer home greeting + live
   clock, matching the employee home.))
-- **Test count:** 52 suites (0.43.0 added `test-user-active` +
+- **Test count:** 53 suites (0.46.0 added `test-punch-manual`; 0.43.0 added `test-user-active` +
   `test-employee-deactivation`; 0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -207,6 +225,45 @@ _Last touched in 0.45.1._
   closes M15** (canonical tokens end-to-end, bridge gone, `flashSaved` +
   `pairSessions` consolidated, bell wired). M16–M17 follow (M17 deployment guide
   ships last)
+
+---
+
+## What just shipped (0.46.0)
+
+**Two pages folded into `/punch` tabs (post-M15 consolidation).** The employer
+`/punches/today` view and the `/corrections` list page were removed **as pages**
+without losing any feature, by folding their content into three tabs on `/punch`:
+**Today · Corrections · This week**. Pure frontend + page-routing — **no HTTP API
+changed**.
+
+- **Today:** employee = own sessions (unchanged); employer = everyone's
+  per-employee cards (status pill + worked·break + session pairs), via new
+  `public/punch-today-employer.js` reusing `team-status.js`'s `pairSessions`.
+- **Corrections** (renamed from "My corrections"): employee = own (file +
+  cancel); employer = everyone + "N waiting" inbox with inline ✓/✗ + a
+  pending-count badge on the tab. New `public/punch-corrections.js`
+  (`initCorrectionsPanel → {reload}`). Rows open a **detail modal**
+  (`public/correction-detail-modal.{js,css}`, salvaged from the
+  `/corrections/:id` page); the page itself **stays** as a deep-link fallback.
+- **This week:** a **MANUAL** badge on correction-materialized punches
+  (client-side, off the `correction:` `clientId` prefix — zero backend), a
+  **search** box, and an employer **person picker**.
+- **Routing:** `/punches/today` + `/corrections` (list) → **404**;
+  `/corrections/new` → `/punch?tab=corrections&new=1`; `/corrections/:id` kept.
+  `?tab=`/`?id=`/`?new=` deep-links, query-stripped. Six files deleted; shared
+  `.sess` builders extracted to `public/punch-sessions.js` (home of `isManual()`).
+- **Plumbing:** `CACHE_VERSION` v78 → v79; 4 i18n keys added (rest reused); +1
+  suite `test-punch-manual` (total 53). Built **subagent-driven** (one implementer
+  + two-stage review per task). **Verified live via Playwright MCP** on a
+  throwaway instance (separate data dir/port 8123 — real install untouched), both
+  roles; one integration bug found+fixed (tab-count span wiped by
+  `applyTranslations`, de-nested from the `data-i18n` button).
+- **Honest Disclosures** (full list in RELEASES 0.46.0): employer keeps the clock
+  hero (deviates from the screenshots); MANUAL is a clientId-prefix heuristic; the
+  modal duplicates the detail page's logic; modal duration shows "9" not "9h"
+  (matches the list); the employer person-picker includes the employer and
+  defaults to the first entry; no DOM/E2E tests (M16) — verified at one
+  viewport/palette.
 
 ---
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Pure-helper tests for the punch clock page's This-week grouping/pairing.
 // The helpers are re-implemented inline (the test-i18n.mjs pattern) because
-// public/punch.js imports /-absolute browser modules Node can't resolve.
-// KEEP these copies byte-for-byte identical to punch.js's groupPunchesByDay /
-// pairDay.
+// public/punch-sessions.js imports /-absolute browser modules Node can't resolve.
+// KEEP these copies byte-for-byte identical to punch-sessions.js's
+// groupPunchesByDay / pairDay (extracted there from punch.js in 0.46.0).
 import assert from 'node:assert/strict';
 
 // --- copies of public/punch.js pure helpers (keep in sync) ---
