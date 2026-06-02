@@ -7,6 +7,8 @@ import {
   totalBreakMs, formatDuration, groupPunchesByDay, pairDay,
 } from '/punch-sessions.js';
 import { renderEmployerToday } from '/punch-today-employer.js';
+import { initCorrectionsPanel } from '/punch-corrections.js';
+import { openCorrectionModal } from '/correction-detail-modal.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 mountTopBar();
@@ -618,17 +620,23 @@ retryGeoBtn.addEventListener('click', async () => {
 
 // -------- Sub-tabs + This-week panel ----------------------------------------
 
-const tabToday = $('tab-today'), tabWeek = $('tab-week');
-const panelToday = $('panel-today'), panelWeek = $('panel-week');
+const tabToday = $('tab-today'), tabCorr = $('tab-corrections'), tabWeek = $('tab-week');
+const panelToday = $('panel-today'), panelCorr = $('panel-corrections'), panelWeek = $('panel-week');
 let weekLoaded = false;
+let corrPanel = null;   // set in bootstrap via initCorrectionsPanel(); reload() refreshes the list
+
 function showTab(which) {
-  const onWeek = which === 'week';
-  panelToday.hidden = onWeek; panelWeek.hidden = !onWeek;
-  tabToday.classList.toggle('punch-tab--active', !onWeek);
-  tabWeek.classList.toggle('punch-tab--active', onWeek);
-  if (onWeek && !weekLoaded) { weekLoaded = true; loadWeek(); }
+  const panels = { today: panelToday, corrections: panelCorr, week: panelWeek };
+  const tabs   = { today: tabToday,   corrections: tabCorr,   week: tabWeek };
+  for (const k of Object.keys(panels)) {
+    panels[k].hidden = k !== which;
+    tabs[k].classList.toggle('punch-tab--active', k === which);
+  }
+  if (which === 'week' && !weekLoaded) { weekLoaded = true; loadWeek(weekPersonId()); }
+  if (which === 'corrections' && corrPanel) corrPanel.reload();
 }
 tabToday.addEventListener('click', () => showTab('today'));
+tabCorr.addEventListener('click', () => showTab('corrections'));
 tabWeek.addEventListener('click', () => showTab('week'));
 
 /** Zero-pad a 1-based month to "MM". */
@@ -837,6 +845,50 @@ document.querySelectorAll('.punch-forgot, .punch-reminder').forEach((anchor) => 
       });
     }
   }
+
+  // Corrections tab panel — employer sees everyone + inline ✓/✗; employee sees own.
+  corrPanel = initCorrectionsPanel({
+    me,
+    pendingList: $('pending-list'),
+    historyList: $('history-list'),
+    pendingTag:  $('pending-tag'),
+    listHeading: $('list-heading'),
+    messageEl,
+    onCountChange: (n) => {
+      const badge = $('corr-tab-count');
+      if (!badge) return;
+      badge.textContent = String(n);
+      badge.hidden = !(me.role === 'employer' && n > 0);
+    },
+  });
+  // Load the corrections list once on bootstrap so the panel is ready and the
+  // employer's "N waiting" tab-count badge populates without waiting for a tab
+  // click (the badge is the at-a-glance alert; it must show on first paint).
+  corrPanel.reload();
+
+  // "Register manual time" button in the Corrections toolbar opens the modal.
+  $('new-correction')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openManualTimeModal({ onFiled: () => corrPanel.reload() });
+  });
+
+  // Deep links: ?tab=today|corrections|week selects a tab; ?new=1 opens the
+  // manual-time modal on the corrections tab; ?id=<correctionId> (with
+  // tab=corrections) opens that correction's detail modal. Query is stripped
+  // after handling so a refresh doesn't re-trigger.
+  const params = new URLSearchParams(location.search);
+  const wantTab = params.get('tab');
+  if (params.get('new') === '1') {
+    showTab('corrections');
+    openManualTimeModal({ onFiled: () => corrPanel.reload() });
+  } else if (wantTab && ['today', 'corrections', 'week'].includes(wantTab)) {
+    showTab(wantTab);
+  }
+  const wantId = params.get('id');
+  if (wantTab === 'corrections' && wantId) {
+    openCorrectionModal({ id: wantId, me, onDecided: () => corrPanel.reload() });
+  }
+  if (params.toString()) history.replaceState({}, '', '/punch');
 
   // Fetch the daily-hours target before refresh() so the today-total
   // renders with "/ Xh" on first paint instead of plain hours.
