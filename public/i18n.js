@@ -140,8 +140,12 @@ export function applyTranslations(root = document.body) {
 // respect the active locale. All accept either an ISO string or a Date.
 
 function asDate(input) {
-  if (input instanceof Date) return input;
-  const d = new Date(input);
+  // Validate BOTH paths. A Date instance can itself be an Invalid Date
+  // (e.g. `new Date('null')` from `fmtRange(null, …)`); returning it
+  // unchecked lets it slip past fmtDate/fmtTime's `if (!d) return ''`
+  // guard — an Invalid Date is truthy — and the catch-fallback
+  // `d.toISOString()` then throws "RangeError: Invalid time value".
+  const d = input instanceof Date ? input : new Date(input);
   return Number.isFinite(d.getTime()) ? d : null;
 }
 

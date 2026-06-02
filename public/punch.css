@@ -495,7 +495,7 @@
 /* Separator only BETWEEN consecutive rows — robust to the leading
    .sess__accent <div> (a class-agnostic :first-of-type would miss it). */
 .sess__times + .sess__times {
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px solid var(--line);
 }
 
 /* IN / OUT kind badge */
@@ -848,7 +848,7 @@
  * Same pattern as .sess__times + .sess__times in punch.css.
  */
 .corr-row + .corr-row {
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px solid var(--line);
 }
 
 /* The thin colored accent bar on the left edge of each row. */

@@ -21,7 +21,7 @@
  *     handles map absence gracefully.
  */
 
-const CACHE_VERSION = 'pica-cache-v80';
+const CACHE_VERSION = 'pica-cache-v85';
 // Pre-cache only static assets, NOT HTML pages. HTML pages need
 // server-side per-request locale injection (the <html lang> attribute
 // and the <meta name="pica-locale"> tag are written based on the

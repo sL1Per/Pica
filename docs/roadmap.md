@@ -34,8 +34,11 @@ app in a usable state.
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
 | M15       | Full UI revamp                     | ✅ 0.41.0 (closed; foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0 · employer home+team+detail 0.37.0 · settings+security 0.38.0 · preferences+profile edit 0.39.0 · reports re-skin 0.40.0 · alias-removal+dedup+bell 0.41.0) |
-| M16       | E2E browser tests                  | 📋 Planned    |
-| M17       | Deployment guide + TLS samples     | 📋 Planned    |
+| M16       | Code review / optimization / simplification | 📋 Planned |
+| M17       | Full security review               | 📋 Planned    |
+| M18       | Deployment guide + TLS samples     | 📋 Planned    |
+| M19       | User guide                         | 📋 Planned    |
+| M20       | Project documentation update       | 📋 Planned    |
 
 The roadmap was renumbered after M9 closed: M10 was originally
 "Backups" but the dashboard widget work earned its own milestone,
@@ -407,19 +410,32 @@ the canonical `.st-dot--*` palette across all three pages; no backend change).
   geolocation unification (the two implementations diverged by design; needs its
   own focused change — see RELEASES.md 0.41.0).
 
-### Milestones 16–17 — planned 📋
+### Milestones 16–20 — planned 📋
 
-The order is deliberate — the deployment guide ships last so it documents
-the final security posture, not a moving target, and the E2E suite lands
-after the UI revamp so tests target the final UI rather than one about to
-change.
+The order is deliberate — code quality and security come first (clean and
+audit the code before it ships), then the operator-facing deliverables
+(deployment guide, user guide) and a final documentation sweep. The
+deployment guide and docs land late so they describe the final, reviewed
+posture rather than a moving target.
 
-- **M16 — E2E browser tests.** Playwright — the project's first npm
-  dependency (~300 MB on disk), a deliberate departure from the
-  zero-dependency constraint, hence its own milestone. Lands after M15
-  so it tests the post-revamp UI.
-- **M17 — Deployment guide + TLS samples.** Caddy / nginx / systemd
-  samples plus TLS guidance. Ships last by design.
+> **Note (renumbered after M15 closed):** the old M16 "E2E browser tests"
+> milestone (Playwright as the first npm dependency) was dropped. The
+> zero-dependency constraint stands; automated browser tests are no longer
+> on the roadmap. The remaining work is the five milestones below.
+
+- **M16 — Code review / optimization / simplification.** A full pass over
+  the codebase for correctness, dead code, duplication, and simplification
+  opportunities now that the UI revamp has settled. No new features.
+- **M17 — Full security review.** End-to-end review of the threat model,
+  encryption, auth, input validation, and the audit log against the final
+  feature set.
+- **M18 — Deployment guide + TLS samples.** Caddy / nginx / systemd
+  samples plus TLS guidance. Documents the final, reviewed security
+  posture.
+- **M19 — User guide.** Operator- and employee-facing documentation for
+  running and using Pica day to day.
+- **M20 — Project documentation update.** A final sweep of all `docs/*`,
+  `README.md`, and `RELEASES.md` to match the shipped state.
 
 ---
 

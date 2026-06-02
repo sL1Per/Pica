@@ -330,5 +330,76 @@ await test('fmtHours: returns empty string for non-finite values', () => {
 });
 
 console.log('');
+console.log('Date/time formatting (re-implemented to match public/i18n.js)');
+
+// asDate must return a *valid* Date or null. The Date-instance branch must
+// validate too — otherwise an Invalid Date (truthy) slips past fmtDate's
+// `if (!d) return ''` guard and the catch-fallback `d.toISOString()` throws
+// "RangeError: Invalid time value". This bit us on the employee-summary page
+// when a pending in/out correction (one null endpoint) reached fmtRange →
+// fmtDate(new Date('null')). Regression guard.
+function makeAsDate() {
+  return (input) => {
+    const d = input instanceof Date ? input : new Date(input);
+    return Number.isFinite(d.getTime()) ? d : null;
+  };
+}
+
+function makeFmtDate(locale) {
+  const asDate = makeAsDate();
+  return (input) => {
+    const d = asDate(input);
+    if (!d) return '';
+    try {
+      return new Intl.DateTimeFormat(locale, {
+        year: 'numeric', month: 'short', day: 'numeric',
+      }).format(d);
+    } catch {
+      return d.toISOString().slice(0, 10);
+    }
+  };
+}
+
+function makeFmtTime(locale) {
+  const asDate = makeAsDate();
+  return (input) => {
+    const d = asDate(input);
+    if (!d) return '';
+    try {
+      return new Intl.DateTimeFormat(locale, {
+        hour: '2-digit', minute: '2-digit', hour12: false,
+      }).format(d);
+    } catch {
+      return d.toISOString().slice(11, 16);
+    }
+  };
+}
+
+await test('asDate: rejects Invalid Date instances (not just bad strings)', () => {
+  const asDate = makeAsDate();
+  assert.equal(asDate(new Date('not a date')), null);
+  assert.equal(asDate(new Date('null')), null);
+  assert.equal(asDate('definitely-not-iso'), null);
+  // A valid Date instance and a valid ISO string both pass through.
+  assert.ok(asDate(new Date('2026-06-02T17:00:00.000Z')) instanceof Date);
+  assert.ok(asDate('2026-06-02') instanceof Date);
+});
+
+await test('fmtDate/fmtTime: invalid input returns empty string, never throws', () => {
+  const fmtDate = makeFmtDate('en-US');
+  const fmtTime = makeFmtTime('en-US');
+  // The exact crash path from the employee-summary blank page:
+  // fmtRange(null, end, 'hours') → fmtDate(new Date(String(null))).
+  assert.equal(fmtDate(new Date('null')), '');
+  assert.equal(fmtDate('null'), '');
+  assert.equal(fmtTime(new Date('null')), '');
+  assert.equal(fmtTime('null'), '');
+  // Sanity: valid values still format (HH:MM in local time — don't pin the
+  // hour, which is timezone-dependent; pin the shape and non-emptiness).
+  assert.match(fmtTime('2026-06-02T17:00:00.000Z'), /^\d{2}:\d{2}$/);
+  assert.match(fmtDate('2026-06-02'), /2026/);
+});
+
+console.log('');
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

@@ -2,10 +2,11 @@
 
 ### Roadmap
 
-- M15: Full UI revamp
-- backups is not done to config.json file, it should be no?
-- M16: E2E browser tests
-- M16: Deployment guide + TLS samples
+- M16: Full code review / code optimization / code simplification
+- M17: Full security review
+- M18: Deployment guide + TLS samples
+- M19: User guide
+- M20: Project documentation update
 
 ### Bugs
 
@@ -13,9 +14,18 @@
 - [**DONE**] Getting a http 400 when submitting vacations: "WARN  POST /api/leaves 400 4ms" This happens when someone is doing it via internet, in the localhost i cannot reproduce this. --> Check picture on desktop -> this happens when limit is reach but we need to fix the error and show a message to the user (1)
 - [**DONE**] Employee cannot see his profile (1)
 - [**DONE**] Employees are able to book vacations even if another one has already approved leave for the same day and the option in the settings page is not selected, meaning it should not be allowed for an employee to book vacation when another one already have a leave approved for the same day.
+- [**DONE**] As an employer, If i go to team and then click on my profile, i get a blank page
+- Side bar should not scroll, only the content page should
+- Correction modal buttons are not align
+- on the punch page, this week tab, search bar is missing icon and white background, like the one on the team page
+- leave requests using only hours is not working
+
 
 ### Change
 
+- Make view a requested leave as a modal as well
+- As an employee, on the calendar page, remove the filter to view team or mine leaves. all leaves should be visible but as an employee i should not see who is on leave just that there is someone already on leave that day (this feature is already implemented, make sure its kept)
+- backups is not done to config.json file, it should be no?
 - [**DONE**] Employee should not see other employee leaves (1)
 - [**DONE**] Remove time bank, not needed, improve report to show who is missing hours and how many (3)
 - [**DONE**] Improve calendar in mobile phone, cannot read details
@@ -41,7 +51,6 @@
 
 - test backup restore
 - test masterkey rotation
-- remove any placeholder or mention to future milestone / development notes, etc.
 - Deploy server to make it accessible by other people, INTRANET only?
 - ssl ? - can be self-signed ..
 - Update documentation fully

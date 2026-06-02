@@ -5,13 +5,46 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.46.1._
+_Last touched in 0.46.3._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.46.1 (released 2026-06-02) — **Avatars + role labels
+- **Latest version:** 0.46.3 (released 2026-06-02) — **Row separators on the
+  Leaves request lists (dead-selector fix) + record-row consistency.** Real bug:
+  the Leaves *Pending approval* / *All requests* / *Your history* lists drew **no
+  row lines at all** because `leaves.css` used `.lv-row + .lv-row` (adjacent
+  sibling) while `leaves.js` renders `<ul class="lv-list"> › <li> › .lv-row` — the
+  `.lv-row`s are never adjacent (each alone in its `<li>`), so the rule matched
+  nothing. No colour could fix it. Fix: `.lv-list li + li { border-top: 1px solid
+  var(--line); }`. Only Leaves was affected — punch `.corr-row` puts the class on
+  the `<li>` itself and `.sess__times` are direct siblings, so those work.
+  Misdiagnosed twice as contrast (a `--line-strong` token at ~40% then ~28% was
+  added then **reverted** per operator — separators are plain `--line` now). Also
+  bumped the still-faint `--line-soft` record-row separators that *did* render up
+  to `--line` for consistency (Reports `.data-table`, leaves matrix, team list,
+  settings tables, home/detail/calendar rows, punch sess/corr lists). Touched:
+  `app.css`, `leaves.css`, `employees.css`, `settings.css`, `index.css`,
+  `employee.css`, `leaves-calendar.css`, `punch.css`. `CACHE_VERSION` v81 → v85.
+  No JS/backend/i18n/test change (no DOM/render test for the leaves list — M16).
+  **Verified with a Playwright screenshot** of an offline harness reproducing the
+  real `ul.lv-list › li › .lv-row` structure (lines now render). Stale-SW caveat:
+  clear site data / unregister the worker (or reload twice after v85) to see it.
+  See RELEASES 0.46.3.
+- **0.46.2** (released 2026-06-02) — **Fix: employee-summary
+  blank page on a pending in/out correction.** `/employees/:id` rendered a
+  blank body (topbar present, no error) whenever the employee had a pending
+  **in-only or out-only** correction. Cause: `asDate()` in `i18n.js` validated
+  only the string path, so an Invalid `Date` instance (from
+  `fmtRange(null, …)` → `new Date('null')` for a single-endpoint correction)
+  slipped past the `if (!d) return ''` guards and `fmtDate`'s catch-fallback
+  `d.toISOString()` threw an uncaught `RangeError`, killing the render. Fix:
+  `asDate` now range-checks both paths (hardens every date formatter app-wide);
+  `fmtRange` in `employee.js` collapses single-endpoint corrections to one time.
+  +2 regression tests (suite total still 53). No backend/API change.
+  `CACHE_VERSION` v80 → v81 (`i18n.js` is pre-cached). See RELEASES 0.46.2.
+- **0.46.1** (released 2026-06-02) — **Avatars + role labels
   across the punch & leaves people-lists.** Four sections showed the bare
   username where the app shows the role and/or were missing avatars: the employer
   **Today tab**, the leaves **Team-balance matrix**, the **Corrections tab**

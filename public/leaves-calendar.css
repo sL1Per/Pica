@@ -168,7 +168,7 @@
 }
 .cal-pop__date { font-family: var(--font-serif); font-size: 22px; line-height: 1.1; color: var(--ink); margin-bottom: 14px; }
 .cal-pop__empty { font-size: 13px; color: var(--muted); padding: 4px 0; }
-.cal-pop__row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line-soft); text-decoration: none; }
+.cal-pop__row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); text-decoration: none; }
 .cal-pop__row:first-of-type { border-top: none; }
 .cal-pop__av {
   width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px;
@@ -215,7 +215,7 @@
 .cal-bal__bar { height: 6px; border-radius: 3px; background: var(--bg-2); overflow: hidden; margin-top: 8px; }
 .cal-bal__fill { height: 100%; width: calc(var(--pct, 0) * 1%); background: var(--sage); border-radius: 3px; }
 
-.cal-out__row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line-soft); }
+.cal-out__row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
 .cal-out__row:first-of-type { border-top: none; }
 .cal-out__body { min-width: 0; }
 .cal-out__name { font-weight: 500; font-size: 13.5px; color: var(--ink); line-height: 1.2; }
@@ -231,7 +231,7 @@
 .cal-out__tag--other       { background: var(--paper-2);   color: var(--plum); }
 
 /* Employer pending card rows + inline actions */
-.cal-pend__row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line-soft); }
+.cal-pend__row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); }
 .cal-pend__row:first-of-type { border-top: none; }
 .cal-pend__av {
   flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;

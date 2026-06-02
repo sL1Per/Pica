@@ -113,7 +113,7 @@
 .lv-matrix { width: 100%; min-width: 100%; font-size: var(--text-sm); border-collapse: collapse; }
 .lv-matrix th, .lv-matrix td { padding: 8px; white-space: nowrap; text-align: left; }
 .lv-matrix th { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
-.lv-matrix td { border-bottom: 1px solid var(--line-soft); }
+.lv-matrix td { border-bottom: 1px solid var(--line); }
 .lv-matrix th.right, .lv-matrix td.right { text-align: right; }
 .lv-matrix__main { font-variant-numeric: tabular-nums; }
 .lv-matrix__main strong { color: var(--ink); }
@@ -163,7 +163,10 @@
   gap: 14px; align-items: center;
   padding: 14px 0; position: relative;
 }
-.lv-row + .lv-row { border-top: 1px solid var(--line-soft); }
+/* Rows are <li>-wrapped (.lv-list > li > .lv-row), so the old
+   .lv-row + .lv-row adjacent-sibling rule never matched. Target the
+   <li> adjacency so every row after the first gets a separator. */
+.lv-list li + li { border-top: 1px solid var(--line); }
 
 .lv-row__link {
   display: flex; align-items: center; justify-content: space-between;

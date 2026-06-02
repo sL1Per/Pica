@@ -14,6 +14,152 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.46.3] — 2026-06-02 — Row separators on the Leaves request lists (dead-selector fix) + record-row consistency
+
+Two things. (1) The real bug: the **Leaves request lists** (employer *Pending
+approval* and *All requests*, employee *Your history*) drew **no row
+separators at all** — not faint, *absent*. (2) A consistency pass bumping the
+deliberately-faint `--line-soft` hairline up to the standard `--line` on the
+record-row separators that *were* rendering.
+
+### Root cause of the missing lines
+
+`leaves.css` separated rows with `.lv-row + .lv-row { border-top: … }` — an
+**adjacent-sibling** rule. But `leaves.js` renders each row as
+`<ul class="lv-list"> › <li> › <div class="lv-row">` — the `.lv-row`s are each
+the only `.lv-row` inside their own `<li>`, so they are **never adjacent
+siblings** and the rule matched **nothing**. No colour value could ever have
+fixed it; the selector was dead. (This was misdiagnosed twice as a contrast
+problem, including a short-lived `--line-strong` token that was reverted — see
+below.) Fix: target the `<li>` adjacency instead —
+`.lv-list li + li { border-top: 1px solid var(--line); }`.
+
+Why only Leaves: the analogous punch lists are **not** affected — there the
+`<li>` itself carries the row class (`li.className = 'corr-row …'`), and
+`.sess__times` rows are direct siblings, so `.corr-row + .corr-row` /
+`.sess__times + .sess__times` match correctly.
+
+### The consistency bump (`--line-soft` → `--line`)
+
+Record-row separators that already rendered but at the very faint
+`--line-soft` were raised to the standard `--line` (the token the Reports
+`.data-table` already used), so a row of records reads the same everywhere:
+
+- **Reports** (`app.css` `.data-table`): row/`thead`/`tfoot` borders.
+- **Leaves** (`leaves.css`): Team-balance matrix header + rows.
+- **Team list** (`employees.css`): `.tm-thead` + `.tm-row`.
+- **Settings** (`settings.css`): override table + backup list.
+- **Home** (`index.css`): `.emp-leave`, `.eh-row`, `.eh-pend`.
+- **Employee detail** (`employee.css`): `.ed-day`, `.ed-pend`, `.ed-leave`.
+- **Calendar rails** (`leaves-calendar.css`): `.cal-*__row`.
+- **Punch** (`punch.css`): `.sess__times` + `.corr-row` lists.
+
+`CACHE_VERSION` v81 → v85 (`app.css` + page stylesheets changed across the
+iterations). No HTML, no JS, no backend, no i18n, no new test; version
+`0.46.2` → `0.46.3`.
+
+### Honest Disclosures
+
+- **The dead `.lv-row + .lv-row` selector was never caught by a test.** There
+  is no DOM/render test asserting the leaves list draws separators (M16
+  territory); the fix was verified with a Playwright screenshot of an offline
+  harness that reproduces the real `<ul class="lv-list"> › <li> › .lv-row`
+  structure. A standing regression test would need the DOM harness M16 brings.
+- **A `--line-strong` token was tried and reverted.** Two earlier iterations
+  chased contrast (`--line-soft` → `--line`, then a new `--line-strong` token
+  at ~40% then ~28% toward `--muted`) before the dead selector was found. Per
+  the operator's call the custom token was removed; separators are plain
+  `--line`. If `--line` reads too faint once the lists actually render, it is a
+  one-line token tweak — but now there is a line to tune.
+- **Colour/selector only.** Separators stay 1px; no row padding/hover change.
+  Still deliberately faint (left as `--line-soft`): modal/popover/footer
+  dividers, the user-menu and app-footer borders, in-card section rules (the
+  employer Today card's `.ptoday-emp__head`, the punch `.map-card__meta`), the
+  `.sess__missing` hint, and decorative box borders.
+- **Service worker caching bit the diagnosis.** A stale SW serves the old
+  stylesheet one reload behind even after a hard refresh; clearing site data /
+  unregistering the worker (or reloading twice after `v85` activates) is needed
+  to actually see the change.
+
+---
+
+## [0.46.2] — 2026-06-02 — Fix: employee-summary blank page on a pending in/out correction
+
+The employer-facing employee-summary page (`/employees/:id`) rendered a
+**blank body** — topbar present, content area empty, no visible error —
+whenever the employee had a **pending in-only or out-only correction**.
+The console showed `RangeError: Invalid time value` thrown from `fmtDate`.
+
+### Root cause
+
+`asDate()` in `public/i18n.js` is the gatekeeper that all date/time
+formatters (`fmtDate`/`fmtTime`/`fmtDateTime`) lean on: they call it and
+bail with `''` when it returns `null`. But `asDate` validated **only** the
+string path — when handed a `Date` instance it returned it **unchecked**:
+
+```js
+function asDate(input) {
+  if (input instanceof Date) return input;   // ← an Invalid Date slips through
+  const d = new Date(input);
+  return Number.isFinite(d.getTime()) ? d : null;
+}
+```
+
+An *Invalid Date* is still a `Date` object and is **truthy**, so it sailed
+past every `if (!d) return ''` guard. `Intl.DateTimeFormat.format()` then
+threw, and the `catch` fallback `d.toISOString()` threw a second, *uncaught*
+`RangeError` — killing the render mid-pass and leaving every section hidden.
+
+The Invalid Date came from `fmtRange()` in `public/employee.js`. A
+correction can carry a single endpoint — an **in-only** correction has
+`end === null`, an **out-only** one has `start === null`. `fmtRange` did
+`fmtDate(new Date(String(start)))`, and `new Date(String(null))` →
+`new Date('null')` → Invalid Date. `kind: 'both'` corrections (both
+endpoints set) never tripped it, which is why it surfaced only for some
+employees.
+
+### The fix
+
+- **`public/i18n.js` — `asDate` now validates both paths.** A `Date`
+  instance is range-checked exactly like a parsed string, so an Invalid
+  Date can never escape. This hardens **every** date/time formatter
+  app-wide, not just this page — any future caller that hands a bad value
+  to `fmtDate`/`fmtTime` now gets `''` instead of a thrown render.
+- **`public/employee.js` — `fmtRange` handles single-endpoint
+  corrections.** It derives the date from whichever endpoint exists and
+  collapses to one time when only one is present, so an out-only correction
+  reads `Jun 2, 2026 19:00` instead of a half-empty `Jun 2, 2026  –19:00`.
+  (`public/punch-corrections.js` already branched per kind and was never
+  affected.)
+- **`tests/test-i18n.mjs`** gains two cases mirroring the fixed helpers:
+  `asDate` rejecting Invalid Date instances, and `fmtDate`/`fmtTime`
+  returning `''` (never throwing) for the exact `new Date('null')` input
+  from the crash. Suite total unchanged at **53**.
+
+### Honest Disclosures
+
+- **This was a latent bug, not a regression from a recent release.** The
+  `asDate`/`fmtRange` code has been in place since the M15 employee-summary
+  rebuild (0.27.0 era); it only bites when a pending in/out correction
+  reaches the summary, so installs without that data never saw it.
+- **No backend, storage, or API change.** The summary endpoint already
+  returned `start: null` / `end: null` for single-endpoint corrections —
+  that shape is correct and unchanged; the frontend simply mis-handled it.
+- **`CACHE_VERSION` bumped v80 → v81** because `i18n.js` is a pre-cached
+  asset. Clients pick up the fix on their next service-worker update.
+- **Other pages were crash-*safe* but unaudited for display.** The `asDate`
+  hardening means no other page can throw on a bad date, but I only
+  verified the *visual* correction-range rendering on the employee-summary
+  and punch-corrections views. Other date displays were not re-reviewed
+  for cosmetic edge cases.
+- **The earlier investigation chased a service-worker stale-cache theory**
+  (all `.js` is served cache-first, so a fresh HTML page can run a stale
+  `employee.js`). That mechanism is real and reproducible but was **not**
+  the cause here; it is left as-is. If a stale-shell class of bug recurs,
+  revisit the SW JS caching strategy separately.
+
+---
+
 ## [0.46.1] — 2026-06-02 — Avatars + role labels across the punch & leaves people-lists
 
 Several people-list sections showed the bare **username** where the rest of the

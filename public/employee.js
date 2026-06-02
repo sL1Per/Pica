@@ -53,8 +53,19 @@ const STATUS_LABEL = { working: 'team.status.working', break: 'team.status.break
 const KIND = { both: 'corrections.kindBoth', in: 'corrections.kindIn', out: 'corrections.kindOut' };
 
 function fmtRange(start, end, unit) {
+  if (unit === 'hours') {
+    // Corrections can carry a single endpoint: an in-only correction has
+    // end === null, an out-only one has start === null. Derive the date
+    // from whichever side exists and collapse to one time when only one
+    // is present, so the row reads "Jun 2, 2026 17:00" rather than a
+    // half-empty "Jun 2, 2026  –17:00".
+    const date = fmtDate(start || end);
+    const a = start ? fmtTime(start) : '';
+    const b = end ? fmtTime(end) : '';
+    const time = a && b ? `${a}–${b}` : (a || b);
+    return `${date} ${time}`.trim();
+  }
   const s = String(start), e = String(end);
-  if (unit === 'hours') return `${fmtDate(new Date(s))} ${fmtTime(s)}–${fmtTime(e)}`;
   const sY = s.slice(0, 10), eY = e.slice(0, 10);
   return sY === eY ? fmtDate(sY) : `${fmtDate(sY)} → ${fmtDate(eY)}`;
 }
