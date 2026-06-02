@@ -126,12 +126,6 @@ export function registerPageRoutes(router, { publicDir, usersStore, userPrefsSto
     await sendHtml(res, 'punch.html', req);
   });
 
-  router.get('/punches/today', async (req, res) => {
-    const a = authed(req);
-    if (a.redirect) return res.redirect(a.redirect);
-    await sendHtml(res, 'punches-today.html', req);
-  });
-
   // -- Leaves -------------------------------------------------------------
 
   router.get('/leaves', async (req, res) => {
@@ -163,18 +157,12 @@ export function registerPageRoutes(router, { publicDir, usersStore, userPrefsSto
 
   // -- Corrections (manual time entries) ---------------------------------
 
-  router.get('/corrections', async (req, res) => {
-    const a = authed(req);
-    if (a.redirect) return res.redirect(a.redirect);
-    await sendHtml(res, 'corrections.html', req);
-  });
-
   router.get('/corrections/new', async (req, res) => {
     const a = authed(req);
     if (a.redirect) return res.redirect(a.redirect);
-    // The standalone new-entry page is retired; the modal on /corrections
-    // handles creation. Passing ?new=1 tells that page to auto-open it.
-    return res.redirect('/corrections?new=1');
+    // The standalone new-entry page is retired; the modal on /punch handles
+    // creation. Passing ?new=1 tells that page to auto-open it.
+    return res.redirect('/punch?tab=corrections&new=1');
   });
 
   router.get('/corrections/:id', async (req, res) => {
