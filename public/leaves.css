@@ -125,6 +125,15 @@
   background: var(--paper-2); color: var(--honey);
   font-size: 10px; font-weight: 600; text-transform: lowercase;
 }
+.lv-matrix__person { display: flex; align-items: center; gap: 10px; }
+.lv-matrix__name { font-weight: 500; color: var(--ink); }
+.lv-matrix__av {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: 11px; font-weight: 600;
+  background: oklch(0.86 0.06 var(--hue, 90)); color: oklch(0.34 0.08 var(--hue, 90));
+}
+.lv-matrix__av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
 
 /* ---------- Filter / tab bar ---------------------------------------------- */
 

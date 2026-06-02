@@ -862,6 +862,24 @@
   background: var(--line);   /* default/fallback — status modifiers override */
 }
 
+/* Left column: avatar (employer only) beside the main text block. */
+.corr-row__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Round avatar (uploaded picture, else hue-tinted initials) — matches the
+ * Today tab / team list. Only rendered in the employer view. */
+.corr-row__av {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: 13px; font-weight: 600;
+  background: oklch(0.86 0.06 var(--hue, 90)); color: oklch(0.34 0.08 var(--hue, 90));
+}
+.corr-row__av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
 /* Main body: name + time summary + sub-line */
 .corr-row__main {
   min-width: 0;
@@ -1150,6 +1168,16 @@
   border-bottom: 1px solid var(--line-soft);
 }
 
+/* Round avatar (uploaded picture, else hue-tinted initials) — matches the
+ * team list / leaves avatars. Sits first in the head row before the name. */
+.ptoday-emp__av {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: 13px; font-weight: 600;
+  background: oklch(0.86 0.06 var(--hue, 90)); color: oklch(0.34 0.08 var(--hue, 90));
+}
+.ptoday-emp__av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
 /* Name — pStyles.personName: 600 weight, 14px, --ink */
 .ptoday-emp__name {
   font-weight: 600;
@@ -1305,6 +1333,24 @@
   gap: 10px;
   margin-bottom: 16px;
 }
+
+/* Person header: identifies whose week is shown (avatar + name + role). */
+.week-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.week-head__av {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  overflow: hidden; font-size: 13px; font-weight: 600;
+  background: oklch(0.86 0.06 var(--hue, 90)); color: oklch(0.34 0.08 var(--hue, 90));
+}
+.week-head__av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.week-head__text { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.week-head__name { font-weight: 600; font-size: 14px; color: var(--ink); }
+.week-head__role { font-size: 12px; color: var(--muted); }
 
 /*
  * Search box — mirrors the app.css input[type="search"] canonical look

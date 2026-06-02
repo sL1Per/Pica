@@ -16,6 +16,66 @@ mountFooter();
 applyTranslations();
 
 const $ = (id) => document.getElementById(id);
+
+// -------- Avatar helpers (match the team list / Today tab) -------------------
+function avInitials(name) { return (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?'; }
+function avHue(s) { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; }
+
+/**
+ * Round avatar. The uploaded picture ALWAYS takes priority when it exists:
+ * hue-tinted initials paint immediately (no broken-image flash) and the picture
+ * loads in the background, replacing the initials on success or leaving them in
+ * place on error (no picture on disk).
+ */
+function buildAvatar(id, name, cls = 'week-head__av') {
+  const a = document.createElement('div');
+  a.className = cls;
+  a.style.setProperty('--hue', avHue(name));
+  a.textContent = avInitials(name);
+  if (id) {
+    const img = new Image();
+    img.alt = '';
+    img.addEventListener('load', () => { a.textContent = ''; a.appendChild(img); });
+    img.src = `/api/employees/${encodeURIComponent(id)}/picture`;
+  }
+  return a;
+}
+
+/**
+ * Render the This-week person header (avatar + name + role) for whoever's week
+ * is on screen — the selected person for an employer, or the viewer themselves
+ * for an employee. Falls back to the current user when the id isn't found in the
+ * employees cache.
+ */
+function renderWeekHead(targetId) {
+  const headEl = $('week-head');
+  if (!headEl) return;
+  let name, role, id;
+  const emp = (employeesCache || []).find((e) => e.id === targetId);
+  if (emp) {
+    name = emp.fullName || emp.username; role = emp.role; id = emp.id;
+  } else if (me) {
+    name = me.fullName || me.username; role = me.role; id = me.id;
+  } else {
+    headEl.hidden = true; return;
+  }
+  headEl.replaceChildren();
+  headEl.appendChild(buildAvatar(id, name));
+  const text = document.createElement('div');
+  text.className = 'week-head__text';
+  const nameEl = document.createElement('span');
+  nameEl.className = 'week-head__name';
+  nameEl.textContent = name;
+  text.appendChild(nameEl);
+  if (role) {
+    const roleEl = document.createElement('span');
+    roleEl.className = 'week-head__role';
+    roleEl.textContent = t('employee.role.' + role);
+    text.appendChild(roleEl);
+  }
+  headEl.appendChild(text);
+  headEl.hidden = false;
+}
 const statusBlock = $('status-block');
 const statusLabel = $('status-label');
 const statusMeta  = $('status-meta');
@@ -496,10 +556,14 @@ async function refresh() {
         }
       } catch { /* non-fatal — employer cards render without display names */ }
     }
-    const nameById = new Map(
-      (employeesCache || []).map((e) => [e.id, e.fullName || e.username])
+    const infoById = new Map(
+      (employeesCache || []).map((e) => [e.id, {
+        name: e.fullName || e.username,
+        role: e.role || null,
+        hasPicture: e.hasPicture || false,
+      }])
     );
-    renderEmployerToday(document.getElementById('employer-today-groups'), today.punches, nameById);
+    renderEmployerToday(document.getElementById('employer-today-groups'), today.punches, infoById);
 
     // paintSubLine still uses the employer's own punches for the hero sub-line.
     const mine = today.punches.filter((p) => p.employeeId === me.id);
@@ -659,6 +723,9 @@ async function loadWeek(empId) {
   // employer looking at their own clock). Task 8's router passes an explicit
   // empId when the person-picker selects a different employee.
   const targetId = empId !== undefined ? empId : me.id;
+
+  // Identify whose week this is (avatar + name + role) above the day list.
+  renderWeekHead(targetId);
 
   // Monday of this week (UTC). getUTCDay(): 0=Sun..6=Sat → days since Monday.
   const now = new Date();

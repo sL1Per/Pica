@@ -13,6 +13,30 @@ import { t } from '/i18n.js';
 import { reverseGeocode } from '/geocode.js';
 import { pairSessions as pairPunchSessions } from '/team-status.js';
 
+// Avatar helpers — mirror the team list (initials fallback, hue-tinted bg).
+function initials(name) { return (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?'; }
+function hue(s) { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; }
+
+/**
+ * Round avatar for one employee. The uploaded picture ALWAYS takes priority
+ * when it exists: hue-tinted initials paint immediately (no broken-image flash)
+ * and the picture loads in the background, replacing the initials on success or
+ * leaving them in place on error (no picture on disk).
+ */
+function buildAvatar(id, name) {
+  const a = document.createElement('div');
+  a.className = 'ptoday-emp__av';
+  a.style.setProperty('--hue', hue(name));
+  a.textContent = initials(name);
+  if (id) {
+    const img = new Image();
+    img.alt = '';
+    img.addEventListener('load', () => { a.textContent = ''; a.appendChild(img); });
+    img.src = `/api/employees/${encodeURIComponent(id)}/picture`;
+  }
+  return a;
+}
+
 function formatTime(iso) {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
@@ -188,11 +212,12 @@ function buildSessCard(sess, { live = false } = {}) {
 
 /**
  * Render one per-employee card into the .ptoday container.
- * name     — full display name (may be undefined/null, falls back to username)
- * username — @-handle / role label
+ * info     — { id, name, role, hasPicture } for the employee (name falls back
+ *            to the username; role/hasPicture default sensibly when missing)
  * punches  — chronological punches array for this employee today
  */
-function renderGroup(name, username, punches) {
+function renderGroup(info, punches) {
+  const name = info.name;
   const card = document.createElement('article');
   card.className = 'ptoday-emp';
 
@@ -200,15 +225,21 @@ function renderGroup(name, username, punches) {
   const head = document.createElement('div');
   head.className = 'ptoday-emp__head';
 
+  head.appendChild(buildAvatar(info.id, name));
+
   const nameEl = document.createElement('span');
   nameEl.className = 'ptoday-emp__name';
-  nameEl.textContent = name || username;
+  nameEl.textContent = name;
   head.appendChild(nameEl);
 
-  const roleEl = document.createElement('span');
-  roleEl.className = 'ptoday-emp__role';
-  roleEl.textContent = username;
-  head.appendChild(roleEl);
+  // Role label (employee / employer) replaces the @-handle that used to sit
+  // here — the username is identity noise in this everyone-today view.
+  if (info.role) {
+    const roleEl = document.createElement('span');
+    roleEl.className = 'ptoday-emp__role';
+    roleEl.textContent = t('employee.role.' + info.role);
+    head.appendChild(roleEl);
+  }
 
   // Status pill — working if the last punch is an "in" (no closing "out").
   const lastPunch = punches[punches.length - 1];
@@ -259,9 +290,9 @@ function renderGroup(name, username, punches) {
  * @param {HTMLElement} container  the <div id="employer-today-groups">
  * @param {Array}       punches    flat array of today's punches for ALL employees
  *                                 (each has employeeId, username, type, ts, geo, comment)
- * @param {Map}         nameById   Map<employeeId, displayName>
+ * @param {Map}         infoById   Map<employeeId, {name, role, hasPicture}>
  */
-export function renderEmployerToday(container, punches, nameById) {
+export function renderEmployerToday(container, punches, infoById) {
   // Group punches by employeeId.
   const byId = new Map();
   for (const p of punches) {
@@ -290,6 +321,12 @@ export function renderEmployerToday(container, punches, nameById) {
   });
 
   for (const [id, group] of rows) {
-    container.appendChild(renderGroup(nameById.get(id), group.username, group.punches));
+    const info = infoById.get(id) || {};
+    container.appendChild(renderGroup({
+      id,
+      name: info.name || group.username,
+      role: info.role || null,
+      hasPicture: info.hasPicture || false,
+    }, group.punches));
   }
 }

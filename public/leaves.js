@@ -45,20 +45,25 @@ function initials(name) {
 function hue(s) { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; }
 // Round, hue-tinted avatar (uploaded picture when present, else initials) —
 // matches the team list / dashboard avatars.
-function avatar(l, name) {
+//
+// The picture ALWAYS takes priority when one exists: we render hue-tinted
+// initials immediately (no broken-image flash, instant paint) and attempt the
+// picture in the background — on a successful load it replaces the initials, on
+// error (no picture on disk) the initials simply stay. This is more robust than
+// gating on a `hasPicture` flag, which isn't always present in every endpoint's
+// rows (e.g. the balances matrix) and would otherwise need a server restart to
+// surface.
+function avatar(l, name, cls = 'lv-row__av') {
   const a = document.createElement('div');
-  a.className = 'lv-row__av';
-  // Picture wins; initials are only the fallback (no picture, or one that
-  // fails to load). Pre-set the hue so the initials fallback is already tinted.
+  a.className = cls;
   a.style.setProperty('--hue', hue(name));
-  if (l.hasPicture && l.employeeId) {
-    const img = document.createElement('img');
-    img.src = `/api/employees/${encodeURIComponent(l.employeeId)}/picture`;
+  a.textContent = initials(name);
+  const id = l.employeeId;
+  if (id) {
+    const img = new Image();
     img.alt = '';
-    img.addEventListener('error', () => { a.textContent = initials(name); });
-    a.appendChild(img);
-  } else {
-    a.textContent = initials(name);
+    img.addEventListener('load', () => { a.textContent = ''; a.appendChild(img); });
+    img.src = `/api/employees/${encodeURIComponent(id)}/picture`;
   }
   return a;
 }
@@ -360,20 +365,22 @@ function renderEmployerMatrix({ rows }) {
   for (const row of rows) {
     const tr = document.createElement('tr');
     const tdName = document.createElement('td');
-    tdName.textContent = row.fullName || row.username;
-    if (row.fullName) {
-      const sub = document.createElement('span');
-      sub.className = 'muted';
-      sub.textContent = ` · ${row.username}`;
-      tdName.appendChild(sub);
-    }
-    if (row.role === 'employer') {
-      const role = document.createElement('span');
-      role.className = 'lv-type--role';
-      role.textContent = t('employee.role.employer');
-      tdName.appendChild(document.createTextNode(' '));
-      tdName.appendChild(role);
-    }
+    // Avatar + name + role badge — mirrors the team list. The role replaces
+    // the @-handle (which used to sit here as a muted sub-label); the username
+    // is identity-only noise in this balance view.
+    const displayName = row.fullName || row.username;
+    const person = document.createElement('div');
+    person.className = 'lv-matrix__person';
+    person.appendChild(avatar({ employeeId: row.userId }, displayName, 'lv-matrix__av'));
+    const nameWrap = document.createElement('span');
+    nameWrap.className = 'lv-matrix__name';
+    nameWrap.textContent = displayName;
+    person.appendChild(nameWrap);
+    const role = document.createElement('span');
+    role.className = 'lv-type--role';
+    role.textContent = t('employee.role.' + row.role);
+    person.appendChild(role);
+    tdName.appendChild(person);
     tr.appendChild(tdName);
 
     for (const b of row.balances) {

@@ -23,6 +23,30 @@ import { postJson, showMessage } from '/app.js';
 import { t, translateError, fmtDateTime, fmtHours } from '/i18n.js';
 import { openCorrectionModal } from '/correction-detail-modal.js';
 
+// -------- Avatar helpers (match the team list / Today tab) -------------------
+function initials(name) { return (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?'; }
+function hue(s) { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; }
+
+/**
+ * Round avatar for one person. The uploaded picture ALWAYS takes priority when
+ * it exists: hue-tinted initials paint immediately (no broken-image flash) and
+ * the picture loads in the background, replacing the initials on success or
+ * leaving them in place on error (no picture on disk).
+ */
+function buildAvatar(id, name) {
+  const a = document.createElement('div');
+  a.className = 'corr-row__av';
+  a.style.setProperty('--hue', hue(name));
+  a.textContent = initials(name);
+  if (id) {
+    const img = new Image();
+    img.alt = '';
+    img.addEventListener('load', () => { a.textContent = ''; a.appendChild(img); });
+    img.src = `/api/employees/${encodeURIComponent(id)}/picture`;
+  }
+  return a;
+}
+
 /**
  * Initialize the Corrections tab panel.
  *
@@ -70,12 +94,19 @@ export function initCorrectionsPanel(opts) {
     });
     li.appendChild(link);
 
+    // Left column: avatar (employer only) + main content. The avatar sits
+    // beside the text — matching the Today tab and team list — so the employer
+    // can recognise the requester at a glance.
+    const left = document.createElement('div');
+    left.className = 'corr-row__left';
+
     // Main content column.
     const main = document.createElement('div');
     main.className = 'corr-row__main';
 
     // Who — only shown for the employer (employee sees their own list only).
     if (me.role === 'employer' && (c.fullName || c.username)) {
+      left.appendChild(buildAvatar(c.employeeId, c.fullName || c.username));
       const who = document.createElement('div');
       who.className = 'corr-row__who';
       who.textContent = c.fullName || c.username;
@@ -119,7 +150,8 @@ export function initCorrectionsPanel(opts) {
     chips.appendChild(justChip);
 
     main.appendChild(chips);
-    link.appendChild(main);
+    left.appendChild(main);
+    link.appendChild(left);
 
     // Aside: hours display goes inside the link; inline actions are a sibling.
     const hoursEl = document.createElement('div');

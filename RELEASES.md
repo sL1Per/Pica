@@ -14,6 +14,63 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.46.1] — 2026-06-02 — Avatars + role labels across the punch & leaves people-lists
+
+Several people-list sections showed the bare **username** where the rest of the
+app shows the **role**, and didn't render the person's **avatar**. This release
+aligns them all with the team list (avatar → name → role) and makes the avatar
+robust everywhere.
+
+- **Avatar = picture-always-wins.** Every avatar touched here uses one pattern:
+  hue-tinted initials paint immediately (instant, no broken-image flash), and
+  the uploaded picture loads in the background — replacing the initials on a
+  successful load, or leaving them in place on error (no picture on disk). This
+  drops the previous dependence on a per-row `hasPicture` flag, which wasn't
+  present in every endpoint's payload and would otherwise have needed a server
+  restart to surface. **No backend change ships in this release.**
+- **Leaves Team-balance matrix** (`leaves.js`, `leaves.css`). Name cell now leads
+  with a small avatar and shows the role badge for **every** person (was
+  employer-only); the redundant ` · username` sub-label is gone. The shared
+  `avatar()` helper switched to the picture-always-wins pattern, so the matrix
+  shows real pictures with no restart.
+- **Punch employer Today tab** (`punch-today-employer.js`, `punch.js`). Per-
+  employee card heads lead with an avatar and show the role label instead of the
+  `@handle`. `punch.js` passes an `infoById` map built from the already-fetched
+  `/api/employees` list.
+- **Punch Corrections tab** (`punch-corrections.js`, `punch.css`). Employer rows
+  now lead with the requester's avatar beside the name (new `.corr-row__left` /
+  `.corr-row__av`). Employee rows are unchanged (they only ever list their own
+  corrections, so no name/avatar is shown). Uses the `employeeId` the
+  `/api/corrections` payload already carried — no backend change.
+- **Punch This-week tab** (`punch.js`, `punch.html`, `punch.css`). A person
+  header (avatar + name + role) now sits above the day groups, identifying whose
+  week is on screen — the selected person for an employer, the viewer themselves
+  for an employee. New `#week-head` element + `.week-head*` styles.
+
+CACHE_VERSION v79→v80 (`punch.css`, `leaves.css` changed; `punch.html` is not
+pre-cached).
+
+**Honest Disclosures.**
+- **No HTTP contract changed.** An earlier draft of this work added a
+  `hasPicture` field to `GET /api/leaves/balances`; that was reverted in favour
+  of the picture-always-wins client pattern, which needs no new field and no
+  restart.
+- **One picture request per person, even those without a picture.** The
+  always-try approach fires a `GET /api/employees/:id/picture` for everyone in a
+  list; people with no picture get a 404 and keep their initials. At the
+  project's ≤50-employee target this is negligible (and consistent with how the
+  list views already fan out), but it is more requests than a `hasPicture`-gated
+  approach would make.
+- **Not visually verified against a running instance.** Verified via the unit
+  suites (`test-leaves*`, `test-punches`, `test-corrections`, all green) and code
+  review; no fixtured screenshot was produced. Frontend logic isn't unit-testable
+  directly (absolute-path ES modules Node can't import — the standing
+  constraint).
+- **Avatar sizes differ per surface by design** (36px punch cards/rows/week
+  header, 28px leaves table row) — sized to their containers, not one token.
+
+---
+
 ## [0.46.0] — 2026-06-02 — Two pages folded into the punch page's tabs
 
 The employer **`/punches/today`** view and the **`/corrections`** list page were

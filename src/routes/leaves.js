@@ -155,7 +155,7 @@ export function registerLeaveRoutes(router, {
 
   // --------------------------------------------------------------------------
   // GET /api/leaves/balances?year=YYYY — employer only, matrix across all
-  // employees. Returns { year, rows: [{userId, username, fullName,
+  // employees. Returns { year, rows: [{userId, username, fullName, role,
   // balances:[{type,allowance,pending,booked,remaining}]}, ...] }.
   // --------------------------------------------------------------------------
   router.get('/api/leaves/balances', requireRole('employer')((req, res) => {

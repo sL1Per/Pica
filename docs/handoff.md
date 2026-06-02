@@ -5,13 +5,29 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.46.0._
+_Last touched in 0.46.1._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.46.0 (released 2026-06-02) — **Two pages folded into
+- **Latest version:** 0.46.1 (released 2026-06-02) — **Avatars + role labels
+  across the punch & leaves people-lists.** Four sections showed the bare
+  username where the app shows the role and/or were missing avatars: the employer
+  **Today tab**, the leaves **Team-balance matrix**, the **Corrections tab**
+  (employer rows), and the **This-week tab** (no person header at all). All now
+  show avatar + name + role. **Avatar = picture-always-wins**: hue-tinted
+  initials paint immediately, the uploaded picture loads in the background and
+  replaces them on success (error → initials stay). This drops the dependence on
+  a `hasPicture` flag, so the leaves matrix shows real pictures with **no server
+  restart** and **no backend change** (an earlier draft added `hasPicture` to
+  `GET /api/leaves/balances`; reverted). Files: `punch.js`,
+  `punch-today-employer.js`, `punch-corrections.js`, `punch.html`, `punch.css`,
+  `leaves.js`, `leaves.css`. `CACHE_VERSION` v79 → v80. Trade-off: one
+  `GET …/picture` per person even for the picture-less (404 → initials) —
+  negligible at ≤50. Verified via unit suites + code review (not a fixtured
+  screenshot). See RELEASES 0.46.1.
+- **0.46.0** (2026-06-02) — **Two pages folded into
   `/punch` tabs.** The employer `/punches/today` view and the `/corrections`
   list page were eliminated **as pages** (no feature lost) by folding them into
   **Today · Corrections · This week** tabs on `/punch`. Employer Today now shows
