@@ -252,6 +252,8 @@ export default {
   'punch.tabCorrections': 'Correções',
   'punch.tabManual':     'MANUAL',
   'punch.weekSearchPh':  'Procurar morada ou comentário…',
+  'punch.weekAll':       'Todos os funcionários',
+  'punch.corrSearchPh':  'Procurar nome, data ou motivo…',
   'punch.forgotShort':    '+ Esqueceu-se de marcar?',
   'punch.workingNow':     'A trabalhar',
   'punch.notClockedIn':   'Sem registo',

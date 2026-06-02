@@ -107,6 +107,12 @@
     </nav>
 
     <section id="panel-today">
+      <div class="punch-toolbar">
+        <div class="punch-search-wrap">
+          <input type="search" id="today-search" class="punch-search" data-i18n-attr="placeholder:punch.weekSearchPh" placeholder="Search address or comment…">
+        </div>
+        <select id="today-person" class="punch-person" hidden></select>
+      </div>
       <!-- Employee: own session cards (#today-list). Employer: per-employee
            groups (#employer-today-groups). punch.js shows exactly one. -->
       <div class="today-section__head">
@@ -125,6 +131,12 @@
     </section>
 
     <section id="panel-corrections" hidden>
+      <div class="punch-toolbar">
+        <div class="punch-search-wrap">
+          <input type="search" id="corr-search" class="punch-search" data-i18n-attr="placeholder:punch.corrSearchPh" placeholder="Search name, date or reason…">
+        </div>
+        <select id="corr-person" class="punch-person" hidden></select>
+      </div>
       <div class="corr-toolbar">
         <span id="pending-tag" class="corr-pending-tag" hidden></span>
         <a class="btn-primary" id="new-correction" href="/corrections/new" data-i18n="corrections.newButton">Register manual time</a>
@@ -140,9 +152,11 @@
     </section>
 
     <section id="panel-week" hidden>
-      <div class="week-toolbar">
-        <input type="search" id="week-search" class="week-search" data-i18n-attr="placeholder:punch.weekSearchPh" placeholder="Search address or comment…">
-        <select id="week-person" class="week-person" hidden></select>
+      <div class="punch-toolbar">
+        <div class="punch-search-wrap">
+          <input type="search" id="week-search" class="punch-search" data-i18n-attr="placeholder:punch.weekSearchPh" placeholder="Search address or comment…">
+        </div>
+        <select id="week-person" class="punch-person" hidden></select>
       </div>
       <div id="week-head" class="week-head" hidden></div>
       <ul id="week-list" class="punch-list"><li class="subtle" data-i18n="punch.loading">Loading…</li></ul>

@@ -1321,15 +1321,20 @@
 }
 
 /* ============================================================================
-   This-week toolbar — search box + employer person-picker (Task 6)
+   Punch tab toolbars — search box (all tabs) + employer person-picker (week)
    Tokens: --paper, --ink, --ink-2, --line, --line-soft, --muted, --honey.
+   Shared by the Today, Corrections and This-week tabs so the search field is
+   visually identical everywhere (it began life as the This-week toolbar).
    ============================================================================ */
 
-/* Toolbar row: search and picker side-by-side with a gap, 16px bottom margin. */
-.week-toolbar {
+/* Toolbar row: search (+ optional picker) with a gap, 16px bottom margin.
+   Wraps on narrow viewports so a picker drops below the search instead of
+   squashing it. */
+.punch-toolbar {
   display: flex;
   flex-direction: row;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -1353,53 +1358,97 @@
 .week-head__role { font-size: 12px; color: var(--muted); }
 
 /*
- * Search box — mirrors the app.css input[type="search"] canonical look
- * (--paper bg, --line border, --ink text, 36px height, 8px radius).
- * Grows to fill available space; min-width prevents it from collapsing
- * when the person-picker is also visible.
+ * Search box — mirrors the Team-list toolbar look (white --paper surface,
+ * --line border, leading magnifying-glass icon). The input is wrapped in
+ * .punch-search-wrap so the icon can be positioned over it. The wrapper grows
+ * to fill the toolbar (search is the wide field; a picker stays compact).
  */
-.week-search {
-  flex: 1 1 0;
-  min-width: 120px;
-  height: 36px;
-  padding: 0 12px;
+.punch-search-wrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 320px;
+  min-width: 200px;
+}
+
+/* Magnifying-glass icon. CSS mask (not background-image) so it tints with
+   var(--muted) and stays correct across every theme/palette. Mirrors the
+   .tm-search-wrap icon on the Team list. */
+.punch-search-wrap::before {
+  content: ""; position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; pointer-events: none; background: var(--muted);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Scoped under .punch-search-wrap so (0,2,0) beats app.css's
+   input[type="search"] (0,0,1) — otherwise app.css forces the grey --bg
+   surface and short left padding (icon overlap). */
+.punch-search-wrap .punch-search {
+  width: 100%;
+  height: 44px;
+  min-height: 0;
+  padding: 0 14px 0 44px;
   background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 12px;
   font-family: inherit;
   font-size: 14px;
 }
 
-.week-search::placeholder {
+.punch-search-wrap .punch-search::placeholder {
   color: var(--muted);
 }
 
-.week-search:focus {
-  outline: 2px solid var(--honey);
-  outline-offset: 1px;
+.punch-search-wrap .punch-search:focus {
+  outline: none;
   border-color: var(--honey);
 }
 
 /*
- * Person picker — a normal <select> that matches the search field height.
- * flex: 0 1 auto keeps it from growing past its natural content width.
+ * Person picker (employer) — a compact <select> matching the search field
+ * height, shared by the Today, Corrections and This-week toolbars. flex: 0 0
+ * auto + a max-width keeps it narrow (long names ellipsize) so the search stays
+ * the dominant field.
  */
-.week-person {
-  flex: 0 1 auto;
-  height: 36px;
-  padding: 0 8px;
+.punch-person {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 200px;
+  height: 44px;
+  min-height: 0;
+  padding: 0 32px 0 12px;
   background: var(--paper);
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 12px;
   font-family: inherit;
   font-size: 14px;
   cursor: pointer;
+  text-overflow: ellipsis;
 }
 
-.week-person:focus {
-  outline: 2px solid var(--honey);
-  outline-offset: 1px;
+.punch-person:focus {
+  outline: none;
   border-color: var(--honey);
+}
+
+/*
+ * All-employees mode: each person is a card matching the employer Today tab
+ * (.ptoday-emp chrome — avatar/name/role head + paddinged body), so the week
+ * view reads the same as Today. The card body holds the per-day groups. Cards
+ * are stacked with a 16px gap (same as #employer-today-groups below).
+ */
+.week-emp { display: block; list-style: none; }
+.week-emp + .week-emp { margin-top: 16px; }
+/* The last day-group inside a week card already has the card's bottom padding;
+   drop its own 22px margin so the card doesn't end with a big empty gap. */
+.week-emp .ptoday-sessions .day-group:last-child { margin-bottom: 0; }
+
+/* Employer Today cards: stack with a clear gap so each person reads as a
+   discrete card (matches the all-employees This-week cards above). */
+#employer-today-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }

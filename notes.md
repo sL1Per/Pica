@@ -15,16 +15,16 @@
 - [**DONE**] Employee cannot see his profile (1)
 - [**DONE**] Employees are able to book vacations even if another one has already approved leave for the same day and the option in the settings page is not selected, meaning it should not be allowed for an employee to book vacation when another one already have a leave approved for the same day.
 - [**DONE**] As an employer, If i go to team and then click on my profile, i get a blank page
-- Side bar should not scroll, only the content page should
-- Correction modal buttons are not align
-- on the punch page, this week tab, search bar is missing icon and white background, like the one on the team page
+- Side bar (on the left) should not scroll, only the content page (right side) should
+- [**DONE**] Correction modal buttons are not align
+- [**DONE**] on the punch page, this week tab, search bar is missing icon and white background, like the one on the team page
 - leave requests using only hours is not working
-
 
 ### Change
 
 - Make view a requested leave as a modal as well
 - As an employee, on the calendar page, remove the filter to view team or mine leaves. all leaves should be visible but as an employee i should not see who is on leave just that there is someone already on leave that day (this feature is already implemented, make sure its kept)
+- Add leaves balance cards also to employer view
 - backups is not done to config.json file, it should be no?
 - [**DONE**] Employee should not see other employee leaves (1)
 - [**DONE**] Remove time bank, not needed, improve report to show who is missing hours and how many (3)
@@ -42,6 +42,7 @@
 - [**DONE**] Add an option to reset the master-key (0.23.0: envelope encryption + passphrase change + rotation + recovery code + wipe-reset)
 - Employer to create employee positions and employees need to pick up from a select box instead of current free text.
 - [**DONE**] email notifications
+- Need a way to filter out big list of leaves / corrections etc. After a few months the list will be huge. Maybe show only latest 10 or 15? Rest goes into reports?
 
 ### Translations
 

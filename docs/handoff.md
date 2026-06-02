@@ -5,13 +5,41 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.46.4._
+_Last touched in 0.47.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.46.4 (released 2026-06-02) — **Fix: Correction modal
+- **Latest version:** 0.47.0 (released 2026-06-02) — **Punch tab search
+  everywhere + Today-style week cards.** Frontend-only (`punch.{html,css,js}`,
+  `punch-corrections.js` + 2 i18n keys/locale; no backend). **(1)** All three
+  `/punch` tabs now carry the same styled search (Team-list look: magnifying-
+  glass CSS-mask icon + white `--paper` + 44px/12px-radius), via the generic
+  `.punch-search-wrap`/`.punch-search` (renamed from `.week-search*`, scoped
+  `(0,2,0)` to beat app.css's `input[type="search"]`). Today filters by
+  name/address/comment (employer hides whole `.ptoday-emp` cards; employee hides
+  `.sess` rows; re-applied after each `refresh()`); Corrections filters
+  `.corr-row`s by name/date/reason (re-applied via a new `onRendered` hook on
+  `initCorrectionsPanel`); This-week keeps its `.sess` filter. All three tabs
+  also gained the employer **"All employees" / one-person `<select>`** (shared
+  `populatePersonPicker()`, `.punch-person`, default "All"): on Today/Corrections
+  it's a pure DOM filter via `data-emp-id` on each card/row, combined with the
+  text search; This-week re-fetches the chosen person. **(2)** The
+  employer **"All employees"** week (now the **default** picker option, value
+  `''`) renders **one card per person using the Today `.ptoday-emp` chrome**
+  (avatar+name+role head, week total on the right, padded body of per-day
+  groups) instead of the old bare sections; employer Today cards now stack with
+  a 16px gap to match. Shared helpers extracted (`currentWeekWindow`/
+  `fetchWeekPunches`/`buildDayGroups`/`buildWeekEmpCard`/`weekTotalMs`/
+  `buildWeekHeadEl`/`renderWeekEmpty`/`renderWeekError`); `weekPersonId()`
+  returns the empty "All" value as-is (it used to fall through to the viewer's
+  id, so "All" never loaded). `CACHE_VERSION` v86 → v87; no new suite
+  (pure-helper refactor covered by `test-punch-week`). Single-person week + the
+  employee's own week keep the simpler `#week-head` + day-list layout. **Not a
+  live browser pass** — verified by syntax-check + unit suites + code review.
+  See RELEASES 0.47.0.
+- **0.46.4** (released 2026-06-02) — **Fix: Correction modal
   Approve/Reject buttons misaligned.** The Reject button sat ~16px below Approve
   in the `correction-detail-modal` Actions row. `correction-detail-modal.css`
   neutralized the global `button { margin-top: 16px }` only on *direct children*

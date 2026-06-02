@@ -252,6 +252,8 @@ export default {
   'punch.tabCorrections': 'Corrections',
   'punch.tabManual':     'MANUAL',
   'punch.weekSearchPh':  'Search address or comment…',
+  'punch.weekAll':       'All employees',
+  'punch.corrSearchPh':  'Search name, date or reason…',
   'punch.forgotShort':    '+ Forgot to clock?',
   'punch.workingNow':     'Working now',
   'punch.notClockedIn':   'Not clocked in',

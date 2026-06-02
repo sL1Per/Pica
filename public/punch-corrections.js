@@ -59,17 +59,22 @@ function buildAvatar(id, name) {
  *   listHeading   — <h2> heading element to relabel for employer (optional; null-safe)
  *   messageEl     — element for error messages (page-level, above the lists)
  *   onCountChange — (pendingCount: number) => void, called after each render
+ *   onRendered    — () => void, called after each render (optional; lets the
+ *                   caller re-apply transient DOM state such as a search filter)
  *
  * @returns {{ reload: () => Promise<void> }}
  */
 export function initCorrectionsPanel(opts) {
-  const { me, pendingList, historyList, pendingTag, listHeading, messageEl, onCountChange } = opts;
+  const { me, pendingList, historyList, pendingTag, listHeading, messageEl, onCountChange, onRendered } = opts;
 
   // -------- Row builder -------------------------------------------------------
 
   function buildRow(c) {
     const li = document.createElement('li');
     li.className = `corr-row corr-row--${c.status}`;
+    // Tag with the employee id so the Corrections person-picker on /punch can
+    // filter to one person (the picker matches li.dataset.empId).
+    if (c.employeeId) li.dataset.empId = c.employeeId;
 
     // Accent bar — absolutely positioned on the left edge of the card.
     // Decorative; lives OUTSIDE the <a> so it doesn't affect link hit area.
@@ -349,6 +354,10 @@ export function initCorrectionsPanel(opts) {
 
     // Notify the caller of the new pending count so it can update e.g. a tab badge.
     if (typeof onCountChange === 'function') onCountChange(pending.length);
+    // Fired after every render (initial, tab-switch, post-decision reload) so a
+    // caller can re-apply transient DOM state — e.g. the Corrections tab search
+    // filter, which would otherwise be lost when the rows are rebuilt.
+    if (typeof onRendered === 'function') onRendered();
   }
 
   // -------- Data load ---------------------------------------------------------

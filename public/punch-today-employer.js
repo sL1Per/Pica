@@ -220,6 +220,9 @@ function renderGroup(info, punches) {
   const name = info.name;
   const card = document.createElement('article');
   card.className = 'ptoday-emp';
+  // Tag with the employee id so the Today person-picker on /punch can filter
+  // to one person (the picker matches card.dataset.empId).
+  if (info.id) card.dataset.empId = info.id;
 
   // ---- Head row -----------------------------------------------------------
   const head = document.createElement('div');

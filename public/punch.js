@@ -59,7 +59,20 @@ function renderWeekHead(targetId) {
   } else {
     headEl.hidden = true; return;
   }
-  headEl.replaceChildren();
+  const built = buildWeekHeadEl(id, name, role);
+  headEl.replaceChildren(...built.childNodes);
+  headEl.hidden = false;
+}
+
+/**
+ * Build a standalone `.week-head` element (avatar + name + role). Used both for
+ * the single #week-head (one person) and for each person section in
+ * all-employees mode. Returns the element; the single-person path lifts its
+ * children into the pre-existing #week-head container.
+ */
+function buildWeekHeadEl(id, name, role) {
+  const headEl = document.createElement('div');
+  headEl.className = 'week-head';
   headEl.appendChild(buildAvatar(id, name));
   const text = document.createElement('div');
   text.className = 'week-head__text';
@@ -74,7 +87,7 @@ function renderWeekHead(targetId) {
     text.appendChild(roleEl);
   }
   headEl.appendChild(text);
-  headEl.hidden = false;
+  return headEl;
 }
 const statusBlock = $('status-block');
 const statusLabel = $('status-label');
@@ -574,6 +587,10 @@ async function refresh() {
     renderList(mine);
     paintSubLine(status, mine);
   }
+
+  // Re-apply the Today search filter — refresh() rebuilds the list on every
+  // clock in/out, which would otherwise clear an active filter.
+  applyTodayFilter();
 }
 
 /**
@@ -720,77 +737,177 @@ function ymdOf(d) { return d.toISOString().slice(0, 10); }
  */
 async function loadWeek(empId) {
   // Default to the current user's id when not specified (employee path, or
-  // employer looking at their own clock). Task 8's router passes an explicit
-  // empId when the person-picker selects a different employee.
-  const targetId = empId !== undefined ? empId : me.id;
+  // employer looking at their own clock). The tab router / picker pass an
+  // explicit empId; an empty string ('') is the employer "All employees" pick.
+  const targetId = empId !== undefined ? empId : (me ? me.id : null);
+
+  // All-employees mode (employer only): everyone's week, one section each.
+  if (targetId === '') { return loadWeekAll(); }
 
   // Identify whose week this is (avatar + name + role) above the day list.
   renderWeekHead(targetId);
 
-  // Monday of this week (UTC). getUTCDay(): 0=Sun..6=Sat → days since Monday.
-  const now = new Date();
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const dow = today.getUTCDay();           // 0..6, Sun..Sat
-  const sinceMon = (dow + 6) % 7;          // 0 for Mon … 6 for Sun
-  const monday = new Date(today.getTime() - sinceMon * 86_400_000);
-  const sunday = new Date(monday.getTime() + 6 * 86_400_000);
-  const weekStart = ymdOf(monday), weekEnd = ymdOf(sunday);
-
-  // Which (year, month) pairs does the Mon–Sun window touch? Usually one;
-  // two when the week straddles a month boundary (the 1st falls mid-week).
-  const months = new Map(); // key "y-m" → {y, m}
-  const addMonth = (d) => { const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1; months.set(`${y}-${m}`, { y, m }); };
-  addMonth(monday); addMonth(sunday);
-
-  let punches = [];
+  const win = currentWeekWindow();
+  let inWeek;
   try {
-    for (const { y, m } of months.values()) {
-      const res = await fetch(`/api/punches/by-employee/${targetId}?year=${y}&month=${pad2(m)}`, { credentials: 'same-origin' });
-      if (res.status === 401) { window.location.href = '/login'; return; }
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (Array.isArray(data.punches)) punches.push(...data.punches);
-    }
+    inWeek = await fetchWeekPunches(targetId, win);
   } catch {
-    weekListEl.innerHTML = '';
-    const li = document.createElement('li');
-    li.className = 'subtle';
-    li.textContent = t('punch.couldNotLoad');
-    weekListEl.appendChild(li);
+    renderWeekError();
     return;
   }
-
-  // Keep only the target employee's punches within the Mon–Sun window.
-  // The by-employee endpoint may return punches for other employees if the
-  // employer has access, so filter to targetId to be safe.
-  const empPunches = punches.filter((p) => p.employeeId === targetId);
-  const inWeek = empPunches.filter((p) => {
-    const ymd = ymdOf(new Date(p.ts));
-    return ymd >= weekStart && ymd <= weekEnd;
-  });
+  if (inWeek === null) return;   // 401 → already redirected to /login
 
   // Store for DOM-level filtering by applyWeekFilter().
   weekPunches = inWeek;
   renderWeek(inWeek);
 }
 
-/** Render the grouped This-week days into #week-list. */
+/**
+ * Load and render every employee's week, one person section each (avatar +
+ * name + role header above their day groups). People with no punches this week
+ * are skipped. Employer-only — driven by the "All employees" picker option.
+ */
+async function loadWeekAll() {
+  const headEl = $('week-head');
+  if (headEl) headEl.hidden = true;   // per-section headers replace the single one
+  weekPunches = [];
+  weekListEl.innerHTML = '';
+
+  const win = currentWeekWindow();
+  const employees = employeesCache || [];
+  if (employees.length === 0) { renderWeekEmpty(); return; }
+
+  let any = false;
+  for (const emp of employees) {
+    let inWeek;
+    try {
+      inWeek = await fetchWeekPunches(emp.id, win);
+    } catch {
+      continue;   // skip a person whose fetch failed; others still render
+    }
+    if (inWeek === null) return;   // 401 → already redirected
+
+    const groups = buildDayGroups(inWeek);
+    if (groups.length === 0) continue;   // nobody-home → omit the section
+    any = true;
+    weekListEl.appendChild(buildWeekEmpCard(emp, inWeek, groups));
+  }
+  if (!any) renderWeekEmpty();
+}
+
+/**
+ * Build one person's week as a card matching the employer Today tab
+ * (`.ptoday-emp` chrome: avatar + name + role head with the week total on the
+ * right, then a padded body of per-day groups). Returns an <li class="week-emp">
+ * wrapping the card (the #week-list is a <ul>, so a bare <article> would be
+ * invalid markup).
+ */
+function buildWeekEmpCard(emp, inWeek, groups) {
+  const name = emp.fullName || emp.username;
+
+  const li = document.createElement('li');
+  li.className = 'week-emp';
+
+  const card = document.createElement('article');
+  card.className = 'ptoday-emp';
+
+  // Head — same structure as renderGroup() in punch-today-employer.js.
+  const head = document.createElement('div');
+  head.className = 'ptoday-emp__head';
+  head.appendChild(buildAvatar(emp.id, name, 'ptoday-emp__av'));
+  const nameEl = document.createElement('span');
+  nameEl.className = 'ptoday-emp__name';
+  nameEl.textContent = name;
+  head.appendChild(nameEl);
+  if (emp.role) {
+    const roleEl = document.createElement('span');
+    roleEl.className = 'ptoday-emp__role';
+    roleEl.textContent = t('employee.role.' + emp.role);
+    head.appendChild(roleEl);
+  }
+  const stats = document.createElement('span');
+  stats.className = 'ptoday-emp__stats';
+  stats.textContent = formatDuration(weekTotalMs(inWeek));
+  head.appendChild(stats);
+  card.appendChild(head);
+
+  // Body — the per-day groups inside the Today card's padded session wrapper.
+  const body = document.createElement('div');
+  body.className = 'ptoday-sessions';
+  const sub = document.createElement('ul');
+  sub.className = 'punch-list';
+  groups.forEach((g) => sub.appendChild(g));
+  body.appendChild(sub);
+  card.appendChild(body);
+
+  li.appendChild(card);
+  return li;
+}
+
+/** Total worked ms across the week — sum of each day's worked total. */
+function weekTotalMs(punches) {
+  return groupPunchesByDay(punches).reduce((sum, d) => sum + totalWorkedMs(d.list), 0);
+}
+
+/**
+ * Compute the current Mon–Sun week window (UTC) plus the (year, month) pairs it
+ * touches — usually one, two when the week straddles a month boundary. UTC-day
+ * boundaries keep this consistent with the reports/home views.
+ */
+function currentWeekWindow() {
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const dow = today.getUTCDay();           // 0..6, Sun..Sat
+  const sinceMon = (dow + 6) % 7;          // 0 for Mon … 6 for Sun
+  const monday = new Date(today.getTime() - sinceMon * 86_400_000);
+  const sunday = new Date(monday.getTime() + 6 * 86_400_000);
+  const months = new Map(); // key "y-m" → {y, m}
+  const addMonth = (d) => { const y = d.getUTCFullYear(), m = d.getUTCMonth() + 1; months.set(`${y}-${m}`, { y, m }); };
+  addMonth(monday); addMonth(sunday);
+  return { weekStart: ymdOf(monday), weekEnd: ymdOf(sunday), months };
+}
+
+/**
+ * Fetch one employee's punches for the given week window, filtered to that
+ * employee and to the Mon–Sun range. Returns the filtered array, or `null` if a
+ * request 401'd (the caller bails — we've already redirected to /login).
+ * Throws on a network error so the caller can show the error state.
+ */
+async function fetchWeekPunches(targetId, win) {
+  const punches = [];
+  for (const { y, m } of win.months.values()) {
+    const res = await fetch(`/api/punches/by-employee/${targetId}?year=${y}&month=${pad2(m)}`, { credentials: 'same-origin' });
+    if (res.status === 401) { window.location.href = '/login'; return null; }
+    if (!res.ok) continue;
+    const data = await res.json();
+    if (Array.isArray(data.punches)) punches.push(...data.punches);
+  }
+  // The by-employee endpoint may return others' punches if the viewer has
+  // access, so filter to targetId to be safe, then to the week window.
+  return punches
+    .filter((p) => p.employeeId === targetId)
+    .filter((p) => { const ymd = ymdOf(new Date(p.ts)); return ymd >= win.weekStart && ymd <= win.weekEnd; });
+}
+
+/** Render the grouped This-week days into #week-list (single-person mode). */
 function renderWeek(punches) {
   weekListEl.innerHTML = '';
+  const groups = buildDayGroups(punches);
+  if (groups.length === 0) { renderWeekEmpty(); return; }
+  groups.forEach((g) => weekListEl.appendChild(g));
+}
+
+/**
+ * Build the `.day-group` <li> elements (newest day first) for a set of punches.
+ * Returns [] when there's nothing this week. Shared by single-person and
+ * all-employees rendering.
+ */
+function buildDayGroups(punches) {
   const days = groupPunchesByDay(punches);
-  if (days.length === 0) {
-    const li = document.createElement('li');
-    li.className = 'punch-empty';
-    const title = document.createElement('div');
-    title.className = 'punch-empty__title';
-    title.textContent = t('punch.weekEmpty');
-    li.appendChild(title);
-    weekListEl.appendChild(li);
-    return;
-  }
+  if (days.length === 0) return [];
 
   const todayYmd = ymdOf(new Date());
-
+  const out = [];
   // Newest day first.
   for (const { ymd, list } of [...days].reverse()) {
     const group = document.createElement('li');
@@ -819,9 +936,30 @@ function renderWeek(punches) {
       rows.appendChild(buildSessCard(pair, { live }));
     });
     group.appendChild(rows);
-
-    weekListEl.appendChild(group);
+    out.push(group);
   }
+  return out;
+}
+
+/** Empty-state row for the This-week panel. */
+function renderWeekEmpty() {
+  weekListEl.innerHTML = '';
+  const li = document.createElement('li');
+  li.className = 'punch-empty';
+  const title = document.createElement('div');
+  title.className = 'punch-empty__title';
+  title.textContent = t('punch.weekEmpty');
+  li.appendChild(title);
+  weekListEl.appendChild(li);
+}
+
+/** Error-state row for the This-week panel (fetch failed). */
+function renderWeekError() {
+  weekListEl.innerHTML = '';
+  const li = document.createElement('li');
+  li.className = 'subtle';
+  li.textContent = t('punch.couldNotLoad');
+  weekListEl.appendChild(li);
 }
 
 // -------- This-week search + person-picker ----------------------------------
@@ -850,12 +988,84 @@ function applyWeekFilter() {
  */
 function weekPersonId() {
   const picker = document.getElementById('week-person');
-  if (picker && !picker.hidden && picker.value) return picker.value;
+  // An empty value is the deliberate "All employees" pick — return it as-is
+  // (don't fall through to me.id). Only fall back when there's no live picker.
+  if (picker && !picker.hidden) return picker.value;
   return me ? me.id : null;
 }
 
 // Wire the search input — runs filter on every keystroke.
 document.getElementById('week-search').addEventListener('input', applyWeekFilter);
+
+// -------- Today + Corrections tab search ------------------------------------
+
+/**
+ * Filter the Today tab by the #today-search text AND the #today-person picker
+ * (employer; '' = all employees). Employer: hide whole person cards
+ * (.ptoday-emp) that don't match — search matches name/address/comment, the
+ * picker matches the card's employee id. Employee: hide individual session
+ * cards (.sess) in the own-list (the picker is hidden for employees). Only one
+ * of the two is visible at a time, so querying both is safe. Search matches the
+ * rendered textContent (so an address only counts once reverse-geocoding has
+ * resolved it — same caveat as the week search).
+ */
+function applyTodayFilter() {
+  const query = (document.getElementById('today-search')?.value || '').trim().toLowerCase();
+  const person = document.getElementById('today-person')?.value || '';
+  document.querySelectorAll('#employer-today-groups .ptoday-emp').forEach((card) => {
+    const matchesText = query.length === 0 || card.textContent.toLowerCase().includes(query);
+    const matchesPerson = person === '' || card.dataset.empId === person;
+    card.hidden = !(matchesText && matchesPerson);
+  });
+  // Employee own-list: text-only (a single user — the picker doesn't apply).
+  document.querySelectorAll('#today-list .sess').forEach((card) => {
+    card.hidden = query.length > 0 && !card.textContent.toLowerCase().includes(query);
+  });
+}
+document.getElementById('today-search')?.addEventListener('input', applyTodayFilter);
+
+/**
+ * Filter the Corrections tab by the #corr-search text AND the #corr-person
+ * picker (employer; '' = all employees). Hides correction rows (.corr-row, in
+ * both the pending and history lists): search matches name/date/reason in the
+ * row text, the picker matches the row's employee id. Re-applied after every
+ * panel render via the initCorrectionsPanel onRendered hook.
+ */
+function applyCorrFilter() {
+  const query = (document.getElementById('corr-search')?.value || '').trim().toLowerCase();
+  const person = document.getElementById('corr-person')?.value || '';
+  document.querySelectorAll('#panel-corrections .corr-row').forEach((row) => {
+    const matchesText = query.length === 0 || row.textContent.toLowerCase().includes(query);
+    const matchesPerson = person === '' || row.dataset.empId === person;
+    row.hidden = !(matchesText && matchesPerson);
+  });
+}
+document.getElementById('corr-search')?.addEventListener('input', applyCorrFilter);
+
+/**
+ * Populate an employer person-picker <select> with a leading "All employees"
+ * option (value '') followed by one option per cached employee, default it to
+ * "All", un-hide it, and wire its change handler. No-op when the select is
+ * missing or the employees cache is empty. Shared by the Today, Corrections and
+ * This-week pickers.
+ */
+function populatePersonPicker(select, onChange) {
+  if (!select || !employeesCache || employeesCache.length === 0) return;
+  const allOpt = document.createElement('option');
+  allOpt.value = '';
+  allOpt.setAttribute('data-i18n', 'punch.weekAll');
+  allOpt.textContent = t('punch.weekAll');
+  select.appendChild(allOpt);
+  for (const emp of employeesCache) {
+    const opt = document.createElement('option');
+    opt.value = emp.id;
+    opt.textContent = emp.fullName || emp.username;
+    select.appendChild(opt);
+  }
+  select.value = '';
+  select.hidden = false;
+  select.addEventListener('change', onChange);
+}
 
 // -------- Manual-time modal wiring ------------------------------------------
 // Both .punch-forgot and .punch-reminder are anchor fallbacks to
@@ -883,10 +1093,10 @@ document.querySelectorAll('.punch-forgot, .punch-reminder').forEach((anchor) => 
   if (meRes.status === 401) { window.location.href = '/login'; return; }
   me = await meRes.json();
 
-  // Employer: populate the This-week person-picker and un-hide it.
-  // employeesCache may already be set if refresh() ran first, but bootstrap
-  // order means we populate here explicitly so the picker is ready before
-  // Task 8's router can call loadWeek(weekPersonId()).
+  // Employer: populate the Today / Corrections / This-week person-pickers and
+  // un-hide them. employeesCache may already be set if refresh() ran first, but
+  // bootstrap order means we ensure it here so the pickers are ready before the
+  // tab router can call loadWeek(weekPersonId()).
   if (me.role === 'employer') {
     if (!employeesCache) {
       try {
@@ -897,20 +1107,16 @@ document.querySelectorAll('.punch-forgot, .punch-reminder').forEach((anchor) => 
         }
       } catch { /* non-fatal */ }
     }
-    const picker = document.getElementById('week-person');
-    if (picker && employeesCache && employeesCache.length > 0) {
-      for (const emp of employeesCache) {
-        const opt = document.createElement('option');
-        opt.value = emp.id;
-        opt.textContent = emp.fullName || emp.username;
-        picker.appendChild(opt);
-      }
-      picker.hidden = false;
-      picker.addEventListener('change', async () => {
-        await loadWeek(picker.value);
-        applyWeekFilter();
-      });
-    }
+    // Today + Corrections pickers are pure DOM filters (data already covers
+    // everyone) — just re-run the tab's filter on change. The This-week picker
+    // re-fetches that person's week (or everyone's for "All").
+    populatePersonPicker(document.getElementById('today-person'), applyTodayFilter);
+    populatePersonPicker(document.getElementById('corr-person'), applyCorrFilter);
+    const weekPicker = document.getElementById('week-person');
+    populatePersonPicker(weekPicker, async () => {
+      await loadWeek(weekPicker.value);
+      applyWeekFilter();
+    });
   }
 
   // Corrections tab panel — employer sees everyone + inline ✓/✗; employee sees own.
@@ -927,6 +1133,9 @@ document.querySelectorAll('.punch-forgot, .punch-reminder').forEach((anchor) => 
       badge.textContent = String(n);
       badge.hidden = !(me.role === 'employer' && n > 0);
     },
+    // Re-apply the Corrections search filter after every (re-)render so it
+    // survives tab switches and inline approve/reject reloads.
+    onRendered: applyCorrFilter,
   });
   // Load the corrections list once on bootstrap so the panel is ready and the
   // employer's "N waiting" tab-count badge populates without waiting for a tab

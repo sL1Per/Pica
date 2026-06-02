@@ -14,6 +14,90 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.47.0] — 2026-06-02 — Punch tab search everywhere + Today-style week cards
+
+All three `/punch` tabs (**Today · Corrections · This week**) gained the same
+styled search box, the This-week tab gained an employer **"All employees"**
+view rendered as **Today-style cards**, and the toolbar/search CSS was
+generalized. Frontend-only (`punch.{html,css,js}`, `punch-corrections.js` +
+2 i18n keys per locale) — **no backend change**.
+
+**Search bar matches the Team list, on every tab.** The search input is wrapped
+in `.punch-search-wrap` with a leading **magnifying-glass icon** (CSS mask,
+tints with `--muted` across every theme/palette) and the white **`--paper`**
+surface, 44px tall with a 12px radius — visually identical to the `/employees`
+toolbar. The class is scoped (`.punch-search-wrap .punch-search`, specificity
+(0,2,0)) so it beats app.css's `input[type="search"]` (0,0,1). The search grows
+wide (`flex: 1 1 320px`); the **person picker** sits beside it
+(`flex: 0 0 auto`, `max-width: 200px`, long names ellipsize). The previous
+`.week-toolbar`/`.week-search*`/`.week-person` classes were renamed to the
+generic `.punch-toolbar`/`.punch-search*`/`.punch-person` and reused by all
+three tabs.
+  - **Today** filters by name (employer: hides whole `.ptoday-emp` cards),
+    address or comment; the employee view hides individual `.sess` rows. The
+    filter is re-applied after each `refresh()` (every clock in/out).
+  - **Corrections** filters `.corr-row`s in both the pending and history lists by
+    name/date/reason. A new optional `onRendered` hook on `initCorrectionsPanel`
+    re-applies it after every (re-)render, so it survives tab switches and inline
+    approve/reject reloads.
+  - **This week** keeps its existing `.sess`-text filter.
+
+**Employer person-picker on all three tabs.** Today and Corrections gained the
+same **"All employees" / one-person** `<select>` the This-week tab has (default
+"All"). On Today and Corrections it is a pure **DOM filter** (the data already
+covers everyone): each Today card carries `data-emp-id` and each correction row
+carries `data-emp-id`, and the picker hides the rest, **combined with** the
+text search (a row/card must match both). The This-week picker still re-fetches
+the chosen person's week. All three are populated by one shared
+`populatePersonPicker()` helper (employer-only; hidden for employees and when
+the cache is empty).
+
+**Employer "All employees" week → Today-style cards.** The week person-picker
+gains a leading **All employees** option (value `''`) that is now the
+**default** — the panel shows **everyone's** week, one **card per person** built
+with the same `.ptoday-emp` chrome as the employer Today tab (avatar + name +
+role head, the **week total** on the right, a padded body of per-day groups).
+People with no punches this week are omitted; picking a single name narrows to
+that person (the prior single-`#week-head` layout). Employer Today cards now
+also stack with a 16px gap (`#employer-today-groups` flex column) to match.
+Implemented by extracting shared helpers — `currentWeekWindow()`,
+`fetchWeekPunches()`, `buildDayGroups()`, `buildWeekHeadEl()`,
+`buildWeekEmpCard()`, `weekTotalMs()`, plus `renderWeekEmpty()`/
+`renderWeekError()` — reused by both week paths. `weekPersonId()` returns the
+picker's empty value as-is (it previously fell through to the viewer's own id,
+so "All" could never load).
+
+`CACHE_VERSION` v86 → v87 (`punch.css`/`punch.js`/`punch-corrections.js`/locales
+are pre-cached). New i18n keys `punch.weekAll` + `punch.corrSearchPh` both
+locales. No new test suite (the touched logic is pure-helper refactors already
+covered by `test-punch-week`; rendering has no DOM test — M16).
+
+**Honest Disclosures:**
+- **No DOM/E2E test** for the new card rendering, the search filters, or the
+  toolbars — the in-repo helpers (`groupPunchesByDay`/`pairDay`) are unit-tested
+  but the render path, filters and CSS are not (M16). Verified by reading,
+  syntax-check, and the existing unit suites — **not a live browser pass** this
+  round.
+- **All-employees mode fans out one `GET /api/punches/by-employee/:id` per
+  employee** (×2 when the week straddles a month boundary). Fine at the ≤50
+  target scale; it is not a single batched endpoint.
+- **Search filters match rendered `textContent`**, so an **address only counts
+  once reverse-geocoding has resolved** it (until then the row carries raw
+  coords). The Corrections employee view has no name in its rows, though the
+  placeholder still says "name".
+- **Search does not hide a now-empty container**: a This-week person card or a
+  Corrections list heading can remain visible with no matching rows under it.
+- The single-person week view and the employee's own week keep the simpler
+  `#week-head` + day-list layout (only the all-employees view is card-per-person).
+- The week card shows a **week total but no status pill** (a single "Done/Working"
+  status is meaningless across a multi-day range); it also keeps the This-week
+  **MANUAL/AUTO** badges + missing-punch hints, which the single-day Today card
+  does not render.
+- The picker has **no chevron glyph** (the `--paper` background overrides
+  app.css's `select` chevron image).
+
+---
+
 ## [0.46.4] — 2026-06-02 — Fix: Correction modal Approve/Reject buttons misaligned
 
 In the Correction detail modal's **Actions** row (`correction-detail-modal`),
