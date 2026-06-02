@@ -14,6 +14,51 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.46.4] — 2026-06-02 — Fix: Correction modal Approve/Reject buttons misaligned
+
+In the Correction detail modal's **Actions** row (`correction-detail-modal`),
+the **Reject** button sat ~16px lower than **Approve**, so the two read as
+vertically misaligned.
+
+### Root cause
+
+`correction-detail-modal.css` neutralized the global `button { margin-top:
+16px }` only on **direct children** of `.cdm-actions`:
+
+```css
+.cdm-actions > button, .cdm-actions > .btn-reject, … { margin-top: 0; }
+```
+
+But the Reject button is **not** a direct child — `buildRejectInline()` nests
+it inside a `.cdm-reject-wrap` column (so the collapsible reject-notes sub-form
+can sit under it). The `>` combinator therefore missed it, the trigger kept its
+16px top margin, and with `.cdm-actions { align-items: flex-start }` it dropped
+below the Approve button.
+
+### Fix
+
+One line — neutralize the margin on every button in the row regardless of
+nesting:
+
+```css
+.cdm-actions button { margin-top: 0; }
+```
+
+Approve and Reject are now top-aligned and equal height (verified with a
+Playwright screenshot of the real card markup at desktop width). CSS-only;
+`CACHE_VERSION` v85 → v86; no JS/HTML/backend/i18n/test change; version
+`0.46.3` → `0.46.4`.
+
+### Honest Disclosures
+
+- **One-line CSS fix.** No markup or behaviour change; the reject sub-form
+  flow, confirm strings, and the mobile (stacked, full-width) layout are
+  untouched (mobile never showed the gap — it stacks).
+- **No regression test.** Button alignment in a JS-built modal isn't covered by
+  the unit suites (DOM/render testing is M16); verified by screenshot.
+
+---
+
 ## [0.46.3] — 2026-06-02 — Row separators on the Leaves request lists (dead-selector fix) + record-row consistency
 
 Two things. (1) The real bug: the **Leaves request lists** (employer *Pending

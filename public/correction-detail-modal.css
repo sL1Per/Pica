@@ -242,12 +242,10 @@
   flex-wrap: wrap;
 }
 
-/* Neutralize global button { margin-top: 16px } inside the actions row */
-.cdm-actions > button,
-.cdm-actions > .btn-approve,
-.cdm-actions > .btn-reject,
-.cdm-actions > .btn-ghost,
-.cdm-actions > .cdm-reject-wrap {
+/* Neutralize global button { margin-top: 16px } for EVERY button in the
+   actions row. A direct-child list missed the Reject trigger, which is
+   nested in .cdm-reject-wrap — it kept the 16px and sat below Approve. */
+.cdm-actions button {
   margin-top: 0;
 }
 

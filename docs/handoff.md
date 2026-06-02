@@ -5,13 +5,22 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.46.3._
+_Last touched in 0.46.4._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.46.3 (released 2026-06-02) — **Row separators on the
+- **Latest version:** 0.46.4 (released 2026-06-02) — **Fix: Correction modal
+  Approve/Reject buttons misaligned.** The Reject button sat ~16px below Approve
+  in the `correction-detail-modal` Actions row. `correction-detail-modal.css`
+  neutralized the global `button { margin-top: 16px }` only on *direct children*
+  of `.cdm-actions`, but Reject is nested in `.cdm-reject-wrap` (so its
+  collapsible notes sub-form can sit under it), so the `>` rule missed it. Fix:
+  `.cdm-actions button { margin-top: 0; }` (descendant, not direct-child).
+  CSS-only; `CACHE_VERSION` v85 → v86. Verified with a Playwright screenshot of
+  the real card markup at desktop width. See RELEASES 0.46.4.
+- **0.46.3** (released 2026-06-02) — **Row separators on the
   Leaves request lists (dead-selector fix) + record-row consistency.** Real bug:
   the Leaves *Pending approval* / *All requests* / *Your history* lists drew **no
   row lines at all** because `leaves.css` used `.lv-row + .lv-row` (adjacent
