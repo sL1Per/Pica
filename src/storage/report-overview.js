@@ -15,6 +15,16 @@ const round1 = (h) => Math.round(h * 10) / 10;
 const pad2 = (n) => String(n).padStart(2, '0');
 const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
+/** Minutes-since-midnight for an "HH:MM" string. */
+function hhmmToMin(s) { const [h, m] = s.split(':').map(Number); return h * 60 + m; }
+/** Minutes-since-midnight for a local Date. */
+function minOfDay(d) { return d.getHours() * 60 + d.getMinutes(); }
+function minToHhmm(min) {
+  // Truncate fractional minutes so 09:12.5 → "09:12" (floor, not round).
+  const m = Math.floor(min);
+  return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+}
+
 /** Count weekdays in inclusive [from,to]. */
 function weekdayCount(from, to) {
   let n = 0;
@@ -63,12 +73,47 @@ export function buildOverview(opts) {
     const target = round1((wt.dailyHours || 0) * weekdays);
     const overtime = round1(Math.max(0, worked - target));
 
+    // First clock-in per local day (for punctuality). Same monthly span as
+    // workedIntervals so an early-month read isn't missed.
+    const firstInByDay = new Map();
+    {
+      const fromD2 = parseYmd(from), toD2 = parseYmd(to);
+      const raw2 = [];
+      const span = new Date(fromD2.getFullYear(), fromD2.getMonth() - 1, 1);
+      const c3 = new Date(span);
+      while (c3 <= toD2) {
+        raw2.push(...punchesStore.listMonth(p.id, c3.getFullYear(), c3.getMonth() + 1));
+        c3.setMonth(c3.getMonth() + 1);
+      }
+      for (const punch of raw2) {
+        if (punch.type !== 'in') continue;
+        const d = new Date(punch.ts);
+        const key = ymd(d);
+        if (key < from || key > to) continue;
+        const prev = firstInByDay.get(key);
+        if (prev == null || d.getTime() < prev.getTime()) firstInByDay.set(key, d);
+      }
+    }
+
+    const graceCutoff = hhmmToMin(wt.expectedStart) + (wt.graceMinutes || 0);
+    let onTime = 0, late = 0, sumInMin = 0, daysWorked = 0;
+    for (const [, d] of firstInByDay) {
+      daysWorked++;
+      const mins = minOfDay(d);
+      sumInMin += mins;
+      if (mins <= graceCutoff) onTime++; else late++;
+    }
+
     return {
       id: p.id, name: p.name, role: p.role,
       worked, target, overtime,
       vsTargetPct: target > 0 ? Math.round((worked / target) * 100) : null,
-      // Placeholders filled by later tasks (punctuality, leaves, breaks):
-      onLeave: 0, onTimePct: null, avgClockIn: null, lateDays: 0, avgBreakMin: 0,
+      // Placeholders filled by later tasks (leaves, breaks):
+      onLeave: 0,
+      onTimePct: daysWorked > 0 ? Math.round((onTime / daysWorked) * 100) : null,
+      avgClockIn: daysWorked > 0 ? minToHhmm(sumInMin / daysWorked) : null,
+      lateDays: late,
+      avgBreakMin: 0,
     };
   });
 
