@@ -91,6 +91,10 @@ function buildStores() {
     punchesStore: { listMonth: () => [] },
     // leavesRangeReport / leavesMatrix call list({ employeeId }).
     leavesStore: { list: () => [] },
+    orgSettingsStore: {
+      get: () => ({ leaves: {}, workingTime: { dailyHours: 8, weeklyHours: 40, expectedStart: '09:00', graceMinutes: 10 } }),
+      resolveWorkingTimeFor: () => ({ dailyHours: 8, weeklyHours: 40, expectedStart: '09:00', graceMinutes: 10 }),
+    },
   };
 }
 
@@ -183,6 +187,29 @@ await test('employer unknown but valid id → 404', async () => {
     { id: EMPLOYER_ID, role: 'employer' });
   assert.equal(res.statusCode, 404);
   assert.equal(res.body.errorCode, 'not_found');
+});
+
+await test('overview: scope=all forbidden for non-employer', async () => {
+  const router = buildRouter();
+  const res = await call(router, 'GET',
+    '/api/reports/overview?scope=all&type=month',
+    { id: EMPLOYEE_ID, role: 'employee' });
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.errorCode, 'forbidden');
+});
+
+await test('overview: employee gets own data, scope coerced to me', async () => {
+  const router = buildRouter();
+  const res = await call(router, 'GET',
+    '/api/reports/overview?type=month',
+    { id: EMPLOYEE_ID, role: 'employee' });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.scope, 'me');
+  assert.ok(res.body.kpis, 'kpis should be present');
+  assert.ok(Array.isArray(res.body.people), 'people should be an array');
+  // Scope coercion: only the requesting employee's own record.
+  assert.equal(res.body.people.length, 1);
+  assert.equal(res.body.people[0].id, EMPLOYEE_ID);
 });
 
 console.log('');

@@ -1,9 +1,12 @@
 import {
   hoursReport, leavesRangeReport, hoursMatrix, leavesMatrix,
   timesheetSingleCsv, timesheetMatrixCsv, leavesSingleCsv, leavesMatrixCsv,
+  approxDaysOff,
 } from '../storage/reports.js';
 import { resolvePeriod, defaultAnchor } from '../storage/period.js';
 import { isUuid } from '../util/validators.js';
+import { buildOverview } from '../storage/report-overview.js';
+import { LEAVE_TYPES_LIST } from '../storage/leaves.js';
 
 /**
  * Reports endpoints — scope-aware timesheets and leaves.
@@ -25,7 +28,8 @@ export function registerReportRoutes(router, {
   leavesStore,
   usersStore,
   employeesStore,
-  // server.js also passes orgSettingsStore/requireRole/requireOwnerOrEmployer;
+  orgSettingsStore,
+  // server.js also passes requireRole/requireOwnerOrEmployer;
   // accepted for call-site compatibility but access is enforced inline below
   // (the role check is simpler and self-contained than the generic wrappers).
   requireAuth,
@@ -170,5 +174,36 @@ export function registerReportRoutes(router, {
         leavesSingleCsv(report, { employeeName: who.name, periodLabel: label }));
     }
     return res.json({ scope, period, employeeId: who.user.id, name: who.name, ...report });
+  }));
+
+  // --------------------------------------------------------------------------
+  // Overview (dashboard aggregation)
+  // --------------------------------------------------------------------------
+  router.get('/api/reports/overview', requireAuth((req, res) => {
+    const c = parseCommon(req, res);
+    if (!c) return;
+    const { period, scope, targetId } = c;
+    const { from, to, bucketBy, label } = period;
+
+    let people;
+    if (scope === 'all') {
+      people = employerUserList().map((u) => ({
+        id: u.id, name: u.name,
+        role: usersStore.findById(u.id)?.role ?? 'employee',
+      }));
+    } else {
+      const who = singleName(targetId);
+      if (!who) return res.notFound('Employee not found', { errorCode: 'not_found' });
+      people = [{ id: who.user.id, name: who.name, role: who.user.role }];
+    }
+
+    const orgSettings = orgSettingsStore.get();
+    const result = buildOverview({
+      punchesStore, leavesStore, people, from, to, bucketBy, label,
+      workingTimeFor: (uid) => orgSettingsStore.resolveWorkingTimeFor(uid),
+      leaveCtx: { orgSettings, leaveTypes: LEAVE_TYPES_LIST, daysOf: approxDaysOff },
+      scope,
+    });
+    return res.json(result);
   }));
 }
