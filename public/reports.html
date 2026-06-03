@@ -32,58 +32,50 @@
 </head>
 <body>
   <main class="container container--wide">
-    <header class="page-header no-print">
-      <div><h1 data-i18n="reports.title">Reports</h1></div>
+    <header class="page-head">
+      <h1 data-i18n="reports.title">Reports</h1>
+      <p class="muted" data-i18n="reports.subtitle"></p>
     </header>
 
-    <div class="printable-title" aria-hidden="true">
-      <h1 data-i18n="reports.printTitle">Pica — Report</h1>
-      <p id="print-meta"></p>
-    </div>
-
-    <div id="message" class="message no-print"></div>
-
-    <section class="card no-print" id="controls">
-      <div class="rpt-tabs">
-        <button type="button" class="chip active" data-rt="timesheets" data-i18n="reports.typeTimesheets">Timesheets</button>
-        <button type="button" class="chip" data-rt="leaves" data-i18n="reports.typeLeaves">Leaves</button>
+    <section class="rpt-controls" id="controls">
+      <div class="chips" id="period-chips">
+        <button type="button" class="chip" data-pt="day" data-i18n="reports.day">Day</button>
+        <button type="button" class="chip active" data-pt="week" data-i18n="reports.week">Week</button>
+        <button type="button" class="chip" data-pt="month" data-i18n="reports.month">Month</button>
+        <button type="button" class="chip" data-pt="year" data-i18n="reports.year">Year</button>
       </div>
-
-      <div class="rpt-scope" id="scope-wrap" hidden>
-        <label data-i18n="reports.scope">Who</label>
-        <div class="chips">
-          <button type="button" class="chip active" data-scope="all" data-i18n="reports.scopeEveryone">Everyone</button>
-          <button type="button" class="chip" data-scope="me" data-i18n="reports.scopePerson">One person</button>
-        </div>
+      <div class="rpt-nav">
+        <button type="button" id="prev-period" class="btn-ghost" aria-label="Previous">◀</button>
+        <span id="period-label"></span>
+        <button type="button" id="next-period" class="btn-ghost" aria-label="Next">▶</button>
+      </div>
+      <div class="chips" id="scope-wrap" hidden>
+        <button type="button" class="chip active" data-scope="all" data-i18n="reports.scopeEveryone">Everyone</button>
         <select id="employee-picker" hidden></select>
       </div>
-
-      <div class="rpt-period">
-        <div class="chips" id="period-chips">
-          <button type="button" class="chip" data-pt="day" data-i18n="reports.periodDay">Day</button>
-          <button type="button" class="chip" data-pt="week" data-i18n="reports.periodWeek">Week</button>
-          <button type="button" class="chip active" data-pt="month" data-i18n="reports.periodMonth">Month</button>
-          <button type="button" class="chip" data-pt="year" data-i18n="reports.periodYear">Year</button>
-        </div>
-        <div class="rpt-nav">
-          <button type="button" id="prev-period" class="btn-ghost" aria-label="Previous">◀</button>
-          <span id="period-label" class="rpt-label"></span>
-          <button type="button" id="next-period" class="btn-ghost" aria-label="Next">▶</button>
-        </div>
+      <div class="rpt-actions">
+        <a id="csv-link" class="btn-ghost btn-sm" data-i18n="reports.exportCsv">Export CSV</a>
+        <button type="button" id="print-btn" class="btn-ghost btn-sm" data-i18n="reports.print">Print</button>
       </div>
-
-      <div class="controls-actions">
-        <button id="print-btn" type="button" class="secondary" data-i18n="reports.print">Print</button>
-        <a id="csv-link" class="btn-link btn-link--secondary" href="#" download data-i18n="reports.downloadCSV">Download CSV</a>
-      </div>
-      <p class="subtle" data-i18n="reports.pdfHint">To save as PDF, use Print and choose "Save as PDF".</p>
     </section>
 
-    <section class="card report-section" id="result">
-      <div class="table-wrap" id="result-table-wrap"></div>
-      <p id="result-empty" class="subtle center" hidden data-i18n="reports.empty">Nothing for this period.</p>
-      <p id="result-error" class="subtle center no-print" hidden></p>
+    <div id="result-error" class="message error" hidden></div>
+
+    <section class="kpi-grid" id="kpi-grid"></section>
+
+    <section class="rpt-charts">
+      <div class="card"><h2 data-i18n="reports.chartHoursTitle"></h2><div id="chart-hours"></div><div id="hours-legend" class="legend"></div></div>
+      <div class="card"><h2 data-i18n="reports.chartLeaveTitle"></h2><div id="chart-leave"></div><div id="leave-legend" class="legend"></div></div>
     </section>
+
+    <section class="card"><h2 data-i18n="reports.chartBreaksTitle"></h2><div id="chart-breaks"></div></section>
+
+    <section class="card"><h2 data-i18n="reports.byPerson"></h2><div id="people-table"></div></section>
+
+    <section class="card" id="watchlist-card"><h2 data-i18n="reports.watchlistTitle"></h2>
+      <p class="muted" data-i18n="reports.watchlistHint"></p><div id="watchlist"></div></section>
+
+    <p id="result-empty" class="muted" data-i18n="reports.noData" hidden></p>
   </main>
   <script type="module" src="/reports.js"></script>
 </body>
