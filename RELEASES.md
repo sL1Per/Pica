@@ -14,6 +14,41 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.53.1] — 2026-06-03 — Reports dashboard polish
+
+Follow-up tweaks to the 0.53.0 dashboard from operator feedback. Frontend-only.
+
+- **Employee filter is now a select.** The employer scope control was a single
+  "Everyone" chip plus a hidden picker; it's now one dropdown — "Everyone" plus
+  each employee — matching the person-pickers on the punch pages. Picking a name
+  switches to that person's view; "Everyone" returns to the team.
+- **Charts reordered.** The full-width Average-breaks chart was oversized;
+  Average breaks and Hours-worked-vs-target swapped places. Hours-vs-target now
+  owns the full-width row (it's the headline chart); breaks moves into the
+  smaller slot beside the leave donut.
+- **Target line fixed.** The dashed target on the hours chart was the *mean*
+  per-bucket target, which dilutes toward weekend days (a week read ~5.7h
+  instead of 8h). It's now the **max** per-bucket target — a full working
+  bucket: 8h for a day bar, the monthly figure for a year's month bars. The
+  period *total* target (40h for a week, and so on) is still on the
+  "team hours" KPI card as the "% of target" figure.
+- **Coverage-gaps card removed** from the KPI row (the metric is still computed
+  server-side but no longer surfaced).
+
+`CACHE_VERSION` v96 → v97 (`charts.js` changed). No API, i18n, or test changes.
+
+### Honest Disclosures
+
+- The hours chart's target line is a **single full-bucket goal** (per-day or
+  per-month), not the whole-period total. The period total lives on the KPI
+  card. For a week of day-bars, the line sits at one day's target (8h) — each
+  bar is measured against a day, not against 40h.
+- `coverageGaps` is still returned by `/api/reports/overview` and exercised by
+  `test-report-overview.mjs`; only the UI card was removed. A later cleanup can
+  drop the computation if it stays unused.
+
+---
+
 ## [0.53.0] — 2026-06-03 — Reports dashboard revamp
 
 The Reports page is rebuilt from a set of tables into a **visual dashboard**

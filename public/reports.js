@@ -61,8 +61,6 @@ function renderKpis(d) {
   if (d.scope === 'all') html += kpiCard(t('reports.kpiAvgPerson'), fmtHours(k.avgPerPerson) + 'h', '');
   html += kpiCard(t('reports.kpiLeaveDays'), k.leaveDays, '');
   html += kpiCard(t('reports.kpiOvertime'), fmtHours(k.overtimeHours) + 'h', '');
-  if (d.scope === 'all' && k.coverageGaps != null)
-    html += kpiCard(t('reports.kpiCoverageGaps'), k.coverageGaps + 'd', '');
   $('kpi-grid').innerHTML = html;
 }
 
@@ -114,11 +112,13 @@ function renderWatchlist(d) {
 
 $('period-chips').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return;
   state.periodType = b.dataset.pt; state.anchor = null; setActive(e.currentTarget, 'pt', state.periodType); load(); });
-$('scope-wrap').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return;
-  state.scope = b.dataset.scope; setActive(e.currentTarget, 'scope', state.scope);
-  const pick = $('employee-picker'); pick.hidden = state.scope !== 'me';
-  if (state.scope === 'me' && !state.targetId && pick.options.length) state.targetId = pick.value; load(); });
-$('employee-picker').addEventListener('change', (e) => { state.targetId = e.target.value; load(); });
+// Scope: a single select — "All team" (value 'all') or one employee (value = id).
+$('scope-select').addEventListener('change', (e) => {
+  const v = e.target.value;
+  if (v === 'all') { state.scope = 'all'; state.targetId = ''; }
+  else { state.scope = 'me'; state.targetId = v; }
+  load();
+});
 $('prev-period').addEventListener('click', () => step(-1));
 $('next-period').addEventListener('click', () => step(+1));
 function step(delta) {
@@ -141,10 +141,11 @@ $('print-btn').addEventListener('click', () => window.print());
     $('scope-wrap').hidden = false;
     try {
       const ed = await (await fetch('/api/employees', { credentials: 'same-origin' })).json();
-      const pick = $('employee-picker');
-      pick.innerHTML = (ed.employees || []).map((e) =>
-        `<option value="${esc(e.id)}">${esc(e.fullName || e.username)}</option>`).join('');
-    } catch { /* picker empty; Everyone still works */ }
+      const opts = `<option value="all">${esc(t('reports.scopeEveryone'))}</option>` +
+        (ed.employees || []).map((e) =>
+          `<option value="${esc(e.id)}">${esc(e.fullName || e.username)}</option>`).join('');
+      $('scope-select').innerHTML = opts;
+    } catch { /* select shows only "All team"; team view still works */ }
   } else { state.scope = 'me'; $('scope-wrap').hidden = true; }
   load();
 })();

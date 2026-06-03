@@ -49,9 +49,8 @@
         <span id="period-label"></span>
         <button type="button" id="next-period" class="btn-ghost" aria-label="Next">▶</button>
       </div>
-      <div class="chips" id="scope-wrap" hidden>
-        <button type="button" class="chip active" data-scope="all" data-i18n="reports.scopeEveryone">Everyone</button>
-        <select id="employee-picker" hidden></select>
+      <div class="rpt-scope" id="scope-wrap" hidden>
+        <select id="scope-select" aria-label="Filter by employee"></select>
       </div>
       <div class="rpt-actions">
         <a id="csv-link" class="btn-ghost btn-sm" data-i18n="reports.exportCsv">Export CSV</a>
@@ -64,11 +63,11 @@
     <section class="kpi-grid" id="kpi-grid"></section>
 
     <section class="rpt-charts">
-      <div class="card"><h2 data-i18n="reports.chartHoursTitle"></h2><div id="chart-hours"></div><div id="hours-legend" class="legend"></div></div>
+      <div class="card"><h2 data-i18n="reports.chartBreaksTitle"></h2><div id="chart-breaks"></div></div>
       <div class="card"><h2 data-i18n="reports.chartLeaveTitle"></h2><div id="chart-leave"></div><div id="leave-legend" class="legend"></div></div>
     </section>
 
-    <section class="card"><h2 data-i18n="reports.chartBreaksTitle"></h2><div id="chart-breaks"></div></section>
+    <section class="card"><h2 data-i18n="reports.chartHoursTitle"></h2><div id="chart-hours"></div><div id="hours-legend" class="legend"></div></section>
 
     <section class="card"><h2 data-i18n="reports.byPerson"></h2><div id="people-table"></div></section>
 

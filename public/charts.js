@@ -31,8 +31,11 @@ export function barChart({ series, labels, ariaLabel }) {
     bars += `<text x="${cx + barW / 2}" y="${H - 8}" class="chart-axis" text-anchor="middle">${esc(labels[i] ?? '')}</text>`;
   });
 
-  // Dashed target line at the mean target (flat) — matches the reference design.
-  const tgt = series.length ? series.reduce((a, s) => a + s.target, 0) / series.length : 0;
+  // Dashed target line at a full bucket's target (the max across buckets, so
+  // weekend/zero buckets don't drag it down). Day buckets → one weekday (8h);
+  // month buckets → a full month. The period's *total* target lives on the KPI
+  // card; this line is the per-bar goal each bar is measured against.
+  const tgt = series.length ? Math.max(0, ...series.map((s) => s.target)) : 0;
   const targetLine = tgt > 0
     ? `<line x1="${padL}" y1="${y(tgt)}" x2="${W - padR}" y2="${y(tgt)}" class="chart-target"/>
        <text x="${W - padR}" y="${y(tgt) - 4}" text-anchor="end" class="chart-axis chart-target-lbl">${Math.round(tgt)}h</text>`

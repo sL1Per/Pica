@@ -34,6 +34,9 @@
   gap: var(--gap-2, 8px);
 }
 
+.rpt-scope { display: flex; align-items: center; }
+.rpt-scope select { min-width: 180px; }
+
 /* ── KPI grid ─────────────────────────────────────────────────────────────── */
 .kpi-grid {
   display: grid;

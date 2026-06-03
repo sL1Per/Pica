@@ -5,13 +5,19 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.53.0._
+_Last touched in 0.53.1._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.53.0 (released 2026-06-03) — **Reports dashboard
+- **Latest version:** 0.53.1 (released 2026-06-03) — **Reports dashboard
+  polish** (feedback round on 0.53.0): employer scope control is now a single
+  employee dropdown ("Everyone" + each person); Hours-vs-target and Average-
+  breaks charts swapped (hours full-width); target line uses the max per-bucket
+  target (8h/day, not the weekend-diluted mean); coverage-gaps card removed from
+  the UI (still computed server-side). Frontend-only; `CACHE_VERSION` v96→v97.
+- **0.53.0** (released 2026-06-03) — **Reports dashboard
   revamp** (feature, shipped mid-M16 at operator request, on branch
   `feature/reports-dashboard-revamp`). The Reports page is rebuilt as a visual
   dashboard: KPI cards, hand-rolled zero-dep SVG charts (`public/charts.js` —
