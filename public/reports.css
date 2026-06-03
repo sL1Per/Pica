@@ -22,10 +22,20 @@
   gap: var(--gap-2, 8px);
 }
 
+/* Keep the ◀ / ▶ glyphs on the same centre line as the date label. */
+.rpt-nav .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 #period-label {
-  min-width: 9rem;
+  min-width: 8rem;
   text-align: center;
   font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .rpt-actions {
@@ -188,6 +198,25 @@
 .watch-row:last-child { border-bottom: none; }
 
 .watch-name { font-weight: 600; flex: 1; }
+
+/* Round avatar badge before a person's name (table + watchlist). Mirrors the
+   team-list avatar: hue-tinted initials, picture overlaid on load. */
+.rpt-av {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  background: oklch(0.86 0.06 var(--hue, 90));
+  color: oklch(0.34 0.08 var(--hue, 90));
+}
+.rpt-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.rpt-person { display: inline-flex; align-items: center; gap: var(--gap-2, 8px); }
 
 .watch-meta {
   color: var(--muted, #888);

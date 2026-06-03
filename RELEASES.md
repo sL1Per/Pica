@@ -14,6 +14,39 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.53.2] — 2026-06-03 — Reports dashboard: avatars, axis labels, nav alignment
+
+More 0.53.0 follow-up from operator feedback. Frontend-only.
+
+- **Avatar badges before names.** The by-person table and the punctuality
+  watchlist now show a round avatar before each name. Same behaviour as the
+  team list: a hue-tinted initials badge paints immediately and the **uploaded
+  picture takes priority** — it loads over the initials and replaces them on
+  success, leaving initials in place when there's no picture. (CSP forbids
+  inline `onerror`, so the markup ships initials and the `<img>` is hydrated in
+  JS after insertion via `/api/employees/:id/picture`.)
+- **X-axis labels no longer overlap.** On the Month view (~30 day bars) the
+  bar-chart date labels collided into an unreadable smear. The chart now renders
+  only every Nth label, capped at ~12 across the axis (every day still shows for
+  Day/Week; every ~3rd day for a month).
+- **Period-nav alignment.** The ◀ / ▶ glyphs and the date label now share one
+  centre line (`inline-flex` + `line-height: 1`), and the label uses
+  tabular-figures so it doesn't jitter as you step through periods.
+
+`CACHE_VERSION` v97 → v98 (`charts.js` changed). No API, i18n, or test changes.
+
+### Honest Disclosures
+
+- A person with no uploaded picture triggers one `GET /api/employees/:id/picture`
+  that 404s (handled silently — initials stay). At ≤50 employees that's a
+  handful of cheap 404s per render, the same trade-off the team list already
+  makes.
+- Label thinning is index-based (every Nth bucket), not date-aware, so the
+  month view won't always land labels on "nice" dates (1st, 8th, …) — it just
+  guarantees they don't overlap.
+
+---
+
 ## [0.53.1] — 2026-06-03 — Reports dashboard polish
 
 Follow-up tweaks to the 0.53.0 dashboard from operator feedback. Frontend-only.

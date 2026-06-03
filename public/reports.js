@@ -25,6 +25,23 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const setActive = (c, attr, val) => { for (const b of c.querySelectorAll('.chip')) b.classList.toggle('active', b.dataset[attr] === val); };
 
+// Avatar — mirrors the team list: hue-tinted initials paint immediately, the
+// uploaded picture (priority) loads after and replaces them on success, leaving
+// initials in place on error. CSP forbids inline onerror, so we emit an initials
+// placeholder and hydrate the <img> in JS once the markup is in the DOM.
+const initials = (name) => (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?';
+const hue = (s) => { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; };
+const avatarSpan = (id, name) =>
+  `<span class="rpt-av" data-id="${esc(id)}" style="--hue:${hue(name)}">${esc(initials(name))}</span>`;
+function hydrateAvatars(root) {
+  for (const el of root.querySelectorAll('.rpt-av[data-id]')) {
+    const id = el.dataset.id; if (!id) continue;
+    const img = new Image(); img.alt = '';
+    img.addEventListener('load', () => { el.textContent = ''; el.appendChild(img); });
+    img.src = `/api/employees/${encodeURIComponent(id)}/picture`;
+  }
+}
+
 async function load() {
   $('result-error').hidden = true;
   let d;
@@ -96,18 +113,20 @@ function renderPeople(d) {
     `<th>${esc(t('reports.colOnTime'))}</th><th>${esc(t('reports.colAvgIn'))}</th>` +
     `<th>${esc(t('reports.colLate'))}</th><th>${esc(t('reports.colAvgBreak'))}</th></tr>`;
   const body = d.people.map((p) =>
-    `<tr><td>${esc(p.name)}</td><td>${fmtHours(p.worked)}h</td>` +
+    `<tr><td><span class="rpt-person">${avatarSpan(p.id, p.name)}<span>${esc(p.name)}</span></span></td><td>${fmtHours(p.worked)}h</td>` +
     `<td>${miniBar(p.vsTargetPct)}</td><td>${fmtHours(p.onLeave)}</td>` +
     `<td>${p.onTimePct == null ? '—' : p.onTimePct + '%'}</td><td>${esc(p.avgClockIn ?? '—')}</td>` +
     `<td>${p.lateDays}</td><td>${p.avgBreakMin}m</td></tr>`).join('');
   $('people-table').innerHTML = `<table class="data-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+  hydrateAvatars($('people-table'));
 }
 
 function renderWatchlist(d) {
   $('watchlist').innerHTML = d.watchlist.map((w) =>
-    `<div class="watch-row"><span class="watch-name">${esc(w.name)}</span>` +
+    `<div class="watch-row">${avatarSpan(w.id, w.name)}<span class="watch-name">${esc(w.name)}</span>` +
     `<span class="watch-meta">${esc(w.avgClockIn ?? '—')} · ${w.lateDays} ${esc(t('reports.colLate').toLowerCase())} · ${fmtHours(w.overtimeHours)}h</span>` +
     `<span class="watch-pct">${w.onTimePct == null ? '—' : w.onTimePct + '%'}</span></div>`).join('');
+  hydrateAvatars($('watchlist'));
 }
 
 $('period-chips').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return;

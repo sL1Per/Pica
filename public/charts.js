@@ -20,6 +20,9 @@ export function barChart({ series, labels, ariaLabel }) {
   const y = (v) => padT + innerH - (v / maxV) * innerH;
   const bw = innerW / Math.max(1, series.length);
   const barW = Math.min(40, bw * 0.6);
+  // With many buckets (e.g. a 30-day month) per-bar labels collide, so show
+  // only every Nth — capped at ~12 labels across the axis.
+  const labelStep = Math.max(1, Math.ceil(series.length / 12));
 
   let bars = '';
   series.forEach((s, i) => {
@@ -28,7 +31,7 @@ export function barChart({ series, labels, ariaLabel }) {
     const lH = (s.onLeave / maxV) * innerH;
     bars += `<rect x="${cx}" y="${y(s.worked)}" width="${barW}" height="${wH}" class="bar bar--worked" rx="3"/>`;
     if (s.onLeave > 0) bars += `<rect x="${cx}" y="${y(s.worked + s.onLeave)}" width="${barW}" height="${lH}" class="bar bar--leave" rx="3"/>`;
-    bars += `<text x="${cx + barW / 2}" y="${H - 8}" class="chart-axis" text-anchor="middle">${esc(labels[i] ?? '')}</text>`;
+    if (i % labelStep === 0) bars += `<text x="${cx + barW / 2}" y="${H - 8}" class="chart-axis" text-anchor="middle">${esc(labels[i] ?? '')}</text>`;
   });
 
   // Dashed target line at a full bucket's target (the max across buckets, so
