@@ -68,4 +68,24 @@ test('punctuality: on-time %, avg clock-in, late days', () => {
   assert.equal(row.avgClockIn, '09:12'); // mean of 08:55 and 09:30 = 09:12.5 → 09:12
 });
 
+test('breaks: intra-day gap between out and next in', () => {
+  // 09:00 in → 12:00 out → (1h break) → 13:00 in → 17:00 out. Break = 60 min.
+  const punches = fakePunches({
+    u1: [
+      { type: 'in',  ts: '2026-05-11T09:00:00' }, { type: 'out', ts: '2026-05-11T12:00:00' },
+      { type: 'in',  ts: '2026-05-11T13:00:00' }, { type: 'out', ts: '2026-05-11T17:00:00' },
+    ],
+  });
+  const r = buildOverview({
+    punchesStore: punches, leavesStore: fakeLeaves({}),
+    people: [{ id: 'u1', name: 'Ann', role: 'employee' }],
+    from: '2026-05-11', to: '2026-05-11', bucketBy: 'day', label: 'd',
+    workingTimeFor: wt, leaveCtx, scope: 'me',
+    now: new Date('2026-05-12T00:00:00'),
+  });
+  assert.equal(r.people[0].avgBreakMin, 60);
+  assert.equal(r.breaksSeries.length, 1);
+  assert.equal(r.breaksSeries[0].avgBreakMin, 60);
+});
+
 console.log(`\n${passed} passed`);

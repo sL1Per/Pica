@@ -6,7 +6,7 @@
  * worked-hours math is identical to the timesheet report.
  */
 import {
-  pairAndSplit, parseYmd, hoursReport, approxDaysOff,
+  pairAndSplit, parseYmd, hoursReport, approxDaysOff, bucketKeyFor,
 } from './reports.js';
 import { isWeekday } from './period.js';
 
@@ -23,6 +23,29 @@ function minToHhmm(min) {
   // Truncate fractional minutes so 09:12.5 → "09:12" (floor, not round).
   const m = Math.floor(min);
   return `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+}
+
+/**
+ * Total break minutes per local day for one user. A break is the gap from an
+ * OUT to the very next IN on the same calendar day. Cross-midnight gaps and
+ * trailing opens are ignored. Returns Map<ymd, minutes>.
+ */
+function breaksByDay(rawPunches) {
+  const sorted = [...rawPunches].sort((a, b) => a.ts.localeCompare(b.ts));
+  const byDay = new Map();
+  let lastOut = null;
+  for (const p of sorted) {
+    const d = new Date(p.ts);
+    if (p.type === 'out') { lastOut = d; }
+    else if (p.type === 'in') {
+      if (lastOut && ymd(lastOut) === ymd(d) && d.getTime() > lastOut.getTime()) {
+        const mins = (d.getTime() - lastOut.getTime()) / 60000;
+        byDay.set(ymd(d), (byDay.get(ymd(d)) ?? 0) + mins);
+      }
+      lastOut = null;
+    }
+  }
+  return byDay;
 }
 
 /** Count weekdays in inclusive [from,to]. */
@@ -58,6 +81,8 @@ export function buildOverview(opts) {
   const rangeEndMs = parseYmd(to).getTime() + 86_400_000 - 1;
   const weekdays = weekdayCount(from, to);
 
+  const seriesAccum = []; // { key: bucketKey, mins } collected per person/day
+
   const peopleRows = people.map((p) => {
     const wt = workingTimeFor(p.id);
     const ivs = workedIntervals(punchesStore, p.id, from, to, nowMs)
@@ -73,26 +98,26 @@ export function buildOverview(opts) {
     const target = round1((wt.dailyHours || 0) * weekdays);
     const overtime = round1(Math.max(0, worked - target));
 
-    // First clock-in per local day (for punctuality). Same monthly span as
-    // workedIntervals so an early-month read isn't missed.
+    // Collect the full monthly span of raw punches once — shared by both the
+    // punctuality scan and the breaks calculation below, avoiding a double read.
+    const fromD2 = parseYmd(from), toD2 = parseYmd(to);
+    const raw2 = [];
+    const span = new Date(fromD2.getFullYear(), fromD2.getMonth() - 1, 1);
+    const c3 = new Date(span);
+    while (c3 <= toD2) {
+      raw2.push(...punchesStore.listMonth(p.id, c3.getFullYear(), c3.getMonth() + 1));
+      c3.setMonth(c3.getMonth() + 1);
+    }
+
+    // First clock-in per local day (for punctuality).
     const firstInByDay = new Map();
-    {
-      const fromD2 = parseYmd(from), toD2 = parseYmd(to);
-      const raw2 = [];
-      const span = new Date(fromD2.getFullYear(), fromD2.getMonth() - 1, 1);
-      const c3 = new Date(span);
-      while (c3 <= toD2) {
-        raw2.push(...punchesStore.listMonth(p.id, c3.getFullYear(), c3.getMonth() + 1));
-        c3.setMonth(c3.getMonth() + 1);
-      }
-      for (const punch of raw2) {
-        if (punch.type !== 'in') continue;
-        const d = new Date(punch.ts);
-        const key = ymd(d);
-        if (key < from || key > to) continue;
-        const prev = firstInByDay.get(key);
-        if (prev == null || d.getTime() < prev.getTime()) firstInByDay.set(key, d);
-      }
+    for (const punch of raw2) {
+      if (punch.type !== 'in') continue;
+      const d = new Date(punch.ts);
+      const key = ymd(d);
+      if (key < from || key > to) continue;
+      const prev = firstInByDay.get(key);
+      if (prev == null || d.getTime() < prev.getTime()) firstInByDay.set(key, d);
     }
 
     const graceCutoff = hhmmToMin(wt.expectedStart) + (wt.graceMinutes || 0);
@@ -104,16 +129,26 @@ export function buildOverview(opts) {
       if (mins <= graceCutoff) onTime++; else late++;
     }
 
+    // Intra-day break minutes (OUT→IN gap on the same calendar day).
+    const dayBreaks = breaksByDay(raw2.filter((x) => {
+      const k = ymd(new Date(x.ts)); return k >= from && k <= to;
+    }));
+    let breakSum = 0, breakDays = 0;
+    for (const [, mins] of dayBreaks) { breakSum += mins; breakDays++; }
+    for (const [day, mins] of dayBreaks) {
+      seriesAccum.push({ key: bucketKeyFor(parseYmd(day), bucketBy), mins });
+    }
+
     return {
       id: p.id, name: p.name, role: p.role,
       worked, target, overtime,
       vsTargetPct: target > 0 ? Math.round((worked / target) * 100) : null,
-      // Placeholders filled by later tasks (leaves, breaks):
+      // Placeholders filled by later tasks (leaves):
       onLeave: 0,
       onTimePct: daysWorked > 0 ? Math.round((onTime / daysWorked) * 100) : null,
       avgClockIn: daysWorked > 0 ? minToHhmm(sumInMin / daysWorked) : null,
       lateDays: late,
-      avgBreakMin: 0,
+      avgBreakMin: breakDays > 0 ? Math.round(breakSum / breakDays) : 0,
     };
   });
 
@@ -121,6 +156,17 @@ export function buildOverview(opts) {
   const targetHours = round1(peopleRows.reduce((s, r) => s + r.target, 0));
   const overtimeHours = round1(peopleRows.reduce((s, r) => s + r.overtime, 0));
   const active = peopleRows.length || 1;
+
+  // Fold per-person/day break minutes into per-bucket team averages.
+  const breaksSeries = (() => {
+    const m = new Map(); // bucketKey -> { sum, n }
+    for (const { key, mins } of seriesAccum) {
+      const e = m.get(key) ?? { sum: 0, n: 0 };
+      e.sum += mins; e.n += 1; m.set(key, e);
+    }
+    return [...m.entries()].sort()
+      .map(([key, e]) => ({ key, avgBreakMin: Math.round(e.sum / e.n) }));
+  })();
 
   return {
     scope,
@@ -140,7 +186,7 @@ export function buildOverview(opts) {
     leaveByType: [],
     leaveTotalDays: 0,
     leaveBalances: [],
-    breaksSeries: [],
+    breaksSeries,
     people: peopleRows,
     watchlist: [],
   };
