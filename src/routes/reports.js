@@ -142,8 +142,23 @@ export function registerReportRoutes(router, {
       return res.badRequest(e.message, { errorCode: 'invalid_value' });
     }
     if (format === 'csv') {
+      // Build the overview so the CSV includes the punctuality+breaks summary
+      // block. Runs a second pass over the same punch data — acceptable at
+      // ≤50 employees and far simpler than threading the metrics from above.
+      const orgSettings = orgSettingsStore.get();
+      const ov = buildOverview({
+        punchesStore, leavesStore,
+        people: [{ id: who.user.id, name: who.name, role: who.user.role }],
+        from, to, bucketBy, label,
+        workingTimeFor: (uid) => orgSettingsStore.resolveWorkingTimeFor(uid),
+        leaveCtx: { orgSettings, leaveTypes: LEAVE_TYPES_LIST, daysOf: approxDaysOff },
+        scope: 'me',
+      });
+      const p = ov.people[0] || {};
       return sendCsv(res, `pica-timesheets-${who.user.username}-${label}.csv`,
-        timesheetSingleCsv(report, { employeeName: who.name, periodLabel: label }));
+        timesheetSingleCsv(report, { employeeName: who.name, periodLabel: label,
+          summary: { avgClockIn: p.avgClockIn, lateDays: p.lateDays, onTimePct: p.onTimePct,
+            overtimeHours: p.overtime, avgBreakMin: p.avgBreakMin } }));
     }
     return res.json({ scope, period, employeeId: who.user.id, name: who.name, ...report });
   }));

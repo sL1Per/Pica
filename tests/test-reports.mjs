@@ -456,6 +456,28 @@ try {
     assert.equal(ivs.length, 1);
   });
 
+  // -------------------------------------------------------------------------
+  console.log('\ntimesheetSingleCsv — punctuality summary block');
+  // -------------------------------------------------------------------------
+
+  await test('timesheetSingleCsv includes punctuality summary when provided', () => {
+    const report = { range: { from: '2026-05-11', to: '2026-05-11' }, groupBy: 'day',
+      buckets: [{ key: '2026-05-11', hours: 8 }], totalHours: 8 };
+    const csv = timesheetSingleCsv(report, {
+      employeeName: 'Ann', periodLabel: 'Mon',
+      summary: { avgClockIn: '08:55', lateDays: 0, onTimePct: 100, overtimeHours: 0, avgBreakMin: 30 },
+    });
+    assert.match(csv, /On-time %/);
+    assert.match(csv, /08:55/);
+    assert.match(csv, /Avg break/);
+  });
+
+  await test('timesheetSingleCsv omits summary block when not provided', () => {
+    const report = { range: { from: '2026-05-11', to: '2026-05-11' }, groupBy: 'day', buckets: [], totalHours: 0 };
+    const csv = timesheetSingleCsv(report, { employeeName: 'Ann', periodLabel: 'Mon' });
+    assert.doesNotMatch(csv, /On-time %/);
+  });
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

@@ -378,6 +378,18 @@ export function timesheetSingleCsv(report, meta) {
   for (const b of report.buckets) L.push(`${csvEscape(b.key)},${csvEscape(b.hours)}`);
   L.push('');
   L.push(`"Total",${csvEscape(report.totalHours)}`);
+  // Optional punctuality+breaks summary — only emitted when the caller passes
+  // meta.summary (e.g. the scope=me CSV branch after running buildOverview).
+  // Omitting it keeps the format backward-compatible for callers that don't.
+  if (meta.summary) {
+    const s = meta.summary;
+    L.push('');
+    L.push(`"Avg clock-in",${csvEscape(s.avgClockIn ?? '')}`);
+    L.push(`"Late days",${csvEscape(s.lateDays ?? 0)}`);
+    L.push(`"On-time %",${csvEscape(s.onTimePct ?? '')}`);
+    L.push(`"Overtime hours",${csvEscape(s.overtimeHours ?? 0)}`);
+    L.push(`"Avg break (min)",${csvEscape(s.avgBreakMin ?? 0)}`);
+  }
   return L.join('\n') + '\n';
 }
 
