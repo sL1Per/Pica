@@ -423,6 +423,12 @@ posture rather than a moving target.
 > zero-dependency constraint stands; automated browser tests are no longer
 > on the roadmap. The remaining work is the five milestones below.
 
+> **0.53.0 (feature, out of arc):** Reports dashboard revamp — the Reports page
+> rebuilt as a visual dashboard (KPI cards, hand-rolled SVG charts, punctuality,
+> breaks, coverage gaps) over a new `GET /api/reports/overview` endpoint, with a
+> new `expectedStart`/`graceMinutes` working-time setting. A feature shipped
+> mid-M16 at operator request; M16 review work continues below.
+
 - **M16 — Code review / optimization / simplification.** 🚧 In progress
   (opened 0.52.0). A full pass over the codebase for correctness, dead code,
   duplication, and simplification opportunities now that the UI revamp has
@@ -461,4 +467,4 @@ posture rather than a moving target.
 
 ---
 
-_Last touched in 0.52.0._
+_Last touched in 0.53.0._

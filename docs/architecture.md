@@ -98,6 +98,7 @@ pica/
 │   │   ├── leaves.js        # NDJSON, encrypted reason
 │   │   ├── corrections.js   # NDJSON, encrypted justification
 │   │   ├── reports.js       # aggregations + matrices + CSV serializers
+│   │   ├── report-overview.js # dashboard aggregation (buildOverview); pure of access control
 │   │   ├── period.js        # period boundary helpers + Day/Week/Month/Year presets
 │   │   ├── user-prefs.js    # locale + colorMode (plaintext)
 │   │   ├── org-settings.js  # leave allowances, working time targets
@@ -112,7 +113,7 @@ pica/
 │       ├── punches.js       # /api/punches/* (clock-in, clock-out, today)
 │       ├── leaves.js        # /api/leaves[/:id], /api/leaves/approved
 │       ├── corrections.js   # /api/corrections[/:id]
-│       ├── reports.js       # /api/reports/*
+│       ├── reports.js       # /api/reports/* (timesheets, leaves, overview)
 │       ├── settings.js      # /api/settings/* (org, working-time, branding); GET org returns sanitized mail publicView + mailConfigured; PUT /api/settings/mail employer-only (0.26.0)
 │       ├── backups.js       # /api/backups (list, create, download, delete, restore, status)
 │       ├── security.js      # /api/security/* (passphrase, recovery-code, rotate) (0.23.0)
@@ -184,7 +185,8 @@ pica/
 │   ├── test-i18n.mjs
 │   ├── test-frontend-imports.mjs   # static i18n-import audit
 │   ├── test-period.mjs             # period boundary helpers + presets
-│   ├── test-reports-routes.mjs     # /api/reports/timesheets|leaves routes
+│   ├── test-reports-routes.mjs     # /api/reports/timesheets|leaves|overview routes
+│   ├── test-report-overview.mjs    # buildOverview: hours/target/punctuality/breaks/leaves/coverage
 │   ├── test-reports-nav.mjs        # client period-nav anchor stepping (TZ-safe)
 │   ├── test-employees-summary.mjs  # /api/employees/:id/summary route
 │   ├── test-error-codes.mjs        # static audit: every error response carries errorCode
@@ -369,7 +371,9 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **53 suites** (+`test-punch-manual` in 0.46.0 — `isManual()`
+- Total: **54 suites** (+`test-report-overview` in 0.53.0 — the reports
+  dashboard aggregation: worked-vs-target, punctuality, breaks, leaves,
+  coverage gaps; +`test-punch-manual` in 0.46.0 — `isManual()`
   clientId-prefix predicate behind the This-week MANUAL badge;
   +`test-user-active` and `test-employee-deactivation`
   in 0.43.0 — soft-deactivate store/rbac and routes/login-refusal;
@@ -497,4 +501,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.52.4._
+_Last touched in 0.53.0._

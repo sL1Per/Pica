@@ -14,6 +14,87 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.53.0] — 2026-06-03 — Reports dashboard revamp
+
+The Reports page is rebuilt from a set of tables into a **visual dashboard**
+centred on the two things Pica measures: **working time** (hours worked vs
+target, breaks, punctuality) and **leaves** (used vs allowance, by type). A
+feature release that sits alongside the ongoing M16 review work.
+
+Scope is unchanged and still **server-decided**: an employer sees the whole
+team or one chosen person; an employee sees only themselves. `scope=all` from a
+non-employer is a 403; a non-employer's `?id=` is coerced to their own id. The
+new endpoint reuses the existing `parseCommon` access gate verbatim — there is
+exactly one place that decides what a caller may see.
+
+**What's new**
+
+- **One consolidated endpoint.** `GET /api/reports/overview?scope=me|all&id=&
+  type=day|week|month|year&anchor=YYYY-MM-DD` returns everything the dashboard
+  renders — KPI cards, a per-bucket hours series, a leave-by-type breakdown,
+  team-summed leave balances, a breaks series, per-person rows, and a
+  punctuality watchlist — in one response. Aggregation lives in a new module,
+  `src/storage/report-overview.js` (`buildOverview()`), which is **pure of
+  access control**: the route resolves the people/scope and passes them in.
+- **Hand-rolled SVG charts.** New `public/charts.js` (zero-dependency) builds
+  the hours-vs-target bar chart (worked + on-leave bars with a dashed target
+  line), the leave donut (by type, with a centre total), and the inline
+  vs-target progress bars. No Chart.js, no build step — the SVG strings are
+  injected directly and styled with the existing theme tokens.
+- **Punctuality, newly possible.** Two new `workingTime` settings —
+  `expectedStart` (`"HH:MM"`, default `09:00`) and `graceMinutes` (default
+  `10`), with an optional per-employee `expectedStart` override — let the report
+  compute on-time %, average clock-in, and late days from the first clock-in of
+  each local day. Configured from **Settings → Working time**.
+- **Breaks** are derived on read from intra-day punch gaps (an OUT followed by a
+  later IN on the same day). No new stored data.
+- **Coverage gaps** (employer/team view only): a count of weekdays where fewer
+  than 60% of staff clocked in.
+- **Export.** "Export CSV" downloads the per-person summary via the existing
+  `/api/reports/timesheets?format=csv`, now extended with `avgClockIn`,
+  `lateDays`, `onTimePct`, `overtimeHours`, and `avgBreakMin` columns. "Print"
+  uses the browser's Save-as-PDF with a print stylesheet — no server PDF.
+
+**Under the hood**
+
+- `src/storage/reports.js` now exports `pairAndSplit`/`parseYmd` so the overview
+  builder pairs punches identically to the timesheet report (same midnight-split
+  and open-shift handling). The matrix/CSV functions are unchanged.
+- The Timesheets/Leaves **tab switch is removed** — both live on one scrolling
+  dashboard, matching the reference design.
+- `CACHE_VERSION` v95 → v96; `/charts.js` added to `PRECACHE_URLS` (the changed
+  precached `locales/*.js` already required the bump). New i18n keys per locale.
+  New suite `test-report-overview.mjs`; total **54 suites**.
+
+### Honest Disclosures
+
+- **Punctuality assumes one expected start time per person** (org default or a
+  single per-employee override). There is no support for shifts, rotas, or
+  per-weekday schedules. Someone with genuinely variable hours will show noisy
+  late-day counts. Night shifts that wrap past midnight are not modelled.
+- **Coverage-gap % is a heuristic, not a staffing model.** It counts a weekday
+  as "under-staffed" when fewer than 60% of people clocked in — it ignores
+  part-time schedules and treats an **approved day off as "not present"**, so a
+  week with several booked holidays will report coverage gaps.
+- **Breaks and average clock-in are computed from raw punches**, so a forgotten
+  clock-out skews them exactly as it skews worked hours. A break is only
+  recognised between an OUT and a later IN on the **same** local day;
+  cross-midnight gaps are ignored.
+- **The leave donut is range-scoped while the allowance figures are annual**
+  (the year containing the range start). Across a December→January boundary the
+  two can look inconsistent; the UI labels which is which.
+- **PDF = browser print.** There is no server-rendered PDF (zero-dependency
+  constraint). The print stylesheet hides controls and lays the dashboard out in
+  one column.
+- **The hours bar chart's target line is the mean target across the visible
+  buckets** (a flat line), not a per-bucket step line — a deliberate
+  simplification that reads cleanly at the ≤50-employee scale Pica targets.
+- **No automated browser test.** `charts.js` and the dashboard render are
+  verified by the storage/route suites (which cover all the metric math) plus
+  manual smoke, consistent with how the rest of the frontend is tested.
+
+---
+
 ## [0.52.5] — 2026-06-03 — M16 F6 + F7: correct CLAUDE.md pre-cache rule & local-only note
 
 Fifth M16 increment. Two documentation corrections to `CLAUDE.md`, both found

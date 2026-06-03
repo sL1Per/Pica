@@ -5,13 +5,30 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.52.5._
+_Last touched in 0.53.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.52.5 (released 2026-06-03) — **M16 F6 + F7.** CLAUDE.md
+- **Latest version:** 0.53.0 (released 2026-06-03) — **Reports dashboard
+  revamp** (feature, shipped mid-M16 at operator request, on branch
+  `feature/reports-dashboard-revamp`). The Reports page is rebuilt as a visual
+  dashboard: KPI cards, hand-rolled zero-dep SVG charts (`public/charts.js` —
+  hours-vs-target bars with a dashed target line, leave donut, vs-target
+  mini-bars), a by-person table, and a punctuality watchlist, over Day/Week/
+  Month/Year. New `GET /api/reports/overview` feeds it all in one call,
+  reusing the `parseCommon` scope gate; aggregation in new
+  `src/storage/report-overview.js` (`buildOverview`, pure of access control).
+  Punctuality is enabled by new `workingTime.expectedStart` + `graceMinutes`
+  settings (per-employee `expectedStart` override) configured in Settings.
+  Single-timesheet CSV gained avg-in/late/on-time/overtime/avg-break columns.
+  Timesheets/Leaves tab switch removed (one scrolling page). `CACHE_VERSION`
+  v95→v96 + `/charts.js` precached. New suite `test-report-overview.mjs`; total
+  **54 suites**, all green. **Not yet visually smoke-tested in a browser** —
+  verify the live page after merge. See `RELEASES.md` for Honest Disclosures
+  (single-start-time punctuality, heuristic coverage %, print-based PDF).
+- **0.52.5** (2026-06-03) — **M16 F6 + F7.** CLAUDE.md
   doc fixes: F6 corrected the pre-cache rule to point at `sw.js` `PRECACHE_URLS`
   as the authoritative list (it omitted page scripts); F7 resolved as **keep
   CLAUDE.md local by design** — header now says it's local/gitignored, not a
