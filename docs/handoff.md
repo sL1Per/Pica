@@ -5,13 +5,21 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.53.2._
+_Last touched in 0.53.3._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.53.2 (released 2026-06-03) — **Reports dashboard:
+- **Latest version:** 0.53.3 (released 2026-06-03) — **Reports styling
+  consistency pass.** Fixed the page to match the rest of the site: header
+  renamed `.page-head`→`.page-header` (so it gets the uniform serif page-title);
+  the Day/Week/Month/Year toggle (which relied on a non-existent `.chip` rule and
+  inherited bare-`<button>` `margin-top`, the source of the control-row
+  misalignment) is now a proper 40px segmented control; employee `<select>` is a
+  white `--paper` box mirroring the punch person-picker. Frontend-only;
+  `CACHE_VERSION` v98→v99.
+- **0.53.2** (released 2026-06-03) — **Reports dashboard:
   avatars + axis labels + nav alignment** (feedback round on 0.53.0). Avatar
   badges before names in the by-person table and watchlist (picture priority,
   initials fallback, hydrated via `/api/employees/:id/picture`); bar-chart

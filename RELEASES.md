@@ -14,6 +14,39 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.53.3] — 2026-06-03 — Reports dashboard: styling consistency pass
+
+A pass over the reports page to make it match the rest of the site. Root cause
+of several issues: the page was built against `.chip`/`.chips` and a `.page-head`
+class that **don't exist** in Pica, so those elements fell back to defaults.
+
+- **Page title now matches every other page.** The header used `.page-head`, but
+  the uniform serif page-title rule targets `.page-header h1` (the 60px
+  Instrument Serif title the rest of the app uses). Renamed to `.page-header`;
+  "Reports" now renders in the same font and size as "Team", "Leaves", etc.
+- **Period toggle restyled and aligned.** `.chip` had no rule, so the
+  Day/Week/Month/Year buttons fell through to bare-`<button>` styling — which
+  also carries `margin-top` (intended for stacked form actions). That stray top
+  margin is why the toggle, ◀/▶ nav, and the employee select never lined up. The
+  toggle is now a proper segmented control (paper pill, honey when active), all
+  control-bar items are 40px tall with the margin zeroed, so the row aligns.
+- **Employee select is now a white box** (`--paper`), mirroring the punch-page
+  person picker, sized and aligned with the toggle.
+
+Frontend-only (`reports.html`, `reports.css`). `CACHE_VERSION` v98 → v99 to flush
+the runtime CSS cache. No API, i18n, or test changes.
+
+### Honest Disclosures
+
+- The `.chip`/`.chips` styles are defined locally in `reports.css` (scoped under
+  `.rpt-controls`), not promoted to a shared component — other pages each define
+  their own toggle/filter classes (`tm-chips`, `lv-filter`), so this follows the
+  existing per-page convention rather than introducing a global one.
+- This was a targeted consistency fix for the controls and header; the cards,
+  tables, and charts already used shared `.card`/`.data-table` styles.
+
+---
+
 ## [0.53.2] — 2026-06-03 — Reports dashboard: avatars, axis labels, nav alignment
 
 More 0.53.0 follow-up from operator feedback. Frontend-only.

@@ -4,8 +4,10 @@
    --text-*, --font-*. */
 
 /* ── Page header ──────────────────────────────────────────────────────────── */
-.page-head { margin-bottom: var(--gap-4, 16px); }
-.page-head h1 { margin-bottom: 2px; }
+/* Title styling comes from app.css `.page-header h1` (the uniform serif
+   --page-title every page uses); we only set spacing here. */
+.page-header { margin-bottom: var(--gap-5, 24px); }
+.page-header .muted { margin-top: 2px; }
 
 /* ── Controls bar ─────────────────────────────────────────────────────────── */
 .rpt-controls {
@@ -13,7 +15,33 @@
   flex-wrap: wrap;
   gap: var(--gap-3, 12px);
   align-items: center;
-  margin: var(--gap-4, 16px) 0;
+  margin: var(--gap-4, 16px) 0 var(--gap-5, 24px);
+}
+
+/* Every control here is 40px tall and shares the row centre line. Bare
+   <button> in app.css carries `margin-top` (meant for stacked form actions);
+   zero it so the toggle, nav arrows, and actions don't sit below the select. */
+.rpt-controls button,
+.rpt-controls a.btn-ghost { margin-top: 0; }
+
+/* Period toggle — a segmented control. (.chip has no global rule; it's owned
+   here.) Inactive = paper pill; active = honey accent, like the app's primary. */
+.rpt-controls .chips { display: inline-flex; flex-wrap: wrap; gap: var(--gap-2, 8px); }
+.rpt-controls .chip {
+  min-height: 40px;
+  padding: 0 var(--gap-4, 16px);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 12px);
+  font-weight: 500;
+  font-size: var(--text-sm, 0.875rem);
+}
+.rpt-controls .chip:hover:not(.active) { background: var(--paper-2); }
+.rpt-controls .chip.active {
+  background: var(--honey);
+  border-color: var(--honey);
+  color: #fff;
 }
 
 .rpt-nav {
@@ -21,9 +49,10 @@
   align-items: center;
   gap: var(--gap-2, 8px);
 }
-
-/* Keep the ◀ / ▶ glyphs on the same centre line as the date label. */
+/* Square-ish nav buttons, same height as the toggle, glyph centred. */
 .rpt-nav .btn-ghost {
+  min-height: 40px;
+  padding: 0 var(--gap-3, 12px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -34,8 +63,21 @@
   min-width: 8rem;
   text-align: center;
   font-weight: 600;
-  line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+/* Employee filter — white box, mirrors the punch-page person picker. */
+.rpt-scope { display: flex; align-items: center; }
+.rpt-scope select {
+  width: auto;
+  min-width: 180px;
+  max-width: 220px;
+  height: 40px;
+  min-height: 0;
+  margin: 0;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 12px);
 }
 
 .rpt-actions {
@@ -43,9 +85,6 @@
   display: flex;
   gap: var(--gap-2, 8px);
 }
-
-.rpt-scope { display: flex; align-items: center; }
-.rpt-scope select { min-width: 180px; }
 
 /* ── KPI grid ─────────────────────────────────────────────────────────────── */
 .kpi-grid {
