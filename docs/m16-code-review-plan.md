@@ -27,6 +27,47 @@ across 53 suites.
 
 ---
 
+## Progress snapshot — RESUME HERE
+
+_Updated 2026-06-03 at **v0.52.5**, committed to `main` (`b3413f7`). Working tree
+clean except pre-existing `notes.md`. Baseline **53/53 green**._
+
+**Read first when resuming:** `docs/m16-findings.md` (the ledger) — every finding,
+its triage, status, and the release that fixed it.
+
+**Done so far — the "first sweep" (Phase 0 + grep-driven slices of Phases 3/4):**
+- Phase 0 baseline run found the suite was **red** (a timezone-flaky reports test);
+  fixed → now 53/53 green. Smoke **not** run yet (no-network review container —
+  still owed locally before M16 closes).
+- Opened M16 at **0.52.0** (plan + ledger, docs-only), then shipped fixes as patch
+  releases **0.52.1–0.52.5**. All seven first-sweep findings are closed:
+  F1 (reports TZ), F3 (`index.js` locale), F4 (CLAUDE.md test count), F5 (leave
+  formatter dedup → `leave-format.js`), F6 (CLAUDE.md pre-cache rule), F7
+  (CLAUDE.md local-by-design). **F2 (punches path-traversal) deferred to M17.**
+
+**NOT started — the bulk of M16 remains:**
+- **Phase 1** — `/code-review ultra` never run (operator-triggered; Pedro to run,
+  then triage results into the ledger).
+- **Phase 2** — module-by-module reads: **0 of ~40 modules done.** The matrix
+  below is still entirely ☐. *This is the main remaining work.*
+- **Phase 3** — partial. ✅ done: `fmtHours/fmtDate` sweep, `encryptBlob`/
+  `encryptField` AAD, `rejectIfBadId` on employee routes, en/pt locale key parity.
+  ⬜ still owed: 500-char caps, throw-vs-null contract, CSP-hash parity, a full
+  `CACHE_VERSION`/`PRECACHE_URLS` audit.
+- **Phase 4** — partial. ✅ done: test count (F4), `leave-format.js` added to the
+  architecture inventory, footers/roadmap/handoff kept current per release.
+  ⬜ still owed: full `architecture.md` file-list reconciliation, final coherence pass.
+
+**Deviation from the plan as written:** Phase 0 Step 4 said open a branch
+`m16-code-review`; in practice the work went **straight to `main`** as version
+releases (matching the established release-on-main workflow). No branch was used.
+
+**Suggested next step:** start Phase 2 with `src/storage/` (it carries most of the
+invariants). Read a module end-to-end → log findings to the ledger → fix only after
+Pedro triages.
+
+---
+
 ## Scope contract (read before touching anything)
 
 **In scope (M16):**
@@ -55,21 +96,18 @@ RELEASES Honest Disclosure, all 53+ suites green, a clean smoke run, and
 
 ## Phase 0 — Baseline & freeze
 
-- [ ] **Step 1: Confirm clean tree.** Run `git status`. Commit or stash
-  `notes.md` so M16 starts from a known point. Expected: nothing but intended
-  changes outstanding.
+- [x] **Step 1: Confirm clean tree.** ✅ Done (`notes.md` left as-is — it is
+  Pedro's pre-existing local change, deliberately not committed).
 
-- [ ] **Step 2: Green baseline.** Run every suite:
+- [x] **Step 2: Green baseline.** ✅ Done — and it caught **F1**: `test-reports.mjs`
+  was red (timezone-flaky overnight-split test). Fixed in 0.52.1; baseline now 53/53.
 
 ```bash
 for f in tests/test-*.mjs; do node "$f" || echo "FAIL: $f"; done
 ```
 
-Expected: no `FAIL:` lines. If any suite is red *today*, that is M16 finding #1 —
-record it before changing anything.
-
-- [ ] **Step 3: Clean smoke.** Per the project pattern (locally, never in the
-  no-network container; never delete `data/`/`backups/`):
+- [ ] **Step 3: Clean smoke.** ⬜ NOT done — the review container has no network,
+  so the boot smoke is still owed and must be run locally before M16 closes.
 
 ```bash
 PICA_PASSPHRASE=testpass1 node server.js > /tmp/p.out 2>&1 &
@@ -79,13 +117,14 @@ PICA_PASSPHRASE=testpass1 node server.js > /tmp/p.out 2>&1 &
 Expected: server boots, no stack traces in `/tmp/p.out`. Kill the temp server
 after (live install on :8080 is never touched).
 
-- [ ] **Step 4: Open the working branch.**
+- [~] **Step 4: Open the working branch.** ⚠️ Skipped — work went straight to
+  `main` as version releases (matches the established release-on-main workflow).
 
 ```bash
-git switch -c m16-code-review
+git switch -c m16-code-review   # NOT used; see note above
 ```
 
-- [ ] **Step 5: Create the finding ledger.** Create `docs/m16-findings.md` with
+- [x] **Step 5: Create the finding ledger.** ✅ Done — `docs/m16-findings.md` with
   columns: `ID | module | description | lens | triage (M16/M17/later/wontfix) |
   status | release`. Every finding from every later phase lands here first, gets
   triaged, *then* gets actioned. This is the milestone's working memory.
@@ -96,8 +135,9 @@ git switch -c m16-code-review
 
 Run the tooling first so the manual sweep can focus on what tools miss.
 
-- [ ] **Step 1: Branch-wide cloud review.** Launch `/code-review ultra` against
-  the `m16-code-review` branch once there is a meaningful diff to review, OR — if
+- [ ] **Step 1: Branch-wide cloud review.** ⬜ NOT run yet (operator-triggered;
+  Pedro to run, then triage results into the ledger). Launch `/code-review ultra`
+  against the working branch once there is a meaningful diff to review, OR — if
   you want a map of the *current* code before changing it — run it early against a
   no-op branch so it reviews recent history. Note: ultra is user-triggered and
   billed; you cannot launch it yourself — ask Pedro to run it and paste results.
@@ -191,27 +231,35 @@ These cut across modules; do them as dedicated grep-driven sweeps and write a
 **test** for any gap (don't just hand-fix), so the invariant is enforced going
 forward.
 
-- [ ] **`rejectIfBadId` coverage.** Grep every `:id` route handler; confirm each
-  calls it first. If any test suite doesn't assert this per-route, add it.
+- [~] **`rejectIfBadId` coverage.** ⚠️ Partial — confirmed present on all 10
+  employee `:id` handlers (C4). Other `:id` routes (`punches` `by-employee/:id`,
+  `corrections`, `leaves`) do NOT use it; `punches` building a path from the raw id
+  is logged as **F2 → M17** (security). No per-route test added yet.
 
-- [ ] **500-char caps.** Grep storage writers for the five capped free-text fields
-  (`punch.comment`, `correction.justification`, `correction.notes`, `leave.reason`,
-  `leave.notes`); confirm each is enforced at the storage layer and covered by a test.
+- [ ] **500-char caps.** ⬜ NOT done. Grep storage writers for the five capped
+  free-text fields (`punch.comment`, `correction.justification`, `correction.notes`,
+  `leave.reason`, `leave.notes`); confirm each is enforced at the storage layer and
+  covered by a test.
 
-- [ ] **`fmtHours`/`fmtDate` usage.** Grep `public/` for `.toFixed(` and
-  `Math.round(.*\* *10` and raw `toLocaleDateString`; each hit is a finding.
+- [x] **`fmtHours`/`fmtDate` usage.** ✅ Done (C1) — no hour-formatting bypass; the
+  one raw-locale month label (`index.js`) was **F3**, fixed in 0.52.2. Remaining
+  raw `toLocaleDateString(locale,…)` calendar labels correctly pass the app locale.
 
-- [ ] **`encryptBlob` AAD.** Grep every call site; confirm a context-binding AAD is
-  passed (none should use a default/empty AAD).
+- [x] **`encryptBlob` AAD.** ✅ Done (C2) — every `encryptBlob`/`encryptField` call
+  site passes a context-binding AAD; none default/empty.
 
-- [ ] **CACHE_VERSION discipline.** Confirm `test-sw-precache` covers the full
-  pre-cache asset list and that the list matches reality.
+- [ ] **CACHE_VERSION discipline.** ⬜ NOT fully audited. (Note: F6 corrected the
+  CLAUDE.md description of which assets are pre-cached.) Still confirm
+  `test-sw-precache` covers the full `PRECACHE_URLS` and that the list matches reality.
 
-- [ ] **Inline style/script ban + CSP hash parity.** Confirm `test-security-headers`
-  still enforces the byte-identical bootstrap across all HTML files.
+- [ ] **Inline style/script ban + CSP hash parity.** ⬜ NOT done. Confirm
+  `test-security-headers` still enforces the byte-identical bootstrap across all HTML.
 
-- [ ] **Store throw-vs-null contract.** Spot-check that stores throw on programmer
-  errors and return null/false on legitimate not-found, and routes map accordingly.
+- [ ] **Store throw-vs-null contract.** ⬜ NOT done. Spot-check that stores throw on
+  programmer errors and return null/false on legitimate not-found, and routes map
+  accordingly.
+
+- [x] **(bonus) en/pt locale key parity.** ✅ Done (C3) — 974 keys each, zero orphans.
 
 ---
 
@@ -219,22 +267,24 @@ forward.
 
 Code drifted from docs; reconcile in this order (per `reference_pica_docs`):
 
-- [ ] **Test count.** Actual is **53** suites. CLAUDE.md says "~33",
-  `docs/architecture.md` and roadmap say 40/41. Update all three to the real number.
+- [x] **Test count.** ✅ Done (F4, 0.52.3) — CLAUDE.md `~33` → 53. `docs/architecture.md`
+  was already correct (53); roadmap's "40/41" mentions are historical, left intact.
 
-- [ ] **File lists.** `docs/architecture.md` module list vs. the actual
-  `src/storage/`, `src/routes/`, `public/` contents (e.g. `modal.js`,
-  `calendar-grid.js`, the `*-detail-modal.js` files, `geo*.js`). Reconcile.
+- [~] **File lists.** ⚠️ Partial — `leave-format.js` added to `architecture.md`.
+  Still reconcile the full `src/storage/`, `src/routes/`, `public/` inventories
+  (e.g. `modal.js`, `geo*.js`, the `*-detail-modal.js` files) against reality.
 
-- [ ] **Footers.** Every `docs/*.md` touched by M16 gets `_Last touched in vX.Y.Z._`.
+- [x] **Footers.** ✅ Kept current — every `docs/*.md` touched by an M16 release got
+  its `_Last touched in vX.Y.Z._` footer bumped as part of that release.
 
-- [ ] **Roadmap status.** Mark M16 progress in `docs/roadmap.md`; confirm M17–M20
-  framing still reads correctly.
+- [x] **Roadmap status.** ✅ Done — `docs/roadmap.md` shows M16 🚧 In progress (0.52.0);
+  M17–M20 framing unchanged.
 
-- [ ] **handoff.md.** Update the live-state snapshot to reflect post-M16 reality.
+- [x] **handoff.md.** ✅ Kept current — snapshot reflects v0.52.5 and the open/closed
+  finding list. (Re-verify again before M16 *closes*.)
 
-- [ ] **RELEASES.md.** Each M16 release already has an entry; confirm the arc reads
-  coherently and every entry has Honest Disclosures.
+- [ ] **RELEASES.md.** ⬜ Final coherence pass still owed — entries exist for
+  0.52.0–0.52.5 with Honest Disclosures; do the read-through when M16 closes.
 
 ---
 
@@ -291,4 +341,5 @@ behavior regression surfaces later.
 
 ---
 
-_Plan written 2026-06-03 against v0.51.0._
+_Plan written 2026-06-03 against v0.51.0. Progress snapshot last updated 2026-06-03
+at v0.52.5 (commit `b3413f7`) — see "Progress snapshot — RESUME HERE" near the top._
