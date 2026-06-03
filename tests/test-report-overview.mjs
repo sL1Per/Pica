@@ -108,4 +108,63 @@ test('hoursSeries: per-bucket worked and target', () => {
   assert.equal(tue.worked, 0);
 });
 
+test('leaves: by type, totals, on-leave per person, watchlist order', () => {
+  const leaves = fakeLeaves({
+    u1: [{ id: 'l1', type: 'vacation', unit: 'days', start: '2026-05-11', end: '2026-05-12', status: 'approved' }],
+    u2: [],
+  });
+  const r = buildOverview({
+    punchesStore: fakePunches({}), leavesStore: leaves,
+    people: [
+      { id: 'u1', name: 'Ann', role: 'employee' },
+      { id: 'u2', name: 'Bo', role: 'employee' },
+    ],
+    from: '2026-05-11', to: '2026-05-15', bucketBy: 'day', label: 'wk',
+    workingTimeFor: wt, leaveCtx, scope: 'all',
+    now: new Date('2026-05-16T00:00:00'),
+  });
+  const vac = r.leaveByType.find((x) => x.type === 'vacation');
+  assert.equal(vac.days, 2);
+  assert.equal(r.leaveTotalDays, 2);
+  assert.equal(r.people.find((p) => p.id === 'u1').onLeave, 2);
+  // coverage gaps: nobody clocked in on 5 weekdays → all gaps (>0).
+  assert.ok(r.kpis.coverageGaps > 0);
+  // watchlist sorted by onTimePct asc; null on-time (no work) sorts last.
+  assert.equal(r.watchlist.length, 2);
+});
+
+test('onLeave per bucket: weekday days-unit uses dailyHours, weekend excluded', () => {
+  // Vacation Fri 2026-05-15 .. Mon 2026-05-18 (Sat 05-16 / Sun 05-17 inside). Person dailyHours=8.
+  const leaves = fakeLeaves({ u1: [
+    { id: 'l1', type: 'vacation', unit: 'days', start: '2026-05-15', end: '2026-05-18', status: 'approved' },
+  ] });
+  const r = buildOverview({
+    punchesStore: fakePunches({}), leavesStore: leaves,
+    people: [{ id: 'u1', name: 'Ann', role: 'employee' }],
+    from: '2026-05-15', to: '2026-05-18', bucketBy: 'day', label: 'wk',
+    workingTimeFor: wt, leaveCtx, scope: 'me',
+    now: new Date('2026-05-19T00:00:00'),
+  });
+  const fri = r.hoursSeries.find((s) => s.key === '2026-05-15');
+  const sat = r.hoursSeries.find((s) => s.key === '2026-05-16');
+  const mon = r.hoursSeries.find((s) => s.key === '2026-05-18');
+  assert.equal(fri.onLeave, 8);   // weekday → dailyHours
+  assert.equal(sat.onLeave, 0);   // weekend excluded
+  assert.equal(mon.onLeave, 8);   // weekday → dailyHours
+});
+
+test('onLeave per bucket: hours-unit leave credits actual hours, not a full day', () => {
+  const leaves = fakeLeaves({ u1: [
+    { id: 'l2', type: 'appointment', unit: 'hours', start: '2026-05-15T10:00:00', end: '2026-05-15T12:00:00', hours: 2, status: 'approved' },
+  ] });
+  const r = buildOverview({
+    punchesStore: fakePunches({}), leavesStore: leaves,
+    people: [{ id: 'u1', name: 'Ann', role: 'employee' }],
+    from: '2026-05-15', to: '2026-05-15', bucketBy: 'day', label: 'd',
+    workingTimeFor: wt, leaveCtx, scope: 'me',
+    now: new Date('2026-05-16T00:00:00'),
+  });
+  assert.equal(r.hoursSeries[0].onLeave, 2);  // actual hours, not 8
+});
+
 console.log(`\n${passed} passed`);
