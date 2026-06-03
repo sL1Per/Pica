@@ -34,7 +34,7 @@ app in a usable state.
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
 | M15       | Full UI revamp                     | ✅ 0.41.0 (closed; foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0 · employer home+team+detail 0.37.0 · settings+security 0.38.0 · preferences+profile edit 0.39.0 · reports re-skin 0.40.0 · alias-removal+dedup+bell 0.41.0) |
-| M16       | Code review / optimization / simplification | 📋 Planned |
+| M16       | Code review / optimization / simplification | 🚧 In progress (0.52.0) |
 | M17       | Full security review               | 📋 Planned    |
 | M18       | Deployment guide + TLS samples     | 📋 Planned    |
 | M19       | User guide                         | 📋 Planned    |
@@ -423,9 +423,13 @@ posture rather than a moving target.
 > zero-dependency constraint stands; automated browser tests are no longer
 > on the roadmap. The remaining work is the five milestones below.
 
-- **M16 — Code review / optimization / simplification.** A full pass over
-  the codebase for correctness, dead code, duplication, and simplification
-  opportunities now that the UI revamp has settled. No new features.
+- **M16 — Code review / optimization / simplification.** 🚧 In progress
+  (opened 0.52.0). A full pass over the codebase for correctness, dead code,
+  duplication, and simplification opportunities now that the UI revamp has
+  settled. No new features. Plan: `docs/m16-code-review-plan.md`; findings are
+  logged to `docs/m16-findings.md` and triaged before any fix (security
+  findings are explicitly deferred to M17). First sweep already found the
+  baseline is red (`test-reports.mjs`).
 - **M17 — Full security review.** End-to-end review of the threat model,
   encryption, auth, input validation, and the audit log against the final
   feature set.
@@ -457,4 +461,4 @@ posture rather than a moving target.
 
 ---
 
-_Last touched in 0.46.0._
+_Last touched in 0.52.0._

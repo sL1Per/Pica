@@ -27,8 +27,9 @@
 
 import { createModal } from '/modal.js';
 import { postJson } from '/app.js';
-import { t, tn, translateError, fmtDateTime, fmtHours, getLocale } from '/i18n.js';
+import { t, translateError, fmtDateTime, getLocale } from '/i18n.js';
 import { monthMatrix } from '/calendar-grid.js';
+import { pad2, ymd, parseYmd, formatWhen, formatDuration } from '/leave-format.js';
 
 // ---- Module-level singletons -----------------------------------------------
 
@@ -42,10 +43,8 @@ let current = null;    // the leave object currently displayed
 const HERO_ICONS = { pending: '⏳', approved: '✓', rejected: '✕', cancelled: '—' };
 
 // ---- Small helpers ---------------------------------------------------------
-
-function pad2(n) { return String(n).padStart(2, '0'); }
-function ymd(s) { return String(s).slice(0, 10); }
-function parseYmd(s) { const [y, m, d] = String(s).split('-').map(Number); return Date.UTC(y, m - 1, d); }
+// pad2 / ymd / parseYmd / formatWhen / formatDuration live in /leave-format.js
+// (shared with leave.js — see imports above).
 
 // errorNode(status) — a <p class="ldm-error"> with a translated message.
 // 404 → leave.notFound; anything else → leave.failedToLoad.
@@ -55,31 +54,6 @@ function errorNode(status) {
   p.textContent = status === 404 ? t('leave.notFound')
     : (status === 403 ? t('leave.noAccess') : t('leave.failedToLoad'));
   return p;
-}
-
-// formatWhen / formatDuration — ported verbatim from leave.js so the modal
-// reads the same as the page.
-function formatWhen(l) {
-  if (l.unit === 'days') {
-    return l.start === l.end ? l.start : `${l.start} → ${l.end}`;
-  }
-  const s = new Date(l.start);
-  const e = new Date(l.end);
-  const sameDay = s.toDateString() === e.toDateString();
-  const ds = s.toISOString().slice(0, 10);
-  const hs = `${pad2(s.getHours())}:${pad2(s.getMinutes())}`;
-  const he = `${pad2(e.getHours())}:${pad2(e.getMinutes())}`;
-  return sameDay ? `${ds}, ${hs}–${he}` : `${l.start} → ${l.end}`;
-}
-
-function formatDuration(l) {
-  if (l.unit === 'hours' && typeof l.hours === 'number') {
-    return tn('leave.durHours', l.hours, { count: fmtHours(l.hours) });
-  }
-  const s = new Date(l.start);
-  const e = new Date(l.end);
-  const days = Math.round((e - s) / 86_400_000) + 1;
-  return tn('leave.durDays', days, { count: days });
 }
 
 // addDlRow — appends a <dt>/<dd> pair to a <dl>. mono=true applies the

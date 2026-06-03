@@ -14,6 +14,259 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.52.5] — 2026-06-03 — M16 F6 + F7: correct CLAUDE.md pre-cache rule & local-only note
+
+Fifth M16 increment. Two documentation corrections to `CLAUDE.md`, both found
+while doing earlier M16 fixes.
+
+- **F6 — pre-cache rule was incomplete.** CLAUDE.md's "Hard rules" listed the
+  pre-cached SW assets as only the shell (`i18n.js`, `topbar.js`, `app.js`,
+  `manifest.json`, `icon.svg`, `locales/*.js`, `*.css`) and said "NOT HTML
+  files." But `public/sw.js` `PRECACHE_URLS` also pre-caches most per-page page
+  scripts (`index.js`, `punch.js`, the `*-detail-modal.js` files) and shared
+  helpers (`calendar-grid.js`, `leave-format.js`, …). The rule now points to
+  `PRECACHE_URLS` as the **authoritative list** (so it can't drift again) and
+  describes its real contents. The matching "shell changes" shorthand in the
+  file-tree comment for `sw.js` was corrected too. This is why the F3 (0.52.2)
+  and F5 (0.52.4) edits correctly bumped `CACHE_VERSION` for `index.js` /
+  `leave-format.js` even though the old doc implied page scripts weren't cached.
+- **F7 — "institutional memory" vs gitignored.** CLAUDE.md is gitignored by
+  design (grouped with `.claude/`, `config.json`, `data/`), yet read as the
+  project's accumulating institutional memory. Decision (Pedro): **keep it local
+  by design.** The header now states plainly that the file is local, gitignored,
+  not committed, and does not travel with clones — treat it as this checkout's
+  operator notes, not a shared source of truth.
+
+### Honest Disclosures
+
+- **`CLAUDE.md` is gitignored, so neither edit is tracked by git.** As with the
+  F4 fix (0.52.3), the committed record of this change is this RELEASES entry +
+  the version bump, not a diff. The working-tree CLAUDE.md is now accurate; other
+  checkouts keep their own copies (that local-only behaviour is now the
+  documented, intended state — F7 resolved as "keep local").
+- **Documentation-only.** No code, no behaviour change, no `CACHE_VERSION` bump.
+- **F6 trades a concrete list for a pointer.** The doc no longer enumerates every
+  pre-cached file; it tells you to read `PRECACHE_URLS`. That is the point (single
+  source of truth), but it does mean the doc is now correct-by-reference rather
+  than self-contained.
+
+---
+
+## [0.52.4] — 2026-06-03 — M16 F5: share the leave formatting helpers
+
+Fourth M16 fix. `leave.js` (the leave detail page) and `leave-detail-modal.js`
+(its in-page modal twin, added 0.48.0) carried **byte-identical** copies of five
+pure functions: `pad2`, `ymd`, `parseYmd`, `formatWhen`, and `formatDuration`.
+They are now defined once in a new `public/leave-format.js` and imported by both,
+so a future fix to (say) the overnight time-range formatting can't land in one
+view and miss the other.
+
+Details:
+
+- New `public/leave-format.js` exports the five functions (it imports `tn` /
+  `fmtHours` from `/i18n.js`, which `formatDuration` needs). No DOM, no module
+  state — pure and safe to import anywhere.
+- `leave.js` and `leave-detail-modal.js` drop their local copies and import from
+  the shared module. The now-unused `tn` and `fmtHours` imports (they were only
+  used by `formatDuration`) were removed from both files.
+- `public/sw.js`: `/leave-format.js` added to `PRECACHE_URLS` (it is a static
+  import of the already-pre-cached `/leave-detail-modal.js`, so it must be
+  cached too); `CACHE_VERSION` v94 → v95.
+
+Scope was deliberately narrowed after a side-by-side read (recorded in the
+ledger): the **renderers** `renderMiniCal` / `renderActivity` were *not* shared.
+They look similar but are genuinely adapted — the page uses the `ldet-*` CSS
+namespace and writes into existing DOM hosts, while the modal uses `ldm-*` and
+returns detached nodes. Sharing them would require unifying two CSS files and
+has no rendering-test coverage, so it was judged not worth the risk at this
+scale. The correction page/modal pair overlaps even less and was left alone.
+
+### Honest Disclosures
+
+- **No behaviour change.** This is a pure dedup; the five functions are
+  unchanged. Verified by `node --check` on all four files and the full suite
+  (53/53), including `frontend-imports` (import graph resolves) and
+  `sw-precache`. There is still **no rendered-DOM test** for these views, so the
+  guarantee is "identical source, same inputs," not "pixel-verified."
+- **~28 lines removed net of duplication; one new pre-cached module added.** The
+  trade is fewer drift-prone copies for one more file in the cache manifest —
+  judged worthwhile only because the formatters produce user-facing strings that
+  must match between page and modal.
+- **The renderers remain duplicated by design.** F5 is considered resolved at
+  this scope; a future CSS-namespace unification could revisit the renderers but
+  is out of scope for M16.
+- `docs/architecture.md`'s frontend file inventory now omits `leave-format.js`;
+  that inventory reconciliation is part of the pending Phase 4 doc-truth sweep.
+
+---
+
+## [0.52.3] — 2026-06-03 — M16 F4: correct stale test-suite count in CLAUDE.md
+
+Third M16 fix (doc-truth). CLAUDE.md's file-layout diagram claimed
+"`~33 suites`"; the real count is **53** (`docs/architecture.md` already says so).
+Updated line 87 to "53 suites (source of truth: docs/architecture.md)".
+
+Deliberately **not** changed: the "total 40" (M14 / 0.25.0) and "total 41"
+(0.26.0) lines further down in CLAUDE.md's roadmap snapshot. Those are
+point-in-time historical counts describing the suite total *at that release*,
+not current-state claims — rewriting them to 53 would corrupt the historical
+record. Only the current-count claim was stale.
+
+### Honest Disclosures
+
+- **Documentation-only.** No code, no behaviour change, no `CACHE_VERSION` bump.
+- **The corrected file (`CLAUDE.md`) is gitignored** (`.gitignore:8`), so this
+  fix lives in the working tree, not git history — even though CLAUDE.md's own
+  header describes it as "checked into the codebase." The tracked record of this
+  fix is therefore *this RELEASES entry + the version bump*, not a diff to
+  CLAUDE.md. The contradiction (gitignored vs. "checked in") is logged as ledger
+  finding **F7** for Pedro to decide; not changed here.
+- **Narrow scope.** This corrects the one stale *current-count* claim in
+  CLAUDE.md. A full Phase 4 doc-truth sweep (architecture.md file lists vs. the
+  real `src/`/`public/` contents, F6's pre-cache list, other footers) is still
+  pending and tracked in the ledger.
+- The "source of truth" pointer now leans on `docs/architecture.md:371`; if that
+  number drifts in future, line 87 drifts with it. Keeping a single canonical
+  count there (rather than duplicating the number in many docs) is the intent.
+
+---
+
+## [0.52.2] — 2026-06-03 — M16 F3: home leave month label respects app locale
+
+Second M16 fix. On the employee home page, the "Your leaves" card renders each
+upcoming leave's month abbreviation. The label was built with
+`start.toLocaleString(undefined, { month: 'short' })` — passing `undefined` as
+the locale, so the month name (e.g. "May" vs "mai") followed the **browser's**
+default locale instead of the user's selected app locale. Every sibling calendar
+label (`leave.js`, `leave-detail-modal.js`) already passes the app locale via
+`getLocale()`.
+
+The fix: `public/index.js` now imports `getLocale` from `/i18n.js` and uses
+`start.toLocaleString(getLocale(), { month: 'short' })`, matching the
+established convention. One-line behavioural change; no API or backend impact.
+
+`CACHE_VERSION` v93 → v94 (`/index.js` is a pre-cached SW asset — see the
+disclosure below).
+
+While fixing this I noticed CLAUDE.md's "pre-cached SW asset" list is incomplete:
+it names only `i18n.js`, `topbar.js`, `app.js`, `manifest.json`, `icon.svg`,
+`locales/*.js`, and `*.css`, but `sw.js` actually pre-caches the per-page page
+scripts too (including `/index.js`). Logged as ledger finding **F6** for the
+Phase 4 doc-truth pass; not fixed here.
+
+### Honest Disclosures
+
+- **Not covered by an automated test.** The label is pure `Intl` formatting; the
+  sibling month labels in `leave.js` are likewise untested. Asserting locale
+  output inline would be brittle (environment-/ICU-dependent), so this was
+  verified by code inspection + `node --check` + the import/precache suites, not
+  a rendered-DOM test.
+- **Other pages were not swept** for the same `toLocaleString(undefined, …)`
+  pattern beyond `index.js` (which is now clean). A full Phase 3 grep for raw
+  `undefined`-locale formatting across `public/` is still pending.
+- CLAUDE.md's pre-cache list inaccuracy (F6) is documented, not corrected — that
+  belongs to the Phase 4 doc pass.
+
+---
+
+## [0.52.1] — 2026-06-03 — M16 F1: fix timezone-flaky reports test
+
+First M16 fix. The baseline shipped red: `tests/test-reports.mjs` →
+"overnight shift attributes hours to each day separately" failed on the
+development machine (CEST). Root cause was in the **test**, not the code.
+
+What was happening:
+
+- `hoursReport()` buckets hours by the **server's local** calendar day and
+  splits overnight shifts at **local** midnight (`splitByMidnight` / `ymdOf`
+  in `src/storage/reports.js`). That behaviour is deliberate and correct.
+- The test fixtures used fixed UTC instants (a shift from `22:00` on the 5th
+  to `06:00` UTC on the 6th) and implicitly assumed those instants land on
+  opposite sides of *local* midnight. That only holds in a band of timezones
+  (~UTC-2..UTC+1). On CEST (`UTC+2`), Los_Angeles, or Tokyo the whole shift
+  falls on a single local day, so the report produced **1** bucket and the
+  `length === 2` assertion failed.
+
+The fix: pin the test process to `process.env.TZ = 'UTC'` (Node honors a
+runtime TZ write via `tzset`), so the UTC fixtures deterministically straddle
+local(=UTC) midnight on any machine. **No production code changed.** Verified
+green under the system default plus `TZ=UTC`, `Europe/Lisbon`,
+`America/Los_Angeles`, and `Asia/Tokyo` (29/29 each), and the full suite is now
+53/53.
+
+Ledger: `docs/m16-findings.md` F1 → fixed.
+
+### Honest Disclosures
+
+- **Test-only change.** Behaviour of `hoursReport()` is untouched; this only
+  removes the test's hidden dependence on the developer's machine timezone.
+- **Only `test-reports.mjs` was pinned.** Other suites that construct local
+  `Date`s may carry the same latent fragility; they pass on this machine today,
+  but a systematic "pin TZ in date-sensitive suites" sweep is not part of this
+  fix. Logged as an observation for the Phase 3 sweep.
+- **The underlying single-server-local-timezone reporting model is unchanged.**
+  Whether hours *should* bucket by the employee's timezone rather than the
+  server's is a product question, not addressed here.
+- No `CACHE_VERSION` bump (no pre-cached asset changed).
+
+---
+
+## [0.52.0] — 2026-06-03 — M16 opens: code-review plan + findings ledger
+
+The start of **M16 (code review / optimization / simplification)**. This release
+ships **no code change** — it is the milestone's scaffolding plus the first
+read-only review sweep. Nothing in `src/`, `public/`, or `tests/` was modified.
+
+What landed:
+
+- **`docs/m16-code-review-plan.md`** — the full M16 plan: scope contract
+  (security findings are deferred to M17 by design), a module-by-module review
+  matrix grounded in the actual file list, cross-cutting invariant sweeps, a
+  triage rubric, and the per-module release cadence.
+- **`docs/m16-findings.md`** — the findings ledger. Every issue is logged here
+  for review *before* any fix; nothing is changed until triaged.
+
+First-sweep findings (read-only; details in the ledger):
+
+- **F1 (correctness, M16):** the baseline is **red** — `tests/test-reports.mjs`
+  has one failing test ("overnight shift attributes hours to each day
+  separately": expects 2 buckets, gets 1). `main` ships with a failing suite.
+- **F2 (security, → M17):** `src/storage/punches.js` builds a file path directly
+  from the unvalidated `:id` of `GET /api/punches/by-employee/:id` — the 0.22.0
+  traversal class. `leaves.js` (guarded by `safeLeaveId`) and `corrections.js`
+  (log-scan lookup) are not exposed the same way. Deferred to the security
+  milestone, not fixed here.
+- **F3 (i18n, M16):** `public/index.js:482` formats a month label with
+  `toLocaleString(undefined, …)`, ignoring the app locale.
+- **F4 (doc drift, M16):** `CLAUDE.md` still says "~33 suites / total 40"; the
+  real count is 53 (`docs/architecture.md` is already correct).
+- **F5 (duplication, M16):** suspected large overlap between the page renderers
+  and their detail-modal mirrors (`leave*`, `correction*`) — needs a confirming
+  read before any extraction.
+
+Clean checks recorded (so they aren't re-run): frontend hour formatting (no
+`fmtHours` bypass), `encryptBlob`/`encryptField` AAD binding (all sites bound),
+en/pt locale key parity (974 each, zero orphans), `rejectIfBadId` on all employee
+`:id` handlers, and the leave-attachment path guard.
+
+### Honest Disclosures
+
+- **This is a partial first sweep, not a complete review.** Phase 2
+  (module-by-module reads) has **not** started as full reads — only grep-driven
+  spot checks. The plan's module matrix is still entirely unchecked. Phase 3 is
+  partial (500-char caps, CACHE_VERSION list, CSP-hash parity, and the
+  throw-vs-null contract are not yet swept).
+- **No fixes.** F1's red baseline is documented, not repaired — including the
+  fact that the project currently ships a failing test. F2 is a live security
+  observation left unfixed by design (M17).
+- **`/code-review ultra` was not run** — it is operator-triggered and billed;
+  its findings are not yet in the ledger.
+- **No smoke run** — the review container has no network; the boot smoke must be
+  run locally before M16 closes.
+- **CACHE_VERSION not bumped** — no pre-cached asset changed (docs only).
+
+---
+
 ## [0.51.0] — 2026-06-03 — Employer sees their own leave balance cards
 
 The employer `/leaves` page now shows a personal **"Your balance"** card —

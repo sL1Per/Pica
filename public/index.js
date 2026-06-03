@@ -8,7 +8,7 @@
  */
 
 import { mountTopBar, mountFooter } from '/topbar.js';
-import { t, fmtDate, fmtTime, fmtHours, translateError } from '/i18n.js';
+import { t, fmtDate, fmtTime, fmtHours, translateError, getLocale } from '/i18n.js';
 import { clockPunch } from '/geo.js';
 import { toast } from '/app.js';
 import { pairSessions, workedMs, breakMs, groupByEmployee, classify, STATUS_SORT } from '/team-status.js';
@@ -479,7 +479,7 @@ function renderLeaves(leavesEl, leaves) {
       <div class="emp-leave">
         <div class="emp-leave__date">
           <div class="emp-leave__day">${start.getDate()}</div>
-          <div class="emp-leave__mon">${escapeHtml(start.toLocaleString(undefined, { month: 'short' }))}</div>
+          <div class="emp-leave__mon">${escapeHtml(start.toLocaleString(getLocale(), { month: 'short' }))}</div>
         </div>
         <div>
           <div class="emp-leave__title">${escapeHtml(l.reason || typeLabel)}</div>

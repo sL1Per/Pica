@@ -21,6 +21,17 @@ import {
   leavesSingleCsv, leavesMatrixCsv,
 } from '../src/storage/reports.js';
 
+// Pin the process timezone so the UTC instants in the fixtures below straddle
+// local midnight deterministically. hoursReport() buckets hours by the
+// *server's local* calendar day and splits overnight shifts at *local*
+// midnight (see splitByMidnight / ymdOf in src/storage/reports.js). The
+// "overnight shift" fixtures (22:00 → 06:00 UTC) only cross local midnight in
+// a band of zones (~UTC-2..UTC+1); on a CEST / Los_Angeles / Tokyo machine
+// they land on a single local day and the split assertion fails. Forcing UTC
+// removes the machine dependency without changing the production behaviour
+// under test. Node honors a runtime TZ assignment (it calls tzset on write).
+process.env.TZ = 'UTC';
+
 let passed = 0;
 let failed = 0;
 async function test(name, fn) {

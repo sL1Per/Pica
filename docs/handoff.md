@@ -5,13 +5,30 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.51.0._
+_Last touched in 0.52.5._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.51.0 (released 2026-06-03) — **Employer sees their own
+- **Latest version:** 0.52.5 (released 2026-06-03) — **M16 F6 + F7.** CLAUDE.md
+  doc fixes: F6 corrected the pre-cache rule to point at `sw.js` `PRECACHE_URLS`
+  as the authoritative list (it omitted page scripts); F7 resolved as **keep
+  CLAUDE.md local by design** — header now says it's local/gitignored, not a
+  shared source of truth. Both edits are in the gitignored CLAUDE.md (untracked).
+- **0.52.4** — **M16 F5.** Extracted 5 byte-identical leave helpers into new
+  `public/leave-format.js` (renderers left adapted). CACHE v94→v95.
+- **0.52.3** — **M16 F4.** CLAUDE.md "~33 suites" → 53 (docs-only).
+- **0.52.2** — **M16 F3.** `index.js` month label uses `getLocale()`. CACHE v93→v94.
+- **0.52.1** — **M16 F1.** Pinned `TZ='UTC'` in `test-reports.mjs`. **Baseline 53/53 green.**
+- **M16 status:** 🚧 in progress (opened 0.52.0). Plan: `docs/m16-code-review-plan.md`;
+  findings: `docs/m16-findings.md`. Work mode: read-only review → log to ledger →
+  Pedro triages → only then fix. **First-sweep findings all closed: F1, F3, F4, F5,
+  F6, F7 fixed; F2 (punches path-traversal) deferred to M17 by design.** Next up:
+  Phase 2 module-by-module reads (not yet started) + remaining Phase 3 invariant
+  sweeps (500-char caps, throw-vs-null contract).
+- **0.52.0** (2026-06-03) — M16 opened (plan + ledger; docs-only).
+- **Previous:** 0.51.0 (released 2026-06-03) — **Employer sees their own
   leave balance cards.** Frontend-only (`leaves.{html,js}`). The employer `/leaves`
   page now shows a personal **"Your balance"** card (the same four stat blocks the
   employee view has) at the top of the employer region, above "Pending approval".

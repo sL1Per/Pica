@@ -162,6 +162,7 @@ pica/
 │   ├── request-leave-modal.{js,css}  # leave-request modal; /leaves/new retired (0.35.0)
 │   ├── leave-detail-modal.{js,css}   # leave detail modal (full parity w/ leave.js), opened from calendar pills/popover, /leaves list, employee detail; /leaves/:id kept as deep-link (0.48.0)
 │   ├── calendar-grid.js              # shared Mon-first month-matrix (calendar + leave mini-cal) (0.36.0)
+│   ├── leave-format.js               # shared pure leave formatters (pad2/ymd/parseYmd/formatWhen/formatDuration), used by leave.js + leave-detail-modal.js (0.52.4)
 │   ├── leave-actions.js              # shared approve/reject helpers (leaves list + calendar rail) (0.36.0)
 │   ├── team-status.js                # shared session-pairing + status classify (home / team / detail) (0.37.0)
 │   ├── settings.{html,js,css}
@@ -496,4 +497,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.48.0._
+_Last touched in 0.52.4._

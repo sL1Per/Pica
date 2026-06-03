@@ -1,8 +1,9 @@
 import { postJson, showMessage, setBusy } from '/app.js';
-import { t, tn, translateError, applyTranslations, fmtHours, fmtDateTime, getLocale } from '/i18n.js';
+import { t, translateError, applyTranslations, fmtDateTime, getLocale } from '/i18n.js';
 
 import { mountTopBar, mountFooter } from '/topbar.js';
 import { monthMatrix } from '/calendar-grid.js';
+import { pad2, ymd, parseYmd, formatWhen, formatDuration } from '/leave-format.js';
 mountTopBar();
 mountFooter();
 applyTranslations();
@@ -21,35 +22,6 @@ let me = null;
 let leave = null;
 
 const HERO_ICONS = { pending: '⏳', approved: '✓', rejected: '✕', cancelled: '—' };
-
-// -- Formatting helpers ------------------------------------------------------
-
-function pad2(n) { return String(n).padStart(2, '0'); }
-function ymd(s) { return String(s).slice(0, 10); }
-function parseYmd(s) { const [y, m, d] = String(s).split('-').map(Number); return Date.UTC(y, m - 1, d); }
-
-function formatWhen(l) {
-  if (l.unit === 'days') {
-    return l.start === l.end ? l.start : `${l.start} → ${l.end}`;
-  }
-  const s = new Date(l.start);
-  const e = new Date(l.end);
-  const sameDay = s.toDateString() === e.toDateString();
-  const ds = s.toISOString().slice(0, 10);
-  const hs = `${pad2(s.getHours())}:${pad2(s.getMinutes())}`;
-  const he = `${pad2(e.getHours())}:${pad2(e.getMinutes())}`;
-  return sameDay ? `${ds}, ${hs}–${he}` : `${l.start} → ${l.end}`;
-}
-
-function formatDuration(l) {
-  if (l.unit === 'hours' && typeof l.hours === 'number') {
-    return tn('leave.durHours', l.hours, { count: fmtHours(l.hours) });
-  }
-  const s = new Date(l.start);
-  const e = new Date(l.end);
-  const days = Math.round((e - s) / 86_400_000) + 1;
-  return tn('leave.durDays', days, { count: days });
-}
 
 // -- Main render -------------------------------------------------------------
 
