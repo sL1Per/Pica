@@ -599,6 +599,51 @@ try {
     }
   });
 
+  // ---------------------------------------------------------------------------
+  console.log('\nworkingTime — expectedStart + graceMinutes (0.53.0)');
+  // ---------------------------------------------------------------------------
+
+  await test('workingTime: expectedStart + graceMinutes default and validate', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-org-es-'));
+    try {
+      const s = createOrgSettingsStore(dir);
+
+      // Defaults present.
+      const d = s.get().workingTime;
+      assert.equal(d.expectedStart, '09:00');
+      assert.equal(d.graceMinutes, 10);
+
+      // Valid update sticks.
+      s.update({ workingTime: { expectedStart: '08:30', graceMinutes: 5 } });
+      const r = s.resolveWorkingTimeFor('11111111-1111-4111-8111-111111111111');
+      assert.equal(r.expectedStart, '08:30');
+      assert.equal(r.graceMinutes, 5);
+
+      // Invalid expectedStart rejected.
+      assert.throws(() => s.update({ workingTime: { expectedStart: '25:00' } }), /expectedStart/);
+      assert.throws(() => s.update({ workingTime: { expectedStart: '9:5' } }), /expectedStart/);
+
+      // graceMinutes clamps out-of-range / coerces.
+      s.update({ workingTime: { graceMinutes: 999 } });
+      assert.equal(s.get().workingTime.graceMinutes, 120);
+      s.update({ workingTime: { graceMinutes: -4 } });
+      assert.equal(s.get().workingTime.graceMinutes, 0);
+
+      // Per-employee expectedStart override resolves; grace stays org-level.
+      const uid = '22222222-2222-4222-8222-222222222222';
+      s.update({ workingTime: { perEmployeeOverrides: { [uid]: { expectedStart: '07:45' } } } });
+      const ro = s.resolveWorkingTimeFor(uid);
+      assert.equal(ro.expectedStart, '07:45');
+      assert.equal(ro.graceMinutes, 0); // 0 — org-level, clamped from -4 above
+
+      // Invalid per-employee expectedStart must throw.
+      assert.throws(() => s.update({ workingTime: { perEmployeeOverrides: {
+        '33333333-3333-4333-8333-333333333333': { expectedStart: '99:99' } } } }), /expectedStart/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

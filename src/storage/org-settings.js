@@ -27,6 +27,11 @@ export const BACKUP_SCHEDULES = Object.freeze(['off', 'hourly', 'daily', 'weekly
 // while keeping the file and the per-request scan trivially small.
 const MAX_BLOCKED_RANGES = 200;
 
+/** "HH:MM" 24-hour clock, 00:00–23:59. */
+export function isValidHhmm(s) {
+  return typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+}
+
 /** True iff `s` is a real calendar date in strict "YYYY-MM-DD" form. */
 export function isValidYmd(s) {
   if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
@@ -115,8 +120,11 @@ export const DEFAULT_ORG_SETTINGS = Object.freeze({
     // Default values apply to anyone WITHOUT a per-employee override.
     dailyHours: 8,           // expected hours per working day
     weeklyHours: 40,         // expected hours per working week
-    // Per-employee overrides. Shape: { [userId]: { dailyHours?, weeklyHours? } }.
+    expectedStart: '09:00',   // expected clock-in time, "HH:MM" 24h (punctuality)
+    graceMinutes: 10,         // lateness tolerance before a clock-in counts late
+    // Per-employee overrides. Shape: { [userId]: { dailyHours?, weeklyHours?, expectedStart? } }.
     // Either field may be omitted, meaning "use the org default for THIS field".
+    // graceMinutes has no per-employee override — it is always org-level.
     // Mirrors the leaves.perEmployeeOverrides pattern.
     perEmployeeOverrides: {},
   },
@@ -377,6 +385,19 @@ export function createOrgSettingsStore(dataDir) {
       }
       out.weeklyHours = Math.round(v * 100) / 100;
     }
+    if ('expectedStart' in patch) {
+      if (!isValidHhmm(patch.expectedStart)) {
+        throw new Error('workingTime.expectedStart must be "HH:MM" 24-hour');
+      }
+      out.expectedStart = patch.expectedStart;
+    }
+    if ('graceMinutes' in patch) {
+      const g = Number(patch.graceMinutes);
+      if (!Number.isFinite(g)) {
+        throw new Error('workingTime.graceMinutes must be a number between 0 and 120');
+      }
+      out.graceMinutes = Math.min(120, Math.max(0, Math.round(g)));
+    }
     // Per-employee overrides. Same shape rules as defaults but per user.
     // Each user's record may have dailyHours, weeklyHours, both, or neither
     // (empty object collapses to no override at all).
@@ -398,6 +419,12 @@ export function createOrgSettingsStore(dataDir) {
             throw new Error(`workingTime.perEmployeeOverrides[${userId}].weeklyHours must be a number between 0 and 168`);
           }
           userFields.weeklyHours = Math.round(v * 100) / 100;
+        }
+        if ('expectedStart' in fields) {
+          if (!isValidHhmm(fields.expectedStart)) {
+            throw new Error(`workingTime.perEmployeeOverrides[${userId}].expectedStart must be "HH:MM" 24-hour`);
+          }
+          userFields.expectedStart = fields.expectedStart;
         }
         // Skip users with no fields at all — that's "no override", which
         // is the same as not having the user in the map.
@@ -450,15 +477,18 @@ export function createOrgSettingsStore(dataDir) {
      * Resolve the effective working-time targets for a specific user.
      * Per-field fallback: if the user has a `dailyHours` override but no
      * `weeklyHours`, weekly comes from the org default and vice versa.
-     * Returns `{ dailyHours, weeklyHours }` — the same shape the punch
-     * page already consumes.
+     * Returns `{ dailyHours, weeklyHours, expectedStart, graceMinutes }`.
+     * `expectedStart` falls back per-employee override → org default.
+     * `graceMinutes` is org-level only; there is no per-employee override.
      */
     resolveWorkingTimeFor(userId) {
       const wt = loadAll().workingTime;
       const override = wt.perEmployeeOverrides?.[userId] ?? {};
       return {
-        dailyHours:  override.dailyHours  ?? wt.dailyHours,
-        weeklyHours: override.weeklyHours ?? wt.weeklyHours,
+        dailyHours:    override.dailyHours    ?? wt.dailyHours,
+        weeklyHours:   override.weeklyHours   ?? wt.weeklyHours,
+        expectedStart: override.expectedStart ?? wt.expectedStart,
+        graceMinutes:  wt.graceMinutes,   // org-level only; no per-employee override
       };
     },
 
