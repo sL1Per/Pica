@@ -88,4 +88,24 @@ test('breaks: intra-day gap between out and next in', () => {
   assert.equal(r.breaksSeries[0].avgBreakMin, 60);
 });
 
+test('hoursSeries: per-bucket worked and target', () => {
+  const punches = fakePunches({
+    u1: [
+      { type: 'in',  ts: '2026-05-11T09:00:00' }, { type: 'out', ts: '2026-05-11T17:00:00' }, // 8h Mon
+    ],
+  });
+  const r = buildOverview({
+    punchesStore: punches, leavesStore: fakeLeaves({}),
+    people: [{ id: 'u1', name: 'Ann', role: 'employee' }],
+    from: '2026-05-11', to: '2026-05-12', bucketBy: 'day', label: 'wk',
+    workingTimeFor: wt, leaveCtx, scope: 'all',
+    now: new Date('2026-05-13T00:00:00'),
+  });
+  const mon = r.hoursSeries.find((s) => s.key === '2026-05-11');
+  assert.equal(mon.worked, 8);
+  assert.equal(mon.target, 8);     // one person × 8h on a weekday
+  const tue = r.hoursSeries.find((s) => s.key === '2026-05-12');
+  assert.equal(tue.worked, 0);
+});
+
 console.log(`\n${passed} passed`);

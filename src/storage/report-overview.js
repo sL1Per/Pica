@@ -8,7 +8,7 @@
 import {
   pairAndSplit, parseYmd, hoursReport, approxDaysOff, bucketKeyFor,
 } from './reports.js';
-import { isWeekday } from './period.js';
+import { isWeekday, enumerateBuckets } from './period.js';
 
 const MS_PER_HOUR = 3_600_000;
 const round1 = (h) => Math.round(h * 10) / 10;
@@ -54,6 +54,26 @@ function weekdayCount(from, to) {
   const cur = parseYmd(from), end = parseYmd(to);
   while (cur <= end) { if (isWeekday(cur)) n++; cur.setDate(cur.getDate() + 1); }
   return n;
+}
+
+/** Inclusive date span a bucket key covers, clipped to the report range. */
+function bucketRange(key, bucketBy, from, to) {
+  if (bucketBy === 'day') return [key, key];
+  if (bucketBy === 'month') {
+    const [y, m] = key.split('-').map(Number);
+    const last = new Date(y, m, 0).getDate();
+    const bf = `${key}-01`, bt = `${key}-${pad2(last)}`;
+    return [bf < from ? from : bf, bt > to ? to : bt];
+  }
+  // week: key "YYYY-Www" — walk the range and collect matching days.
+  // String comparison is sufficient for YYYY-MM-DD bounds.
+  const cur = parseYmd(from), end = parseYmd(to);
+  let lo = null, hi = null;
+  while (cur <= end) {
+    if (bucketKeyFor(cur, 'week') === key) { const s = ymd(cur); if (!lo) lo = s; hi = s; }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return [lo ?? from, hi ?? to];
 }
 
 /** Read paired worked intervals for one user across [from,to]. */
@@ -168,6 +188,32 @@ export function buildOverview(opts) {
       .map(([key, e]) => ({ key, avgBreakMin: Math.round(e.sum / e.n) }));
   })();
 
+  // Per-bucket worked and target hours summed across all people.
+  // hoursReport accepts 'day'|'week'|'month'; 'year' periods always set
+  // bucketBy='month' (see resolvePeriod), so no unsupported value reaches here.
+  const buckets = enumerateBuckets(from, to, bucketBy);
+  const workedByBucket = Object.fromEntries(buckets.map((k) => [k, 0]));
+  for (const p of people) {
+    try {
+      const hr = hoursReport(punchesStore, p.id, from, to, bucketBy, now);
+      for (const b of hr.buckets) {
+        if (b.key in workedByBucket) workedByBucket[b.key] = round1(workedByBucket[b.key] + b.hours);
+      }
+    } catch { /* unreadable person store → skip, leave bucket at 0 */ }
+  }
+  // Target per bucket = (weekdays in bucket) × dailyHours for each person.
+  const targetByBucket = Object.fromEntries(buckets.map((k) => [k, 0]));
+  for (const k of buckets) {
+    const [bf, bt] = bucketRange(k, bucketBy, from, to);
+    const wd = weekdayCount(bf, bt);
+    let t = 0;
+    for (const p of people) t += (workingTimeFor(p.id).dailyHours || 0) * wd;
+    targetByBucket[k] = round1(t);
+  }
+  const hoursSeries = buckets.map((k) => ({
+    key: k, worked: workedByBucket[k], onLeave: 0, target: targetByBucket[k],
+  }));
+
   return {
     scope,
     period: { from, to, bucketBy, label },
@@ -181,8 +227,8 @@ export function buildOverview(opts) {
       leaveDays: 0,
       coverageGaps: null,
     },
-    // Placeholders filled by Tasks 4–7:
-    hoursSeries: [],
+    // onLeave per bucket filled by next task (T7):
+    hoursSeries,
     leaveByType: [],
     leaveTotalDays: 0,
     leaveBalances: [],
