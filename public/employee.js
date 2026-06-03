@@ -13,6 +13,7 @@ import { t, applyTranslations, fmtDate, fmtTime, fmtHours, translateError } from
 import { showMessage } from '/app.js';
 import { pairSessions, workedMs, classify } from '/team-status.js';
 import { createModal } from '/modal.js';
+import { openLeaveModal } from '/leave-detail-modal.js';
 import { approveLeaveWithCheck, rejectLeave } from '/leave-actions.js';
 
 mountTopBar();
@@ -71,6 +72,7 @@ function fmtRange(start, end, unit) {
 }
 
 let data = null;          // /summary payload
+let me = null;            // viewer ({id, role}) from /api/me — for the leave modal
 let todayPunches = [];
 let monthPunches = [];
 
@@ -248,7 +250,16 @@ function renderUpcoming() {
     main.append(el('div', 'ed-leave__type', t('leaves.type.' + l.type)), el('div', 'ed-leave__when', fmtRange(l.start, l.end, l.unit)));
     row.append(main);
     const pill = el('a', 'ed-leave__pill ed-leave__pill--' + (status === 'pending' ? 'pending' : 'approved'), t('leaves.status.' + status));
+    // Open the in-page detail modal on a plain click; keep the href so
+    // ⌘/middle-click + screen readers still reach the /leaves/:id page.
     pill.href = `/leaves/${encodeURIComponent(l.id)}`;
+    if (me) {
+      pill.addEventListener('click', (e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        openLeaveModal({ id: l.id, me, onDone: load });
+      });
+    }
     row.append(pill);
     frag.append(row);
   }
@@ -317,6 +328,7 @@ async function load() {
     getJson(`/api/punches/by-employee/${encodeURIComponent(employeeId)}?year=${now.getFullYear()}&month=${now.getMonth() + 1}`),
   ]);
   data = summary;
+  if (!me) me = await getJson('/api/me').catch(() => null);
   todayPunches = today.status === 'fulfilled' ? (today.value.punches ?? []) : [];
   monthPunches = month.status === 'fulfilled' ? (month.value.punches ?? []) : [];
 

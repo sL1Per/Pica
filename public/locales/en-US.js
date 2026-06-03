@@ -638,6 +638,7 @@ export default {
 
   // Detail page.
   'correction.modalTitle': 'Correction',
+  'leave.modalTitle': 'Leave',
   'correction.backToList':  '← Back to corrections',
   'correction.title':       'Correction',
   'correction.titleFor':    'Correction — {name}',
@@ -1056,8 +1057,6 @@ export default {
   'calendar.requestThisDay': '+ Request leave this day',
   'calendar.subEmployer':    '{out} out today · {pending} pending approval',
   'calendar.subEmployee':    'You have {n} of {cap} vacation days left this year',
-  'calendar.scopeMine':      'Mine',
-  'calendar.scopeTeam':      'Team',
   'calendar.balanceTitle':   'Vacation balance',
   'calendar.noLeavesDay':    'No leaves on this day.',
   'calendar.closed':         'Closed',

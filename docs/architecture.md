@@ -148,7 +148,7 @@ pica/
 │   ├── punch-corrections.js           # Corrections tab panel: list + inline decide (0.46.0)
 │   ├── punch-today-employer.js        # employer "Today = everyone" render (0.46.0)
 │   ├── leaves.{html,js,css}  # M15 list: balance blocks / pending inbox + inline decide (0.35.0)
-│   ├── leaves-calendar.{html,js,css}  # M15 calendar: toolbar/chips/scope, grid, popover, rail (0.36.0)
+│   ├── leaves-calendar.{html,js,css}  # M15 calendar: toolbar/type-chips, grid, popover, rail (0.36.0; employee Mine|Team scope toggle removed 0.47.2 — all leaves always shown, others anonymized)
 │   ├── leave.{html,js,css}  # leave detail: status hero + mini-calendar + timeline (0.35.0)
 │   ├── reports.{html,js,css}
 │   ├── employees.{html,js,css}
@@ -160,6 +160,7 @@ pica/
 │   ├── modal.{js,css}                # generic reusable <dialog> shell (0.32.0)
 │   ├── manual-time-modal.{js,css}    # manual-time form modal; /corrections/new retired (0.32.0)
 │   ├── request-leave-modal.{js,css}  # leave-request modal; /leaves/new retired (0.35.0)
+│   ├── leave-detail-modal.{js,css}   # leave detail modal (full parity w/ leave.js), opened from calendar pills/popover, /leaves list, employee detail; /leaves/:id kept as deep-link (0.48.0)
 │   ├── calendar-grid.js              # shared Mon-first month-matrix (calendar + leave mini-cal) (0.36.0)
 │   ├── leave-actions.js              # shared approve/reject helpers (leaves list + calendar rail) (0.36.0)
 │   ├── team-status.js                # shared session-pairing + status classify (home / team / detail) (0.37.0)
@@ -495,4 +496,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.46.1._
+_Last touched in 0.48.0._

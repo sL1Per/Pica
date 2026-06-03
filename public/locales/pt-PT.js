@@ -634,6 +634,7 @@ export default {
 
   // Detail page.
   'correction.modalTitle': 'Correção',
+  'leave.modalTitle': 'Ausência',
   'correction.backToList':  '← Voltar às correções',
   'correction.title':       'Correção',
   'correction.titleFor':    'Correção — {name}',
@@ -1055,8 +1056,6 @@ export default {
   'calendar.requestThisDay': '+ Pedir ausência neste dia',
   'calendar.subEmployer':    '{out} ausentes hoje · {pending} por aprovar',
   'calendar.subEmployee':    'Tem {n} de {cap} dias de férias este ano',
-  'calendar.scopeMine':      'Minhas',
-  'calendar.scopeTeam':      'Equipa',
   'calendar.balanceTitle':   'Saldo de férias',
   'calendar.noLeavesDay':    'Sem ausências neste dia.',
   'calendar.closed':         'Encerrado',

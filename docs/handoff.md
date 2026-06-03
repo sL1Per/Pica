@@ -5,13 +5,61 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.47.0._
+_Last touched in 0.48.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.47.0 (released 2026-06-02) — **Punch tab search
+- **Latest version:** 0.48.0 (released 2026-06-02) — **View a submitted leave in
+  an in-page modal.** Frontend-only. Viewing an already-submitted leave now opens
+  a **modal** (`leave-detail-modal.{js,css}`, singleton on `/modal.js`) instead
+  of navigating to `/leaves/:id` — mirroring the 0.46.0 correction modal. The
+  page stays the deep-link fallback (⌘/middle-click + SRs + direct URL still
+  reach it). The modal is **full parity** with `leave.js`: status hero, details
+  `<dl>`, reason, attachment (download + upload/remove), decision note, decide
+  actions (employer approve-w/-`/overlaps`-confirm + inline-notes reject; owner
+  cancel; employer cancel-approved), mini-cal (shared `/calendar-grid.js`), and
+  activity timeline — all `createElement`/`textContent`, errors inline (CSP-clean),
+  re-renders in place + fires `onDone` on success. **Four entry points** open it
+  on a plain click while keeping `href`: calendar pills + day-popover rows
+  (`leaves-calendar.js`), `/leaves` list rows (`leaves.js`), employee-detail
+  upcoming-leave pills (`employee.js`, which now fetches `/api/me` once for an
+  accurate viewer; falls back to navigation if that fails). Self-contained `ldm-`
+  CSS (adapted from `leave.css`'s `ldet-`), linked on `leaves`/`leaves-calendar`/
+  `employee.html` + added to SW pre-cache. `CACHE_VERSION` v89 → v90; +1 i18n key/
+  locale (`leave.modalTitle`); no new suite (53). Render/decide logic duplicated
+  from `leave.js` (same trade-off as the correction modal); verified by
+  `node --check` + touched suites + code review, **not** a fresh live browser
+  pass. See RELEASES 0.48.0.
+- **Previous:** 0.47.2 (released 2026-06-02) — **Calendar: dropped the
+  employee Mine|Team scope toggle.** Frontend-only (`leaves-calendar.{js,html,css}`
+  + 2 i18n keys removed/locale). The employee calendar no longer carries the
+  Mine|Team scope toggle: every active leave is **always shown** (an employee sees
+  *that* a day is occupied), with others still **anonymized** as "Unavailable"
+  blocks via `mergeLeaves` — no name/type leaked, `canOpen()` still refuses
+  anonymized popovers. Removed the `scope` state var, `renderScope()`, its
+  bootstrap call + `scopeEl`; `scopedLeaves()` now applies only the type-chip
+  filter. Employer view untouched (toggle was always employer-hidden).
+  `CACHE_VERSION` v88 → v89. No backend/API/test change (53 suites green). Not a
+  fresh live browser pass — syntax-check + touched suites + manual privacy-path
+  read. See RELEASES 0.47.2.
+- **Previous:** 0.47.1 (released 2026-06-02) — **Sidebar stays put; only
+  the content column scrolls.** CSS-only desktop app-shell fix (`topbar.css`,
+  CACHE_VERSION v87→v88). `.appshell` switched from `min-height:100vh` (whole
+  document scrolled; sticky 100vh sidebar left an empty `--bg` gap below the
+  rail) to a viewport-pinned shell on `@media (min-width:761px)`
+  (`.appshell{height:100vh;min-height:0;overflow:hidden}` +
+  `.appshell__content{overflow-y:auto}`). Mobile drawer + document scroll
+  (≤760px) untouched. Page scroll position for the main column now lives on
+  `.appshell__content`, not the document. **Also** fixed footer placement:
+  `mountTopBar()` is async and most pages call it un-awaited then run
+  `mountFooter()` synchronously, so the footer was appended to `<body>` (full
+  width, outside the shell) before `.appshell__content` existed — which is why
+  the CSS fix alone didn't take on non-home pages. `mountTopBar()` now relocates
+  an already-mounted `.app-footer` into `.appshell__content` when it wraps the
+  DOM (`topbar.js`).
+- **Previous:** 0.47.0 (2026-06-02) — **Punch tab search
   everywhere + Today-style week cards.** Frontend-only (`punch.{html,css,js}`,
   `punch-corrections.js` + 2 i18n keys/locale; no backend). **(1)** All three
   `/punch` tabs now carry the same styled search (Team-list look: magnifying-

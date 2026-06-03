@@ -529,6 +529,15 @@ export async function mountTopBar() {
     appshell.appendChild(content);
   }
 
+  // mountTopBar is async; most pages call it WITHOUT awaiting and then call
+  // mountFooter() synchronously, so the footer is appended to <body> before
+  // .appshell__content exists. Pull any already-mounted footer into the content
+  // column now so it lives inside the scroll area (not full-width under the
+  // sidebar). mountFooter() also targets .appshell__content when it runs after
+  // us (e.g. the awaited home page), so both orderings land the footer here.
+  const existingFooter = document.querySelector('.app-footer');
+  if (existingFooter) content.appendChild(existingFooter);
+
   // Mobile chrome + shared popover/scrim live at the body level.
   document.body.insertBefore(mobilebar, document.body.firstChild);
   document.body.appendChild(scrim);

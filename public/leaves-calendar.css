@@ -76,15 +76,6 @@
 .cal-chip--blocked     .cal-chip__dot { background: var(--muted); }
 .cal-chip:not(.cal-chip--on) { opacity: 0.65; }
 
-.cal-scope { display: inline-flex; gap: 4px; padding: 3px; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--radius); margin-left: auto; }
-.cal-scope__btn {
-  margin-top: 0; height: 28px; padding: 0 12px;
-  background: transparent; color: var(--ink-2);
-  border: none; border-radius: var(--radius-sm);
-  font-size: var(--text-xs); font-weight: 600; cursor: pointer;
-}
-.cal-scope__btn--active { background: var(--paper); color: var(--honey); box-shadow: var(--shadow-sm); }
-
 /* ---------- Weekday header + grid ----------------------------------------- */
 
 .cal-weekhead { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--paper); border: 1px solid var(--line-soft); border-top: none; border-bottom: none; border-radius: 0; overflow: hidden; }
@@ -258,6 +249,5 @@
 
 @media (max-width: 760px) {
   .cal-cell { min-height: 84px; padding: 6px 6px 8px; }
-  .cal-scope { margin-left: 0; }
   .cal-rail__card { padding: 16px; }
 }

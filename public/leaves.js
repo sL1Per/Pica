@@ -2,6 +2,7 @@ import { showMessage } from '/app.js';
 import { t, applyTranslations, fmtHours } from '/i18n.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 import { openRequestLeaveModal } from '/request-leave-modal.js';
+import { openLeaveModal } from '/leave-detail-modal.js';
 import { approveLeaveWithCheck, rejectLeave } from '/leave-actions.js';
 
 mountTopBar();
@@ -112,7 +113,14 @@ function renderRow(l, { showName, withActions }) {
 
   const a = document.createElement('a');
   a.className = 'lv-row__link';
+  // Open in an in-page modal; keep the href so ⌘/middle-click + SRs still
+  // reach the /leaves/:id page (the deep-link fallback).
   a.href = `/leaves/${l.id}`;
+  a.addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    openLeaveModal({ id: l.id, me, onDone: loadAll });
+  });
 
   const main = document.createElement('div');
   main.className = 'lv-row__main';

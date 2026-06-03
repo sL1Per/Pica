@@ -19,6 +19,17 @@
   padding: 20px 14px; display: flex; flex-direction: column; gap: 28px;
   position: sticky; top: 0; height: 100vh; overflow-y: auto;
 }
+
+/* Desktop: pin the shell to the viewport so ONLY the content column scrolls,
+   never the sidebar. With the base min-height:100vh the shell grows with the
+   page and the whole document scrolls — the sticky 100vh sidebar then leaves an
+   empty gap below itself. Fixing the shell at 100vh + clipping its overflow, and
+   giving the content column its own scroll, keeps the rail put. Scoped to ≥761px
+   so the mobile drawer + normal document scroll (below) are unaffected. */
+@media (min-width: 761px) {
+  .appshell { height: 100vh; min-height: 0; overflow: hidden; }
+  .appshell__content { overflow-y: auto; }
+}
 .appshell__brand { display: flex; align-items: center; gap: 12px; padding: 6px 8px; }
 .appshell__brand-link { display: flex; flex-shrink: 0; }
 .appshell__brand-mark {

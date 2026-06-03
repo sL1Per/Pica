@@ -3,7 +3,22 @@ import { t, applyTranslations, getLocale, fmtDate, fmtHours } from '/i18n.js';
 import { mountTopBar, mountFooter } from '/topbar.js';
 import { monthMatrix, ymd } from '/calendar-grid.js';
 import { openRequestLeaveModal } from '/request-leave-modal.js';
+import { openLeaveModal } from '/leave-detail-modal.js';
 import { approveLeaveWithCheck, rejectLeave } from '/leave-actions.js';
+
+// Wire an <a href="/leaves/:id"> to open the in-page detail modal on a plain
+// click, keeping the href so ⌘/middle-click + screen readers still reach the
+// /leaves/:id page (the deep-link fallback). `before` runs first (e.g. to
+// close the day popover).
+function wireLeaveLink(node, l, before) {
+  node.href = `/leaves/${l.id}`;
+  node.addEventListener('click', (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    if (before) before();
+    openLeaveModal({ id: l.id, me, onDone: reload });
+  });
+}
 
 mountTopBar();
 mountFooter();
@@ -15,7 +30,6 @@ const weekhead   = $('cal-weekhead');
 const monthEl    = $('cal-month');
 const subEl      = $('cal-sub');
 const chipsEl    = $('cal-chips');
-const scopeEl    = $('cal-scope');
 const messageEl  = $('message');
 const railRole       = $('rail-role');
 const railOutToday   = $('rail-out-today');
@@ -29,7 +43,6 @@ let allLeaves = [];          // merged, status ∈ {pending, approved}
 let blockedRanges = [];
 let balances = null;         // employee only
 let cursor = new Date();
-let scope = 'team';          // employee Mine|Team
 const hidden = new Set();    // type keys toggled off ('vacation'…/'blocked')
 let popoverEl = null;
 
@@ -74,10 +87,10 @@ function blockedForDay(ymdStr) {
   for (const r of blockedRanges) if (r.start <= ymdStr && ymdStr <= r.end) return r;
   return null;
 }
+// Everyone sees every active leave; for employees, others' leaves arrive
+// already anonymized from mergeLeaves (no name/type leaked — privacy held).
 function scopedLeaves() {
-  let ls = allLeaves;
-  if (me.role !== 'employer' && scope === 'mine') ls = ls.filter((l) => l.employeeId === me.id);
-  return ls.filter((l) => !hidden.has(l.type));
+  return allLeaves.filter((l) => !hidden.has(l.type));
 }
 function leavesForDay(ymdStr, list) { return list.filter((l) => leaveTouches(l, ymdStr)); }
 function rangeText(l) {
@@ -86,7 +99,7 @@ function rangeText(l) {
 }
 function canOpen(l) { return !l.anonymized && (me.role === 'employer' || l.employeeId === me.id); }
 
-// -- Toolbar: chips + scope -------------------------------------------------
+// -- Toolbar: chips ---------------------------------------------------------
 
 function renderChips() {
   chipsEl.replaceChildren();
@@ -106,20 +119,6 @@ function renderChips() {
       renderMonth();
     });
     chipsEl.appendChild(btn);
-  }
-}
-
-function renderScope() {
-  if (me.role === 'employer') { scopeEl.hidden = true; return; }
-  scopeEl.hidden = false;
-  scopeEl.replaceChildren();
-  for (const [key, labelKey] of [['mine', 'calendar.scopeMine'], ['team', 'calendar.scopeTeam']]) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'cal-scope__btn' + (scope === key ? ' cal-scope__btn--active' : '');
-    btn.textContent = t(labelKey);
-    btn.addEventListener('click', () => { scope = key; renderScope(); renderMonth(); });
-    scopeEl.appendChild(btn);
   }
 }
 
@@ -192,7 +191,7 @@ function renderPill(l) {
   node.className = `cal-pill cal-pill--${l.type}`;
   if (l.status === 'pending') node.classList.add('cal-pill--pending');
   if (l.employeeId === me.id) node.classList.add('cal-pill--self');
-  if (canOpen(l)) node.href = `/leaves/${l.id}`;
+  if (canOpen(l)) wireLeaveLink(node, l);
   node.textContent = l.fullName || l.username || '—';
   return node;
 }
@@ -304,7 +303,7 @@ function popBlockedRow(blk) {
 function popLeaveRow(l) {
   const node = canOpen(l) ? document.createElement('a') : document.createElement('div');
   node.className = 'cal-pop__row';
-  if (canOpen(l)) node.href = `/leaves/${l.id}`;
+  if (canOpen(l)) wireLeaveLink(node, l, closePopover);
   const av = document.createElement('span');
   av.className = 'cal-pop__av';
   av.textContent = l.anonymized ? '–' : initials(l.fullName || l.username);
@@ -524,6 +523,5 @@ grid.addEventListener('click', (e) => {
 
   renderWeekhead();
   renderChips();
-  renderScope();
   await reload();
 })();

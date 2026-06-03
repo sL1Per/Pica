@@ -1,0 +1,214 @@
+/* ============================================================================
+   Leave detail modal (M15 follow-up)
+   Self-contained `ldm-` vocabulary so the modal styles correctly on pages that
+   do NOT link leave.css (the calendar, the /leaves list, employee detail).
+   Adapted from leave.css's `ldet-` rules, collapsed to the modal's single
+   column (no two-column grid, no back link). Loaded alongside modal.css, which
+   owns the dialog shell (.modal__*).
+   Tokens from app.css: --paper, --paper-2, --ink, --ink-2, --muted, --honey,
+   --honey-deep, --sage, --sage-soft, --clay, --clay-soft, --plum, --line,
+   --line-soft, --font-mono, --font-serif, --text-sm, --radius.
+   Pending hero/cells use the hardcoded honey tint #F4E4C7 (no --honey-soft
+   token). Status / type coloring is class-driven — never inline color from JS.
+   ============================================================================ */
+
+/* The leave modal body stacks its cards with a consistent gap. */
+.ldm .modal__body { display: flex; flex-direction: column; gap: 14px; }
+
+.ldm-loading,
+.ldm-error { margin: 8px 0; font-size: 14px; color: var(--ink-2); }
+.ldm-error { color: var(--clay); }
+
+/* ---------- Status hero --------------------------------------------------- */
+
+.ldm-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+}
+.ldm-hero--pending   { background: #F4E4C7;          border-color: var(--honey); }
+.ldm-hero--approved  { background: var(--sage-soft); border-color: var(--sage); }
+.ldm-hero--rejected  { background: var(--clay-soft); border-color: var(--clay); }
+.ldm-hero--cancelled { background: var(--paper-2);   border-color: var(--line); opacity: 0.85; }
+
+.ldm-hero__icon {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 24px; font-weight: 600; line-height: 1;
+  color: #fff;
+  background: var(--muted);
+}
+.ldm-hero--pending   .ldm-hero__icon { background: var(--honey); }
+.ldm-hero--approved  .ldm-hero__icon { background: var(--sage); }
+.ldm-hero--rejected  .ldm-hero__icon { background: var(--clay); }
+.ldm-hero--cancelled .ldm-hero__icon { background: var(--muted); }
+
+.ldm-hero__body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ldm-hero__label {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 26px; line-height: 1;
+  text-transform: capitalize;
+}
+.ldm-hero--pending   .ldm-hero__label { color: var(--honey-deep); }
+.ldm-hero--approved  .ldm-hero__label { color: var(--sage); }
+.ldm-hero--rejected  .ldm-hero__label { color: var(--clay); }
+.ldm-hero--cancelled .ldm-hero__label { color: var(--muted); }
+.ldm-hero__blurb { margin: 0; font-size: 13px; color: var(--ink-2); }
+
+/* ---------- Generic card -------------------------------------------------- */
+
+.ldm-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+}
+.ldm-card__title {
+  margin: 0 0 12px 0;
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted);
+}
+
+/* ---------- Definition list ----------------------------------------------- */
+
+.ldm-dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 20px;
+  margin: 0;
+}
+.ldm-dl dt {
+  font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted);
+  align-self: baseline; padding-top: 2px;
+}
+.ldm-dl dd { margin: 0; font-size: 14px; color: var(--ink); word-break: break-word; align-self: baseline; }
+.ldm-dl dd.ldm-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13.5px; }
+
+/* ---------- Reason -------------------------------------------------------- */
+
+.ldm-reason--empty { font-style: italic; color: var(--muted); font-size: 13.5px; }
+.ldm-reason--filled { font-size: 14px; color: var(--ink); line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+
+/* ---------- Decision note ------------------------------------------------- */
+
+.ldm-decided__label { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.ldm-decided__notes { font-size: 14px; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+
+/* ---------- Attachment ---------------------------------------------------- */
+
+.ldm-att__pill {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: var(--paper-2); border: 1px solid var(--line); border-radius: 10px;
+  text-decoration: none; color: var(--ink); font-size: 13.5px; font-weight: 500;
+}
+.ldm-att__pill:hover { border-color: var(--honey); }
+.ldm-att__badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 34px; height: 26px; padding: 0 6px;
+  background: var(--honey); color: #FBF6EC;
+  border-radius: 6px; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+.ldm-att-edit { margin-top: 14px; }
+.ldm-att-edit label { display: block; font-size: var(--text-sm); font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
+.ldm-att-edit__actions { display: flex; gap: 8px; margin-top: 10px; }
+.ldm-att-edit__actions button { margin-top: 0; }
+
+/* ---------- Inline message ------------------------------------------------ */
+
+.ldm-msg { margin: 0; font-size: 13px; }
+.ldm-msg--error { color: var(--clay); }
+
+/* ---------- Actions ------------------------------------------------------- */
+
+.ldm-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+.ldm-actions button { margin-top: 0; }
+.ldm-actions .btn-approve {
+  background: var(--sage); border-color: var(--sage); color: #fff;
+  box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 4px 12px -6px rgba(92,122,78,.5);
+}
+.ldm-actions .btn-approve:hover:not(:disabled) { opacity: 0.88; }
+.ldm-actions .btn-reject { background: var(--paper); border-color: var(--clay); color: var(--clay); }
+.ldm-actions .btn-reject:hover:not(:disabled) { background: var(--clay-soft); }
+
+/* Reject inline sub-form — Reject reveals an optional notes input + confirm. */
+.ldm-reject-wrap { display: inline-flex; flex-direction: column; gap: 8px; }
+.ldm-reject-sub { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ldm-reject-notes {
+  flex: 1 1 180px; min-width: 160px;
+  padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--paper); color: var(--ink); font-size: 13px;
+}
+
+/* ---------- Mini-calendar ------------------------------------------------- */
+
+.ldm-mini__month { text-align: center; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 12px; }
+.ldm-mini__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.ldm-mini__dow {
+  text-align: center; font-size: 10px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; padding-bottom: 2px;
+}
+.ldm-mini__cell {
+  aspect-ratio: 1 / 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--ink-2);
+  border-radius: 8px; font-variant-numeric: tabular-nums;
+}
+.ldm-mini__cell--muted { color: transparent; }
+.ldm-mini__cell--today { box-shadow: 0 0 0 2px var(--honey) inset; font-weight: 700; }
+.ldm-mini__cell--inrange { font-weight: 700; }
+.ldm-mini--vacation    .ldm-mini__cell--inrange { background: #F4E4C7;          color: var(--honey-deep); }
+.ldm-mini--sick        .ldm-mini__cell--inrange { background: var(--clay-soft); color: var(--clay); }
+.ldm-mini--appointment .ldm-mini__cell--inrange { background: var(--sage-soft); color: var(--sage); }
+.ldm-mini--other       .ldm-mini__cell--inrange { background: var(--paper-2);   color: var(--plum); }
+
+/* ---------- Activity timeline --------------------------------------------- */
+
+.ldm-time__list { list-style: none; margin: 0; padding: 0; }
+.ldm-time__item { position: relative; padding: 0 0 16px 22px; }
+.ldm-time__item:last-child { padding-bottom: 0; }
+.ldm-time__item:not(:last-child)::before {
+  content: ''; position: absolute;
+  left: 5px; top: 14px; bottom: 0; width: 2px;
+  background: var(--line);
+}
+.ldm-time__dot {
+  position: absolute; left: 0; top: 3px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--muted);
+  box-shadow: 0 0 0 3px var(--paper);
+}
+.ldm-time__dot--requested { background: var(--honey); }
+.ldm-time__dot--approved  { background: var(--sage); }
+.ldm-time__dot--rejected  { background: var(--clay); }
+.ldm-time__dot--cancelled { background: var(--muted); }
+.ldm-time__title { font-size: 13px; font-weight: 600; color: var(--ink); }
+.ldm-time__ts { margin-top: 1px; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ldm-time__note {
+  margin-top: 6px; padding: 8px 10px;
+  background: var(--paper-2); border: 1px solid var(--line-soft); border-radius: 8px;
+  font-size: 12.5px; color: var(--ink-2); white-space: pre-wrap; word-break: break-word;
+}
+
+/* ---------- Mobile ≤ 760px ------------------------------------------------ */
+
+@media (max-width: 760px) {
+  .ldm-hero { padding: 14px; gap: 12px; }
+  .ldm-hero__icon { width: 40px; height: 40px; font-size: 20px; }
+  .ldm-hero__label { font-size: 22px; }
+  .ldm-card { padding: 14px; border-radius: 12px; }
+  .ldm-actions { flex-direction: column; align-items: stretch; }
+  .ldm-actions > button { width: 100%; }
+  .ldm-reject-wrap { width: 100%; }
+}

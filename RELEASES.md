@@ -14,6 +14,155 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.48.0] — 2026-06-02 — View a submitted leave in an in-page modal
+
+Viewing an already-submitted leave no longer navigates away to the
+`/leaves/:id` page — it opens an in-page **modal**, mirroring the correction
+detail modal shipped in 0.46.0. The standalone page is **kept** as the
+deep-link fallback (⌘/middle-click, screen readers, and direct URLs still
+reach it). **Frontend-only — no HTTP API changed.**
+
+- **New `public/leave-detail-modal.js`** (`openLeaveModal({ id, me, onDone })`),
+  a lazily-built singleton on the generic `/modal.js` shell. It salvages the
+  render/decide logic from the `leave.js` detail page at **full parity**: the
+  status hero, the Details `<dl>` (employee / type / when / duration /
+  requested), the reason, the attachment (download pill + upload/remove via the
+  same `PUT`/`DELETE /api/leaves/:id/attachment`), the decision note, the decide
+  actions (employer **approve** with the `/overlaps` concurrency confirm +
+  inline-notes **reject**; owner **cancel request**; employer **cancel approved**
+  with confirm), the mini-calendar (shared `/calendar-grid.js` `monthMatrix`),
+  and the activity timeline. All DOM is built with `createElement`/`textContent`
+  (no `innerHTML` with dynamic data) and errors render inline inside the modal —
+  CSP-clean. After any successful action it re-renders in place and fires
+  `onDone` so the opener refreshes.
+- **New `public/leave-detail-modal.css`** — self-contained `ldm-` vocabulary
+  (adapted from `leave.css`'s `ldet-` rules, collapsed to the modal's single
+  column) so it styles correctly on pages that don't link `leave.css`.
+- **Four entry points** now open the modal on a plain click while keeping their
+  `href` as the fallback: the calendar **pills** and **day-popover rows**
+  (`leaves-calendar.js`), the **`/leaves` request-list rows** (`leaves.js`), and
+  the **employee-detail upcoming-leave pills** (`employee.js`). Modifier/middle
+  clicks (`⌘`/`Ctrl`/`Shift`/non-primary button) fall through to the page.
+  `employee.js` now fetches `/api/me` once for an accurate viewer; if that fetch
+  fails the pill silently falls back to plain navigation.
+- **Plumbing:** `leave-detail-modal.{js,css}` linked on `leaves.html`,
+  `leaves-calendar.html`, `employee.html` and added to the SW pre-cache;
+  `CACHE_VERSION` v89 → v90. One new i18n key per locale (`leave.modalTitle`);
+  every other string reuses the existing `leave.*` / `leaves.*` / `status.*`
+  keys. No new test suite (total stays 53).
+
+**Honest Disclosures.** The render/decide logic is **duplicated** from
+`leave.js` rather than extracted into a shared module — the page renders into a
+fixed HTML scaffold while the modal builds DOM dynamically, so the two don't
+share a render path; this is the same trade-off the 0.46.0 correction modal
+took, and the page stays the canonical implementation. The mini-calendar
+highlights only the **start month** of a leave that spans months (same as the
+page). Decide success shows no toast inside the modal (the in-place re-render is
+the feedback). On the employee-detail page the modal needs a `/api/me` round-trip
+the page didn't previously make. Verified by `node --check` on every touched
+file + the touched unit suites + code review — **not** a fresh live browser pass
+across all four entry points and both palettes.
+
+---
+
+## [0.47.2] — 2026-06-02 — Calendar: drop the employee Mine|Team scope toggle
+
+Frontend-only change to `/leaves/calendar`. The employee view carried a
+**Mine | Team** scope toggle in the toolbar (default Team). Defaulting to Team
+already showed every active leave; the **Mine** option filtered the grid down
+to the viewer's own leaves. Per the operator's request the toggle is **removed**
+— an employee now always sees that *someone* is on leave on a given day, without
+having to opt into "Team".
+
+**Privacy is unchanged.** Others' leaves still arrive **anonymized** through
+`mergeLeaves` (own all-status leaves from `/api/leaves` + anonymized approved
+others from `/api/leaves/approved`); the grid renders them as the existing
+"Unavailable" blocks with no name or type, and `canOpen()` still refuses to open
+a popover for anonymized entries. The employee learns *that* a day is occupied,
+never *who* is off or *why* — exactly the behavior shipped in 0.36.0, now without
+the toggle that could hide it.
+
+- **`leaves-calendar.js`:** removed the `scope` state var, the `renderScope()`
+  toolbar renderer, its bootstrap call, and the `scopeEl` handle; `scopedLeaves()`
+  now just applies the type-chip filter (`allLeaves` already holds the correct
+  own+anonymized set). Employer behavior is untouched (the toggle was always
+  hidden for employers).
+- **`leaves-calendar.html`:** dropped the empty `#cal-scope` toolbar slot.
+- **`leaves-calendar.css`:** removed the `.cal-scope` / `.cal-scope__btn` /
+  `--active` rules and the mobile `margin-left` reset.
+- **i18n:** removed the now-unused `calendar.scopeMine` / `calendar.scopeTeam`
+  keys from both locales (parity held).
+
+`CACHE_VERSION` v88 → v89 (pre-cached CSS + locale assets changed). No backend or
+API change; no new test suite (`test-calendar-grid` + `test-i18n` stay green;
+total 53).
+
+**Honest Disclosures.** The toggle is gone, not hidden — there is no longer any
+way for an employee to collapse the calendar to only their own leaves (a minor
+loss of a convenience filter, accepted for the always-visible behavior). The
+anonymization is only as strong as the `/api/leaves/approved` feed's
+`anonymized` flag — this release does not re-audit that endpoint. Verified by
+syntax-check + the touched unit suites + a manual read of the privacy path; not
+a fresh live browser pass.
+
+---
+
+## [0.47.1] — 2026-06-02 — Sidebar stays put; only the content column scrolls
+
+CSS-only fix to the desktop app shell. Before, `.appshell` used `min-height:
+100vh`, so the grid grew with the page and the **whole document** scrolled. The
+sidebar's `position: sticky; height: 100vh` kept the rail visible during that
+scroll, but because the grid's left column was as tall as the (taller) content
+column while the sidebar element itself was only 100vh, an empty `--bg` gap
+opened up below the rail (visible at the bottom-left on short/medium pages).
+
+The shell is now pinned to the viewport on desktop and only the content column
+scrolls:
+
+```
+@media (min-width: 761px) {
+  .appshell { height: 100vh; min-height: 0; overflow: hidden; }
+  .appshell__content { overflow-y: auto; }
+}
+```
+
+The sidebar grid cell is now exactly 100vh, so the rail fills it with no gap,
+and its own `overflow-y: auto` still handles an over-tall nav. Scoped to the
+≥761px desktop breakpoint — the mobile drawer (`position: fixed`) and normal
+document scroll below 760px are untouched.
+
+**Footer placement fix (the reason the CSS change alone didn't take on most
+pages).** `mountTopBar()` is async (it fetches `/api/me` before wrapping the
+DOM). Every page except the home page calls it **without `await`** and then
+calls `mountFooter()` synchronously — so the footer was appended to `<body>`
+*before* `.appshell__content` existed, landing it full-width at the body level,
+**outside** the pinned 100vh shell. That extra body-level content made the
+document scroll (dragging the in-shell sidebar up with it) and rendered the
+footer spanning under the sidebar. `mountTopBar()` now relocates any
+already-mounted `.app-footer` into `.appshell__content` when it wraps the DOM,
+so the footer lives inside the scrolling content column regardless of call
+order (the awaited home page already landed it there; this fixes the other ~7
+pages). `topbar.css` + `topbar.js`; CACHE_VERSION v87→v88.
+
+**Honest Disclosures.**
+- **No structural change.** The DOM, the sticky declaration, and the mobile
+  layout are unchanged; this is purely the viewport-pinning + content-scroll
+  pair plus the `min-height` reset on desktop.
+- **The page's vertical scroll position now lives on `.appshell__content`,
+  not the document.** On desktop `window.scrollY` is now ~0. The leaves-calendar
+  day popover (`leaves-calendar.js`) positions itself absolute-to-`body` using
+  `getBoundingClientRect()` + `window.scrollY`: initial placement is still
+  correct (rect is viewport-relative and scrollY≈0 maps to viewport coords), but
+  the popover **no longer re-tracks its cell if you scroll the content while it
+  is open** — it's anchored to the non-scrolling body. Acceptable for a
+  tap-to-open day detail; any future scroll-to-top / scroll-restore logic for the
+  main column must target `.appshell__content` on desktop, not the document.
+- **No tests added.** Layout/scroll behavior isn't covered by the Node test
+  suites (no browser harness — the zero-dependency constraint stands); verified
+  by local smoke + visual check.
+
+---
+
 ## [0.47.0] — 2026-06-02 — Punch tab search everywhere + Today-style week cards
 
 All three `/punch` tabs (**Today · Corrections · This week**) gained the same
