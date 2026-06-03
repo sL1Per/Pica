@@ -133,6 +133,7 @@
 .set-card input[type="number"],
 .set-card input[type="password"],
 .set-card input[type="date"],
+.set-card input[type="time"],
 .set-card select {
   height: 44px;
   padding: 0 14px;

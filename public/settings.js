@@ -392,7 +392,16 @@ function renderOrg(root, signal) {
         <label for="weekly-hours">${escapeHtml(t('settings.weeklyHours'))}</label>
         <input type="number" id="weekly-hours" min="0" max="168" step="0.5" required>
       </div>
+      <div class="set-field">
+        <label for="expected-start">${escapeHtml(t('settings.workExpectedStart'))}</label>
+        <input type="time" id="expected-start">
+      </div>
+      <div class="set-field">
+        <label for="grace-minutes">${escapeHtml(t('settings.workGraceMinutes'))}</label>
+        <input type="number" id="grace-minutes" min="0" max="120" step="1">
+      </div>
     </div>
+    <p class="set-helper">${escapeHtml(t('settings.workPunctualityHelp'))}</p>
     <h3 class="set-section">${escapeHtml(t('settings.wtOverridesHeading'))}</h3>
     <p class="set-helper">${escapeHtml(t('settings.wtOverridesHint'))}</p>
     <div id="wt-overrides-table-wrap" class="set-helper">${escapeHtml(t('settings.loadingEmployees'))}</div>
@@ -420,6 +429,8 @@ function renderOrg(root, signal) {
   const blockedAddBtn = c2.querySelector('#blocked-add');
   const dailyHoursInput = c3.querySelector('#daily-hours');
   const weeklyHoursInput = c3.querySelector('#weekly-hours');
+  const expectedStartInput = c3.querySelector('#expected-start');
+  const graceMinutesInput = c3.querySelector('#grace-minutes');
   const wtOverridesWrap = c3.querySelector('#wt-overrides-table-wrap');
 
   carryFwd.addEventListener('change', () => { carryWrap.hidden = !carryFwd.checked; });
@@ -602,6 +613,8 @@ function renderOrg(root, signal) {
       workingTime: {
         dailyHours: Number(dailyHoursInput.value || 8),
         weeklyHours: Number(weeklyHoursInput.value || 40),
+        expectedStart: expectedStartInput.value,
+        graceMinutes: Number(graceMinutesInput.value),
         perEmployeeOverrides: wtOverrides,
       },
     };
@@ -643,6 +656,8 @@ function renderOrg(root, signal) {
       renderBlockedRanges(s.leaves.blockedRanges ?? []);
       dailyHoursInput.value = s.workingTime?.dailyHours ?? 8;
       weeklyHoursInput.value = s.workingTime?.weeklyHours ?? 40;
+      expectedStartInput.value = s.workingTime?.expectedStart ?? '09:00';
+      graceMinutesInput.value = s.workingTime?.graceMinutes ?? 10;
       renderWtOverridesTable(s.workingTime?.perEmployeeOverrides ?? {});
     } catch (err) { if (!isAbort(err)) toast(t('settings.failedToSave'), 'error'); }
   })();
