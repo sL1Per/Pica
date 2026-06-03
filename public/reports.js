@@ -1,20 +1,11 @@
 import { mountTopBar, mountFooter } from '/topbar.js';
 import { applyTranslations, t, translateError, fmtHours } from '/i18n.js';
-import { showMessage } from '/app.js';
+import { barChart, donutChart, miniBar } from '/charts.js';
 
 mountTopBar(); mountFooter(); applyTranslations();
-
 const $ = (id) => document.getElementById(id);
-const msg = $('message');
 
-const state = {
-  reportType: 'timesheets',
-  scope: 'all',          // employer default; pinned to 'me' for employees
-  periodType: 'month',
-  anchor: null,          // server fills via defaultAnchor when omitted
-  targetId: '',          // employee id when scope=me & employer picks
-  isEmployer: false,
-};
+const state = { scope: 'all', periodType: 'week', anchor: null, targetId: '', isEmployer: false };
 
 function qs() {
   const p = new URLSearchParams();
@@ -24,145 +15,114 @@ function qs() {
   if (state.anchor) p.set('anchor', state.anchor);
   return p;
 }
-const apiUrl = (fmt) => `/api/reports/${state.reportType}?${(() => {
-  const p = qs(); if (fmt) p.set('format', fmt); return p.toString();
-})()}`;
+const overviewUrl = () => `/api/reports/overview?${qs().toString()}`;
+const csvUrl = () => {
+  const p = qs(); p.set('format', 'csv');
+  return `/api/reports/timesheets?${p.toString()}`;
+};
 
-function setActive(container, attr, val) {
-  for (const b of container.querySelectorAll('.chip'))
-    b.classList.toggle('active', b.dataset[attr] === val);
-}
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const setActive = (c, attr, val) => { for (const b of c.querySelectorAll('.chip')) b.classList.toggle('active', b.dataset[attr] === val); };
 
 async function load() {
-  showMessage(msg, '');
   $('result-error').hidden = true;
-  let data;
+  let d;
   try {
-    const r = await fetch(apiUrl(), { credentials: 'same-origin' });
+    const r = await fetch(overviewUrl(), { credentials: 'same-origin' });
     if (r.status === 401) { location.href = '/login'; return; }
-    data = await r.json();
-    if (!r.ok) throw new Error(translateError(data.errorCode, data.error || 'Failed'));
+    d = await r.json();
+    if (!r.ok) throw new Error(translateError(d.errorCode, d.error || 'Failed'));
   } catch (e) {
-    $('result-error').hidden = false;
-    $('result-error').textContent = e.message;
-    $('result-table-wrap').innerHTML = '';
-    return;
+    $('result-error').hidden = false; $('result-error').textContent = e.message; return;
   }
-  state.anchor = data.period.from;          // lock anchor for nav
-  $('period-label').textContent = data.period.label;
-  $('csv-link').href = apiUrl('csv');
-  $('print-meta').textContent =
-    `${t('reports.type' + (state.reportType === 'leaves' ? 'Leaves' : 'Timesheets'))} · ` +
-    `${state.scope === 'all' ? t('reports.scopeEveryone') : (data.name || '')} · ${data.period.label}`;
-  render(data);
-}
-
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  state.anchor = d.period.from;
+  $('period-label').textContent = d.period.label;
+  $('csv-link').href = csvUrl();
+  render(d);
 }
 
 function render(d) {
-  const wrap = $('result-table-wrap');
-  const empty = $('result-empty');
-  wrap.innerHTML = '';
-  if (d.scope === 'all') return renderMatrix(d, wrap, empty);
-  if (state.reportType === 'timesheets') return renderHoursSingle(d, wrap, empty);
-  return renderLeavesSingle(d, wrap, empty);
+  const empty = (d.people.length === 0);
+  $('result-empty').hidden = !empty;
+  renderKpis(d); renderHours(d); renderLeave(d); renderBreaks(d); renderPeople(d); renderWatchlist(d);
+  $('watchlist-card').hidden = d.scope !== 'all';
 }
 
-function renderMatrix(d, wrap, empty) {
-  empty.hidden = d.rows.length > 0;
-  const num = (v) => state.reportType === 'timesheets' ? fmtHours(v ?? 0) : (v ?? 0);
-  const head = `<tr><th>${esc(t('reports.colBucket'))}</th>` +
-    d.rows.map((r) => `<th>${esc(r.name)}</th>`).join('') +
-    `<th>${esc(t('reports.total'))}</th></tr>`;
-  const body = d.buckets.map((k) =>
-    `<tr><td>${esc(k)}</td>` +
-    d.rows.map((r) => `<td>${num(r.cells[k])}</td>`).join('') +
-    `<td class="grand">${num(d.bucketTotals[k])}</td></tr>`).join('');
-  const foot = `<tr><th>${esc(t('reports.total'))}</th>` +
-    d.rows.map((r) => `<th>${num(r.total)}</th>`).join('') +
-    `<th class="grand">${num(d.grandTotal)}</th></tr>`;
-  wrap.innerHTML = `<table class="data-table report-table"><thead>${head}</thead>` +
-    `<tbody>${body}</tbody><tfoot>${foot}</tfoot></table>`;
+function kpiCard(label, value, sub) {
+  return `<div class="kpi-card"><div class="kpi-card__lbl">${esc(label)}</div>` +
+    `<div class="kpi-card__val">${esc(value)}</div>` +
+    (sub ? `<div class="kpi-card__sub">${esc(sub)}</div>` : '') + `</div>`;
+}
+function renderKpis(d) {
+  const k = d.kpis;
+  let html = kpiCard(t('reports.kpiTeamHours'), fmtHours(k.totalHours) + 'h',
+    k.vsTargetPct != null ? `${k.vsTargetPct}% ${t('reports.kpiVsTarget')}` : '');
+  if (d.scope === 'all') html += kpiCard(t('reports.kpiAvgPerson'), fmtHours(k.avgPerPerson) + 'h', '');
+  html += kpiCard(t('reports.kpiLeaveDays'), k.leaveDays, '');
+  html += kpiCard(t('reports.kpiOvertime'), fmtHours(k.overtimeHours) + 'h', '');
+  if (d.scope === 'all' && k.coverageGaps != null)
+    html += kpiCard(t('reports.kpiCoverageGaps'), k.coverageGaps + 'd', '');
+  $('kpi-grid').innerHTML = html;
 }
 
-function renderHoursSingle(d, wrap, empty) {
-  empty.hidden = d.buckets.length > 0;
-  const body = d.buckets.map((b) =>
-    `<tr><td>${esc(b.key)}</td><td>${fmtHours(b.hours)}</td></tr>`).join('');
-  wrap.innerHTML =
-    `<table class="data-table report-table"><thead><tr>` +
-    `<th>${esc(t('reports.colBucket'))}</th><th>${esc(t('reports.colHours'))}</th>` +
-    `</tr></thead><tbody>${body}</tbody><tfoot><tr>` +
-    `<th>${esc(t('reports.total'))}</th><th>${fmtHours(d.totalHours)}</th>` +
-    `</tr></tfoot></table>`;
+function renderHours(d) {
+  const labels = d.hoursSeries.map((s) => s.key.slice(5));
+  $('chart-hours').innerHTML = barChart({ series: d.hoursSeries, labels, ariaLabel: t('reports.chartHoursTitle') });
+  $('hours-legend').innerHTML =
+    `<span class="legend__item"><i class="dot dot--worked"></i>${esc(t('reports.legendWorked'))}</span>` +
+    `<span class="legend__item"><i class="dot dot--leave"></i>${esc(t('reports.legendOnLeave'))}</span>` +
+    `<span class="legend__item"><i class="dash"></i>${esc(t('reports.legendTarget'))}</span>`;
 }
 
-function renderLeavesSingle(d, wrap, empty) {
-  empty.hidden = d.leaves.length > 0;
-  const stat = (n, k) => `<div class="stat"><div class="stat__num">${n}</div>` +
-    `<div class="stat__lbl">${esc(t(k))}</div></div>`;
-  const grid = `<div class="stat-grid">` +
-    stat(d.byStatus.approved, 'reports.statApproved') +
-    stat(d.byStatus.pending, 'reports.statPending') +
-    stat(d.byStatus.rejected, 'reports.statRejected') +
-    stat(d.byStatus.cancelled, 'reports.statCancelled') +
-    stat(d.approvedDaysOff, 'reports.statDays') + `</div>`;
-  const rows = d.leaves.map((l) =>
-    `<tr><td>${esc(t('leaves.type.' + l.type))}</td>` +
-    `<td>${esc(l.start)}${l.end && l.end !== l.start ? ' → ' + esc(l.end) : ''}</td>` +
-    `<td>${l.unit === 'hours' ? esc((l.hours ?? 0) + 'h') : ''}</td>` +
-    `<td><span class="rpt-status rpt-status--${esc(l.status)}">${esc(t('status.' + l.status))}</span></td></tr>`).join('');
-  wrap.innerHTML = grid +
-    `<table class="data-table report-table"><thead><tr>` +
-    `<th>${esc(t('reports.headerLeaves'))}</th><th>${esc(t('reports.colWhen'))}</th>` +
-    `<th>${esc(t('reports.colDuration'))}</th><th>${esc(t('reports.colStatus'))}</th>` +
-    `</tr></thead><tbody>${rows}</tbody></table>`;
+function renderLeave(d) {
+  const slices = d.leaveByType.map((x) => ({ label: t('leaves.type.' + x.type), value: x.days, cls: 'seg--' + x.type }));
+  $('chart-leave').innerHTML = donutChart({ slices, centerValue: d.leaveTotalDays,
+    centerLabel: t('reports.kpiLeaveDays'), ariaLabel: t('reports.chartLeaveTitle') });
+  $('leave-legend').innerHTML = d.leaveByType.map((x) =>
+    `<span class="legend__item"><i class="dot seg--${esc(x.type)}"></i>${esc(t('leaves.type.' + x.type))} <b>${x.days}</b></span>`).join('');
 }
 
-// ---- Controls -------------------------------------------------------------
-$('controls').querySelector('.rpt-tabs').addEventListener('click', (e) => {
-  const b = e.target.closest('.chip'); if (!b) return;
-  state.reportType = b.dataset.rt;
-  setActive(e.currentTarget, 'rt', state.reportType);
-  load();
-});
-$('scope-wrap').addEventListener('click', (e) => {
-  const b = e.target.closest('.chip'); if (!b) return;
-  state.scope = b.dataset.scope;
-  setActive(e.currentTarget.querySelector('.chips'), 'scope', state.scope);
-  const pick = $('employee-picker');
-  pick.hidden = state.scope !== 'me';
-  if (state.scope === 'me' && !state.targetId && pick.options.length)
-    state.targetId = pick.value;
-  load();
-});
-$('employee-picker').addEventListener('change', (e) => {
-  state.targetId = e.target.value; load();
-});
-$('period-chips').addEventListener('click', (e) => {
-  const b = e.target.closest('.chip'); if (!b) return;
-  state.periodType = b.dataset.pt; state.anchor = null;   // reset to current
-  setActive(e.currentTarget, 'pt', state.periodType);
-  load();
-});
+function renderBreaks(d) {
+  const labels = d.breaksSeries.map((s) => s.key.slice(5));
+  const series = d.breaksSeries.map((s) => ({ key: s.key, worked: s.avgBreakMin / 60, onLeave: 0, target: 0 }));
+  $('chart-breaks').innerHTML = series.length
+    ? barChart({ series, labels, ariaLabel: t('reports.chartBreaksTitle') })
+    : `<p class="muted">${esc(t('reports.noData'))}</p>`;
+}
+
+function renderPeople(d) {
+  if (!d.people.length) { $('people-table').innerHTML = ''; return; }
+  const head = `<tr><th>${esc(t('reports.employee'))}</th><th>${esc(t('reports.colWorked'))}</th>` +
+    `<th>${esc(t('reports.colVsTarget'))}</th><th>${esc(t('reports.colOnLeave'))}</th>` +
+    `<th>${esc(t('reports.colOnTime'))}</th><th>${esc(t('reports.colAvgIn'))}</th>` +
+    `<th>${esc(t('reports.colLate'))}</th><th>${esc(t('reports.colAvgBreak'))}</th></tr>`;
+  const body = d.people.map((p) =>
+    `<tr><td>${esc(p.name)}</td><td>${fmtHours(p.worked)}h</td>` +
+    `<td>${miniBar(p.vsTargetPct)}</td><td>${fmtHours(p.onLeave)}</td>` +
+    `<td>${p.onTimePct == null ? '—' : p.onTimePct + '%'}</td><td>${esc(p.avgClockIn ?? '—')}</td>` +
+    `<td>${p.lateDays}</td><td>${p.avgBreakMin}m</td></tr>`).join('');
+  $('people-table').innerHTML = `<table class="data-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+}
+
+function renderWatchlist(d) {
+  $('watchlist').innerHTML = d.watchlist.map((w) =>
+    `<div class="watch-row"><span class="watch-name">${esc(w.name)}</span>` +
+    `<span class="watch-meta">${esc(w.avgClockIn ?? '—')} · ${w.lateDays} ${esc(t('reports.colLate').toLowerCase())} · ${fmtHours(w.overtimeHours)}h</span>` +
+    `<span class="watch-pct">${w.onTimePct == null ? '—' : w.onTimePct + '%'}</span></div>`).join('');
+}
+
+$('period-chips').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return;
+  state.periodType = b.dataset.pt; state.anchor = null; setActive(e.currentTarget, 'pt', state.periodType); load(); });
+$('scope-wrap').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (!b) return;
+  state.scope = b.dataset.scope; setActive(e.currentTarget, 'scope', state.scope);
+  const pick = $('employee-picker'); pick.hidden = state.scope !== 'me';
+  if (state.scope === 'me' && !state.targetId && pick.options.length) state.targetId = pick.value; load(); });
+$('employee-picker').addEventListener('change', (e) => { state.targetId = e.target.value; load(); });
 $('prev-period').addEventListener('click', () => step(-1));
 $('next-period').addEventListener('click', () => step(+1));
 function step(delta) {
-  // Mirror of server period.js parseYmd + shiftPeriod: parse the
-  // YYYY-MM-DD anchor from LOCAL components (not new Date(str), which
-  // parses as UTC midnight and lands a day early in negative-UTC zones),
-  // nudge by one unit; the server's resolvePeriod re-normalizes
-  // (e.g. week snaps to Monday).
-  let a;
-  if (state.anchor) {
-    const [y, m, d] = state.anchor.split('-').map(Number);
-    a = new Date(y, m - 1, d);
-  } else {
-    a = new Date();
-  }
+  let a; if (state.anchor) { const [y, m, d] = state.anchor.split('-').map(Number); a = new Date(y, m - 1, d); } else a = new Date();
   if (state.periodType === 'day') a.setDate(a.getDate() + delta);
   else if (state.periodType === 'week') a.setDate(a.getDate() + delta * 7);
   else if (state.periodType === 'month') { a.setDate(1); a.setMonth(a.getMonth() + delta); }
@@ -172,7 +132,6 @@ function step(delta) {
 }
 $('print-btn').addEventListener('click', () => window.print());
 
-// ---- Bootstrap ------------------------------------------------------------
 (async () => {
   const me = await fetch('/api/me', { credentials: 'same-origin' });
   if (me.status === 401) { location.href = '/login'; return; }
@@ -181,16 +140,11 @@ $('print-btn').addEventListener('click', () => window.print());
   if (state.isEmployer) {
     $('scope-wrap').hidden = false;
     try {
-      const er = await fetch('/api/employees', { credentials: 'same-origin' });
-      const ed = await er.json();
+      const ed = await (await fetch('/api/employees', { credentials: 'same-origin' })).json();
       const pick = $('employee-picker');
-      pick.innerHTML = (ed.employees || [])
-        .map((e) => `<option value="${esc(e.id)}">${esc(e.fullName || e.username)}</option>`)
-        .join('');
-    } catch { /* picker stays empty; Everyone still works */ }
-  } else {
-    state.scope = 'me';                       // employees: always self
-    $('scope-wrap').hidden = true;
-  }
+      pick.innerHTML = (ed.employees || []).map((e) =>
+        `<option value="${esc(e.id)}">${esc(e.fullName || e.username)}</option>`).join('');
+    } catch { /* picker empty; Everyone still works */ }
+  } else { state.scope = 'me'; $('scope-wrap').hidden = true; }
   load();
 })();
