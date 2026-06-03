@@ -5,13 +5,56 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.48.0._
+_Last touched in 0.51.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.48.0 (released 2026-06-02) — **View a submitted leave in
+- **Latest version:** 0.51.0 (released 2026-06-03) — **Employer sees their own
+  leave balance cards.** Frontend-only (`leaves.{html,js}`). The employer `/leaves`
+  page now shows a personal **"Your balance"** card (the same four stat blocks the
+  employee view has) at the top of the employer region, above "Pending approval".
+  `renderBalanceBlocks(balances, container)` was parameterized to a target container
+  so both roles share one renderer; `refreshBalances()`'s employer branch now also
+  fetches the employer's own balance via the existing
+  `GET /api/leaves/balances/:userId` (employers may read anyone's) into the new
+  `#balance-blocks-empr`, and it's year-aware (the year `<select>` re-renders it).
+  No API/backend/i18n change; `CACHE_VERSION` v92 → v93; no new suite (53). Verified
+  by `node --check`, **not** a fresh live employer browser pass. See RELEASES 0.51.0.
+- **Previous:** 0.50.0 (released 2026-06-03) — **Bell notifications open the
+  detail modals.** Frontend-only (`topbar.js`). Clicking a leave/correction in the
+  notifications bell now opens the same in-page detail modal as the leaves list,
+  calendar, and employee profile, instead of navigating to `/leaves/:id` or
+  `/corrections/:id`. The row keeps its `href` as a deep-link fallback (a plain
+  left-click is intercepted; ⌘/Ctrl/Shift/middle-click + SRs still reach the full
+  page). The bell is on every page but most pages don't `<link>` the modal CSS, so
+  `topbar.js` injects `/modal.css` + the relevant modal stylesheet **on demand** on
+  first click (CSP `style-src 'self'` permits it; both modules are already in the
+  SW pre-cache), and the modal JS is pulled via dynamic `import()`. After a decision,
+  `onDone`/`onDecided` → `loadNotifs` re-derives the bell counts. Completes the modal
+  arc from 0.46.0 (corrections) + 0.48.0 (leaves). `CACHE_VERSION` v91 → v92; no new
+  i18n keys; no new suite (53). Verified by `node --check`, **not** a fresh live
+  browser pass (smoke `rm -rf data` is disallowed on this install). See RELEASES 0.50.0.
+- **Previous:** 0.49.0 (released 2026-06-03) — **Slate palette + light mode
+  are the new defaults.** Defaults-only change: a fresh install / a user who never
+  opened Preferences now resolves to the **Slate** palette in **light** mode (was
+  Linen + Match-system). Three layers moved in lockstep: the synchronous `<head>`
+  bootstrap across all **17** HTML pages (missing `pica-palette` → `slate`, missing
+  `pica-color-mode` → `light`; applies `data-palette="slate"` up front so the
+  default survives blocked `localStorage`; block stays byte-identical → single CSP
+  hash intact), the server `DEFAULT_PREFS` (`colorMode: 'light'`, `palette: 'slate'`
+  in `src/storage/user-prefs.js`), and the front-end fallbacks (`app.js` mode
+  `'system'`→`'light'`; `preferences.js` `selectedPalette` `'linen'`→`'slate'`).
+  **Linen is still the CSS bare-`:root` combo** — the cascade was not reshuffled;
+  Slate is applied via the attribute. Existing stored prefs are untouched (no
+  migration). `CACHE_VERSION` v90 → v91 (`app.js`/`preferences.js` are pre-cached);
+  `test-user-prefs.mjs` asserts the new defaults; no new suite (53). Verified by
+  `node --check` + theme/prefs/security-headers suites + a direct
+  `computeBootstrapHash` call (valid `'sha256-…'`); **not** a fresh clean-install
+  browser pass (smoke `rm -rf data` is disallowed on this install). See
+  RELEASES 0.49.0.
+- **Previous:** 0.48.0 (released 2026-06-02) — **View a submitted leave in
   an in-page modal.** Frontend-only. Viewing an already-submitted leave now opens
   a **modal** (`leave-detail-modal.{js,css}`, singleton on `/modal.js`) instead
   of navigating to `/leaves/:id` — mirroring the 0.46.0 correction modal. The

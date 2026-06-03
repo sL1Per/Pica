@@ -54,8 +54,8 @@ try {
     const p = store.get('never-existed');
     assert.deepEqual(p, DEFAULT_PREFS);
     assert.equal(p.locale, 'en-US');
-    assert.equal(p.colorMode, 'system');
-    assert.equal(p.palette, 'linen');
+    assert.equal(p.colorMode, 'light');
+    assert.equal(p.palette, 'slate');
   });
 
   await test('file is not created until first write', () => {

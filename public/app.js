@@ -12,16 +12,16 @@
     const { prefs } = await res.json();
     const root = document.documentElement;
 
-    // Color mode (light/dark/system).
-    const mode = prefs?.colorMode ?? 'system';
+    // Color mode (light/dark/system). Default is light (matches DEFAULT_PREFS).
+    const mode = prefs?.colorMode ?? 'light';
     try { localStorage.setItem('pica-color-mode', mode); } catch {}
-    const dark = mode === 'dark' || (mode !== 'light'
+    const dark = mode === 'dark' || (mode === 'system'
       && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     if (dark) root.setAttribute('data-theme', 'dark');
     else root.removeAttribute('data-theme');
 
-    // Palette (linen/slate/olive). Absent until the Preferences plan adds it —
-    // when absent, leave whatever the synchronous bootstrap already applied.
+    // Palette (linen/slate/olive). The server always returns one (slate by
+    // default); when absent, leave whatever the synchronous bootstrap applied.
     if (prefs?.palette === 'linen' || prefs?.palette === 'slate' || prefs?.palette === 'olive') {
       try { localStorage.setItem('pica-palette', prefs.palette); } catch {}
       if (prefs.palette === 'slate' || prefs.palette === 'olive') root.setAttribute('data-palette', prefs.palette);

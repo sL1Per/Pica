@@ -18,7 +18,7 @@
 - [**DONE**] Side bar (on the left) should not scroll, only the content page (right side) should
 - [**DONE**] Correction modal buttons are not align
 - [**DONE**] on the punch page, this week tab, search bar is missing icon and white background, like the one on the team page
-- Clicking things from the bell do not show the modal and go to the respective pages instead. It should show the modals.
+- [**DONE**] Clicking things from the bell do not show the modal and go to the respective pages instead. It should show the modals.
 
 ### Change
 
@@ -31,8 +31,8 @@
 - [**DONE**] Make profile fields mandatory (2)
 - [**DONE**] Instead of showing coordinates, try to show an approximate address.
 - [**DONE**] Reports revamp
-- Make Slate pallet with light color mode the default
-- Add leaves balance cards also to employer view
+- [**DONE**] Make Slate pallet with light color mode the default
+- [**DONE**] Add leaves balance cards also to employer view
 - backups is not done to config.json file, it should be no?
 
 ### Add
@@ -41,9 +41,9 @@
 - [**DONE**] On punches, on the same day, show break time. For example, clock in at 9am clock out at 12PM and then clock in at 1PM and clock out at 6PM, i want to see in the UI total work time was 8h and break of 1h (4)
 - [**DONE**] Add ability to upload files on leave request for justification. Max 5mb file size. This needs to be encrypted on the disk/storage but visible to the employer or the employee that updated (not to other employees!)
 - [**DONE**] Add an option to reset the master-key (0.23.0: envelope encryption + passphrase change + rotation + recovery code + wipe-reset)
-- Employer to create employee positions and employees need to pick up from a select box instead of current free text.
 - [**DONE**] email notifications
 - Need a way to filter out big list of leaves / corrections etc. After a few months the list will be huge. Maybe show only latest 10 or 15? Rest goes into reports?
+- Employer to create employee positions and employees need to pick up from a select box instead of current free text.
 
 ### Translations
 

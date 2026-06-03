@@ -37,9 +37,11 @@ function withEmailDefaults(storedEmail) {
 
 export const DEFAULT_PREFS = Object.freeze({
   locale: 'en-US',
-  colorMode: 'system',
-  // M15: linen is the bare-:root default in app.css (no data-palette attribute).
-  palette: 'linen',
+  colorMode: 'light',
+  // M15: the three palettes all live in app.css's token cascade. Slate is the
+  // product default (applied via data-palette="slate"); linen remains the
+  // bare-:root combo but is no longer the default a fresh user resolves to.
+  palette: 'slate',
   // M14 §3.5: per-user email gating switches. Frozen copy here; get() and
   // update() always return a fresh plain object so callers cannot mutate it.
   email: DEFAULT_EMAIL_PREFS,

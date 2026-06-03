@@ -23,7 +23,7 @@ const PALETTE_CHIPS = {
   slate: { light: ['#FBFCFE', '#2563EB', '#059669', '#DC2626'], dark: ['#151F33', '#60A5FA', '#34D399', '#F87171'] },
   olive: { light: ['#FBFAF1', '#6B7D2F', '#4D7041', '#B85C2F'], dark: ['#20231A', '#B5C557', '#91AC74', '#D27B53'] },
 };
-let selectedPalette = 'linen';
+let selectedPalette = 'slate';
 
 // Translate the static labels on this page.
 function applyTranslations() {
@@ -127,7 +127,7 @@ function render(prefs) {
     r.checked = r.value === prefs.colorMode;
   }
   applyColorMode(prefs.colorMode);
-  selectedPalette = prefs.palette || 'linen';
+  selectedPalette = prefs.palette || 'slate';
   renderPaletteCards();
   applyPalette(selectedPalette);
   // Treat absent email prefs as enabled (matches Task 6 store defaults).

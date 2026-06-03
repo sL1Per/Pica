@@ -425,7 +425,7 @@ function wireEvents({ sidebar, mobilebar, bottomnav, menu, notif, scrim, user })
       const label = isEmployer
         ? t('notifications.leavePending', { name, type: t('leaves.type.' + l.type), when: l.start })
         : t('notifications.leaveMine', { type: t('leaves.type.' + l.type), when: l.start });
-      rows.push(`<a class="appshell__notif-item" role="menuitem" href="/leaves/${encodeURIComponent(l.id)}">${notifAvatar(name, l.employeeId, l.hasPicture)}<span class="appshell__notif-text">${escapeHtml(label)}</span></a>`);
+      rows.push(`<a class="appshell__notif-item" role="menuitem" data-kind="leave" data-id="${escapeHtml(l.id)}" href="/leaves/${encodeURIComponent(l.id)}">${notifAvatar(name, l.employeeId, l.hasPicture)}<span class="appshell__notif-text">${escapeHtml(label)}</span></a>`);
     }
     for (const c of corrs) {
       // c.start is an ISO datetime; slice to YYYY-MM-DD to match the leave
@@ -435,7 +435,7 @@ function wireEvents({ sidebar, mobilebar, bottomnav, menu, notif, scrim, user })
       const label = isEmployer
         ? t('notifications.correctionPending', { name, when })
         : t('notifications.correctionMine', { when });
-      rows.push(`<a class="appshell__notif-item" role="menuitem" href="/corrections/${encodeURIComponent(c.id)}">${notifAvatar(name, c.employeeId, c.hasPicture)}<span class="appshell__notif-text">${escapeHtml(label)}</span></a>`);
+      rows.push(`<a class="appshell__notif-item" role="menuitem" data-kind="correction" data-id="${escapeHtml(c.id)}" href="/corrections/${encodeURIComponent(c.id)}">${notifAvatar(name, c.employeeId, c.hasPicture)}<span class="appshell__notif-text">${escapeHtml(label)}</span></a>`);
     }
     notifList.innerHTML = rows.join('');
     // Apply hue via DOM property — CSP `style-src 'self'` blocks inline
@@ -446,6 +446,28 @@ function wireEvents({ sidebar, mobilebar, bottomnav, menu, notif, scrim, user })
     // Picture fails to load → fall back to the tinted initials.
     notifList.querySelectorAll('.appshell__notif-av img').forEach((img) => {
       img.addEventListener('error', () => { img.parentElement.textContent = img.parentElement.dataset.initials || '?'; });
+    });
+    // Open the leave/correction detail modal in-page (mirrors the list/calendar
+    // entry points). Keep the href as a deep-link fallback for ⌘/middle-click,
+    // screen readers, and no-JS. The bell lives on every page but most pages
+    // don't <link> the modal stylesheets, so inject them on demand.
+    notifList.querySelectorAll('.appshell__notif-item[data-id]').forEach((a) => {
+      a.addEventListener('click', async (e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        e.preventDefault();
+        closeNotif();
+        const id = a.dataset.id;
+        ensureStylesheet('/modal.css');
+        if (a.dataset.kind === 'leave') {
+          ensureStylesheet('/leave-detail-modal.css');
+          const { openLeaveModal } = await import('/leave-detail-modal.js');
+          openLeaveModal({ id, me: user, onDone: loadNotifs });
+        } else {
+          ensureStylesheet('/correction-detail-modal.css');
+          const { openCorrectionModal } = await import('/correction-detail-modal.js');
+          openCorrectionModal({ id, me: user, onDecided: loadNotifs });
+        }
+      });
     });
   }
   async function loadNotifs() {
@@ -483,6 +505,17 @@ function wireEvents({ sidebar, mobilebar, bottomnav, menu, notif, scrim, user })
 
   loadNotifs();
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadNotifs(); });
+}
+
+// Inject a same-origin stylesheet once (idempotent). CSP `style-src 'self'`
+// permits linked stylesheets, so this is safe; used to pull in the modal CSS
+// on pages that don't statically <link> it (e.g. the bell on any page).
+function ensureStylesheet(href) {
+  if (document.querySelector(`link[rel="stylesheet"][href="${href}"]`)) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = href;
+  document.head.appendChild(link);
 }
 
 /**

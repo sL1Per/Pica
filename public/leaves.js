@@ -20,6 +20,7 @@ const balanceBlocks = document.getElementById('balance-blocks');
 const filterBar     = document.getElementById('filter-bar');
 const listEl        = document.getElementById('leave-list');
 // Employer
+const balanceBlocksEmpr = document.getElementById('balance-blocks-empr');
 const pendingList   = document.getElementById('pending-list');
 const pendingTag    = document.getElementById('pending-tag');
 const yearSelect    = document.getElementById('year-select');
@@ -296,8 +297,8 @@ function renderListInto(ulEl, leaves, f, opts) {
 
 // -- Employee balance blocks ------------------------------------------------
 
-function renderBalanceBlocks(balances) {
-  balanceBlocks.replaceChildren();
+function renderBalanceBlocks(balances, container = balanceBlocks) {
+  container.replaceChildren();
   for (const b of balances) {
     const unlimited = b.allowance === 0;
     const cap = b.effectiveAllowance ?? b.allowance;
@@ -345,7 +346,7 @@ function renderBalanceBlocks(balances) {
     }
     block.appendChild(meta);
 
-    balanceBlocks.appendChild(block);
+    container.appendChild(block);
   }
 }
 
@@ -456,6 +457,10 @@ async function refreshBalances() {
   if (me.role === 'employer') {
     const res = await fetch(`/api/leaves/balances?year=${currentYear}`, { credentials: 'same-origin' });
     if (res.ok) renderEmployerMatrix(await res.json());
+    // The employer is a person too — show their own balance cards (same shape as
+    // the employee view) alongside the team matrix.
+    const selfRes = await fetch(`/api/leaves/balances/${me.id}?year=${currentYear}`, { credentials: 'same-origin' });
+    if (selfRes.ok) renderBalanceBlocks((await selfRes.json()).balances, balanceBlocksEmpr);
   } else {
     const res = await fetch(`/api/leaves/balances/${me.id}?year=${currentYear}`, { credentials: 'same-origin' });
     if (res.ok) renderBalanceBlocks((await res.json()).balances);

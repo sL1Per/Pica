@@ -7,17 +7,19 @@
     // Theme + palette bootstrap — runs synchronously before CSS to prevent FOUC.
     // Resolves color mode (light/dark/system) and palette (linen/slate/olive)
     // from localStorage onto <html> so app.css's token cascade picks the combo.
+    // Defaults (no stored pref): slate palette, light mode.
     try {
       var root = document.documentElement;
-      var m = localStorage.getItem('pica-color-mode');
-      var dark = m === 'dark' || (m !== 'light' && window.matchMedia
+      root.setAttribute('data-palette', 'slate'); // default; overridden below
+      var m = localStorage.getItem('pica-color-mode') || 'light';
+      var dark = m === 'dark' || (m === 'system' && window.matchMedia
         && window.matchMedia('(prefers-color-scheme: dark)').matches);
       if (dark) { root.setAttribute('data-theme', 'dark'); }
       else { root.removeAttribute('data-theme'); }
-      var p = localStorage.getItem('pica-palette');
+      var p = localStorage.getItem('pica-palette') || 'slate';
       if (p === 'slate' || p === 'olive') { root.setAttribute('data-palette', p); }
       else { root.removeAttribute('data-palette'); }
-    } catch (e) { /* storage/matchMedia blocked → default linen light */ }
+    } catch (e) { /* storage/matchMedia blocked → default slate light */ }
   </script>
   <title data-i18n="title.settings">Pica — Settings</title>
     <link rel="manifest" href="/manifest.json">

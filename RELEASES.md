@@ -14,6 +14,159 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.51.0] — 2026-06-03 — Employer sees their own leave balance cards
+
+The employer `/leaves` page now shows a personal **"Your balance"** card —
+the same four stat blocks (type · remaining `/ allowance` · usage bar · used
+· pending) that employees already saw — at the top of the employer region,
+above "Pending approval". The employer is a person with their own leave
+allowance too, but until now the page only showed the team-balance matrix
+(everyone else) and gave them no at-a-glance view of their own remaining
+days.
+
+How it works:
+
+- The card mirrors the employee "Your balance" block exactly. `leaves.js`'s
+  `renderBalanceBlocks(balances, container)` was parameterized to take a
+  target container, so the employee and employer cards share one renderer.
+- `refreshBalances()`'s employer branch now also fetches the employer's own
+  balance via the existing `GET /api/leaves/balances/:userId` endpoint
+  (employers may read anyone's balance, including their own) and renders it
+  into the new `#balance-blocks-empr` container, alongside the team matrix.
+- It is **year-aware**: changing the year `<select>` (which already drove the
+  team matrix) now also re-renders the employer's own balance for that year.
+
+Frontend-only — no HTTP API changed, no new endpoint, no backend code
+touched. `CACHE_VERSION` v92 → v93 (`leaves.js` is served cache-first by
+the service worker). No new i18n keys (reuses `leaves.yourBalance` /
+`leaves.balanceNote` / `leaves.balUsed` / `leaves.balPending`). No new test
+suite (the balance-block renderer is the same code path the employee view
+already exercises; `test-leaves-render` unchanged at 53 suites).
+
+### Honest Disclosures
+
+- **No live browser pass.** Verified by `node --check` on `leaves.js` and by
+  reading the shared render path; not exercised in a fresh authenticated
+  employer session (the smoke `rm -rf data` is disallowed on this install).
+- **One extra request on the employer page.** The employer `/leaves` load
+  now issues a second balances fetch (own balance) in addition to the team
+  matrix. Negligible at the ≤ 50-employee target scale.
+- **Placement is opinionated.** "Your balance" sits at the very top of the
+  employer region, mirroring the employee layout. It pushes the "Pending
+  approval" inbox down by one card; if operators prefer the inbox first,
+  that's a one-line markup move.
+- **Carry-forward still not applied.** Same footnote as the employee card —
+  unused-allowance carry-forward is not modeled; the note says so.
+
+---
+
+## [0.50.0] — 2026-06-03 — Bell notifications open the detail modals
+
+Clicking a leave or correction in the notifications bell now opens the
+same in-page detail modal you get from the leaves list, the calendar, and
+the employee profile — instead of navigating away to the standalone
+`/leaves/:id` or `/corrections/:id` page. This completes the modal arc
+started in 0.46.0 (corrections) and 0.48.0 (leaves): every entry point to
+a pending item now behaves the same way.
+
+How it works:
+
+- Each notification row keeps its `href` (`/leaves/:id`,
+  `/corrections/:id`) as a **deep-link fallback**. A plain left-click is
+  intercepted (`preventDefault`) and opens the modal; ⌘/Ctrl/Shift-click
+  and middle-click still follow the link to the full page, and screen
+  readers / no-JS still get a real navigable link.
+- The bell lives on every authenticated page, but most pages don't
+  `<link>` the modal stylesheets (only leaves, calendar, employee, and
+  punch do). `topbar.js` now injects `/modal.css` plus the relevant
+  modal stylesheet **on demand** the first time a notification is
+  clicked. The modal JS/CSS are already in the service-worker pre-cache,
+  so this is a local, instant load.
+- The modal modules are pulled in with a dynamic `import()` so pages that
+  never open a notification modal don't pay for the code.
+- After a decision is taken inside the modal, the bell re-fetches and
+  re-renders its pending counts (`onDone` / `onDecided` → `loadNotifs`).
+
+CACHE_VERSION v91 → v92 (`topbar.js` changed).
+
+### Honest Disclosures
+
+- **No new backend.** The bell still aggregates from `/api/leaves` and
+  `/api/corrections?status=pending` on mount + tab focus. There is no
+  push, no websocket, and no unread/read state — closing and reopening
+  the bell re-derives the same list.
+- **On-demand stylesheet injection is permanent for the page's lifetime.**
+  Once a notification modal is opened on, say, the dashboard, that page
+  carries the modal CSS until reload. This is negligible (two small
+  stylesheets) and idempotent, but it is not torn down.
+- **No deep-link parity check.** The modal and the standalone
+  `/leaves/:id` page are maintained separately (the modal re-implements
+  the page's rendering). They can drift; this release does not unify
+  them. See the 0.48.0 disclosure.
+- **Selector coupling.** The click wiring keys off `data-kind` /
+  `data-id` attributes on `.appshell__notif-item`. If the notification
+  row markup is refactored, this handler must move with it.
+
+---
+
+## [0.49.0] — 2026-06-03 — Slate palette + light mode are the new defaults
+
+The default look for a fresh install (and any user who has never opened
+Preferences) is now the **Slate** palette in **light** color mode. Previously
+the default was **Linen** palette with color mode **Match system** (which
+followed the OS dark/light setting). This is a defaults-only change — every
+existing stored preference is untouched, and Linen / Olive / dark / system are
+all still selectable in Preferences exactly as before.
+
+- **Synchronous bootstrap (all 17 HTML pages).** The inline `<head>` script
+  that resolves the theme before CSS now defaults a missing `pica-palette` to
+  `slate` and a missing `pica-color-mode` to `light` (was: bare `:root` = Linen,
+  and "no stored mode" = follow `prefers-color-scheme`). It also applies
+  `data-palette="slate"` **up front** (overridden if the user picked another
+  palette), so the default holds even on the degraded path where `localStorage`
+  is blocked. The block stays **byte-identical across all 17 files**, so the
+  single CSP hash that pins it still covers them — the server recomputes that
+  hash from `index.html` at startup (verified: it produces a valid
+  `'sha256-…'` token against the new bootstrap).
+- **Server default (`src/storage/user-prefs.js`).** `DEFAULT_PREFS` now reads
+  `colorMode: 'light'`, `palette: 'slate'`. `GET /api/settings/me` returns these
+  for a user with no stored prefs, so `app.js`'s post-load refresh applies Slate
+  light too. `VALID_PALETTES` / `VALID_COLOR_MODES` are unchanged — Linen, Olive,
+  dark, and system remain valid choices.
+- **Front-end fallbacks aligned.** `app.js`'s color-mode fallback went
+  `'system'` → `'light'` (and its dark test from `mode !== 'light'` to
+  `mode === 'system'`, functionally identical given the three valid modes);
+  `preferences.js`'s `selectedPalette` initial + `prefs.palette || …` fallback
+  went `'linen'` → `'slate'`. The Preferences picker, chip previews, and save
+  flow are otherwise unchanged.
+- **Plumbing.** `CACHE_VERSION` v90 → v91 (the pre-cached `app.js` and
+  `preferences.js` changed; the HTML bootstrap is not pre-cached but the SW
+  serves all assets cache-first keyed by `CACHE_VERSION`, so the bump is what
+  delivers the new JS to returning clients). `test-user-prefs.mjs` updated to
+  assert the new defaults. No new test suite (count stays 53); no i18n, no API
+  shape change.
+
+**Honest Disclosures.**
+- **Linen is still the CSS bare-`:root` combo.** This change does *not* reshuffle
+  app.css's token cascade — Slate is applied via `data-palette="slate"`, not by
+  making Slate the attribute-less root. The phrase "Linen is the default" in old
+  comments was corrected, but the CSS structure (Linen = no attribute) is intact.
+- **Only affects users with no stored preference.** Anyone who has saved a
+  palette/mode keeps it. There is no migration and no "reset to new default"
+  action; existing installs' current users see no change unless they were
+  relying on the implicit default.
+- **`system` is no longer the out-of-the-box mode.** A new user on a dark-mode OS
+  now gets **light** Pica until they choose "Match system" in Preferences. This
+  is the deliberate intent of "light color mode the default," but it does mean
+  the app no longer auto-follows the OS for brand-new users.
+- **Not verified in a live browser this release.** Confirmed by `node --check`,
+  the theme/prefs/security-headers suites, and a direct `computeBootstrapHash`
+  call; not by a fresh clean-install screenshot. The data path that would prove
+  it (a brand-new user with an empty `data/`) isn't exercised here because the
+  smoke-cleanup `rm -rf data` is disallowed on this install.
+
+---
+
 ## [0.48.0] — 2026-06-02 — View a submitted leave in an in-page modal
 
 Viewing an already-submitted leave no longer navigates away to the
