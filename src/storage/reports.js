@@ -54,7 +54,7 @@ function monthKey(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; }
  * - Intervals spanning midnight are split at midnight boundaries, so
  *   day-level buckets attribute hours to the right day.
  */
-function pairAndSplit(punches, nowMs) {
+export function pairAndSplit(punches, nowMs) {
   const sorted = [...punches].sort((a, b) => a.ts.localeCompare(b.ts));
   const intervals = [];
 
@@ -117,7 +117,7 @@ function readPunchesInRange(punchesStore, employeeId, from, to, nowMs) {
   return collected;
 }
 
-function parseYmd(s) {
+export function parseYmd(s) {
   const [y, m, d] = s.split('-').map(Number);
   return new Date(y, m - 1, d);
 }

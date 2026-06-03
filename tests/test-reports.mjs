@@ -441,6 +441,21 @@ try {
     assert.ok(lmc.split('\n')[lmc.split('\n').length - 1] === '' ? true : true); // trailing newline tolerated
   });
 
+  // -------------------------------------------------------------------------
+  console.log('\npairAndSplit / parseYmd exports');
+  // -------------------------------------------------------------------------
+
+  await test('reports exports pairing helpers', async () => {
+    const mod = await import('../src/storage/reports.js');
+    assert.equal(typeof mod.pairAndSplit, 'function');
+    assert.equal(typeof mod.parseYmd, 'function');
+    const ivs = mod.pairAndSplit([
+      { type: 'in',  ts: '2026-05-11T09:00:00.000Z' },
+      { type: 'out', ts: '2026-05-11T17:00:00.000Z' },
+    ], Date.now());
+    assert.equal(ivs.length, 1);
+  });
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
