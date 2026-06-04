@@ -13,7 +13,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
-import { isUuid } from '../src/util/validators.js';
+import { isUuid, sniffImageType } from '../src/util/validators.js';
 
 let passed = 0;
 let failed = 0;
@@ -117,6 +117,47 @@ test('rejects whitespace-padded UUIDs', () => {
   assert.equal(isUuid(' 11111111-1111-4111-8111-111111111111'), false);
   assert.equal(isUuid('11111111-1111-4111-8111-111111111111 '), false);
   assert.equal(isUuid('11111111-1111-4111-8111-111111111111\n'), false);
+});
+
+// -- sniffImageType (M16 F15) -----------------------------------------------
+
+console.log('\nsniffImageType');
+
+test('detects PNG (full 8-byte signature)', () => {
+  assert.equal(sniffImageType(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])), 'png');
+});
+
+test('detects PNG from the 4-byte prefix alone', () => {
+  // The upload routes only need the leading signature; 4 bytes identify PNG.
+  assert.equal(sniffImageType(Buffer.from([0x89, 0x50, 0x4e, 0x47])), 'png');
+});
+
+test('detects JPEG (FF D8 FF)', () => {
+  assert.equal(sniffImageType(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])), 'jpeg');
+});
+
+test('detects GIF ("GIF8")', () => {
+  assert.equal(sniffImageType(Buffer.from('GIF89a', 'latin1')), 'gif');
+});
+
+test('detects WebP (RIFF....WEBP)', () => {
+  const webp = Buffer.concat([Buffer.from('RIFF', 'latin1'), Buffer.from([0, 0, 0, 0]), Buffer.from('WEBP', 'latin1')]);
+  assert.equal(sniffImageType(webp), 'webp');
+});
+
+test('rejects non-image bytes', () => {
+  assert.equal(sniffImageType(Buffer.from('not an image at all', 'utf8')), null);
+  assert.equal(sniffImageType(Buffer.from('<svg xmlns=', 'utf8')), null); // SVG is not allowed
+  assert.equal(sniffImageType(Buffer.from('%PDF-1.4', 'utf8')), null);
+});
+
+test('rejects non-buffers and too-short input', () => {
+  assert.equal(sniffImageType(null), null);
+  assert.equal(sniffImageType('PNG'), null);
+  assert.equal(sniffImageType(Buffer.from([0x89, 0x50])), null); // < 4 bytes
+  // RIFF without the WEBP tag (e.g. a WAV) is not a WebP.
+  const wav = Buffer.concat([Buffer.from('RIFF', 'latin1'), Buffer.from([0, 0, 0, 0]), Buffer.from('WAVE', 'latin1')]);
+  assert.equal(sniffImageType(wav), null);
 });
 
 console.log('');

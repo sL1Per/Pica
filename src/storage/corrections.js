@@ -107,6 +107,9 @@ function validateWindow({ kind, start, end }) {
 }
 
 export function createCorrectionsStore(dataDir, masterKey) {
+  if (!Buffer.isBuffer(masterKey) || masterKey.length !== 32) {
+    throw new TypeError('masterKey must be a 32-byte Buffer');
+  }
   const rootDir = path.join(dataDir, 'corrections');
 
   function monthFile(year, month) {
@@ -220,8 +223,9 @@ export function createCorrectionsStore(dataDir, masterKey) {
 
   /**
    * Create a new pending correction. Returns the persisted record.
-   * `justification` is optional; absence means hours go to the bank if
-   * approved (only relevant for kind='both').
+   * `justification` is optional and purely informational now — it sets the
+   * derived `isJustified` flag but has no functional effect (the time-bank
+   * concept that once used it was removed in 0.22.8; see the file header).
    *
    * Required fields by kind:
    *   - both: start, end

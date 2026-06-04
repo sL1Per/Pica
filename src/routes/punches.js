@@ -66,8 +66,11 @@ export function registerPunchRoutes(router, {
   /**
    * If the client supplied a timestamp (offline-replay scenario), honor it
    * provided it parses cleanly AND falls within +/- 7 days of now. The
-   * +/- bound prevents trivial backdating without committing to crypto
-   * signing yet (deferred to M11 hardening). Returns the ISO string or null.
+   * +/- bound limits how far a punch can be back/forward-dated, but the
+   * timestamp is NOT cryptographically signed, so a user can still fabricate
+   * times within that window. This is a known, accepted trade-off for offline
+   * support; tightening it (signed client punches) is logged for the M17
+   * security review, not this milestone. Returns the ISO string or null.
    */
   function validClientTs(ts) {
     if (typeof ts !== 'string') return null;

@@ -104,10 +104,9 @@ export function createEmployeesStore(dataDir, masterKey) {
   }
 
   function writeProfile(id, profile) {
-    // Never persist id/timestamps inside the ciphertext: id is the filename,
-    // timestamps are updated on each write, so it's cleaner to keep them
-    // out of the inner object. Actually — we keep updatedAt/createdAt INSIDE
-    // the encrypted blob to avoid separate metadata files. `id` stays out.
+    // `id` is the filename, so it never goes inside the ciphertext. The
+    // createdAt/updatedAt timestamps DO go inside the encrypted blob —
+    // keeping them there avoids a separate per-profile metadata file.
     const { id: _drop, ...inner } = profile;
     const plain = Buffer.from(JSON.stringify(inner), 'utf8');
     const blob = encryptBlob(plain, masterKey, aadFor(id));

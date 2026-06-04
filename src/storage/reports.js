@@ -158,7 +158,7 @@ export function hoursReport(punchesStore, employeeId, from, to, groupBy = 'day',
     const durMs = clippedEnd - clippedStart;
     totalMs += durMs;
 
-    const key = keyFor(new Date(clippedStart), groupBy);
+    const key = bucketKeyFor(new Date(clippedStart), groupBy);
     buckets.set(key, (buckets.get(key) ?? 0) + durMs);
   }
 
@@ -180,7 +180,6 @@ export function bucketKeyFor(date, groupBy) {
   if (groupBy === 'week')  return isoWeek(date);
   return monthKey(date);
 }
-function keyFor(date, groupBy) { return bucketKeyFor(date, groupBy); }
 
 // ----------------------------------------------------------------------------
 // Leaves report

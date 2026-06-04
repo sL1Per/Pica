@@ -311,8 +311,8 @@ makeReminderScheduler({ leavesStore, mailer, logger: log }).start();
  * "user trying to look at the settings page" from "anything that
  * depends on store state".
  */
-function isApiEndpoint(path) {
-  return path.startsWith('/api/');
+function isApiEndpoint(pathname) {
+  return pathname.startsWith('/api/');
 }
 
 async function handle(nodeReq, nodeRes) {

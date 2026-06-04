@@ -14,6 +14,196 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.53.10] — 2026-06-04 — M16 Phase 4: doc-truth pass
+
+Ninth and final M16 increment before close. **Docs only** — no source, behavior,
+API, or test change; suite stays **54/54**.
+
+- **`docs/architecture.md` test list reconciled to disk.** It already stated
+  "Total: 54 suites" and listed all 13 storage modules + 12 routes correctly, but
+  the enumerated test list was missing four files — now added:
+  `test-punch-week`, `test-employee-home`, `test-employee-deactivation`,
+  `test-user-active`. The `validators.js` line (source + test) gained
+  `sniffImageType`. Every `tests/test-*.mjs` file now appears in the doc.
+- **Storage/routes inventories verified** against `ls` — no other drift.
+- **M16 working docs squared up** (gitignored `docs/superpowers/`): added the
+  missing `report-overview.js` row to the plan's storage matrix (the specific drift
+  this pass set out to fix), marked all four review matrices ✅ with a note that
+  read-coverage is authoritatively the findings-ledger clean-checks C6–C23, and
+  ticked the remaining Phase-3/Phase-4 checklist items (CSP-parity, throw-vs-null,
+  file-lists, RELEASES coherence).
+- **RELEASES coherence pass:** entries 0.52.0–0.53.10 read in descending order with
+  no gaps; each M16 release names its finding(s) and carries Honest Disclosures.
+
+**Honest Disclosures.**
+- **Docs only.** Zero code touched; the 54/54 run is a guard, not a change.
+- **M16 is not formally closed by this release.** One item remains: a
+  **clean-environment boot smoke** (Phase 0 Step 3), which must run where it cannot
+  disturb the live install's `data/`, `backups/`, or `config.json` — not done in
+  this session. All findings are resolved (F1, F3–F13, F15 fixed; F14 wontfix;
+  F2/F11/F16 carried to M17), and all reviews/docs are reconciled.
+- **One small Phase-3 verification still open and intentionally not forced:**
+  confirming `test-sw-precache` asserts coverage of the *full* `PRECACHE_URLS` (the
+  list is internally consistent and selective by design).
+
+---
+
+## [0.53.9] — 2026-06-04 — M16 low-finding batch (F10, F12, F13, F14, F15)
+
+Eighth M16 increment — the batch of low-severity findings from the Phase-2 sweep.
+Backend-only; **no CACHE_VERSION bump** (none of the touched files are pre-cached).
+Full suite **54/54 green** (two new test groups added).
+
+- **F15 — uploads now reject non-images by magic bytes.** New `sniffImageType(buf)`
+  in `src/util/validators.js` recognises PNG / JPEG / GIF / WebP from their leading
+  signature and returns `null` for anything else (SVG, PDF, plain text, a RIFF/WAV).
+  `PUT /api/branding/logo` and `PUT /api/employees/:id/picture` now call it after the
+  size check and return `400 invalid_value` on a non-image, instead of storing
+  arbitrary bytes that later render as a broken image. The serving routes already
+  pin a safe `Content-Type` (so this is defense-in-depth, and it closes the
+  inconsistency vs. leave attachments, which already validated type). New unit tests
+  for the sniffer (`test-validators.mjs`) + a route rejection test
+  (`test-employee-picture-route.mjs`). **This is a format check, not malware scanning
+  — a valid-but-hostile image still passes.**
+- **F10 — `createCorrectionsStore` now guards its `masterKey`.** It was the only
+  encryption-aware store missing the 32-byte-Buffer check the other six have; a
+  wrong-typed key now fails fast at construction with a clear `TypeError` instead of
+  a murkier error later inside `encryptField`.
+- **F12 — fixed a self-contradicting comment** in `employees.js` `writeProfile`
+  (it opened "Never persist id/timestamps…" then reversed itself). Now states the
+  actual rule plainly: `id` stays out of the ciphertext, timestamps go in.
+- **F13 — small de-duplication / dead-code trims:** removed the no-op `keyFor`
+  alias in `reports.js` (callers use `bucketKeyFor` directly); collapsed the
+  identical `commentForIn`/`commentForOut` in the correction-approval path to one
+  `entryComment`; dropped accepted-but-unused destructured deps (`requireRole`/
+  `requireOwnerOrEmployer` in the reports route, `requireAuth` in the employees
+  route, `usersStore` in the mailer) along with their `void` suppressors; renamed
+  `isApiEndpoint(path)` in `server.js` so it no longer shadows the imported
+  `node:path` module.
+- **F14 — reviewed, intentionally NOT changed (wontfix).** (a) `employeesStore.update()`
+  creating a partial profile on first call is the designed merge behavior — it
+  deliberately does NOT re-validate untouched mandatory fields, so existing records
+  with pre-rule empty fields stay editable; adding `create()`-style enforcement
+  would break that path. (b) Employee `address`/`comments` are uncapped on purpose:
+  CLAUDE.md enumerates exactly five storage-capped free-text fields, and `comments`
+  (employer notes) can legitimately run long; the 5 MB body cap is the bound. Both
+  are logged as conscious trade-offs rather than fixed.
+
+**Honest Disclosures.**
+- **F13 is a partial fix.** The byte-identical pure helpers (`round1`/`ymd`/`pad2`
+  across the three report modules + `routes/employees.js`, and the HTML escaper under
+  two names `esc`/`escapeHtml` across five frontend files) were **left in place** —
+  consolidating them needs either a new shared module + import churn (backend) or a
+  shared module + `sw.js` precache + CACHE_VERSION bump (frontend), which isn't worth
+  it for a cosmetic low finding. Same reduced-scope call as F5. The dedup remains
+  noted in the ledger.
+- **F15 only sniffs the leading signature**, not the whole file, and does not
+  re-encode or sanitise the image. The employee picture upload test fixture is a
+  4-byte PNG prefix, which the sniffer accepts by design.
+- **F14 is closed as wontfix, not deferred** — these are documented design choices,
+  not latent bugs; revisit only if the product requirements change.
+- No behavior change for any existing valid client: real uploads are PNG/JPEG and
+  pass the sniff; the removed deps were never used; the comment/alias edits are inert.
+
+---
+
+## [0.53.8] — 2026-06-04 — M16 F9: correct stale in-code comments
+
+Seventh M16 increment. **Comment-only** cleanup — no code, behavior, API, test, or
+asset changed. Eight in-code comments described shipped (or abandoned) work as still
+pending, or under-stated current behavior; all now match reality:
+
+- **`src/storage/org-settings.js`** (header) — called the settings "a SCAFFOLD for
+  M7… enforced in M8… wired up in M10". Every knob has been live for many releases;
+  the header now describes what each actually drives today.
+- **`src/storage/user-prefs.js`** (header) — said `language`/`colorMode` "go no-op
+  today and become functional in later milestones (M7/M8/M9)". They're all live
+  (locale, colorMode, palette, email opt-outs); header updated.
+- **`src/storage/corrections.js`** (`create()` docstring) — said a missing
+  justification means "hours go to the bank if approved". The time bank was removed
+  in 0.22.8 (as the file's own header already states); the docstring now says
+  `justification` is informational only (sets the derived `isJustified` flag).
+- **`src/routes/punches.js`** (`validClientTs`) — said unsigned client timestamps
+  were "deferred to M11 hardening". Re-worded to state the accepted offline trade-off
+  and that signed client punches are logged for the **M17** security review (this is
+  finding F16).
+- **`src/routes/employees.js`** (delete handler) — `TODO(M11): prevent deleting the
+  last employer account`. That's already structurally guaranteed by the no-self-delete
+  rule (the sole remaining employer is always the caller); the comment now explains
+  the guarantee instead of flagging a to-do.
+- **`src/http/security-headers.js`** (header) — the CSP enumeration listed
+  `img-src 'self' data: blob:` and `connect-src 'self'`, omitting the OpenStreetMap
+  tile and Nominatim origins the code actually allows. A reader trusting the comment
+  would mis-judge the egress surface; the listing now matches the built CSP.
+- **`src/mail/mailer.js`** (×2) — gating comments said the org notification keys and
+  the user `email` sub-object weren't added yet ("Task 5 hasn't added these"/"Task 6
+  not done"). Both shipped; comments now describe the real default-on / explicit-false
+  semantics.
+
+Full suite: **54/54 green** (comments don't affect tests; run as a guard). No
+CACHE_VERSION bump — all seven files are backend, none pre-cached.
+
+**Honest Disclosures.**
+- **Comment-only.** Zero executable lines changed. The risk surface is a typo in a
+  comment block; `node --check` on all seven files + the full suite confirm none.
+- **Does not fix the underlying behaviors the comments pointed at.** F16 (unsigned
+  `clientTs`) is still deferred to M17 — this only corrects how the code *describes*
+  it. The CSP egress to OSM/Nominatim is unchanged (the comment was wrong, not the
+  policy).
+- **Other open M16 findings untouched.** F10, F12, F13, F14, F15 remain logged for a
+  later pass; F2/F11/F16 stay deferred to M17.
+
+---
+
+## [0.53.7] — 2026-06-04 — M16 F8: cap punch comments at the storage layer
+
+Sixth M16 increment, and the first fix from the Phase-2 module-by-module sweep
+(findings `F8`–`F16` are logged in the gitignored `docs/superpowers/m16-findings.md`).
+
+- **`punch.comment` is now capped at 500 chars inside `punchesStore.append()`,
+  not only in the route.** CLAUDE.md's "Hard rules" state that all five capped
+  free-text fields (`punch.comment`, `correction.justification`,
+  `correction.notes`, `leave.reason`, `leave.notes`) are bounded **at the storage
+  layer**. The leaves and corrections stores already did this
+  (`.trim().slice(0, 500)`); punches was the lone exception — its only cap lived
+  in `routes/punches.js` (`validComment`). A direct store caller (a test, a future
+  route, the correction-materialization path, a scheduler) could therefore persist
+  an unbounded comment. `append()` now applies the identical `trim()+slice(0,500)`
+  the other two stores use, so the storage layer — the real trust boundary — is
+  self-protecting regardless of caller.
+- The route-level `validComment` cap is **kept** as defense-in-depth; the two are
+  consistent and idempotent on the normal request path (no behavior change for any
+  real client, which already sends a trimmed ≤500-char comment).
+- New regression coverage in `tests/test-punches.mjs`: a 600-char comment passed
+  straight to `append()` is capped to 500 (both in the returned record and in the
+  persisted+decrypted value), and a whitespace-only comment collapses to `null`.
+  Full suite: **54/54 green.**
+- Also corrected a stale doc count: `CLAUDE.md`'s file-tree said "53 suites"; the
+  actual count is 54 (`docs/architecture.md` was already correct). Same doc-truth
+  class as the earlier F4 fix.
+
+No CACHE_VERSION bump — `src/storage/punches.js` is backend, not a pre-cached
+asset. No API/route/i18n change.
+
+**Honest Disclosures.**
+- **Behavior change is storage-layer-only, and only for direct callers.** A caller
+  that bypassed the route and passed a >500-char or whitespace-only comment now
+  gets it capped/nulled. No HTTP client path is affected — `validComment` already
+  produced the same result before this reached the store.
+- **No data migration.** Punch lines written before this release that already hold
+  a >500-char comment (only reachable via a direct store call, not the API) are
+  left as-is; the cap applies on write, not on read.
+- **This does not touch the other F8-adjacent findings.** F2 (no UUID guard on
+  `punches by-employee/:id`) and F16 (unsigned ±7-day `clientTs` backdating) remain
+  logged and **deferred to M17** by design — they are security-lens, not quality.
+- **Boot smoke not re-run for this change.** The fix is a pure, isolated edit to one
+  function, fully exercised by the unit + full suite (encrypt → persist → decrypt
+  round-trip through the changed code). A clean-environment boot smoke is still owed
+  once before M16 closes (Phase 0 Step 3), to be run where it cannot disturb the
+  live install's `data/`, `backups/`, or `config.json`.
+
+---
+
 ## [0.53.6] — 2026-06-04 — Reports: leaves CSV export
 
 - **The reports page now exports leaves, not just timesheets.** Since the

@@ -5,13 +5,52 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.53.6._
+_Last touched in 0.53.10._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.53.6 (released 2026-06-04) — **Reports: leaves CSV
+- **Latest version:** 0.53.10 (released 2026-06-04) — **M16 Phase-4 doc-truth pass.**
+  Docs only (54/54 unchanged). Reconciled `architecture.md`'s test list to disk (added
+  the 4 missing files so all 54 are enumerated; +`sniffImageType` on the validators
+  line); verified storage/routes inventories; squared up the gitignored M16 plan
+  (added `report-overview.js` to the matrix, marked all review matrices ✅, ticked the
+  remaining Phase-3/4 checklist). RELEASES coherence confirmed (0.52.0–0.53.10, no
+  gaps). **A subsequent isolated boot smoke (temp dir on :8199, validated 0.53.10,
+  no stack traces, live :8080 untouched) then closed M16.**
+- **0.53.9** (released 2026-06-04) — **M16 low-finding batch
+  (F10/F12/F13/F14/F15).** Backend-only, no CACHE_VERSION. **F15:** new
+  `sniffImageType()` (validators.js) rejects non-image uploads by magic bytes on
+  `PUT /api/branding/logo` + `PUT /api/employees/:id/picture` (PNG/JPEG/GIF/WebP;
+  serving Content-Type still pinned) — +sniff unit tests + a route rejection test.
+  **F10:** corrections store now guards its 32-byte `masterKey` like the other six.
+  **F12:** fixed self-contradicting `writeProfile` comment. **F13 (partial):** removed
+  the `keyFor` no-op alias, deduped `commentForIn/Out` → `entryComment`, dropped
+  unused destructured deps + `void`s, un-shadowed `path` in `server.js` (the
+  helper-dedup `round1/ymd/pad2` + `esc/escapeHtml` left as reduced-scope, like F5).
+  **F14:** reviewed → **wontfix** (update-create-partial is intended; address/comments
+  uncapped is the documented 5-field design). 54/54 green.
+- **0.53.8** (released 2026-06-04) — **M16 F9: correct stale in-code
+  comments.** Comment-only — no code/behavior/API/test/asset change. Eight comments
+  that described shipped or abandoned work as pending (or under-stated the CSP) now
+  match reality: `org-settings.js`/`user-prefs.js` headers ("SCAFFOLD for M7…"),
+  `corrections.js` "hours go to the bank" (bank removed 0.22.8), `punches.js`
+  "deferred to M11" → notes the M17 trade-off, `employees.js` `TODO(M11)` → explains
+  the no-self-delete guarantee, `security-headers.js` CSP listing (now includes the
+  OSM/Nominatim origins the code allows), `mailer.js` ×2 ("Task 5/6 not done"). 54/54
+  green; no CACHE_VERSION (all backend).
+- **0.53.7** (released 2026-06-04) — **M16 F8: cap punch comments
+  at the storage layer.** `punchesStore.append()` now applies `trim()+slice(0,500)`
+  to `punch.comment`, matching the leaves/corrections stores — previously the only
+  500-char cap lived in `routes/punches.js` (`validComment`), so a direct store
+  caller could exceed it, violating the CLAUDE.md "capped at the storage layer"
+  invariant. Route cap kept as defense-in-depth (no client behavior change). +2
+  regression cases in `test-punches.mjs` (54/54 green). Also fixed CLAUDE.md's stale
+  "53 suites" → 54. Backend-only; **no CACHE_VERSION bump**. First fix landed from the
+  M16 Phase-2 sweep. Honest Disclosures in `RELEASES.md` (storage-only behavior change,
+  no migration, boot smoke still owed before M16 closes).
+- **0.53.6** (released 2026-06-04) — **Reports: leaves CSV
   export.** The dashboard's single "Export CSV" link only hit
   `/api/reports/timesheets?…&format=csv` since the 0.53.0 rebuild, so leaves were
   never downloadable. The `.rpt-actions` toolbar now has two links — **Timesheets
@@ -74,14 +113,20 @@ _Last touched in 0.53.6._
 - **0.52.3** — **M16 F4.** CLAUDE.md "~33 suites" → 53 (docs-only).
 - **0.52.2** — **M16 F3.** `index.js` month label uses `getLocale()`. CACHE v93→v94.
 - **0.52.1** — **M16 F1.** Pinned `TZ='UTC'` in `test-reports.mjs`. **Baseline 53/53 green.**
-- **M16 status:** 🚧 in progress (opened 0.52.0). Plan:
+- **M16 status:** ✅ **CLOSED at 0.53.10** (opened 0.52.0). Plan:
   `docs/superpowers/m16-code-review-plan.md`; findings:
-  `docs/superpowers/m16-findings.md` (both moved to the gitignored
-  `docs/superpowers/`). Work mode: read-only review → log to ledger →
-  Pedro triages → only then fix. **First-sweep findings all closed: F1, F3, F4, F5,
-  F6, F7 fixed; F2 (punches path-traversal) deferred to M17 by design.** Next up:
-  Phase 2 module-by-module reads (not yet started) + remaining Phase 3 invariant
-  sweeps (500-char caps, throw-vs-null contract).
+  `docs/superpowers/m16-findings.md` (both gitignored under `docs/superpowers/`).
+  Work mode was: read-only review → log to ledger → Pedro triages → only then fix.
+  Whole codebase swept (Phase 2; clean checks C1–C23); **Phase 1 (`/code-review
+  ultra`) dropped at operator request**; Phase 4 doc-truth done in 0.53.10.
+  **All findings resolved:** F1, F3–F13, F15 fixed (F8=0.53.7, F9=0.53.8,
+  F10/F12/F13-partial/F15=0.53.9); **F14 wontfix** (documented design choices);
+  **F2/F11/F16 carried into M17** (security). F13's helper-dedup is a conscious
+  reduced-scope leftover. **Closed by an isolated boot smoke** (2026-06-04): rsync
+  of the working tree to a temp dir, booted on :8199 with `PICA_PASSPHRASE`,
+  validated v0.53.10 — schedulers up, "Pica listening", no stack traces, setup →
+  me → employer routes → org-settings all 200; temp server killed + dir removed,
+  the live install on :8080 and its `data/`/`backups/`/`config.json` never touched.
 - **0.52.0** (2026-06-03) — M16 opened (plan + ledger; docs-only).
 - **Previous:** 0.51.0 (released 2026-06-03) — **Employer sees their own
   leave balance cards.** Frontend-only (`leaves.{html,js}`). The employer `/leaves`

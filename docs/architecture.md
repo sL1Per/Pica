@@ -91,7 +91,7 @@ pica/
 │   │   ├── rbac.js          # authenticate(), requireAuth, requireRole
 │   │   └── rate-limit.js    # in-memory token bucket for /api/login
 │   ├── util/                # small reusable helpers
-│   │   └── validators.js    # isUuid (path-traversal defense)
+│   │   └── validators.js    # isUuid (path-traversal defense) + sniffImageType (upload magic-byte check)
 │   ├── storage/             # one module per resource, encryption-aware
 │   │   ├── employees.js     # encrypted profiles + pictures
 │   │   ├── punches.js       # NDJSON, encrypted comment + geo
@@ -194,13 +194,17 @@ pica/
 │   ├── test-backup-scheduler.mjs   # scheduler decisions + lifecycle
 │   ├── test-security-headers.mjs   # CSP, headers, cross-file invariants
 │   ├── test-audit.mjs              # audit log: append, read, encryption, listMonths
-│   ├── test-validators.mjs         # isUuid edge cases (path-traversal defense)
+│   ├── test-validators.mjs         # isUuid edge cases + sniffImageType (upload magic-byte check)
 │   ├── test-leaves-approved.mjs    # /api/leaves/approved privacy model
 │   ├── test-leaves-carry.mjs       # vacation carry-forward + MM-DD expiry
 │   ├── test-punch-totals.mjs       # punch-page worked + break helpers
 │   ├── test-punch-manual.mjs       # isManual() clientId-prefix predicate (MANUAL badge) (0.46.0)
+│   ├── test-punch-week.mjs         # punch This-week grouping/pairing pure helpers (inline re-impl)
+│   ├── test-employee-home.mjs      # employee home (index.js) pure helpers (inline re-impl)
 │   ├── test-leaves-blocked.mjs     # employer blocked-days: helpers, store, route
-│   ├── test-employee-picture-route.mjs  # picture upload: 400 not 500 when no profile
+│   ├── test-employee-picture-route.mjs  # picture upload: 400 not 500 when no profile; non-image reject (F15)
+│   ├── test-employee-deactivation.mjs  # employee deactivate/reactivate/gated-delete routes + login refusal
+│   ├── test-user-active.mjs        # soft-deactivate: users store active flag + rbac authenticate
 │   ├── test-leaves-concurrent.mjs  # no-concurrent-leave enforcement at booking
 │   ├── test-leaves-attachment.mjs  # leave justification file: storage, policy, authz
 │   ├── test-leaves-render.mjs      # M15 leaves frontend pure helpers (day-count + partition)
@@ -501,4 +505,7 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.53.0._
+_Last touched in 0.53.10 (M16 Phase-4 doc-truth: test list reconciled to disk — all
+54 files now enumerated (+test-punch-week/-employee-home/-employee-deactivation/
+-user-active); validators line gained sniffImageType. 0.53.9: F10/F12/F13/F15 low
+batch. 0.53.8: F9 comments. 0.53.7: F8 punch-comment cap. Suite count 54)._

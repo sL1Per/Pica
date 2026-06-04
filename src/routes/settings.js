@@ -17,6 +17,7 @@
  */
 
 import { auditContext } from '../storage/audit.js';
+import { sniffImageType } from '../util/validators.js';
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB
 
@@ -173,6 +174,11 @@ export function registerSettingsRoutes(router, {
     const file = files[0];
     if (file.data.length > MAX_LOGO_BYTES) {
       return res.badRequest(`Logo exceeds ${MAX_LOGO_BYTES} bytes`, { errorCode: 'invalid_value' });
+    }
+    // Reject non-images by magic bytes (the served Content-Type is pinned to
+    // image/png regardless, so this is defense-in-depth + a clean error).
+    if (!sniffImageType(file.data)) {
+      return res.badRequest('Logo must be a PNG, JPEG, GIF, or WebP image', { errorCode: 'invalid_value' });
     }
     companyLogoStore.write(file.data);
     res.json({ ok: true });

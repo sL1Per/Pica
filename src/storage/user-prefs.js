@@ -8,11 +8,14 @@ import path from 'node:path';
  *   { "prefs": { "<userId>": { "language": "en", "colorMode": "system" } } }
  *
  * Plaintext because none of this is sensitive — and it needs to be
- * readable before the master key is derived (e.g., to render the login
- * page in the user's preferred language, once M9 lands).
+ * readable before the master key is derived (e.g., to render a page in
+ * the user's preferred language, which the server injects per-request).
  *
- * The `language` and `colorMode` values go no-op today and become
- * functional in later milestones. See README M7/M8/M9.
+ * `locale`, `colorMode`, `palette`, and the `email` opt-outs are all live:
+ * locale drives the i18n meta tag + email rendering, colorMode/palette
+ * drive the theme bootstrap, and `email.{notifications,reminders}` gate
+ * outgoing mail (see mailer.js). (The legacy 2-letter `language` field is
+ * still read and mapped to a BCP-47 `locale` on the fly — see get().)
  */
 
 export const VALID_LOCALES = Object.freeze(['en-US', 'pt-PT']);

@@ -55,7 +55,6 @@ export function makeMailer({
   mailConfigStore,
   logger,
   audit,
-  usersStore,      // reserved for Task 9 if needed; not used in this layer
   employeesStore,
   userPrefsStore,
   orgSettingsStore,
@@ -95,8 +94,9 @@ export function makeMailer({
 
         // ----------------------------------------------------------------
         // Layer 2: org-level switch for this category.
-        // Missing notifications key or missing sub-key defaults to true
-        // (Task 5 hasn't added these yet; defensive default = on).
+        // org-settings always provides the three notification keys, but we
+        // still default a missing key to true (defensive: a hand-edited file
+        // could drop one — only an explicit `false` blocks).
         // orgSettingsStore.get() may throw on I/O error — let it bubble
         // to the outer catch which resolves {sent:false, reason:'send_error'}.
         // ----------------------------------------------------------------
@@ -116,8 +116,9 @@ export function makeMailer({
         // Resolve user prefs once — used for both the user-layer gate
         // and locale resolution.  userPrefsStore.get() may throw on I/O
         // error — let it bubble to the outer catch.
-        // If the email sub-object is absent (Task 6 not done), treat all
-        // toggles as true (default on).
+        // userPrefsStore backfills the email sub-object to {notifications:true,
+        // reminders:true} for older prefs files, so a missing toggle reads as
+        // on; only an explicit `false` opts out.
         // ----------------------------------------------------------------
         const prefs = userPrefsStore.get(recipientUserId);
 

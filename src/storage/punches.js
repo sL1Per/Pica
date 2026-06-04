@@ -143,6 +143,15 @@ export function createPunchesStore(dataDir, masterKey) {
     const dir = monthDir(year, month);
     fs.mkdirSync(dir, { recursive: true });
 
+    // Cap the free-text comment at 500 chars AT THE STORAGE LAYER. The punch
+    // route also caps (routes/punches.js validComment), but storage is the
+    // trust boundary — a direct caller (test, future route, scheduler) must
+    // not be able to exceed it. trim()+slice(0,500) mirrors the leaves and
+    // corrections stores exactly; whitespace-only collapses to null.
+    const safeComment = (typeof comment === 'string' && comment.trim() !== '')
+      ? comment.trim().slice(0, 500)
+      : null;
+
     // Encrypt the optional payload. If there's nothing to hide, omit `enc`
     // entirely — keeps files smaller and makes it visible at a glance that
     // no comment/geo was stored for this line.
@@ -150,9 +159,9 @@ export function createPunchesStore(dataDir, masterKey) {
     // encrypted alongside the rest, since it's a privacy-relevant detail.
     let enc;
     const hasReason = typeof geoSkipReason === 'string' && geoSkipReason !== '';
-    if ((comment && comment !== '') || geo || hasReason) {
+    if (safeComment || geo || hasReason) {
       const payload = JSON.stringify({
-        comment: comment || null,
+        comment: safeComment,
         geo: geo || null,
         geoSkipReason: hasReason ? geoSkipReason : null,
       });
@@ -171,7 +180,7 @@ export function createPunchesStore(dataDir, masterKey) {
 
     return {
       employeeId, ts, type,
-      comment: comment || null,
+      comment: safeComment,
       geo: geo || null,
       geoSkipReason: hasReason ? geoSkipReason : null,
       clientId: clientId || null,

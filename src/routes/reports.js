@@ -29,15 +29,12 @@ export function registerReportRoutes(router, {
   usersStore,
   employeesStore,
   orgSettingsStore,
-  // server.js also passes requireRole/requireOwnerOrEmployer;
-  // accepted for call-site compatibility but access is enforced inline below
-  // (the role check is simpler and self-contained than the generic wrappers).
+  // Access is enforced inline (parseCommon) rather than via the generic
+  // role wrappers, so only requireAuth is needed here. server.js still
+  // passes requireRole/requireOwnerOrEmployer; the extra deps are simply
+  // ignored by this destructure.
   requireAuth,
-  requireRole,
-  requireOwnerOrEmployer,
 }) {
-  void requireRole;
-  void requireOwnerOrEmployer;
 
   function sendCsv(res, filename, body) {
     const buf = Buffer.from(body, 'utf8');

@@ -112,6 +112,38 @@ try {
     assert.equal(parsed.enc, undefined);
   });
 
+  await test('caps comment at 500 chars AT THE STORAGE LAYER (M16 F8)', () => {
+    // The route also caps (routes/punches.js validComment), but the store is
+    // the trust boundary — a direct caller must not be able to exceed 500,
+    // matching the corrections/leaves stores. See RELEASES 0.53.7.
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-punch-cap-'));
+    try {
+      const s = createPunchesStore(dir, masterKey);
+      const long = 'x'.repeat(600);
+      const r = s.append('frank-uuid', { type: 'in', ts: '2026-04-19T09:00:00.000Z', comment: long });
+      // The returned record is capped.
+      assert.equal(r.comment.length, 500);
+      // And so is the persisted+decrypted value — not just the return shape.
+      const list = s.listDay('frank-uuid', '2026-04-19');
+      assert.equal(list[0].comment.length, 500);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('whitespace-only comment is stored as null at the storage layer (M16 F8)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-punch-ws-'));
+    try {
+      const s = createPunchesStore(dir, masterKey);
+      const r = s.append('gina-uuid', { type: 'in', ts: '2026-04-19T09:00:00.000Z', comment: '   ' });
+      assert.equal(r.comment, null);
+      const list = s.listDay('gina-uuid', '2026-04-19');
+      assert.equal(list[0].comment, null);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   await test('append rejects invalid type', () => {
     assert.throws(() => store.append(aliceId, { type: 'pause', ts: '2026-04-19T10:00:00.000Z' }));
   });

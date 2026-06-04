@@ -7,16 +7,17 @@ import path from 'node:path';
  * One JSON file at data/org-settings.json. Plaintext — these are company
  * policy knobs, not secrets.
  *
- * The values are a SCAFFOLD for M7. Enforcement is scheduled as follows:
- *   - leaves.defaultAllowances / perEmployeeOverrides: enforced in M8
- *     (leaves request flow honors caps) and later when the dashboard
+ * Every value here is live (the early-milestone "scaffold" is long gone):
+ *   - leaves.defaultAllowances / perEmployeeOverrides: the leave-request
+ *     flow enforces caps (leaves.js wouldExceedCap) and the dashboard
  *     surfaces remaining allowance per employee.
- *   - leaves.carryForward: in M8, unused approved allowance from year N-1
- *     rolls into the year-N budget. A per-year counter ledger will be
- *     introduced at that time.
- *   - leaves.concurrentAllowed: warning banner added in M8's leaves-
- *     polish (employer can still approve; it's advisory).
- *   - backups.*: wired up in M10.
+ *   - leaves.carryForward / carryForwardExpiresAt: unused approved
+ *     vacation from year N-1 rolls into year N until the expiry date,
+ *     computed on the fly in computeBalances (no separate ledger).
+ *   - leaves.concurrentAllowed: drives the booking-time refusal and the
+ *     approval-time advisory warning.
+ *   - leaves.blockedRanges: employer-blocked dates refused at booking.
+ *   - backups.*: read by the backup scheduler.
  */
 
 export const LEAVE_TYPES = Object.freeze(['vacation', 'sick', 'appointment', 'other']);

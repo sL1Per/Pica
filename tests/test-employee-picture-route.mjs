@@ -100,6 +100,15 @@ await test('profile exists → 200 ok, picture written', async () => {
   assert.equal(getWrote().len, PNG.length);
 });
 
+await test('non-image bytes → 400 invalid_value, nothing written (M16 F15)', async () => {
+  const { handler, params, getWrote } = buildHandler({ exists: () => true });
+  const notImage = Buffer.from('this is plain text, not an image', 'utf8');
+  const res = await call(handler, { params, body: { files: [{ data: notImage }] } });
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.errorCode, 'invalid_value');
+  assert.equal(getWrote(), null);
+});
+
 await test('writePicture throws → 400, never 500', async () => {
   const { handler, params } = buildHandler({
     exists: () => true,

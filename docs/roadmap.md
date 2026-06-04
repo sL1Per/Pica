@@ -34,7 +34,7 @@ app in a usable state.
 | M13       | Reports revamp                     | ✅ 0.24.0     |
 | M14       | Add email notifications            | ✅ 0.25.0     |
 | M15       | Full UI revamp                     | ✅ 0.41.0 (closed; foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0 · employer home+team+detail 0.37.0 · settings+security 0.38.0 · preferences+profile edit 0.39.0 · reports re-skin 0.40.0 · alias-removal+dedup+bell 0.41.0) |
-| M16       | Code review / optimization / simplification | 🚧 In progress (0.52.0) |
+| M16       | Code review / optimization / simplification | ✅ 0.53.10 (closed; opened 0.52.0 · whole-codebase sweep · findings F1–F16: fixed/wontfix or deferred to M17 · doc-truth pass · isolated boot smoke passed) |
 | M17       | Full security review               | 📋 Planned    |
 | M18       | Deployment guide + TLS samples     | 📋 Planned    |
 | M19       | User guide                         | 📋 Planned    |
@@ -429,13 +429,20 @@ posture rather than a moving target.
 > new `expectedStart`/`graceMinutes` working-time setting. A feature shipped
 > mid-M16 at operator request; M16 review work continues below.
 
-- **M16 — Code review / optimization / simplification.** 🚧 In progress
+- **M16 — Code review / optimization / simplification.** ✅ **Closed at 0.53.10**
   (opened 0.52.0). A full pass over the codebase for correctness, dead code,
-  duplication, and simplification opportunities now that the UI revamp has
-  settled. No new features. Plan: `docs/m16-code-review-plan.md`; findings are
-  logged to `docs/m16-findings.md` and triaged before any fix (security
-  findings are explicitly deferred to M17). First sweep already found the
-  baseline is red (`test-reports.mjs`).
+  duplication, and simplification now that the UI revamp settled. No new features.
+  Plan/findings live in the gitignored `docs/superpowers/` (`m16-code-review-plan.md`,
+  `m16-findings.md`); every issue was triaged before any fix (security findings
+  deferred to M17). The whole codebase was swept (findings F1–F16, clean checks
+  C1–C23); the automated `/code-review ultra` phase was **dropped at operator
+  request**; a doc-truth pass + an isolated boot smoke (validated 0.53.10) closed it. Fixes ship as
+  small releases: F1, F3–F13 + F15 done (F8 punch-comment cap 0.53.7; F9 stale
+  comments 0.53.8; F10/F12/F13/F15 low batch 0.53.9; Phase-4 doc-truth 0.53.10);
+  F14 closed wontfix (documented design choices); F2/F11/F16 deferred to M17. **All
+  phases complete + isolated boot smoke passed (validated 0.53.10) → M16 CLOSED.**
+  Next: M17 (security review) inherits F2 (punch `:id` UUID guard), F11 (CSV formula
+  injection), F16 (unsigned ±7-day punch `clientTs`).
 - **M17 — Full security review.** End-to-end review of the threat model,
   encryption, auth, input validation, and the audit log against the final
   feature set.

@@ -11,8 +11,12 @@
  *     - default-src 'self'                — same-origin only by default
  *     - script-src  'self' 'sha256-…'     — local scripts + the one inline bootstrap
  *     - style-src   'self'                — local stylesheets only (no inline)
- *     - img-src     'self' data: blob:    — local + dataURLs (logo previews) + blob: (PWA icons)
- *     - connect-src 'self'                — fetch()/XHR/WebSocket back to the same origin
+ *     - img-src     'self' data: blob: https://tile.openstreetmap.org
+ *                                         — local + dataURLs (logo previews) + blob: (PWA icons)
+ *                                           + OSM map tiles on the punch page
+ *     - connect-src 'self' https://nominatim.openstreetmap.org
+ *                                         — same-origin fetch/XHR/WS + Nominatim
+ *                                           reverse-geocoding of punch coordinates
  *     - font-src    'self'                — local fonts only
  *     - object-src  'none'                — no <object> / <embed> at all
  *     - base-uri    'self'                — block <base> redirection

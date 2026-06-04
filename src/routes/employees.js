@@ -2,7 +2,7 @@ import { EMPLOYEE_EDITABLE, ALL_EDITABLE } from '../storage/employees.js';
 import { hoursReport } from '../storage/reports.js';
 import { computePeriod, ymdOf } from '../storage/period.js';
 import { auditContext } from '../storage/audit.js';
-import { isUuid } from '../util/validators.js';
+import { isUuid, sniffImageType } from '../util/validators.js';
 
 /**
  * Employee management endpoints.
@@ -24,7 +24,6 @@ export function registerEmployeeRoutes(router, {
   correctionsStore,
   orgSettingsStore,
   passwordLimiter,
-  requireAuth,
   requireRole,
   requireOwnerOrEmployer,
   auditStore = null,
@@ -311,8 +310,10 @@ export function registerEmployeeRoutes(router, {
   // Gated behind deactivation: refuses unless the account is already
   // deactivated. This makes permanent loss a deliberate two-step
   // (deactivate → erase), never a one-click on an active employee.
-  // Forbidden to delete self — avoids locking the employer out.
-  // TODO(M11): prevent deleting the last employer account.
+  // Forbidden to delete self — avoids locking the employer out. This also
+  // structurally protects the LAST employer: deleting any account requires
+  // it be deactivated first and not be yourself, so the sole remaining
+  // employer (always == the caller) can never be deleted.
   // --------------------------------------------------------------------------
   router.delete('/api/employees/:id', requireRole('employer')(async (req, res) => {
     if (rejectIfBadId(req, res)) return;
@@ -409,6 +410,12 @@ export function registerEmployeeRoutes(router, {
     if (file.data.length > MAX_PICTURE_BYTES) {
       return res.badRequest(`Picture exceeds ${MAX_PICTURE_BYTES} bytes`, { errorCode: 'invalid_value' });
     }
+    // Reject non-images by magic bytes (the picture is served with a pinned
+    // image/jpeg Content-Type regardless; this is defense-in-depth + a clean
+    // error rather than storing bytes that render as a broken image).
+    if (!sniffImageType(file.data)) {
+      return res.badRequest('Picture must be a PNG, JPEG, GIF, or WebP image', { errorCode: 'invalid_value' });
+    }
     // A picture only makes sense once the profile exists: it's shown
     // next to profile data in the list/summary views, and an orphan
     // <id>.picture with no <id>.json never surfaces there. We used to
@@ -503,7 +510,4 @@ export function registerEmployeeRoutes(router, {
       vars: {},
     });
   }));
-
-  // Unused imports suppressed:
-  void requireAuth;
 }

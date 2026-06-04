@@ -127,10 +127,10 @@ export function registerCorrectionRoutes(router, {
     //   - 'in'   → create just an in-punch at start
     //   - 'out'  → create just an out-punch at end
     const baseId = `correction:${existing.id}`;
-    const commentForIn = existing.isJustified
-      ? `Manual entry: ${existing.justification}`.slice(0, 500)
-      : 'Manual entry (no justification)';
-    const commentForOut = existing.isJustified
+    // One materialized-entry comment, derived from the justification (capped
+    // to the 500-char free-text limit). Used on the IN punch, or on the OUT
+    // punch when the correction is out-only.
+    const entryComment = existing.isJustified
       ? `Manual entry: ${existing.justification}`.slice(0, 500)
       : 'Manual entry (no justification)';
 
@@ -140,7 +140,7 @@ export function registerCorrectionRoutes(router, {
         punchesStore.append(existing.employeeId, {
           type: 'in',
           ts: existing.start,
-          comment: commentForIn,
+          comment: entryComment,
           clientId: `${baseId}:in`,
         });
       }
@@ -153,7 +153,7 @@ export function registerCorrectionRoutes(router, {
           ts: existing.end,
           // Only put the comment on the OUT punch when this is an out-only
           // correction; for 'both' the comment already lives on the in punch.
-          comment: existing.kind === 'out' ? commentForOut : null,
+          comment: existing.kind === 'out' ? entryComment : null,
           clientId: `${baseId}:out`,
         });
       }
