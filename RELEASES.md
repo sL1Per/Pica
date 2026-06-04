@@ -14,6 +14,40 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.53.5] — 2026-06-04 — Reports: inline-style CSP violations gone
+
+- **Fixed a flood of "Applying inline style violates … Content Security Policy
+  directive 'style-src'" errors on the reports page.** Two spots injected
+  `style="…"` attributes via `innerHTML`, and Pica's CSP `style-src` has no
+  `unsafe-inline`, so each one fired a violation:
+  - **Avatars** — the by-person table and punctuality watchlist render a
+    hue-tinted initials avatar per employee; `avatarSpan()` baked the tint in as
+    `style="--hue:…"` (one violation per avatar, across two sections).
+  - **Minibars** — the by-person "vs target" progress bar (`miniBar()` in
+    `charts.js`) set its width as `style="width:…%"` (one per row).
+  Both now carry the value as a `data-*` attribute (`data-hue` / `data-pct`)
+  applied through the CSSOM after the markup lands in the DOM
+  (`hydrateAvatars()`, new `hydrateMiniBars()`) — the CSP-safe pattern the rest
+  of the app already uses (`topbar.js`, `leaves.js`, `employees.js`,
+  `index.js`). `.minibar__fill` now reads `width: var(--pct)`.
+
+Frontend-only (`reports.js`, `charts.js`, `reports.css`). `charts.js` is in
+`PRECACHE_URLS`, so `CACHE_VERSION` v100 → v101. No API, i18n, or test changes.
+`docs/development.md` corrected — its note that one-off inline `style=`
+attributes are "allowed" was wrong; CSP blocks them.
+
+### Honest Disclosures
+
+- Purely a CSP-compliance fix — the avatars and bars rendered correctly before
+  because the browser still parsed the inline values; only the console was
+  noisy. These were the only inline styles on the reports page, so this clears
+  its console entirely.
+- `miniBar()` / `hydrateMiniBars()` live in the shared `charts.js` but are only
+  consumed by `reports.js` today; any future caller must call `hydrateMiniBars`
+  after inserting the markup or the bars render at 0% width.
+
+---
+
 ## [0.53.4] — 2026-06-03 — Reports: by-person table scrolls on mobile
 
 - **By-person table no longer runs off-screen on phones.** The table has 8

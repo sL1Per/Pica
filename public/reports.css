@@ -216,6 +216,7 @@
 .minibar__fill {
   display: block;
   height: 100%;
+  width: var(--pct, 0%); /* set via CSSOM in hydrateMiniBars — CSP blocks inline style */
   background: var(--honey, #4060d0);
 }
 

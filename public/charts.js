@@ -82,6 +82,17 @@ export function donutChart({ slices, centerValue, centerLabel, ariaLabel }) {
 export function miniBar(pct) {
   const p = pct == null ? 0 : Math.max(0, Math.min(100, pct));
   const label = pct == null ? '—' : `${Math.round(pct)}%`;
-  return `<span class="minibar"><span class="minibar__fill" style="width:${p}%"></span></span>` +
+  // Width rides as data-pct, applied via the CSSOM after insertion (CSP's
+  // style-src has no unsafe-inline, so an inline style="width:…" is blocked).
+  // The caller hydrates with hydrateMiniBars(); CSS reads --pct.
+  return `<span class="minibar"><span class="minibar__fill" data-pct="${p}"></span></span>` +
          `<span class="minibar__lbl">${esc(label)}</span>`;
+}
+
+/** Apply each minibar's data-pct via the CSSOM. Call after the markup lands
+ *  in the DOM — see miniBar() for why the width can't be an inline style. */
+export function hydrateMiniBars(root) {
+  for (const el of root.querySelectorAll('.minibar__fill[data-pct]')) {
+    el.style.setProperty('--pct', `${el.dataset.pct}%`);
+  }
 }

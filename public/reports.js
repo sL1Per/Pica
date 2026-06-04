@@ -1,6 +1,6 @@
 import { mountTopBar, mountFooter } from '/topbar.js';
 import { applyTranslations, t, translateError, fmtHours } from '/i18n.js';
-import { barChart, donutChart, miniBar } from '/charts.js';
+import { barChart, donutChart, miniBar, hydrateMiniBars } from '/charts.js';
 
 mountTopBar(); mountFooter(); applyTranslations();
 const $ = (id) => document.getElementById(id);
@@ -31,10 +31,14 @@ const setActive = (c, attr, val) => { for (const b of c.querySelectorAll('.chip'
 // placeholder and hydrate the <img> in JS once the markup is in the DOM.
 const initials = (name) => (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?';
 const hue = (s) => { let h = 0; for (const ch of String(s || '')) h = (h + ch.charCodeAt(0)) % 360; return h; };
+// --hue rides as a data attribute, applied via the CSSOM in hydrateAvatars —
+// CSP's style-src forbids inline style attributes (see topbar.js for the same
+// dance). An inline style="--hue:…" here fires a violation per avatar.
 const avatarSpan = (id, name) =>
-  `<span class="rpt-av" data-id="${esc(id)}" style="--hue:${hue(name)}">${esc(initials(name))}</span>`;
+  `<span class="rpt-av" data-id="${esc(id)}" data-hue="${hue(name)}">${esc(initials(name))}</span>`;
 function hydrateAvatars(root) {
   for (const el of root.querySelectorAll('.rpt-av[data-id]')) {
+    if (el.dataset.hue) el.style.setProperty('--hue', el.dataset.hue);
     const id = el.dataset.id; if (!id) continue;
     const img = new Image(); img.alt = '';
     img.addEventListener('load', () => { el.textContent = ''; el.appendChild(img); });
@@ -119,6 +123,7 @@ function renderPeople(d) {
     `<td>${p.lateDays}</td><td>${p.avgBreakMin}m</td></tr>`).join('');
   $('people-table').innerHTML = `<table class="data-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
   hydrateAvatars($('people-table'));
+  hydrateMiniBars($('people-table'));
 }
 
 function renderWatchlist(d) {

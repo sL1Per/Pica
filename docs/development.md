@@ -164,9 +164,14 @@ both resolve `/topbar.js` the same way).
   attributes to an HTML page, the JS must call `applyTranslations()`
   at module load.
 - **Don't add inline styles in `public/`.** Use the page's `.css`
-  file or a token from `app.css`. The only inline styles allowed are
-  one-off `style="margin-top: var(--gap-3)"` adjustments where
-  adding a class would be more code than it's worth.
+  file or a token from `app.css`. The CSP `style-src` has no
+  `unsafe-inline`, so a `style="…"` attribute — whether hand-written
+  in HTML or injected via `innerHTML` — is **blocked** and floods the
+  console with violations. To set a value dynamically (e.g. a per-row
+  `--hue` or `--pct`), carry it as a `data-*` attribute and apply it
+  through the CSSOM after the node is in the DOM
+  (`el.style.setProperty('--hue', el.dataset.hue)`). The CSSOM is not
+  subject to `style-src`. See `topbar.js` / `reports.js` for the pattern.
 
 ---
 
@@ -470,4 +475,4 @@ losing them is how documentation rots.
 
 ---
 
-_Last touched in 0.26.0._
+_Last touched in 0.53.5._
