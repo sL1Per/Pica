@@ -14,6 +14,27 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.53.4] — 2026-06-03 — Reports: by-person table scrolls on mobile
+
+- **By-person table no longer runs off-screen on phones.** The table has 8
+  `white-space: nowrap` columns and a sticky first column — both of which assume
+  a horizontal-scroll wrapper, but the `#people-table` container was never given
+  one, so on narrow screens the table overflowed the viewport. Added
+  `overflow-x: auto` (+ `-webkit-overflow-scrolling: touch`) so it scrolls
+  sideways inside its card while the name column stays pinned. Same pattern the
+  leaves/punch/settings tables already use.
+
+Frontend-only (`reports.css`). `CACHE_VERSION` v99 → v100 to flush the runtime
+CSS cache. No API, i18n, or test changes.
+
+### Honest Disclosures
+
+- Horizontal scroll is the chosen trade-off (keeps every column visible);
+  columns are not collapsed or reflowed into cards on mobile. The pinned name
+  column means a phone user scrolls the metrics under a fixed identity column.
+
+---
+
 ## [0.53.3] — 2026-06-03 — Reports dashboard: styling consistency pass
 
 A pass over the reports page to make it match the rest of the site. Root cause

@@ -271,6 +271,14 @@
 }
 
 /* ── People table (inside .card) ─────────────────────────────────────────── */
+/* The 8 nowrap columns exceed a phone's width, so the wrapper scrolls
+   horizontally (the first name column stays put via position:sticky) instead
+   of pushing the whole table off-screen. Mirrors the leaves/punch tables. */
+#people-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 #people-table table {
   width: 100%;
   border-collapse: separate;
