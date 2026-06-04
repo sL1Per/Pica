@@ -5,13 +5,24 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.53.4._
+_Last touched in 0.53.6._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.53.4 (released 2026-06-03) — **Reports by-person table
+- **Latest version:** 0.53.6 (released 2026-06-04) — **Reports: leaves CSV
+  export.** The dashboard's single "Export CSV" link only hit
+  `/api/reports/timesheets?…&format=csv` since the 0.53.0 rebuild, so leaves were
+  never downloadable. The `.rpt-actions` toolbar now has two links — **Timesheets
+  CSV** + **Leaves CSV** — each wired to its existing endpoint and sharing the
+  page's `qs()` (scope/period/anchor honored). Frontend-only (`reports.{html,js}`);
+  i18n `reports.exportCsv` → `reports.exportTimesheets`/`reports.exportLeaves` both
+  locales; `CACHE_VERSION` v101→v102; no API/test change.
+- **0.53.5** (released 2026-06-04) — **Reports inline-style CSP violations gone**
+  (avatars + minibars moved to `data-*` + CSSOM hydration). Frontend-only;
+  `CACHE_VERSION` v100→v101.
+- **0.53.4** (released 2026-06-03) — **Reports by-person table
   scrolls horizontally on mobile** (added the missing `overflow-x:auto` wrapper
   the sticky-first-column + nowrap design already assumed). Frontend-only;
   `CACHE_VERSION` v99→v100.

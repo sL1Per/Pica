@@ -14,6 +14,40 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.53.6] — 2026-06-04 — Reports: leaves CSV export
+
+- **The reports page now exports leaves, not just timesheets.** Since the
+  0.53.0 dashboard rebuild, the page carried a single "Export CSV" link wired
+  only to `/api/reports/timesheets?…&format=csv` — so the leaves data was never
+  downloadable from the UI, even though the `/api/reports/leaves?…&format=csv`
+  endpoint (and its `leavesSingleCsv` / `leavesMatrixCsv` builders) still
+  existed and worked. The orphaned endpoint is now wired to a button.
+- The `.rpt-actions` toolbar has **two** download links: **Timesheets CSV** and
+  **Leaves CSV**. Both share the page's `qs()` builder, so each honors the
+  current scope (All team → matrix CSV; one employee → single CSV), period type
+  (Day/Week/Month/Year), and ◀/▶ anchor automatically.
+
+Frontend-only (`reports.html`, `reports.js`). `reports.js` is in
+`PRECACHE_URLS`, so `CACHE_VERSION` v101 → v102. The i18n key
+`reports.exportCsv` was replaced by `reports.exportTimesheets` /
+`reports.exportLeaves` (both locales). No API or test changes — the four CSV
+builders are already covered by `test-reports` / `test-reports-routes`.
+
+### Honest Disclosures
+
+- **Two separate files, not real spreadsheet tabs.** The TODO asked for the
+  leaves data "on a different sheet," but a `.csv` file is flat. A true
+  multi-sheet `.xlsx` (a zip of OOXML) would mean hand-rolling a ZIP writer to
+  stay zero-dependency; that was declined as disproportionate. Two downloads
+  deliver the same data with no new format code.
+- **No new behavior in the CSV itself.** This wires up the existing leaves CSV
+  output verbatim; the columns/rows are unchanged from the M13 leaves report.
+- **Not a fresh live browser pass.** Verified by `node --check` and the report
+  suites (all green); the live install's smoke `rm -rf data` is disallowed
+  here, so the two new links were not clicked in a real authed session.
+
+---
+
 ## [0.53.5] — 2026-06-04 — Reports: inline-style CSP violations gone
 
 - **Fixed a flood of "Applying inline style violates … Content Security Policy

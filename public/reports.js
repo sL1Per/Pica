@@ -20,6 +20,12 @@ const csvUrl = () => {
   const p = qs(); p.set('format', 'csv');
   return `/api/reports/timesheets?${p.toString()}`;
 };
+// Leaves export is a separate file (CSV has no sheets/tabs): same scope/period
+// query, different endpoint. The server picks single vs. matrix CSV by scope.
+const leavesCsvUrl = () => {
+  const p = qs(); p.set('format', 'csv');
+  return `/api/reports/leaves?${p.toString()}`;
+};
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -60,6 +66,7 @@ async function load() {
   state.anchor = d.period.from;
   $('period-label').textContent = d.period.label;
   $('csv-link').href = csvUrl();
+  $('csv-leaves-link').href = leavesCsvUrl();
   render(d);
 }
 

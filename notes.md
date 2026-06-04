@@ -19,6 +19,9 @@
 - [**DONE**] Correction modal buttons are not align
 - [**DONE**] on the punch page, this week tab, search bar is missing icon and white background, like the one on the team page
 - [**DONE**] Clicking things from the bell do not show the modal and go to the respective pages instead. It should show the modals.
+- [**DONE**] On mobile version in the report page the by person table goes off screen.
+- [**DONE**] Console errors on report page regarding inline styling
+- [**DONE**] Reports to csv not showing leaves part, Add a leaves report and add it on a different sheet. (0.53.6: two CSV download links — Timesheets CSV + Leaves CSV. Real .xlsx multi-sheet declined to stay zero-dep.)
 
 ### Change
 
@@ -52,7 +55,7 @@
 ### Before Production
 
 - test backup restore
-- test masterkey rotation
+- test master-key rotation
 - Deploy server to make it accessible by other people, INTRANET only?
 - ssl ? - can be self-signed ..
 - Update documentation fully
