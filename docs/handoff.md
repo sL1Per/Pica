@@ -74,8 +74,10 @@ _Last touched in 0.53.6._
 - **0.52.3** — **M16 F4.** CLAUDE.md "~33 suites" → 53 (docs-only).
 - **0.52.2** — **M16 F3.** `index.js` month label uses `getLocale()`. CACHE v93→v94.
 - **0.52.1** — **M16 F1.** Pinned `TZ='UTC'` in `test-reports.mjs`. **Baseline 53/53 green.**
-- **M16 status:** 🚧 in progress (opened 0.52.0). Plan: `docs/m16-code-review-plan.md`;
-  findings: `docs/m16-findings.md`. Work mode: read-only review → log to ledger →
+- **M16 status:** 🚧 in progress (opened 0.52.0). Plan:
+  `docs/superpowers/m16-code-review-plan.md`; findings:
+  `docs/superpowers/m16-findings.md` (both moved to the gitignored
+  `docs/superpowers/`). Work mode: read-only review → log to ledger →
   Pedro triages → only then fix. **First-sweep findings all closed: F1, F3, F4, F5,
   F6, F7 fixed; F2 (punches path-traversal) deferred to M17 by design.** Next up:
   Phase 2 module-by-module reads (not yet started) + remaining Phase 3 invariant
