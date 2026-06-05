@@ -14,6 +14,51 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.54.5] — 2026-06-05 — M17 Phase 3: docs reconciliation (closes M17)
+
+Documentation-only. Closes the M17 full-security-review milestone by folding
+the accepted residual-risk findings into `docs/security.md` and reconciling the
+doc against the code. **No code change.**
+
+- **Accepted residual risks documented** in the "Known limitations" section, each
+  with its rationale: S4 (login limiter is per-IP, no XFF / no per-account lockout),
+  S6 (stateless logout doesn't revoke a captured cookie), S8 (404-vs-403 object-
+  existence oracle, gated by unguessable UUIDs), S10 (8-char master-passphrase
+  floor — operators should choose a long one), S12 (audit log is tamper-evident
+  but not deletion-proof), and the minor S9 (multipart part-count) + S14 (attachment
+  ext/MIME vs magic bytes) notes.
+- **Audit-event list corrected:** added `employee.deactivated` / `employee.reactivated`
+  (0.43.0) to "What's logged". `punch.backdated` was already added in 0.54.3.
+- **Stale note fixed:** the old "No audit log of approvals" limitation (which said
+  "M12 will add" a separate audit log) was rewritten — approvals have been audited
+  as `leave.decision` / `correction.decision` since 0.21.0, and the separate audit
+  log exists.
+- **Login rate-limit doc corrected** (folded in at 0.54.4): the "10 per 5 minutes"
+  note was wrong; the limiter is 10/min.
+
+### M17 outcome
+
+The full security review is complete: Phase 1 fixed the three inherited findings
+(S1–S3, 0.54.1–0.54.3); Phase 2 swept all 11 domains read-only (**0 critical / 0
+high / 0 medium / 12 low / 3 info**); Phase 3 shipped the four agreed hardening
+fixes (S5/S7/S13/S15, 0.54.4) and documented the rest (this release). No cross-
+tenant data access, auth bypass, traversal-write, injection, crypto weakness, or
+secret leakage was found. Full findings ledger + per-domain clean checks live in
+the gitignored `docs/superpowers/m17-findings.md`.
+
+### Honest Disclosures
+
+- **Not a formal pentest.** A single-reviewer manual sweep over ~24k LOC will miss
+  things; the regression tests added in 0.54.1–0.54.4 are the durable net.
+- **S11 (info — `isAuthFailure` regex-matches Node's GCM error text) is not in
+  security.md** — it's an internal code-robustness note, not a user-facing residual
+  risk; it stays tracked in the M17 ledger only.
+- **Several accepted risks are deployment-dependent** (S4/S7 proxy/TLS, S10
+  passphrase strength). The operator-facing guidance for those lands properly in
+  M18 (deployment guide).
+
+---
+
 ## [0.54.4] — 2026-06-05 — M17 Phase-2 hardening (S5, S7, S13, S15)
 
 Four low-severity hardening fixes from the M17 Phase-2 domain sweep (the sweep

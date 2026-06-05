@@ -5,13 +5,22 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.54.4._
+_Last touched in 0.54.5._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.54.4 (released 2026-06-05) — **M17 Phase-2 hardening
+- **Latest version:** 0.54.5 (released 2026-06-05) — **M17 Phase 3: docs
+  reconciliation — CLOSES M17.** Docs-only (no code change). Folded the accepted
+  residual-risk findings (S4/S6/S8/S9/S10/S12/S14) into `docs/security.md` "Known
+  limitations" with rationale; added `employee.deactivated`/`reactivated` to the
+  audit-event list; rewrote the stale "No audit log of approvals" note (approvals
+  have been audited since 0.21.0). **M17 (full security review) is now COMPLETE:**
+  Phase 1 fixed S1–S3 (0.54.1–0.54.3), Phase 2 swept all 11 domains read-only (**0
+  crit / 0 high / 0 med / 12 low / 3 info**), Phase 3 fixed S5/S7/S13/S15 (0.54.4) +
+  documented the rest (0.54.5). No new test (docs-only); suite stays 56.
+- **0.54.4** (released 2026-06-05) — **M17 Phase-2 hardening
   (S5/S7/S13/S15).** Backend-only. **S5:** the rate-limiter `sweep()` is now scheduled
   (unref'd 5-min interval in `server.js`) so the hits map can't grow unbounded. **S7:**
   session cookie `Secure` now set when `isProduction` OR `X-Forwarded-Proto: https`

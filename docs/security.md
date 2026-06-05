@@ -489,6 +489,8 @@ rotate by calendar month.
 - `password.self_change` (success + invalid_credentials failure)
 - `password.reset_by_employer`
 - `employee.created` / `employee.deleted`
+- `employee.deactivated` / `employee.reactivated` (0.43.0) — soft
+  deactivate/reactivate of an account (records target + role)
 - `leave.decision` (approve, reject, cancelled-by-employer for
   someone else's leave)
 - `correction.decision` (approve, reject)
@@ -873,12 +875,13 @@ form submissions in modern browsers. This is sufficient for the
 threat model — see M12 for explicit token-based CSRF as belt-
 and-suspenders.
 
-### No audit log of approvals
-Approving a leave or correction writes the decision to the NDJSON
-event log, including the deciding user's ID. That's effectively an
-audit log already. M12 will add a separate, append-only audit
-record for sensitive operations like backup restores and user
-deletions.
+### Approvals are audited (historical note)
+Leave and correction decisions are recorded twice: in the resource's
+own NDJSON event timeline (with the deciding user's id) **and** in the
+encrypted append-only audit log as `leave.decision` / `correction.decision`
+(M12 Drop 3, 0.21.0). The separate audit log this section once said "M12
+will add" now exists and covers backup restores, user deletions, security
+operations, and more (see "What's logged" above).
 
 ### Limited rate limiting beyond auth + security ops
 Login (10/min/IP), password ops (5/hr), and the heavy security ops
@@ -888,6 +891,59 @@ uploads) are **not** rate-limited — they're bounded by the body-size
 and 500-char free-text caps, and the threat model assumes authenticated
 users are not adversarial (M17 S15, accepted). Easy to add per route if
 abuse becomes a concern.
+
+The login limiter keys on the **source IP** only (M17 S4, accepted): no
+`X-Forwarded-For` parsing and no per-account lockout. Behind a reverse
+proxy every client collapses to the proxy IP, so the cap becomes global;
+with direct exposure an attacker rotating IPs sidesteps the per-IP cap.
+The per-account-lockout omission is deliberate (it would let anyone lock
+out a colleague by guessing). Trusted-proxy `X-Forwarded-For` support is
+a possible M18 (deployment) addition.
+
+### Stateless logout doesn't revoke a captured cookie (M17 S6)
+Sessions are stateless signed cookies, so logout only clears the
+client's cookie — there's no server-side session store to purge. A
+cookie that was *already captured* stays valid until it expires (7 days)
+unless one of the global invalidators fires: a password change (the
+`iat < passwordChangedAt` check), account deactivation (`active:false`),
+or a master-key rotation/restart (which changes the signing key).
+Accepted: capturing an `HttpOnly`/`Secure` cookie already implies a
+host/TLS compromise, and the three invalidators cover the realistic
+"revoke a specific user now" need.
+
+### Object-existence oracle on owned resources (M17 S8)
+`GET /api/leaves/:id`, `/api/corrections/:id`, and the attachment
+endpoints check existence before ownership, so an authenticated user
+gets `404` for an id that doesn't exist but `403` for one that exists
+but isn't theirs — revealing only *that* an id exists. Accepted: ids are
+unguessable random UUIDv4 (no enumeration) and no content is disclosed.
+
+### Master passphrase minimum is 8 characters (M17 S10)
+The passphrase that wraps the data-encryption key has the same 8-char
+floor as user passwords, even though it protects everything. scrypt
+N=2¹⁷ makes brute-force expensive and the passphrase is operator-chosen
+on a self-hosted box, so the floor is accepted — but **operators should
+choose a long, high-entropy master passphrase**; 8 characters is a hard
+minimum, not a recommendation.
+
+### Audit log is tamper-evident, not deletion-proof (M17 S12)
+Each audit line is independently AES-GCM-encrypted, so *modifying* a
+line's content is detected (decryption fails loudly on read). There is
+no hash chain or sequence binding, so an attacker with filesystem write
+access can **delete, truncate, reorder, or splice** whole lines without
+detection. Accepted: such an attacker has already compromised the host.
+A future hardening could chain each line's AAD to the previous line's
+tag.
+
+### Minor accepted input-validation notes (M17 S9, S14)
+- The multipart parser caps total body size (5 MB / 6 MB attachment /
+  200 MB restore) but not the *number* of parts; at those sizes the
+  part count and memory stay bounded (S9).
+- Leave attachments are validated by extension + declared MIME, not by
+  magic bytes (images *are* magic-byte-sniffed). A mismatched-content
+  file is neutralized by serving every attachment
+  `Content-Disposition: attachment` + `nosniff` (force-download, never
+  inline), so there is no in-browser execution path (S14).
 
 ### No SOC2 / GDPR compliance claims
 Pica is a tool. Compliance is a property of how you operate it.
@@ -906,4 +962,4 @@ patch.
 
 ---
 
-_Last touched in 0.54.4 (M17 Phase-2 hardening: S7 cookie Secure via X-Forwarded-Proto, S13 COOP/CORP headers, S15 security-op rate limit, S5 limiter sweep)._
+_Last touched in 0.54.5 (M17 Phase-3 docs reconciliation: folded accepted residual risks S4/S6/S8/S9/S10/S12/S14 into Known Limitations; added employee.deactivated/reactivated to the audit-event list; corrected the stale "approvals not audited" note)._
