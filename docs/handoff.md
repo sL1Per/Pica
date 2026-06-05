@@ -5,13 +5,30 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.53.10._
+_Last touched in 0.54.1._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.53.10 (released 2026-06-04) — **M16 Phase-4 doc-truth pass.**
+- **Latest version:** 0.54.1 (released 2026-06-04) — **M17 S1: punch endpoint
+  path-traversal guard.** Closes the punches sibling of the 0.22.0 employees traversal
+  bug (M16 F2 → S1, high). `GET /api/punches/by-employee/:id` now rejects a non-UUID
+  `:id` with `400 invalid_id`, and `punchesStore.monthFile()` (the path chokepoint)
+  throws `invalid_id` — two-layer, mirroring employees. Impact was low (read-only,
+  employer-only reach, no content disclosure). +`test-punches-route.mjs` + a store
+  traversal case; migrated punch/reports test fixtures to valid UUIDs (suite 54→**55**).
+  security.md advisory updated; no CACHE_VERSION (backend).
+- **0.54.0** (released 2026-06-04) — **M17 opens: security-review
+  plan + findings ledger.** Docs only (54/54 unchanged). Set up the gitignored
+  `docs/superpowers/m17-security-review-plan.md` (scope, Phase-0→3, threat-model
+  severity rubric, cadence) + `m17-findings.md`, seeded with the three inherited M16
+  security findings: **S1** (was F2, high — punch `by-employee/:id` builds a disk path
+  from an unvalidated id, traversal class), **S2** (was F11, medium — CSV formula
+  injection), **S3** (was F16, medium — unsigned ±7-day client punch timestamp).
+  Nothing fixed yet; first step is Phase 1 (fix S1–S3, each its own release), then the
+  11-domain Phase-2 sweep. **M17 is where security fixes land** (M16 deferred them here).
+- **0.53.10** (released 2026-06-04) — **M16 Phase-4 doc-truth pass.**
   Docs only (54/54 unchanged). Reconciled `architecture.md`'s test list to disk (added
   the 4 missing files so all 54 are enumerated; +`sniffImageType` on the validators
   line); verified storage/routes inventories; squared up the gitignored M16 plan

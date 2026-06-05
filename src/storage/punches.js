@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { encryptField, decryptField } from '../crypto/aes.js';
+import { isUuid } from '../util/validators.js';
 
 /**
  * Punches storage.
@@ -44,6 +45,16 @@ export function createPunchesStore(dataDir, masterKey) {
   }
 
   function monthFile(employeeId, year, month) {
+    // Defense-in-depth against path traversal: the employeeId becomes a path
+    // segment, so reject anything that isn't a UUID before it reaches
+    // path.join (a crafted id like '../foo' would otherwise escape the punches
+    // tree — the same class as the 0.22.0 employees fix). The route also
+    // validates at the edge for a clean 400; storage can't trust callers.
+    if (!isUuid(employeeId)) {
+      const e = new Error('Invalid employee id');
+      e.code = 'invalid_id';
+      throw e;
+    }
     return path.join(monthDir(year, month), `${employeeId}.ndjson`);
   }
 
@@ -117,6 +128,10 @@ export function createPunchesStore(dataDir, masterKey) {
     const out = [];
     for (const name of files) {
       const employeeId = name.slice(0, -7); // strip ".ndjson"
+      // Skip any stray file whose name isn't a valid employee UUID — monthFile()
+      // now throws on non-UUID ids, and a malformed file shouldn't break the
+      // employer's whole daily view.
+      if (!isUuid(employeeId)) continue;
       out.push(...readFile(employeeId, y, m).filter((p) => p.ts.startsWith(dateYmd)));
     }
     // Return chronologically — older first.

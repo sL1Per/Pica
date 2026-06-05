@@ -648,6 +648,23 @@ proof-of-concept (`curl PUT /api/employees/..%2F..%2Fmarker/picture`)
 that wrote `pica-evil-marker.{json,picture}` to the project root in
 0.21.0 returns `400 invalid_id` in 0.22.0, with no file written.
 
+**Sibling finding — punches (M17 S1, fixed 0.54.1).** The 0.22.0 fix
+covered the employees store but `GET /api/punches/by-employee/:id` was
+missed: `punchesStore.monthFile()` joined the raw `:id` into
+`data/punches/<yyyy>/<mm>/<id>.ndjson` with no UUID guard. **Severity:
+lower than the 0.22.0 bug** — this is a *read* path, and only an
+employer could reach it (a non-employer passes `requireOwnerOrEmployer`
+only when `:id === their own user id`, which can't be a traversal
+string). The read also could not disclose file contents: lines are
+parsed as JSON punch records and decrypted under an AAD bound to the
+id, so a non-Pica file yields `[]`. The practical impact was reading
+arbitrary `*.ndjson`-suffixed paths (existence probing) — no data
+disclosure, employer-only. Fixed with the same two-layer defense: the
+route rejects a non-UUID `:id` with `400 invalid_id`, and
+`punchesStore.monthFile()` throws `invalid_id` before any `path.join`.
+Regression tests: `tests/test-punches-route.mjs` (route 400) and a
+store-level traversal case in `tests/test-punches.mjs`.
+
 ---
 
 ## Service Worker caching
@@ -781,4 +798,4 @@ patch.
 
 ---
 
-_Last touched in 0.26.0._
+_Last touched in 0.54.1 (M17 S1 — punches `:id` path-traversal advisory + fix)._

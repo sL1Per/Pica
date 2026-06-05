@@ -200,6 +200,7 @@ pica/
 │   ├── test-punch-totals.mjs       # punch-page worked + break helpers
 │   ├── test-punch-manual.mjs       # isManual() clientId-prefix predicate (MANUAL badge) (0.46.0)
 │   ├── test-punch-week.mjs         # punch This-week grouping/pairing pure helpers (inline re-impl)
+│   ├── test-punches-route.mjs      # by-employee/:id rejects non-UUID/traversal ids (M17 S1)
 │   ├── test-employee-home.mjs      # employee home (index.js) pure helpers (inline re-impl)
 │   ├── test-leaves-blocked.mjs     # employer blocked-days: helpers, store, route
 │   ├── test-employee-picture-route.mjs  # picture upload: 400 not 500 when no profile; non-image reject (F15)
@@ -375,7 +376,8 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **54 suites** (+`test-report-overview` in 0.53.0 — the reports
+- Total: **55 suites** (+`test-punches-route` in 0.54.1 — M17 S1 punch `:id`
+  traversal guard; +`test-report-overview` in 0.53.0 — the reports
   dashboard aggregation: worked-vs-target, punctuality, breaks, leaves,
   coverage gaps; +`test-punch-manual` in 0.46.0 — `isManual()`
   clientId-prefix predicate behind the This-week MANUAL badge;
@@ -505,7 +507,6 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.53.10 (M16 Phase-4 doc-truth: test list reconciled to disk — all
-54 files now enumerated (+test-punch-week/-employee-home/-employee-deactivation/
--user-active); validators line gained sniffImageType. 0.53.9: F10/F12/F13/F15 low
-batch. 0.53.8: F9 comments. 0.53.7: F8 punch-comment cap. Suite count 54)._
+_Last touched in 0.54.1 (M17 S1 — punch `:id` path-traversal guard at route + store;
++`test-punches-route.mjs`, suite count 54→55). 0.53.10: M16 doc-truth (all 54 files
+enumerated; +sniffImageType on validators line)._

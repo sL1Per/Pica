@@ -13,6 +13,8 @@
  *   { "comment": "...", "geo": { "lat": 38.7, "lng": -9.1, "accuracy": 20 } }
  */
 
+import { isUuid } from '../util/validators.js';
+
 export function registerPunchRoutes(router, {
   punchesStore,
   usersStore,
@@ -169,6 +171,12 @@ export function registerPunchRoutes(router, {
   // ?year=YYYY&month=MM (a whole month). Defaults to today.
   // --------------------------------------------------------------------------
   router.get('/api/punches/by-employee/:id', requireOwnerOrEmployer((req) => req.params.id)((req, res) => {
+    // Validate the id shape at the edge: it becomes a path segment in the
+    // punch store. Reject non-UUIDs with a clean 400 (the store also throws as
+    // defense-in-depth). Closes the path-traversal class flagged as M17 S1.
+    if (!isUuid(req.params.id)) {
+      return res.badRequest('Invalid employee id', { errorCode: 'invalid_id' });
+    }
     const { date, year, month } = req.query;
 
     if (date) {

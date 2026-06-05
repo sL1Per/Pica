@@ -14,6 +14,86 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.54.1] — 2026-06-04 — M17 S1: punch endpoint path-traversal guard
+
+First M17 fix. Closes the path-traversal sibling of the 0.22.0 employees bug, which
+the original fix missed on the punches endpoint (logged in M16 as F2, carried here as
+S1, **high** severity in the milestone rubric).
+
+- **`GET /api/punches/by-employee/:id` validated the id's *access* but not its
+  *shape*.** `punchesStore.monthFile()` joined the raw `:id` into
+  `data/punches/<yyyy>/<mm>/<id>.ndjson` with no UUID guard, so a crafted id
+  (`..%2F..%2F…`, decoded by the router after matching) could point the read outside
+  the punches tree.
+- **Two-layer fix, mirroring the employees store:** the route now rejects a non-UUID
+  `:id` with `400 invalid_id` before touching the store, and
+  `punchesStore.monthFile()` (the single path-building chokepoint for append / read /
+  findByClientId / latest) throws `invalid_id` on any non-UUID id. `listDayAll()` also
+  skips stray non-UUID filenames so a malformed file can't break the employer view.
+- **Practical impact was limited** (documented in the `docs/security.md` advisory):
+  it's a *read* path; only an employer could reach it (a non-employer passes
+  `requireOwnerOrEmployer` only for their *own* id, which can't be a traversal string);
+  and the read can't disclose contents — lines are parsed as punch JSON and decrypted
+  under an id-bound AAD, so a non-Pica file yields `[]`. The exposure was
+  existence-probing of `*.ndjson`-suffixed paths, employer-only.
+- **Tests:** new `tests/test-punches-route.mjs` (encoded-traversal id → 400, store not
+  called; plain non-UUID → 400; valid UUID → store queried) + a store-level traversal
+  case in `tests/test-punches.mjs`. Brought `test-punches.mjs` and `test-reports.mjs`
+  fixtures into the documented valid-UUID convention (they predated it). Suite 54 → **55**.
+
+No CACHE_VERSION (backend). `docs/security.md` path-traversal advisory updated with the
+sibling note.
+
+**Honest Disclosures.**
+- **Defense-in-depth, not a high-impact breach fix.** Given the employer-only reach and
+  the no-disclosure read, real-world risk was low; the value is restoring the
+  "validate every id used in a path" invariant everywhere, not just employees.
+- **Other `:id` routes were re-checked and are NOT affected:** corrections scan ndjson
+  (no path built from id); leaves use `safeLeaveId()` already; employees use
+  `rejectIfBadId` + store `isUuid`. Punches was the lone gap.
+- **No production data migration** — only test fixtures changed ids; no on-disk format
+  or behavior change for real (UUID) employee ids.
+
+---
+
+## [0.54.0] — 2026-06-04 — M17 opens: security-review plan + findings ledger
+
+Start of **M17 (full security review)** — the milestone where the security findings
+deferred during M16 get FIXED, plus a fresh threat-model-driven sweep of auth, crypto,
+authorization/isolation, input validation, secrets hygiene, and the audit log against
+the final feature set. **Docs only** — no code change; suite stays 54/54.
+
+- **`docs/superpowers/m17-security-review-plan.md`** — the plan: scope contract,
+  a Phase-0→3 structure (baseline → inherited findings → 11-domain sweep → docs
+  reconciliation), a threat-model-relative severity rubric, and the release cadence.
+- **`docs/superpowers/m17-findings.md`** — the security findings ledger, seeded with
+  the three findings M16 surfaced and deferred here:
+  - **S1 (was F2, high):** `punches by-employee/:id` builds a disk path from an
+    unvalidated id — path-traversal class.
+  - **S2 (was F11, medium):** CSV formula injection — `csvEscape` doesn't neutralize a
+    leading `= + - @`; employee `fullName` flows into exports.
+  - **S3 (was F16, medium):** unsigned ±7-day client punch timestamp — self-data time
+    forgery for offline replay.
+- Both plan + ledger live in the **gitignored** `docs/superpowers/`, like the M16 docs.
+
+Work mode (same as M16): review → log to the ledger with a severity → operator decides
+fix/accept → only then change code; but here security fixes are the *point*, not
+deferred. Severity is calibrated to Pica's threat model (self-hosted, ≤50 employees,
+no public multi-tenancy) — see the rubric.
+
+**Honest Disclosures.**
+- **Nothing fixed yet.** This release only opens the milestone; S1–S3 are logged, not
+  remediated. Until they ship, the deferred risks from M16 still stand.
+- **Not a formal pentest.** One reviewer + grep/read + the existing 54 suites; no
+  scanners (they'd add tooling/deps), no third-party audit.
+- **No new dependencies, no 2FA/CSRF/forgot-password build-out** — those remain
+  documented deliberate omissions in `docs/security.md` unless the review explicitly
+  re-scopes them for operator decision.
+- The plan/ledger are gitignored, so this entry + the version bump are the only
+  tracked artifacts of the open.
+
+---
+
 ## [0.53.10] — 2026-06-04 — M16 Phase 4: doc-truth pass
 
 Ninth and final M16 increment before close. **Docs only** — no source, behavior,

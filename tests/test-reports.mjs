@@ -56,8 +56,8 @@ const masterKey = randomBytes(32);
 try {
   const punches = createPunchesStore(tmpDir, masterKey);
   const leaves = createLeavesStore(tmpDir, masterKey);
-  const aliceId = 'alice-uuid';
-  const bobId   = 'bob-uuid';
+  const aliceId = '11111111-1111-4111-8111-111111111111';
+  const bobId   = '22222222-2222-4222-8222-222222222222';
 
   // -------------------------------------------------------------------------
   console.log('ISO week helper');
@@ -128,7 +128,7 @@ try {
   console.log('\nHours report — open shift clipped to "now"');
   // -------------------------------------------------------------------------
 
-  const carolId = 'carol-uuid';
+  const carolId = '33333333-3333-4333-8333-333333333333';
   punches.append(carolId, { type: 'in', ts: '2026-04-06T09:00:00.000Z' });
   // Note: no clock-out.
 
@@ -140,7 +140,7 @@ try {
 
   await test('open shift across days splits by midnight', () => {
     // Open shift starting 22:00 on the 5th, "now" is 06:00 on the 6th.
-    const dId = 'dave-uuid';
+    const dId = '44444444-4444-4444-8444-444444444444';
     punches.append(dId, { type: 'in', ts: '2026-04-05T22:00:00.000Z' });
     const r = hoursReport(punches, dId, '2026-04-05', '2026-04-06', 'day',
       new Date('2026-04-06T06:00:00.000Z'));
@@ -199,7 +199,7 @@ try {
   // -------------------------------------------------------------------------
 
   await test('shift partially outside range is clipped', () => {
-    const id = 'erin-uuid';
+    const id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
     // Shift 2026-04-05 22:00 → 2026-04-06 06:00; range is only the 6th.
     punches.append(id, { type: 'in',  ts: '2026-04-05T22:00:00.000Z' });
     punches.append(id, { type: 'out', ts: '2026-04-06T06:00:00.000Z' });

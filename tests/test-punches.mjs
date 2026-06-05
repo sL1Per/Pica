@@ -34,8 +34,8 @@ const masterKey = randomBytes(32);
 
 try {
   const store = createPunchesStore(tmpDir, masterKey);
-  const aliceId = 'alice-uuid';
-  const bobId   = 'bob-uuid';
+  const aliceId = '11111111-1111-4111-8111-111111111111';
+  const bobId   = '22222222-2222-4222-8222-222222222222';
 
   // --------------------------------------------------------------------------
   console.log('Construction');
@@ -120,11 +120,11 @@ try {
     try {
       const s = createPunchesStore(dir, masterKey);
       const long = 'x'.repeat(600);
-      const r = s.append('frank-uuid', { type: 'in', ts: '2026-04-19T09:00:00.000Z', comment: long });
+      const r = s.append('66666666-6666-4666-8666-666666666666', { type: 'in', ts: '2026-04-19T09:00:00.000Z', comment: long });
       // The returned record is capped.
       assert.equal(r.comment.length, 500);
       // And so is the persisted+decrypted value — not just the return shape.
-      const list = s.listDay('frank-uuid', '2026-04-19');
+      const list = s.listDay('66666666-6666-4666-8666-666666666666', '2026-04-19');
       assert.equal(list[0].comment.length, 500);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -135,9 +135,9 @@ try {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-punch-ws-'));
     try {
       const s = createPunchesStore(dir, masterKey);
-      const r = s.append('gina-uuid', { type: 'in', ts: '2026-04-19T09:00:00.000Z', comment: '   ' });
+      const r = s.append('77777777-7777-4777-8777-777777777777', { type: 'in', ts: '2026-04-19T09:00:00.000Z', comment: '   ' });
       assert.equal(r.comment, null);
-      const list = s.listDay('gina-uuid', '2026-04-19');
+      const list = s.listDay('77777777-7777-4777-8777-777777777777', '2026-04-19');
       assert.equal(list[0].comment, null);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -151,6 +151,20 @@ try {
   await test('append rejects invalid ts', () => {
     assert.throws(() => store.append(aliceId, { type: 'in', ts: 'not-a-date' }));
     assert.throws(() => store.append(aliceId, { type: 'in' }));
+  });
+
+  await test('rejects non-UUID / path-traversal employee ids at the store (M17 S1)', () => {
+    const evil = '../../../etc/passwd';
+    const ts = '2026-04-19T09:00:00.000Z';
+    // Every path-building entry point must refuse a non-UUID id so a crafted
+    // id can never escape the punches directory via path.join.
+    assert.throws(() => store.append(evil, { type: 'in', ts }), /Invalid employee id/);
+    assert.throws(() => store.listMonth(evil, 2026, 4), /Invalid employee id/);
+    assert.throws(() => store.listDay(evil, '2026-04-19'), /Invalid employee id/);
+    assert.throws(() => store.latest(evil), /Invalid employee id/);
+    assert.throws(() => store.paths.monthFile(evil, 2026, 4), /Invalid employee id/);
+    // A plain non-UUID (no traversal chars) is rejected too.
+    assert.throws(() => store.listMonth('alice', 2026, 4), /Invalid employee id/);
   });
 
   // --------------------------------------------------------------------------
@@ -171,7 +185,7 @@ try {
 
   await test('hasOpenPunch returns false for a user with no punches', () => {
     const at = new Date('2026-04-19T09:00:00.000Z');
-    assert.equal(store.hasOpenPunch('ghost-id', at), false);
+    assert.equal(store.hasOpenPunch('88888888-8888-4888-8888-888888888888', at), false);
   });
 
   await test('latest returns the newest record chronologically', () => {
@@ -187,7 +201,7 @@ try {
 
   await test('latest peeks into previous month when current month is empty', () => {
     // Carol clocked in on March 31; we check in early April (no April file yet).
-    const carolId = 'carol-uuid';
+    const carolId = '33333333-3333-4333-8333-333333333333';
     store.append(carolId, { type: 'in', ts: '2026-03-31T23:55:00.000Z' });
     const at = new Date('2026-04-01T00:10:00.000Z');
     const last = store.latest(carolId, at);
@@ -202,8 +216,8 @@ try {
 
   await test('swapping lines between employees breaks decryption', () => {
     // Give dave an encrypted record, then read it back through eve's id.
-    const daveId = 'dave-uuid';
-    const eveId  = 'eve-uuid';
+    const daveId = '44444444-4444-4444-8444-444444444444';
+    const eveId  = '55555555-5555-4555-8555-555555555555';
     store.append(daveId, { type: 'in', ts: '2026-04-19T06:00:00.000Z', comment: 'dave secret' });
     store.append(eveId,  { type: 'in', ts: '2026-04-19T07:00:00.000Z', comment: 'eve secret' });
 
@@ -254,8 +268,8 @@ try {
     // alice, bob, dave, eve all have records on 2026-04-19.
     assert.ok(ids.has(aliceId));
     assert.ok(ids.has(bobId));
-    assert.ok(ids.has('dave-uuid'));
-    assert.ok(ids.has('eve-uuid'));
+    assert.ok(ids.has('44444444-4444-4444-8444-444444444444'));
+    assert.ok(ids.has('55555555-5555-4555-8555-555555555555'));
     // Results are chronological.
     for (let i = 1; i < all.length; i++) {
       assert.ok(all[i - 1].ts <= all[i].ts);
@@ -297,13 +311,13 @@ try {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-punch-cid-'));
     try {
       const s = createPunchesStore(dir, masterKey);
-      const r = s.append('alice', { type: 'in', ts: '2026-05-01T08:00:00Z', clientId: 'abc-123' });
+      const r = s.append('99999999-9999-4999-8999-999999999999', { type: 'in', ts: '2026-05-01T08:00:00Z', clientId: 'abc-123' });
       assert.equal(r.clientId, 'abc-123');
-      const list = s.listMonth('alice', 2026, 5);
+      const list = s.listMonth('99999999-9999-4999-8999-999999999999', 2026, 5);
       assert.equal(list[0].clientId, 'abc-123');
       // Spot-check the file: clientId is on the plaintext header (so we can
       // scan for it without decrypting every line).
-      const file = s.paths.monthFile('alice', 2026, 5);
+      const file = s.paths.monthFile('99999999-9999-4999-8999-999999999999', 2026, 5);
       const raw = fs.readFileSync(file, 'utf8');
       assert.match(raw, /"clientId":"abc-123"/);
     } finally {
@@ -317,8 +331,8 @@ try {
       const s = createPunchesStore(dir, masterKey);
       // Use "now" so the find-3-months-back window covers it.
       const ts = new Date().toISOString();
-      s.append('bob', { type: 'in', ts, comment: 'first', clientId: 'idem-1' });
-      const found = s.findByClientId('bob', 'idem-1');
+      s.append('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', { type: 'in', ts, comment: 'first', clientId: 'idem-1' });
+      const found = s.findByClientId('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'idem-1');
       assert.ok(found, 'expected to find by clientId');
       assert.equal(found.clientId, 'idem-1');
       assert.equal(found.comment, 'first');
@@ -332,9 +346,9 @@ try {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-punch-no-find-'));
     try {
       const s = createPunchesStore(dir, masterKey);
-      assert.equal(s.findByClientId('alice', 'nope'), null);
-      assert.equal(s.findByClientId('alice', null), null);
-      assert.equal(s.findByClientId('alice', ''), null);
+      assert.equal(s.findByClientId('99999999-9999-4999-8999-999999999999', 'nope'), null);
+      assert.equal(s.findByClientId('99999999-9999-4999-8999-999999999999', null), null);
+      assert.equal(s.findByClientId('99999999-9999-4999-8999-999999999999', ''), null);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -345,11 +359,11 @@ try {
     try {
       const s = createPunchesStore(dir, masterKey);
       const ts = new Date().toISOString();
-      s.append('alice', { type: 'in', ts, clientId: 'shared' });
+      s.append('99999999-9999-4999-8999-999999999999', { type: 'in', ts, clientId: 'shared' });
       // Bob looking for the same clientId should not find Alice's punch.
-      assert.equal(s.findByClientId('bob', 'shared'), null);
+      assert.equal(s.findByClientId('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'shared'), null);
       // Alice should find it.
-      assert.ok(s.findByClientId('alice', 'shared'));
+      assert.ok(s.findByClientId('99999999-9999-4999-8999-999999999999', 'shared'));
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
