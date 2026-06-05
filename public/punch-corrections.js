@@ -22,6 +22,7 @@
 import { postJson, showMessage } from '/app.js';
 import { t, translateError, fmtDateTime, fmtHours } from '/i18n.js';
 import { openCorrectionModal } from '/correction-detail-modal.js';
+import { capView, appendShowAll, LIST_CAP } from '/list-cap.js';
 
 // -------- Avatar helpers (match the team list / Today tab) -------------------
 function initials(name) { return (String(name || '?').split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() || '').join('')) || '?'; }
@@ -66,6 +67,8 @@ function buildAvatar(id, name) {
  */
 export function initCorrectionsPanel(opts) {
   const { me, pendingList, historyList, pendingTag, listHeading, messageEl, onCountChange, onRendered } = opts;
+
+  let historyExpanded = false;   // corrections history "Show all"
 
   // -------- Row builder -------------------------------------------------------
 
@@ -349,7 +352,16 @@ export function initCorrectionsPanel(opts) {
     if (history.length === 0) {
       historyList.appendChild(buildEmpty(t('corrections.noHistory')));
     } else {
-      history.forEach((c) => historyList.appendChild(buildRow(c)));
+      const { visible, showToggle, expanded } = capView(history.length, LIST_CAP, historyExpanded);
+      history.slice(0, visible).forEach((c) => historyList.appendChild(buildRow(c)));
+      if (showToggle) {
+        appendShowAll(historyList, {
+          total: history.length,
+          expanded,
+          t,
+          onToggle: () => { historyExpanded = !historyExpanded; render(corrections); },
+        });
+      }
     }
 
     // Notify the caller of the new pending count so it can update e.g. a tab badge.
