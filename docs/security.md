@@ -60,16 +60,25 @@ deploying or auditing the app.
 - The HMAC uses a server secret derived from the master key — when
   the server restarts, all sessions are invalidated until the
   passphrase is re-entered.
-- Cookie flags: `HttpOnly`, `SameSite=Lax`, `Secure` (when served
-  over HTTPS), `Path=/`.
+- Cookie flags: `HttpOnly`, `SameSite=Lax`, `Path=/`, and `Secure`
+  when TLS is in play — `NODE_ENV=production` **or** the request arrived
+  over HTTPS via a TLS-terminating proxy (`X-Forwarded-Proto: https`,
+  the same signal HSTS uses). Tightened in 0.54.4 (M17 S7) so an operator
+  behind TLS who forgets `NODE_ENV` no longer ships a non-Secure cookie.
 - Default lifetime: 7 days. Configurable in `config.json`.
 - No refresh tokens, no device tracking. A session is good until it
   expires; users sign out manually or wait it out.
 
-### Login rate limit
+### Rate limits
 - `/api/login` is rate-limited per source IP using an in-memory token
   bucket (`src/auth/rate-limit.js`).
-- Default: 10 attempts per 5 minutes per IP.
+- Default: 10 attempts per minute per IP.
+- Password ops (self-change + employer reset) are limited to 5/hour per
+  key; **security ops** (passphrase change, recovery-code add/remove,
+  key rotate) to 10/hour per actor (0.54.4, M17 S15 — they do heavy
+  scrypt/rotation work).
+- The in-memory maps are pruned on a periodic `sweep()` (0.54.4, M17 S5)
+  so they can't grow unbounded under source-IP rotation.
 - Bucket is process-local — restarts reset it. Acceptable because
   process restarts are rare and the limiter exists to slow
   brute-force, not stop a determined attacker (they need to use TLS
@@ -355,6 +364,10 @@ Every response carries:
 - **`Permissions-Policy`** — Pica needs `geolocation=(self)` (clock-in
   records the punch location); everything else (`camera`,
   `microphone`, `payment`, `usb`, `interest-cohort`) is denied.
+- **`Cross-Origin-Opener-Policy: same-origin`** and
+  **`Cross-Origin-Resource-Policy: same-origin`** (0.54.4, M17 S13) —
+  cross-origin isolation, defense-in-depth against Spectre-class leaks.
+  Pica is a same-origin app, so the strict values break nothing.
 
 ### HSTS — conditional and assumes a trusted proxy
 
@@ -867,10 +880,14 @@ audit log already. M12 will add a separate, append-only audit
 record for sensitive operations like backup restores and user
 deletions.
 
-### No rate limit on non-login routes
-Easy to add per route if abuse becomes a concern. Today the
-assumption is that authenticated users are not adversarial — see
-the threat model.
+### Limited rate limiting beyond auth + security ops
+Login (10/min/IP), password ops (5/hr), and the heavy security ops
+(passphrase/recovery/rotate, 10/hr/actor — 0.54.4) are throttled.
+Authenticated *non-security* mutations (leave/correction create,
+uploads) are **not** rate-limited — they're bounded by the body-size
+and 500-char free-text caps, and the threat model assumes authenticated
+users are not adversarial (M17 S15, accepted). Easy to add per route if
+abuse becomes a concern.
 
 ### No SOC2 / GDPR compliance claims
 Pica is a tool. Compliance is a property of how you operate it.
@@ -889,4 +906,4 @@ patch.
 
 ---
 
-_Last touched in 0.54.3 (M17 S3 — client punch-timestamp advisory: record both times + audit)._
+_Last touched in 0.54.4 (M17 Phase-2 hardening: S7 cookie Secure via X-Forwarded-Proto, S13 COOP/CORP headers, S15 security-op rate limit, S5 limiter sweep)._

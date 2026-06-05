@@ -24,9 +24,23 @@ function readConfig(configPath) {
 }
 
 export function registerSecurityRoutes(router, deps) {
-  const { configPath, masterKey, dataDir, serverState, requireAuth, requireRole, auditStore, logger } = deps;
+  const { configPath, masterKey, dataDir, serverState, requireAuth, requireRole,
+    auditStore, logger, securityLimiter } = deps;
   const rotate = deps.rotate || rotateData;
-  const employer = (h) => requireRole('employer')(requireAuth(h));
+
+  // Every security op is employer-only AND rate-limited (M17 S15): these handlers
+  // do heavy crypto work — scrypt N=2^17 KEK derivation, and /rotate re-encrypts
+  // the whole data tree — so a hijacked employer session shouldn't be able to
+  // hammer them. Keyed per actor; the limiter is optional (tests/old callers).
+  const employer = (h) => requireRole('employer')(requireAuth(async (req, res) => {
+    if (securityLimiter && !securityLimiter.allow(`sec:${req.user.id}`)) {
+      return res.json(
+        { error: 'Too many security operations. Try again later.', errorCode: 'rate_limited' },
+        429,
+      );
+    }
+    return h(req, res);
+  }));
 
   // Unwrap the DEK with a supplied passphrase; returns Buffer or null.
   async function dekFromPassphrase(security, passphrase) {

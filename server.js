@@ -155,6 +155,21 @@ const loginLimiter = createRateLimiter({ max: 10, windowSeconds: 60 });
 // 5 per hour per key — tight enough to slow brute force on the current
 // password verification, loose enough not to annoy a legitimate user.
 const passwordLimiter = createRateLimiter({ max: 5, windowSeconds: 3600 });
+// Security operations (passphrase change, recovery-code add/remove, key rotate).
+// Heavy crypto per call (scrypt N=2^17; /rotate re-encrypts the whole tree), so
+// cap them even for the trusted employer — 10/hour/actor (M17 S15).
+const securityLimiter = createRateLimiter({ max: 10, windowSeconds: 3600 });
+
+// M17 S5: periodically prune the rate-limiter maps so they can't grow unbounded
+// under source-IP rotation (each limiter only prunes a key when it's next hit).
+// Unref'd so it never holds the process open; 5-minute cadence is ample here.
+const limiterSweep = setInterval(() => {
+  loginLimiter.sweep();
+  passwordLimiter.sweep();
+  securityLimiter.sweep();
+}, 5 * 60 * 1000);
+limiterSweep.unref();
+
 const rbac = createRBAC({ sessionKey, usersStore });
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -269,6 +284,7 @@ registerSecurityRoutes(router, {
   requireRole: rbac.requireRole,
   auditStore,
   logger: log,
+  securityLimiter,
 });
 // Mail routes — employer-only config probe (POST /api/mail/test).
 // Registered after all other /api/* routes; before page routes (first-match-wins).

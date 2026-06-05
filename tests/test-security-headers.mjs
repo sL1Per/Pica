@@ -84,6 +84,14 @@ test('createSecurityHeaders applies CSP + 4 base headers', () => {
   assert.match(res.headers['Permissions-Policy'], /geolocation=\(self\)/);
 });
 
+test('M17 S13: cross-origin isolation headers (COOP + CORP)', () => {
+  const apply = createSecurityHeaders({ publicDir, isProduction: false });
+  const res = mockRes();
+  apply({ headers: {} }, res);
+  assert.equal(res.headers['Cross-Origin-Opener-Policy'], 'same-origin');
+  assert.equal(res.headers['Cross-Origin-Resource-Policy'], 'same-origin');
+});
+
 test('CSP includes the bootstrap hash and frame-ancestors none', () => {
   const apply = createSecurityHeaders({ publicDir, isProduction: false });
   const res = mockRes();

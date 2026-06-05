@@ -376,7 +376,8 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **55 suites** (+`test-punches-route` in 0.54.1 — M17 S1 punch `:id`
+- Total: **56 suites** (+`test-auth-route` in 0.54.4 — M17 S7 cookie-Secure via
+  X-Forwarded-Proto; +`test-punches-route` in 0.54.1 — M17 S1 punch `:id`
   traversal guard; +`test-report-overview` in 0.53.0 — the reports
   dashboard aggregation: worked-vs-target, punctuality, breaks, leaves,
   coverage gaps; +`test-punch-manual` in 0.46.0 — `isManual()`
@@ -507,7 +508,8 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.54.3 (M17 S3 — punch line gains a server-receipt `recvTs`;
-`punch.backdated` audit event). 0.54.1: M17 S1 — punch `:id` path-traversal guard at
-route + store (+`test-punches-route.mjs`, suite count 54→55). 0.53.10: M16 doc-truth
-(all 54 files enumerated; +sniffImageType on validators line)._
+_Last touched in 0.54.4 (M17 Phase-2 hardening — S5 rate-limiter sweep, S7 cookie
+Secure via X-Forwarded-Proto [+`test-auth-route.mjs`, suite count 55→56], S13 COOP/CORP
+headers, S15 security-op rate limiter). 0.54.3: M17 S3 — punch `recvTs` +
+`punch.backdated`. 0.54.1: M17 S1 — punch `:id` path-traversal guard (+`test-punches-
+route.mjs`, 54→55). 0.53.10: M16 doc-truth._

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { createRouter } from '../src/router.js';
 import { registerSecurityRoutes } from '../src/routes/security.js';
+import { createRateLimiter } from '../src/auth/rate-limit.js';
 import { newKdf, deriveKek, setSlot, writeConfigAtomic } from '../src/crypto/keyring.js';
 import { wrapDek } from '../src/crypto/dek.js';
 
@@ -33,7 +34,7 @@ const requireRole = (role) => (h) => async (req, res) => {
   return h(req, res);
 };
 
-async function fixture() {
+async function fixture(opts = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-sec-'));
   const configPath = path.join(dir, 'config.json');
   const dek = randomBytes(32);
@@ -50,6 +51,7 @@ async function fixture() {
     requireAuth, requireRole,
     auditStore: { appendRecord: (r) => audited.push(r) },
     logger: { info() {}, warn() {}, error() {} },
+    securityLimiter: opts.securityLimiter,
   });
   return { dir, configPath, router, audited, serverState };
 }
@@ -91,6 +93,22 @@ await test('employee is forbidden from changing the passphrase', async () => {
   const res = await call(f.router, 'POST', '/api/security/passphrase',
     { user: { id: 'e', role: 'employee' }, body: { currentPassphrase: 'current-pass', newPassphrase: 'new-pass-123' } });
   assert.equal(res.statusCode, 403);
+  fs.rmSync(f.dir, { recursive: true, force: true });
+});
+
+await test('M17 S15: security ops are rate-limited (429 after the cap)', async () => {
+  const f = await fixture({ securityLimiter: createRateLimiter({ max: 2, windowSeconds: 3600 }) });
+  const employerUser = { id: 'm', role: 'employer' };
+  const body = { currentPassphrase: 'WRONG', newPassphrase: 'new-pass-123' };
+  // First two attempts pass the limiter (and 400 on the wrong passphrase).
+  const r1 = await call(f.router, 'POST', '/api/security/passphrase', { user: employerUser, body });
+  const r2 = await call(f.router, 'POST', '/api/security/passphrase', { user: employerUser, body });
+  assert.equal(r1.statusCode, 400);
+  assert.equal(r2.statusCode, 400);
+  // Third trips the limiter — 429, before the handler runs.
+  const r3 = await call(f.router, 'POST', '/api/security/passphrase', { user: employerUser, body });
+  assert.equal(r3.statusCode, 429);
+  assert.equal(r3.body.errorCode, 'rate_limited');
   fs.rmSync(f.dir, { recursive: true, force: true });
 });
 

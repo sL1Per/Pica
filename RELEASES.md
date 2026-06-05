@@ -14,6 +14,58 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.54.4] — 2026-06-05 — M17 Phase-2 hardening (S5, S7, S13, S15)
+
+Four low-severity hardening fixes from the M17 Phase-2 domain sweep (the sweep
+found **0 critical / 0 high / 0 medium**; these are the agreed code fixes among
+the low findings — the rest are accepted-and-documented). Backend-only.
+
+- **S5 — rate-limiter sweep is now scheduled.** `rate-limit.js` exposed a
+  `sweep()` to prune its in-memory `hits` map, but nothing called it, so the map
+  could grow unbounded under source-IP rotation (each key was only pruned when
+  next hit). `server.js` now runs an **unref'd** 5-minute interval that sweeps
+  the login, password, and security limiters.
+- **S7 — session cookie `Secure` now also honors `X-Forwarded-Proto`.** The flag
+  was gated on `NODE_ENV=production` alone, so an operator behind a TLS-terminating
+  proxy who forgot to set `NODE_ENV` shipped a non-Secure cookie. It is now set
+  when `isProduction` **OR** the request arrived over HTTPS (`X-Forwarded-Proto:
+  https`) — the same signal HSTS already uses. (`isSecureRequest` uses optional
+  chaining so a header-less request is simply treated as non-HTTPS.)
+- **S13 — cross-origin isolation headers added.** Every response now carries
+  `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy:
+  same-origin` (Spectre / cross-origin-leak defense-in-depth). Pica is a
+  same-origin app, so the strict values break nothing.
+- **S15 — employer security ops are now rate-limited.** `/api/security/passphrase`,
+  `/recovery-code` (add/remove), and `/rotate` do heavy crypto (scrypt N=2¹⁷; rotate
+  re-encrypts the whole data tree). They are employer-only, but a hijacked employer
+  session could hammer them — now capped at **10/hour per actor** (`rate_limited`
+  429), keyed `sec:<userId>`.
+
+Touches `src/auth/rate-limit.js` (scheduled in `server.js`), `src/routes/auth.js`,
+`src/http/security-headers.js`, `src/routes/security.js`, `server.js`. **No
+`CACHE_VERSION` bump** (no pre-cached asset). New suite `test-auth-route.mjs` (S7);
+S5 covered in `test-auth.mjs`, S13 in `test-security-headers.mjs`, S15 in
+`test-security-routes.mjs`. Suite count **55 → 56**.
+
+### Honest Disclosures
+
+- **These are hardening, not vulnerability patches.** The Phase-2 sweep found no
+  high/medium issues; S5/S7/S13/S15 are defense-in-depth + a deployment footgun
+  (S7). The remaining low/info findings (S4, S6, S8–S12, S14) were triaged
+  **accept + document** and will be folded into `docs/security.md` in M17 Phase 3.
+- **S5 scheduling is integration glue** (an unref'd `setInterval`) and isn't unit-
+  tested directly; the regression test asserts `sweep()` actually prunes an
+  elapsed-window key (a real ~1.1s wait), which is the behavior the schedule relies on.
+- **S15 cap is generous (10/hr)** — it stops hammering, not a determined employer
+  (who is trusted by the threat model and can already do anything). It does not
+  throttle authenticated *non-security* mutations (leave/correction create) — those
+  remain bounded by body + free-text caps (accepted, see S15).
+- **S7 does not change behavior for direct-HTTP installs** without a proxy — they
+  still get a non-Secure cookie (correct: there's no TLS to bind to). Operators must
+  still front Pica with TLS (M18).
+
+---
+
 ## [0.54.3] — 2026-06-05 — M17 S3: record both punch times + audit backdating
 
 Third M17 fix (medium; logged in M16 as F16, carried here as S3). Clock-in/out

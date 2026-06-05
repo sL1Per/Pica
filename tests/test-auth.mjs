@@ -132,6 +132,20 @@ await test('rejects bad constructor args', () => {
   assert.throws(() => createRateLimiter({ max: 1, windowSeconds: 0 }));
 });
 
+// M17 S5: the periodic sweep (scheduled in server.js) relies on sweep()
+// actually pruning keys whose window has fully elapsed — otherwise the hits
+// Map grows unboundedly under source-IP rotation.
+await test('sweep() prunes keys whose window has fully elapsed', async () => {
+  const rl = createRateLimiter({ max: 2, windowSeconds: 1 });
+  rl.allow('ip-x');
+  assert.equal(rl.size(), 1);
+  rl.sweep();                                      // still within window → kept
+  assert.equal(rl.size(), 1);
+  await new Promise((r) => setTimeout(r, 1100));   // let the 1s window elapse
+  rl.sweep();                                      // now empty → pruned
+  assert.equal(rl.size(), 0);
+});
+
 // ----------------------------------------------------------------------------
 console.log('\nUsers store');
 // ----------------------------------------------------------------------------

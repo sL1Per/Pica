@@ -111,6 +111,14 @@ export function createSecurityHeaders({ publicDir, isProduction }) {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', permissions);
 
+    // Cross-origin isolation (M17 S13) — defense-in-depth against Spectre-class
+    // cross-origin leaks. Pica is a same-origin app (no cross-origin embedding of
+    // its resources), so both can be the strict 'same-origin' with no breakage:
+    //   COOP severs the opener relationship with cross-origin windows.
+    //   CORP blocks other origins from embedding Pica's responses (images, etc.).
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+
     // HSTS: only when we can prove the request came in over HTTPS.
     // The X-Forwarded-Proto header is set by reverse proxies (Caddy,
     // nginx) when terminating TLS. In dev — even with isProduction

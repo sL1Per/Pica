@@ -27,22 +27,31 @@ export function registerAuthRoutes(router, {
     return req.socket?.remoteAddress ?? 'unknown';
   }
 
-  function setSessionCookie(res, value, maxAgeSec) {
+  // The session cookie gets `Secure` when TLS is in play: either we're running
+  // in production, OR the request demonstrably arrived over HTTPS through a
+  // TLS-terminating proxy (the same `X-Forwarded-Proto` signal HSTS uses in
+  // security-headers.js). This closes the M17 S7 footgun where an operator
+  // behind TLS who forgot `NODE_ENV=production` shipped a non-Secure cookie.
+  function isSecureRequest(req) {
+    return isProduction || req.headers?.['x-forwarded-proto'] === 'https';
+  }
+
+  function setSessionCookie(req, res, value, maxAgeSec) {
     res.setHeader('Set-Cookie', serializeCookie(cookieName, value, {
       maxAge: maxAgeSec,
       httpOnly: true,
       sameSite: 'Lax',
-      secure: isProduction,
+      secure: isSecureRequest(req),
       path: '/',
     }));
   }
 
-  function clearSessionCookie(res) {
+  function clearSessionCookie(req, res) {
     res.setHeader('Set-Cookie', serializeCookie(cookieName, '', {
       maxAge: 0,
       httpOnly: true,
       sameSite: 'Lax',
-      secure: isProduction,
+      secure: isSecureRequest(req),
       path: '/',
     }));
   }
@@ -101,7 +110,7 @@ export function registerAuthRoutes(router, {
     loginLimiter.reset(ip);
 
     const cookie = signSession({ uid: user.id, role: user.role }, sessionKey);
-    setSessionCookie(res, cookie, SESSION_TTL_SECONDS);
+    setSessionCookie(req, res, cookie, SESSION_TTL_SECONDS);
 
     auditStore?.appendRecord({
       event: 'auth.login_success',
@@ -134,7 +143,7 @@ export function registerAuthRoutes(router, {
       actorRole: user?.role ?? null,
       actorIp: ip,
     });
-    clearSessionCookie(res);
+    clearSessionCookie(req, res);
     res.json({ ok: true });
   });
 
@@ -209,7 +218,7 @@ export function registerAuthRoutes(router, {
     // Other sessions (different devices) are correctly invalidated by
     // this same check; this one survives because its iat is current.
     const fresh = signSession({ uid: req.user.id, role: req.user.role }, sessionKey);
-    setSessionCookie(res, fresh, SESSION_TTL_SECONDS);
+    setSessionCookie(req, res, fresh, SESSION_TTL_SECONDS);
 
     auditStore?.appendRecord({
       ...auditContext(req),

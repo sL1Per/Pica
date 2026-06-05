@@ -5,13 +5,24 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.54.3._
+_Last touched in 0.54.4._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.54.3 (released 2026-06-05) — **M17 S3: record both
+- **Latest version:** 0.54.4 (released 2026-06-05) — **M17 Phase-2 hardening
+  (S5/S7/S13/S15).** Backend-only. **S5:** the rate-limiter `sweep()` is now scheduled
+  (unref'd 5-min interval in `server.js`) so the hits map can't grow unbounded. **S7:**
+  session cookie `Secure` now set when `isProduction` OR `X-Forwarded-Proto: https`
+  (closes the "forgot NODE_ENV behind TLS" footgun). **S13:** `Cross-Origin-Opener-
+  Policy`/`Cross-Origin-Resource-Policy: same-origin` on every response. **S15:**
+  employer security ops (passphrase/recovery/rotate) capped at 10/hr/actor. Touches
+  `rate-limit.js`/`auth.js`/`security.js`/`security-headers.js`/`server.js`; **no
+  CACHE_VERSION** (backend); +`test-auth-route.mjs` (suite **55→56**); security.md
+  updated. **M17 Phase-2 sweep is COMPLETE** (11/11 domains, 0 crit/high/med, 12 low +
+  3 info); remaining lows are accept+document → Phase 3.
+- **0.54.3** (released 2026-06-05) — **M17 S3: record both
   punch times + audit backdating.** Clock-in/out honor an unsigned client `clientTs`
   (±7d) for offline replay, so an employee could backdate their own times (M16 F16 →
   S3, medium). Operator decision "record both times": every punch line now stores a
