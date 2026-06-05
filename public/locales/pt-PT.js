@@ -39,6 +39,10 @@ export default {
   'menu.signOut':     'Terminar sessão',
   'menu.account': 'A sua conta',
 
+  // ---- Generic list actions ----
+  'list.showAll': 'Mostrar tudo ({n})',
+  'list.showLess': 'Mostrar menos',
+
   // ============================================================
   // Page titles
   // ============================================================

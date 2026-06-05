@@ -39,6 +39,10 @@ export default {
   'menu.signOut':     'Sign out',
   'menu.account': 'Your account',
 
+  // ---- Generic list actions ----
+  'list.showAll': 'Show all ({n})',
+  'list.showLess': 'Show less',
+
   // ============================================================
   // Page titles (browser tab)
   // ============================================================
