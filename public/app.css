@@ -527,6 +527,34 @@ button.secondary:hover:not(:disabled),
   color: var(--ink);
 }
 
+/* "Show all (N)" / "Show less" list toggle — a full-width ghost control that
+   reads as an affordance, not a record. Shared by the leaves + corrections
+   history lists (see public/list-cap.js). */
+.show-all {
+  list-style: none;
+  /* strip the card chrome the surrounding <li> records carry */
+  border: 0;
+  background: none;
+  padding: 0;
+  margin: 0.25rem 0 0;
+}
+.show-all-btn {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px dashed var(--line, #d4d4d8);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  cursor: pointer;
+  text-align: center;
+}
+.show-all-btn:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
 .btn-sm {
   min-height: 32px;
   padding: 0 var(--gap-3);
