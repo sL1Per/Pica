@@ -4,6 +4,7 @@ import { mountTopBar, mountFooter } from '/topbar.js';
 import { openRequestLeaveModal } from '/request-leave-modal.js';
 import { openLeaveModal } from '/leave-detail-modal.js';
 import { approveLeaveWithCheck, rejectLeave } from '/leave-actions.js';
+import { capView, appendShowAll, LIST_CAP } from '/list-cap.js';
 
 mountTopBar();
 mountFooter();
@@ -35,6 +36,8 @@ let allLeaves = [];
 let me = null;
 let activeFilter = 'all';        // employee history
 let activeFilterEmpr = 'all';    // employer all-requests
+let listExpanded = false;        // employee history "Show all"
+let listEmprExpanded = false;    // employer all-requests "Show all"
 let currentYear = new Date().getFullYear();
 
 // -- Helpers ----------------------------------------------------------------
@@ -292,7 +295,11 @@ function renderListInto(ulEl, leaves, f, opts) {
     ulEl.appendChild(li);
     return;
   }
-  for (const l of rows) ulEl.appendChild(renderRow(l, opts));
+  const { visible, showToggle, expanded } = capView(rows.length, LIST_CAP, opts.expanded);
+  for (const l of rows.slice(0, visible)) ulEl.appendChild(renderRow(l, opts));
+  if (showToggle) {
+    appendShowAll(ulEl, { total: rows.length, expanded, t, onToggle: opts.onToggle });
+  }
 }
 
 // -- Employee balance blocks ------------------------------------------------
@@ -423,8 +430,13 @@ function renderEmployerMatrix({ rows }) {
 
 function renderEmployee() {
   const counts = countsByStatus(allLeaves);
-  renderFilterBar(filterBar, activeFilter, counts, (f) => { activeFilter = f; renderEmployee(); });
-  renderListInto(listEl, allLeaves, activeFilter, { showName: false, withActions: false });
+  renderFilterBar(filterBar, activeFilter, counts, (f) => { activeFilter = f; listExpanded = false; renderEmployee(); });
+  renderListInto(listEl, allLeaves, activeFilter, {
+    showName: false,
+    withActions: false,
+    expanded: listExpanded,
+    onToggle: () => { listExpanded = !listExpanded; renderEmployee(); },
+  });
 }
 
 function renderEmployer() {
@@ -442,8 +454,13 @@ function renderEmployer() {
   }
 
   const counts = countsByStatus(allLeaves);
-  renderFilterBar(filterBarEmpr, activeFilterEmpr, counts, (f) => { activeFilterEmpr = f; renderEmployer(); });
-  renderListInto(listEmpr, allLeaves, activeFilterEmpr, { showName: true, withActions: false });
+  renderFilterBar(filterBarEmpr, activeFilterEmpr, counts, (f) => { activeFilterEmpr = f; listEmprExpanded = false; renderEmployer(); });
+  renderListInto(listEmpr, allLeaves, activeFilterEmpr, {
+    showName: true,
+    withActions: false,
+    expanded: listEmprExpanded,
+    onToggle: () => { listEmprExpanded = !listEmprExpanded; renderEmployer(); },
+  });
 }
 
 function renderAll() {
