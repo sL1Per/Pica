@@ -5,13 +5,20 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.54.5._
+_Last touched in 0.55.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.54.5 (released 2026-06-05) — **M17 Phase 3: docs
+- **Latest version:** 0.55.0 (released 2026-06-05) — **"Show all" toggle for
+  long leaves/corrections history lists.** Leaves history (employee + employer
+  all-requests) and corrections history are now capped at 15 rows with an
+  in-place **Show all (N)** / **Show less** toggle. New `public/list-cap.js`
+  (`capView` + `appendShowAll`); wired into `leaves.js` + `punch-corrections.js`;
+  `.show-all-btn` in `app.css`; i18n keys `list.showAll`/`list.showLess`;
+  `test-list-cap.mjs` (suite **56→57**); CACHE_VERSION v102→v103.
+- **0.54.5** (released 2026-06-05) — **M17 Phase 3: docs
   reconciliation — CLOSES M17.** Docs-only (no code change). Folded the accepted
   residual-risk findings (S4/S6/S8/S9/S10/S12/S14) into `docs/security.md` "Known
   limitations" with rationale; added `employee.deactivated`/`reactivated` to the

@@ -164,6 +164,7 @@ pica/
 │   ├── leave-detail-modal.{js,css}   # leave detail modal (full parity w/ leave.js), opened from calendar pills/popover, /leaves list, employee detail; /leaves/:id kept as deep-link (0.48.0)
 │   ├── calendar-grid.js              # shared Mon-first month-matrix (calendar + leave mini-cal) (0.36.0)
 │   ├── leave-format.js               # shared pure leave formatters (pad2/ymd/parseYmd/formatWhen/formatDuration), used by leave.js + leave-detail-modal.js (0.52.4)
+│   ├── list-cap.js                   # list display-cap helper (capView + Show-all toggle); wired into leaves.js + punch-corrections.js (0.55.0)
 │   ├── leave-actions.js              # shared approve/reject helpers (leaves list + calendar rail) (0.36.0)
 │   ├── team-status.js                # shared session-pairing + status classify (home / team / detail) (0.37.0)
 │   ├── settings.{html,js,css}
@@ -226,7 +227,8 @@ pica/
 │   ├── test-mail-config-store.mjs  # encrypted SMTP config store: round-trip, AAD, never-throws, write-only pass, abort-not-clobber (0.26.0)
 │   ├── test-theme-tokens.mjs       # design-token cascade: all 6 theme×palette combos defined, alias bridge present (0.27.0)
 │   ├── test-theme-bootstrap.mjs    # inline bootstrap byte-identical across all HTML (17 after /punches/today + /corrections list retired in 0.46.0), resolves mode+palette; no third-party CDN URLs in public/ (0.27.0)
-│   └── test-sw-precache.mjs        # font woff2 files in SW pre-cache list; all listed assets exist on disk (0.27.0)
+│   ├── test-sw-precache.mjs        # font woff2 files in SW pre-cache list; all listed assets exist on disk (0.27.0)
+│   └── test-list-cap.mjs           # capView + appendShowAll: cap logic, toggle rendering, filter-reset (0.55.0)
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -376,7 +378,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **56 suites** (+`test-auth-route` in 0.54.4 — M17 S7 cookie-Secure via
+- Total: **57 suites** (+`test-list-cap` in 0.55.0 — list display-cap Show-all toggle for leaves/corrections histories; +`test-auth-route` in 0.54.4 — M17 S7 cookie-Secure via
   X-Forwarded-Proto; +`test-punches-route` in 0.54.1 — M17 S1 punch `:id`
   traversal guard; +`test-report-overview` in 0.53.0 — the reports
   dashboard aggregation: worked-vs-target, punctuality, breaks, leaves,
@@ -508,8 +510,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.54.4 (M17 Phase-2 hardening — S5 rate-limiter sweep, S7 cookie
-Secure via X-Forwarded-Proto [+`test-auth-route.mjs`, suite count 55→56], S13 COOP/CORP
-headers, S15 security-op rate limiter). 0.54.3: M17 S3 — punch `recvTs` +
-`punch.backdated`. 0.54.1: M17 S1 — punch `:id` path-traversal guard (+`test-punches-
-route.mjs`, 54→55). 0.53.10: M16 doc-truth._
+_Last touched in 0.55.0 (list-cap display toggle for leaves/corrections histories)._

@@ -48,7 +48,9 @@ const I18N_EXPORTS = ['t', 'tn', 'translateError', 'applyTranslations',
 // Pages that don't use i18n at all (no top-bar, login/setup-only path,
 // or pure infrastructure). All current pages happen to use i18n via
 // topbar.js, so this list is empty in practice — kept as a hook.
-const SKIP_FILES = new Set(['i18n.js', 'sw.js']);
+// list-cap.js: import-free by design — t is injected as a parameter by the
+// caller (leaves.js / punch-corrections.js) rather than imported directly.
+const SKIP_FILES = new Set(['i18n.js', 'sw.js', 'list-cap.js']);
 
 function getJsFiles(dir) {
   const out = [];

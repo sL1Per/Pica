@@ -14,6 +14,52 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.55.0] — 2026-06-05 — Long lists get a "Show all" toggle
+
+The leaves and corrections history lists grow without bound — after a few
+months an employee's history, and especially the employer's all-requests view,
+renders hundreds of rows on every visit. This release caps those lists at the
+latest 15 and adds an in-place **Show all (N)** toggle to reveal the rest
+(**Show less** to re-collapse).
+
+- **What's capped:** the employee leaves **History** list, the employer leaves
+  **All requests** list, and the corrections **history** list. All three are
+  already sorted newest-first by their stores, so "latest 15" is the top slice.
+- **What's not capped:** the **Pending** lists (leaves pending + corrections
+  inbox). They self-drain and the employer needs every pending item visible at
+  once — capping them would hide work.
+- **Filter-aware (leaves):** the leaves lists have a status filter; the cap
+  applies to the *filtered* set ("latest 15 of the active filter"), and changing
+  the filter resets the list to collapsed.
+- **Implementation:** a new pure, import-free `public/list-cap.js`
+  (`capView()` decides how many rows to show + whether a toggle is needed;
+  `appendShowAll()` builds the CSP-safe toggle control). Wired into
+  `leaves.js` and `punch-corrections.js`; styled by a shared `.show-all-btn`
+  in `app.css`. Expanded/collapsed state is held client-side per list.
+- New i18n keys `list.showAll` / `list.showLess` (en + pt). New suite
+  `test-list-cap.mjs` (total 57). CACHE_VERSION v102→v103 (`punch-corrections.js`
+  and `app.css` changed; the new `/list-cap.js` is pre-cached because a
+  pre-cached module imports it).
+
+### Honest Disclosures
+
+- The cap is **display-only**. The server still fetches and decrypts the full
+  list on every request — this does not reduce payload size, decrypt cost, or
+  memory. It is consistent with the accepted ≤50-employee decrypt-on-list
+  design; a larger deployment would need real server-side pagination, and this
+  toggle would not be enough.
+- **Show all** loads every remaining row into the DOM at once. At ≤50 employees
+  over realistic horizons that is hundreds of rows at most — fine, but it is not
+  a virtualized list.
+- The cap deliberately does not touch the **Pending** lists. A pathological
+  backlog of pending items would still render in full (intended).
+- The 15-row cap is a single constant (`LIST_CAP`), not operator-configurable in
+  this release.
+- Expanded state is per-list and resets when the leaves status filter changes;
+  it is not persisted across page navigations or reloads.
+
+---
+
 ## [0.54.5] — 2026-06-05 — M17 Phase 3: docs reconciliation (closes M17)
 
 Documentation-only. Closes the M17 full-security-review milestone by folding
