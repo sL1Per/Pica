@@ -360,9 +360,19 @@ export function leavesMatrix(leavesStore, users, from, to, bucketBy) {
 // CSV helpers
 // ----------------------------------------------------------------------------
 
-function csvEscape(v) {
+// Exported for direct unit testing (M17 S2). Two jobs:
+//  1. RFC-4180 quoting: wrap a field containing " , CR or LF in double quotes
+//     and double any embedded quote.
+//  2. Formula / CSV injection (M17 S2): a field whose FIRST char is = + - @
+//     (or a leading TAB/CR that some parsers strip) is treated as a formula by
+//     Excel/Sheets/LibreOffice and can execute (e.g. =HYPERLINK / =cmd). The
+//     employee-controlled `fullName` flows into every CSV builder, so prefix
+//     such a value with a single quote, which forces the cell to plain text.
+//     Only a LEADING trigger is dangerous; an interior '=' is left alone.
+export function csvEscape(v) {
   if (v == null) return '';
-  const s = String(v);
+  let s = String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

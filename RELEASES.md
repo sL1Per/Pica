@@ -14,6 +14,46 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.54.2] — 2026-06-05 — M17 S2: CSV / formula-injection neutralization
+
+Second M17 fix (medium severity; logged in M16 as F11, carried here as S2). A
+report CSV opened in Excel / Google Sheets / LibreOffice could execute a formula
+embedded in a field — classic CSV / formula injection.
+
+- **`csvEscape` (`src/storage/reports.js`) quoted but did not neutralize a leading
+  `= + - @`.** The employee-controlled `fullName` flows into all four CSV builders
+  (`timesheetSingleCsv` / `timesheetMatrixCsv` / `leavesSingleCsv` /
+  `leavesMatrixCsv`) as the employee name, so an employee who set their name to
+  `=HYPERLINK("http://evil","click")` (or `=cmd|…`, `+…`, `-…`, `@…`) produced an
+  export whose cell a spreadsheet would treat as a formula on open.
+- **Fix:** `csvEscape` now prefixes a value whose **first** character is
+  `= + - @` (or a leading TAB / CR that some parsers strip) with a single quote
+  `'`, which forces the cell to plain text, and still applies RFC-4180 quoting.
+  Only a *leading* trigger is neutralized — an interior `a=b` is untouched — and
+  ordinary text / numbers are unchanged. `csvEscape` is now **exported** for a
+  direct unit test.
+
+Backend-only (`src/storage/reports.js`). No HTTP/route, i18n, or frontend change,
+so **no `CACHE_VERSION` bump** (no pre-cached asset touched). `test-reports.mjs`
+gains a 5-test S2 block (direct escaper cases + a builder-level malicious-name
+case); suite total unchanged (the cases live in the existing reports suite).
+`docs/security.md` advisory updated.
+
+### Honest Disclosures
+
+- **Mitigation, not a guarantee for every spreadsheet.** The `'`-prefix is the
+  widely-recommended defense and covers Excel / Sheets / LibreOffice defaults, but
+  a user who explicitly pastes a field into a formula bar, or an exotic importer
+  with non-standard quote handling, is out of scope. We do not strip or reject the
+  characters — names like `+ House` stay legible, just text.
+- **Numbers are unaffected in practice.** Report numeric fields (hours, totals)
+  are non-negative, so none begin with `-`; if a future negative value is exported
+  it would gain a leading `'` (rendered as text) — acceptable and safe.
+- **Only the CSV path is covered.** This is about spreadsheet execution on export;
+  the on-screen HTML render already escapes via `esc()` and is unrelated.
+
+---
+
 ## [0.54.1] — 2026-06-04 — M17 S1: punch endpoint path-traversal guard
 
 First M17 fix. Closes the path-traversal sibling of the 0.22.0 employees bug, which

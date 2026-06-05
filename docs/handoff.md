@@ -5,13 +5,23 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.54.1._
+_Last touched in 0.54.2._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.54.1 (released 2026-06-04) — **M17 S1: punch endpoint
+- **Latest version:** 0.54.2 (released 2026-06-05) — **M17 S2: CSV /
+  formula-injection neutralization.** The report CSV builders put the
+  employee-controlled `fullName` into the export, and `csvEscape` quoted but didn't
+  neutralize a leading `= + - @` — so a name like `=HYPERLINK(…)` could execute when
+  an employer opened the CSV in Excel/Sheets (M16 F11 → S2, medium). `csvEscape`
+  (now **exported**) prefixes a leading `= + - @` / TAB / CR with `'` (forces plain
+  text) and still RFC-4180-quotes. Backend-only (`src/storage/reports.js`); +5-test
+  S2 block in `test-reports.mjs` (suite count unchanged at 55); security.md advisory
+  added; **no CACHE_VERSION** (no pre-cached asset). **M17 Phase-1: S1 + S2 done;
+  S3 (record-both-times) is the remaining inherited finding.**
+- **0.54.1** (released 2026-06-04) — **M17 S1: punch endpoint
   path-traversal guard.** Closes the punches sibling of the 0.22.0 employees traversal
   bug (M16 F2 → S1, high). `GET /api/punches/by-employee/:id` now rejects a non-UUID
   `:id` with `400 invalid_id`, and `punchesStore.monthFile()` (the path chokepoint)

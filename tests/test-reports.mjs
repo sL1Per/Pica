@@ -19,6 +19,7 @@ import {
   isoWeek, bucketKeyFor, hoursMatrix, leavesMatrix,
   timesheetSingleCsv, timesheetMatrixCsv,
   leavesSingleCsv, leavesMatrixCsv,
+  csvEscape,
 } from '../src/storage/reports.js';
 
 // Pin the process timezone so the UTC instants in the fixtures below straddle
@@ -476,6 +477,45 @@ try {
     const report = { range: { from: '2026-05-11', to: '2026-05-11' }, groupBy: 'day', buckets: [], totalHours: 0 };
     const csv = timesheetSingleCsv(report, { employeeName: 'Ann', periodLabel: 'Mon' });
     assert.doesNotMatch(csv, /On-time %/);
+  });
+
+  // ---- M17 S2: CSV / formula injection -------------------------------------
+  console.log('\ncsvEscape — formula-injection neutralization (M17 S2)');
+
+  await test('csvEscape prefixes a leading = + - @ with an apostrophe', () => {
+    assert.equal(csvEscape('=1+1'), "'=1+1");
+    assert.equal(csvEscape('+1'), "'+1");
+    assert.equal(csvEscape('-cmd'), "'-cmd");
+    assert.equal(csvEscape('@SUM(A1)'), "'@SUM(A1)");
+  });
+
+  await test('csvEscape prefixes a leading tab / CR too', () => {
+    assert.equal(csvEscape('\t=1+1'), "'\t=1+1");
+    // a leading CR also triggers quoting (it is in the quote set), so both apply
+    assert.equal(csvEscape('\r=1+1'), '"\'\r=1+1"');
+  });
+
+  await test('csvEscape still quotes AND neutralizes a dangerous value with a comma', () => {
+    // =cmd,2 starts with = (prefix) and contains , (quote): "'=cmd,2"
+    assert.equal(csvEscape('=cmd(),2'), '"\'=cmd(),2"');
+  });
+
+  await test('csvEscape leaves ordinary text and numbers untouched', () => {
+    assert.equal(csvEscape('Ana Silva'), 'Ana Silva');
+    assert.equal(csvEscape(8.5), '8.5');
+    assert.equal(csvEscape(0), '0');
+    assert.equal(csvEscape(null), '');
+    // an interior =/+/@ is harmless — only a LEADING one executes
+    assert.equal(csvEscape('a=b'), 'a=b');
+  });
+
+  await test('builders neutralize an employee name that is a formula', () => {
+    const evil = '=HYPERLINK("http://evil","click")';
+    const report = { range: { from: '2026-05-11', to: '2026-05-11' }, groupBy: 'day', buckets: [], totalHours: 0 };
+    const csv = timesheetSingleCsv(report, { employeeName: evil, periodLabel: 'Mon' });
+    // the raw, executable form must NOT appear; the neutralized "'=HYPERLINK… must
+    assert.ok(!csv.includes(`,${evil}`), 'raw formula leaked into a field');
+    assert.ok(csv.includes("'=HYPERLINK"), 'name not neutralized');
   });
 
 } finally {

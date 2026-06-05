@@ -665,6 +665,47 @@ route rejects a non-UUID `:id` with `400 invalid_id`, and
 Regression tests: `tests/test-punches-route.mjs` (route 400) and a
 store-level traversal case in `tests/test-punches.mjs`.
 
+### CSV / formula-injection advisory (M17 S2, fixed 0.54.2)
+
+**Affected versions:** every build that exported report CSVs (M13's
+0.24.0 onward) through 0.54.1 inclusive.
+**Fixed in:** 0.54.2.
+**Severity:** Medium. Requires opening an exported CSV in a spreadsheet
+app; the injected value is employee-controlled.
+
+The report CSV builders (`timesheetSingleCsv` / `timesheetMatrixCsv` /
+`leavesSingleCsv` / `leavesMatrixCsv` in `src/storage/reports.js`) put
+the employee's `fullName` into the export. `csvEscape` applied RFC-4180
+quoting but did **not** neutralize a field whose first character is
+`= + - @` — the lead-in spreadsheets (Excel, Google Sheets,
+LibreOffice) read as a **formula**. An employee who set their display
+name to `=HYPERLINK("http://evil","click")` (or `=cmd|…`, `+…`, `-…`,
+`@…`) produced a CSV whose cell could execute when an employer opened
+the export.
+
+What the attacker could do:
+- Have a formula evaluated in the *victim's* spreadsheet on open
+  (data exfiltration via `=HYPERLINK`/`=WEBSERVICE`, or a command
+  prompt via legacy DDE), within that spreadsheet app's own macro/
+  formula-execution policy.
+
+What the attacker could NOT do:
+- Affect the Pica server or other users' data — this is entirely a
+  client-side spreadsheet concern on the downloaded file.
+- Inject via the on-screen report. The HTML render escapes through
+  `esc()`; only the CSV path was affected.
+
+Required attacker capability:
+- Any authenticated employee (they control their own profile name).
+
+Mitigation in 0.54.2: `csvEscape` prefixes a value whose first char is
+`= + - @` (or a leading TAB / CR) with a single quote `'`, forcing the
+cell to plain text, and still quotes per RFC-4180. Only a *leading*
+trigger is neutralized (interior `a=b` is untouched); ordinary text and
+non-negative numbers are unchanged. Direct regression tests on the
+now-exported `csvEscape` plus a builder-level malicious-name case in
+`tests/test-reports.mjs`.
+
 ---
 
 ## Service Worker caching
@@ -798,4 +839,4 @@ patch.
 
 ---
 
-_Last touched in 0.54.1 (M17 S1 — punches `:id` path-traversal advisory + fix)._
+_Last touched in 0.54.2 (M17 S2 — CSV / formula-injection advisory + fix)._
