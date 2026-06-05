@@ -14,13 +14,38 @@
  */
 
 import { isUuid } from '../util/validators.js';
+import { auditContext } from '../storage/audit.js';
 
 export function registerPunchRoutes(router, {
   punchesStore,
   usersStore,
+  auditStore,
   requireAuth,
   requireOwnerOrEmployer,
 }) {
+
+  // A punch whose honored client time diverges from the server receipt by more
+  // than this is flagged as back/forward-dated (M17 S3). 120s absorbs normal
+  // network latency + client clock skew, so live punches never trip it.
+  const BACKDATE_THRESHOLD_MS = 120 * 1000;
+
+  /**
+   * Best-effort audit of a back/forward-dated punch. `ts` is the recorded punch
+   * instant (possibly client-supplied), `recvTs` the server-receipt time. Emits
+   * `punch.backdated` only when the two diverge beyond the threshold — so a live
+   * punch (ts === recvTs) or a rejected/within-skew clientTs stays silent. Never
+   * throws; carries no comment/geo (privacy — only the timing delta).
+   */
+  function auditBackdate(req, type, ts, recvTs) {
+    const delta = Math.abs(new Date(recvTs).getTime() - new Date(ts).getTime());
+    if (!(delta > BACKDATE_THRESHOLD_MS)) return;
+    auditStore?.appendRecord({
+      ...auditContext(req),
+      event: 'punch.backdated',
+      target: { employeeId: req.user.id, type },
+      details: { claimedTs: ts, recvTs, deltaSeconds: Math.round(delta / 1000) },
+    });
+  }
 
   function todayYmd(date = new Date()) {
     const y = date.getUTCFullYear();
@@ -70,9 +95,12 @@ export function registerPunchRoutes(router, {
    * provided it parses cleanly AND falls within +/- 7 days of now. The
    * +/- bound limits how far a punch can be back/forward-dated, but the
    * timestamp is NOT cryptographically signed, so a user can still fabricate
-   * times within that window. This is a known, accepted trade-off for offline
-   * support; tightening it (signed client punches) is logged for the M17
-   * security review, not this milestone. Returns the ISO string or null.
+   * times within that window. This is a known trade-off for offline support.
+   * M17 S3 mitigation (0.54.3): the caller pairs every honored value with a
+   * server-receipt `recvTs` and audits any divergence > 120s via auditBackdate,
+   * so back-dating is recorded even though it is still possible. Signed client
+   * punches (preventing the forgery) remain future hardening. Returns the ISO
+   * string or null.
    */
   function validClientTs(ts) {
     if (typeof ts !== 'string') return null;
@@ -109,17 +137,20 @@ export function registerPunchRoutes(router, {
       return res.badRequest('You are already clocked in', { errorCode: 'already_clocked_in' });
     }
     // Offline replays may carry a clientTs. Honor it if reasonable; otherwise
-    // stamp server-side. The two-source model lets reports later distinguish
-    // "punched at 09:00 (offline, synced 09:47)" from "punched at 09:00 live".
-    const ts = validClientTs(req.body?.clientTs) ?? new Date().toISOString();
+    // stamp server-side. `recvTs` always records the server-receipt instant, so
+    // a backdated offline punch is detectable (and audited below) — M17 S3.
+    const recvTs = new Date().toISOString();
+    const ts = validClientTs(req.body?.clientTs) ?? recvTs;
     const record = punchesStore.append(req.user.id, {
       type: 'in',
       ts,
+      recvTs,
       comment: validComment(req.body?.comment),
       geo: validGeo(req.body?.geo),
       geoSkipReason: validGeoSkipReason(req.body?.geoSkipReason),
       clientId,
     });
+    auditBackdate(req, 'in', ts, recvTs);
     res.json({ ok: true, punch: record });
   }));
 
@@ -135,15 +166,18 @@ export function registerPunchRoutes(router, {
     if (!punchesStore.hasOpenPunch(req.user.id)) {
       return res.badRequest('You are not currently clocked in', { errorCode: 'not_clocked_in' });
     }
-    const ts = validClientTs(req.body?.clientTs) ?? new Date().toISOString();
+    const recvTs = new Date().toISOString();
+    const ts = validClientTs(req.body?.clientTs) ?? recvTs;
     const record = punchesStore.append(req.user.id, {
       type: 'out',
       ts,
+      recvTs,
       comment: validComment(req.body?.comment),
       geo: validGeo(req.body?.geo),
       geoSkipReason: validGeoSkipReason(req.body?.geoSkipReason),
       clientId,
     });
+    auditBackdate(req, 'out', ts, recvTs);
     res.json({ ok: true, punch: record });
   }));
 

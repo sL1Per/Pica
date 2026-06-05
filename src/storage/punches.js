@@ -11,8 +11,15 @@ import { isUuid } from '../util/validators.js';
  *   data/punches/<yyyy>/<mm>/<employeeId>.ndjson
  *
  * Line schema (plaintext JSON, one per line):
- *   { "ts": "2026-04-19T14:07:32.490Z", "type": "in",  "enc": "<base64>" }
- *   { "ts": "2026-04-19T17:30:15.100Z", "type": "out", "enc": "<base64>" }
+ *   { "ts": "...", "type": "in",  "recvTs": "...", "enc": "<base64>" }
+ *   { "ts": "...", "type": "out", "recvTs": "...", "enc": "<base64>" }
+ *
+ * `ts` is the punch instant — which may be a client-supplied time on an
+ * offline replay (see routes/punches.js validClientTs). `recvTs` is the
+ * server's wall-clock at the moment the line was written: a trustworthy
+ * receipt the client cannot forge. When the two diverge, the punch was
+ * back/forward-dated; the route audits that (M17 S3). Older lines written
+ * before 0.54.3 have no `recvTs` and read back as `recvTs: null`.
  *
  * Plaintext keys allow reports to aggregate hours without touching the key.
  * Inside `enc` is a base64 AES-256-GCM ciphertext of { comment, geo }, with
@@ -91,6 +98,7 @@ export function createPunchesStore(dataDir, masterKey) {
         employeeId,
         ts: parsed.ts,
         type: parsed.type,
+        recvTs: parsed.recvTs ?? null,
         comment: extra?.comment ?? null,
         geo: extra?.geo ?? null,
         geoSkipReason: extra?.geoSkipReason ?? null,
@@ -147,11 +155,18 @@ export function createPunchesStore(dataDir, masterKey) {
    * Atomically append one punch line to the correct month file.
    * Creates the directory tree on demand. Returns the persisted record.
    */
-  function append(employeeId, { type, ts, comment, geo, geoSkipReason, clientId }) {
+  function append(employeeId, { type, ts, recvTs, comment, geo, geoSkipReason, clientId }) {
     if (!PUNCH_TYPES.has(type)) throw new Error(`Invalid punch type: ${type}`);
     if (!ts || typeof ts !== 'string') throw new Error('ts is required');
     const d = new Date(ts);
     if (Number.isNaN(d.getTime())) throw new Error(`Invalid timestamp: ${ts}`);
+
+    // Server-receipt time (M17 S3): trustworthy wall-clock at write. The route
+    // passes the same `now` it used to resolve `ts`; a direct caller that omits
+    // it still gets a receipt stamped here (storage is the trust boundary).
+    const stampedRecvTs = (typeof recvTs === 'string' && !Number.isNaN(new Date(recvTs).getTime()))
+      ? recvTs
+      : new Date().toISOString();
 
     const year = d.getUTCFullYear();
     const month = d.getUTCMonth() + 1;
@@ -186,7 +201,7 @@ export function createPunchesStore(dataDir, masterKey) {
     // clientId stays on the plaintext line (it's a UUID, not sensitive).
     // This lets findByClientId scan files without paying the decryption
     // cost on every line.
-    const record = { ts, type };
+    const record = { ts, type, recvTs: stampedRecvTs };
     if (enc) record.enc = enc;
     if (clientId) record.clientId = clientId;
 
@@ -195,6 +210,7 @@ export function createPunchesStore(dataDir, masterKey) {
 
     return {
       employeeId, ts, type,
+      recvTs: stampedRecvTs,
       comment: safeComment,
       geo: geo || null,
       geoSkipReason: hasReason ? geoSkipReason : null,
@@ -230,6 +246,7 @@ export function createPunchesStore(dataDir, masterKey) {
             employeeId,
             ts: parsed.ts,
             type: parsed.type,
+            recvTs: parsed.recvTs ?? null,
             comment: extra?.comment ?? null,
             geo: extra?.geo ?? null,
             geoSkipReason: extra?.geoSkipReason ?? null,

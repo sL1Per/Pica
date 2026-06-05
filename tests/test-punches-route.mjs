@@ -81,6 +81,83 @@ await test('valid UUID id → passes the guard, store IS called', async () => {
   assert.ok(storeCalls > 0, 'store should be queried for a valid id');
 });
 
+// ---------------------------------------------------------------------------
+// M17 S3: clock-in/out records the server-receipt time and AUDITS a backdated
+// (honored clientTs that diverges from receipt) punch. Live punches stay silent.
+// ---------------------------------------------------------------------------
+console.log('\nclock-in/out — server-receipt + backdated audit (M17 S3)');
+
+const UID = '11111111-1111-4111-8111-111111111111';
+
+function clockHarness() {
+  const events = [];
+  const appended = [];
+  const cStore = {
+    hasOpenPunch: () => clockHarness._open,
+    findByClientId: () => null,
+    append: (id, rec) => { appended.push({ id, rec }); return { employeeId: id, ...rec }; },
+  };
+  const auditStore = { appendRecord: (e) => events.push(e) };
+  const r = createRouter();
+  registerPunchRoutes(r, {
+    punchesStore: cStore, usersStore: { list: () => [] }, auditStore,
+    requireAuth, requireOwnerOrEmployer,
+  });
+  return { r, events, appended };
+}
+
+async function clock(h, path, body, open) {
+  clockHarness._open = open;
+  const m = h.r.match('POST', path);
+  const req = { user: { id: UID, username: 'alice', role: 'employee' }, params: m.params, query: {}, body, headers: {}, socket: {} };
+  const res = mockRes();
+  await m.handler(req, res);
+  return res;
+}
+
+await test('clock-in passes a recvTs to the store', async () => {
+  const h = clockHarness();
+  await clock(h, '/api/punches/clock-in', {}, false);
+  assert.equal(h.appended.length, 1);
+  assert.ok(h.appended[0].rec.recvTs, 'append payload should carry recvTs');
+});
+
+await test('a live clock-in (no clientTs) emits NO audit event', async () => {
+  const h = clockHarness();
+  await clock(h, '/api/punches/clock-in', {}, false);
+  assert.equal(h.events.length, 0);
+});
+
+await test('small jitter (<120s) clientTs emits NO audit event', async () => {
+  const h = clockHarness();
+  const ts = new Date(Date.now() - 30 * 1000).toISOString(); // 30s ago
+  await clock(h, '/api/punches/clock-in', { clientTs: ts }, false);
+  assert.equal(h.events.length, 0, 'within-threshold skew should not be flagged');
+});
+
+await test('backdated clientTs (>120s) emits punch.backdated with the delta', async () => {
+  const h = clockHarness();
+  const claimed = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(); // 3h ago
+  await clock(h, '/api/punches/clock-in', { clientTs: claimed }, false);
+  assert.equal(h.events.length, 1);
+  const e = h.events[0];
+  assert.equal(e.event, 'punch.backdated');
+  assert.equal(e.target.employeeId, UID);
+  assert.equal(e.target.type, 'in');
+  assert.equal(e.details.claimedTs, claimed);
+  assert.ok(e.details.recvTs, 'event carries the receipt time');
+  assert.ok(e.details.deltaSeconds >= 3 * 60 * 60 - 5, 'delta ~ 3h in seconds');
+});
+
+await test('backdated clock-OUT is audited too', async () => {
+  const h = clockHarness();
+  const claimed = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 min ago
+  await clock(h, '/api/punches/clock-out', { clientTs: claimed }, true);
+  assert.equal(h.events.length, 1);
+  assert.equal(h.events[0].event, 'punch.backdated');
+  assert.equal(h.events[0].target.type, 'out');
+});
+
 console.log('');
 console.log(`${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

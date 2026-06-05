@@ -369,6 +369,62 @@ try {
     }
   });
 
+  // --------------------------------------------------------------------------
+  console.log('\nServer-receipt timestamp (M17 S3)');
+  // --------------------------------------------------------------------------
+
+  await test('append stamps recvTs and the read path surfaces it', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-recv-'));
+    try {
+      const s = createPunchesStore(dir, masterKey);
+      const uid = '33333333-3333-4333-8333-333333333333';
+      const claimed = '2026-05-10T09:00:00.000Z';
+      const before = Date.now();
+      const rec = s.append(uid, { type: 'in', ts: claimed });
+      const after = Date.now();
+      assert.equal(rec.ts, claimed);
+      assert.ok(rec.recvTs, 'append should return a recvTs');
+      const recvMs = new Date(rec.recvTs).getTime();
+      assert.ok(recvMs >= before && recvMs <= after, 'recvTs is the server wall-clock at append');
+      const [read] = s.listDay(uid, '2026-05-10');
+      assert.equal(read.ts, claimed);
+      assert.equal(read.recvTs, rec.recvTs);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('append honors an explicit recvTs argument', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-recv-'));
+    try {
+      const s = createPunchesStore(dir, masterKey);
+      const uid = '44444444-4444-4444-8444-444444444444';
+      const recv = '2026-05-10T09:47:00.000Z';
+      const rec = s.append(uid, { type: 'in', ts: '2026-05-10T09:00:00.000Z', recvTs: recv });
+      assert.equal(rec.recvTs, recv);
+      const [read] = s.listDay(uid, '2026-05-10');
+      assert.equal(read.recvTs, recv);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  await test('a legacy line with no recvTs reads back as recvTs: null', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pica-recv-'));
+    try {
+      const s = createPunchesStore(dir, masterKey);
+      const uid = '55555555-5555-4555-8555-555555555555';
+      // Simulate a pre-S3 line written without a recvTs field.
+      const file = s.paths.monthFile(uid, 2026, 5);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify({ ts: '2026-05-10T08:00:00.000Z', type: 'in' }) + '\n');
+      const [read] = s.listDay(uid, '2026-05-10');
+      assert.equal(read.recvTs, null);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

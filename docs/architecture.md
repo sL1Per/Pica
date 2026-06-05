@@ -295,7 +295,7 @@ Helpers live in `src/crypto/aes.js`.
 
 | Path                                | Per-line shape                                            |
 |-------------------------------------|-----------------------------------------------------------|
-| `punches/<yyyy>/<mm>.ndjson`        | `{ id, type, employeeId, ts, comment_enc?, geo_enc? }`    |
+| `punches/<yyyy>/<mm>.ndjson`        | `{ ts, type, recvTs, enc?, clientId? }` — `recvTs` is the server-receipt time (M17 S3, 0.54.3); `enc` wraps comment/geo |
 | `leaves/<yyyy>/<mm>.ndjson`         | `{ id, employeeId, type, status, start, end, reason_enc?, …events }` (incl. a `reminder_sent` event line — timestamp + leave id only, unencrypted — once the 24h reminder fires) |
 | `corrections/<yyyy>/<mm>.ndjson`    | `{ id, employeeId, kind, status, start, end, hours, justification_enc? }` |
 
@@ -507,6 +507,7 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.54.1 (M17 S1 — punch `:id` path-traversal guard at route + store;
-+`test-punches-route.mjs`, suite count 54→55). 0.53.10: M16 doc-truth (all 54 files
-enumerated; +sniffImageType on validators line)._
+_Last touched in 0.54.3 (M17 S3 — punch line gains a server-receipt `recvTs`;
+`punch.backdated` audit event). 0.54.1: M17 S1 — punch `:id` path-traversal guard at
+route + store (+`test-punches-route.mjs`, suite count 54→55). 0.53.10: M16 doc-truth
+(all 54 files enumerated; +sniffImageType on validators line)._

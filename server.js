@@ -208,6 +208,7 @@ registerEmployeeRoutes(router, {
 registerPunchRoutes(router, {
   punchesStore,
   usersStore,
+  auditStore,
   requireAuth: rbac.requireAuth,
   requireOwnerOrEmployer: rbac.requireOwnerOrEmployer,
 });

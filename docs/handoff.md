@@ -5,13 +5,25 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.54.2._
+_Last touched in 0.54.3._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.54.2 (released 2026-06-05) — **M17 S2: CSV /
+- **Latest version:** 0.54.3 (released 2026-06-05) — **M17 S3: record both
+  punch times + audit backdating.** Clock-in/out honor an unsigned client `clientTs`
+  (±7d) for offline replay, so an employee could backdate their own times (M16 F16 →
+  S3, medium). Operator decision "record both times": every punch line now stores a
+  server-receipt `recvTs` next to the punch `ts` (plaintext; `null` on pre-0.54.3
+  lines), and when an honored `clientTs` diverges from `recvTs` by >120s the route
+  emits a best-effort `punch.backdated` audit event (`{claimedTs,recvTs,deltaSeconds}`,
+  type, actor — no comment/geo). `auditStore` wired into `registerPunchRoutes`.
+  Backend-only (`storage/punches.js`, `routes/punches.js`, `server.js`); +3/+5 tests
+  in the two punch suites (count unchanged at 55); security.md advisory + event entry;
+  **no CACHE_VERSION**. **Detects/records, does not prevent** — signed punches deferred;
+  audit-log only (no report column/UI badge this release). **M17 Phase-1 (S1–S3) DONE.**
+- **0.54.2** (released 2026-06-05) — **M17 S2: CSV /
   formula-injection neutralization.** The report CSV builders put the
   employee-controlled `fullName` into the export, and `csvEscape` quoted but didn't
   neutralize a leading `= + - @` — so a name like `=HYPERLINK(…)` could execute when

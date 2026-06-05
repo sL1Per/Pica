@@ -479,6 +479,10 @@ rotate by calendar month.
 - `leave.decision` (approve, reject, cancelled-by-employer for
   someone else's leave)
 - `correction.decision` (approve, reject)
+- `punch.backdated` (0.54.3) — a clock-in/out whose honored
+  client-supplied time diverged from the server-receipt time by more
+  than 120s. Carries `{ claimedTs, recvTs, deltaSeconds }` and the
+  punch type; no comment/geo. See the `clientTs` advisory below.
 - `settings.org_updated` (records which top-level keys were changed,
   not the values)
 - `backup.created` / `backup.deleted`
@@ -492,8 +496,10 @@ rotate by calendar month.
 
 - Reads (e.g. `GET /api/employees`). Audit value is low; volume would
   swamp investigations.
-- Punch in/out. Punches are themselves an append-only domain log
-  (`data/punches/<yyyy>/<mm>.ndjson.enc`).
+- Routine punch in/out. Punches are themselves an append-only domain
+  log (`data/punches/<yyyy>/<mm>.ndjson.enc`). The one exception is a
+  *backdated* punch (`punch.backdated`, above), which is integrity-
+  relevant and worth a tamper-evident entry.
 - Self-cancellation of one's own pending leave. Routine user action.
 - 403/forbidden denials (path validation, RBAC). Logged via the regular
   logger but not duplicated to audit; high volume from any port-scan.
@@ -706,6 +712,50 @@ non-negative numbers are unchanged. Direct regression tests on the
 now-exported `csvEscape` plus a builder-level malicious-name case in
 `tests/test-reports.mjs`.
 
+### Client punch-timestamp advisory (M17 S3, mitigated 0.54.3)
+
+**Affected behavior:** clock-in / clock-out accept an optional
+client-supplied `clientTs` and honor it if it parses and falls within
+±7 days of now (`validClientTs` in `src/routes/punches.js`). This exists
+so the offline punch queue can replay the *real* punch instant after a
+later sync. The timestamp is **not** cryptographically signed.
+**Severity:** Medium. Self-data only — an employee can back/forward-date
+**their own** worked times within the ±7-day window. Not cross-tenant
+(an employee can only punch as themselves), no privilege escalation.
+
+Why it is not simply tightened or removed:
+- Removing `clientTs` (always stamping server-side) breaks legitimate
+  offline use — a punch made in a tunnel at 09:00 and synced at 09:47
+  would record 09:47.
+- Narrowing the ±7-day window only shrinks the forgeable range; it does
+  not make any honored value trustworthy.
+
+Mitigation in 0.54.3 — **record both times** (operator decision,
+2026-06-04). Every punch line now stores a server-receipt timestamp
+`recvTs` (the trustworthy wall-clock at write) alongside the punch
+instant `ts`. When an honored `clientTs` diverges from `recvTs` by more
+than 120s, the route emits a best-effort `punch.backdated` audit event
+(`{ claimedTs, recvTs, deltaSeconds }`, punch type, actor — no
+comment/geo). So back-dating is no longer silent: it leaves a
+tamper-evident trail an employer can review, and reports/tools can
+compare `ts` vs `recvTs` per line.
+
+Residual risk (accepted, documented):
+- This **detects and records**, it does not **prevent**. An employee can
+  still backdate within the window; the defense is that it is now
+  attributable. Cryptographically-signed client punches would close the
+  forgery itself and remain possible future hardening.
+- Divergence is surfaced only in the audit log this release — there is
+  no visible report column or punch-list badge yet (deliberate scope).
+- The 120s threshold is a heuristic to absorb network latency + client
+  clock skew; a forgery of ≤120s is below the flag.
+- Punch lines written before 0.54.3 have no `recvTs` (`null` on read).
+
+Tests: store stamps/echoes `recvTs` and reads legacy lines as `null`
+(`tests/test-punches.mjs`); the route emits `punch.backdated` only past
+the threshold and stays silent for live / within-skew punches
+(`tests/test-punches-route.mjs`).
+
 ---
 
 ## Service Worker caching
@@ -839,4 +889,4 @@ patch.
 
 ---
 
-_Last touched in 0.54.2 (M17 S2 — CSV / formula-injection advisory + fix)._
+_Last touched in 0.54.3 (M17 S3 — client punch-timestamp advisory: record both times + audit)._

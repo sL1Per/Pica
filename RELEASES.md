@@ -14,6 +14,53 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.54.3] — 2026-06-05 — M17 S3: record both punch times + audit backdating
+
+Third M17 fix (medium; logged in M16 as F16, carried here as S3). Clock-in/out
+honor an optional client-supplied `clientTs` (within ±7 days) so the offline
+punch queue can replay the real instant after a later sync — but the value is
+unsigned, so an employee could back/forward-date **their own** worked times
+within that window. Operator decision (2026-06-04): **record both times.**
+
+- **Every punch line now stores a server-receipt timestamp `recvTs`** — the
+  trustworthy wall-clock at write — next to the punch instant `ts`. Plaintext,
+  alongside `ts` / `type` / `clientId` (a server timestamp, not sensitive); the
+  read path surfaces it (`recvTs: null` for pre-0.54.3 lines). `punchesStore.append`
+  stamps it, defaulting to now if a caller omits it (storage is the trust
+  boundary). The clock routes compute one `now`, derive `ts = clientTs ?? now`,
+  and pass `recvTs: now`, so a live punch has `ts === recvTs`.
+- **A backdated punch is now audited.** When an honored `clientTs` diverges from
+  `recvTs` by more than **120s**, the route emits a best-effort `punch.backdated`
+  audit event (`{ claimedTs, recvTs, deltaSeconds }`, punch type, actor — no
+  comment/geo). Live or within-skew punches emit nothing. `auditStore` is now
+  wired into `registerPunchRoutes`.
+
+Backend-only (`src/storage/punches.js`, `src/routes/punches.js`, `server.js`).
+No HTTP-shape, i18n, or frontend change → **no `CACHE_VERSION` bump**. Tests added
+to `test-punches.mjs` (+3: stamp/echo/legacy-null) and `test-punches-route.mjs`
+(+5: recvTs passed, live & jitter silent, backdated in/out audited); suite count
+unchanged (55). `docs/security.md` gains a client-punch-timestamp advisory and a
+`punch.backdated` event entry.
+
+### Honest Disclosures
+
+- **Detects/records, does not prevent.** An employee can still backdate within
+  the ±7-day window; the change makes it *attributable* (audit trail), not
+  impossible. Cryptographically-signed client punches would close the forgery
+  itself — deferred as future hardening.
+- **Audit-log only this release.** No visible report column or punch-list badge
+  for divergence yet — a deliberate scope choice (the operator picked
+  audit-event-only). The stored `recvTs` is the foundation for adding either later.
+- **120s threshold is a heuristic** to absorb network latency + client clock
+  skew; a forgery of ≤120s is below the flag.
+- **`recvTs` is plaintext.** A server timestamp carries no secret; keeping it on
+  the line (like `ts`/`type`/`clientId`) lets tools compare times without
+  decryption. Legacy lines read back `recvTs: null`.
+- **No backfill.** Existing punch lines are unchanged; only punches written from
+  0.54.3 on carry a receipt.
+
+---
+
 ## [0.54.2] — 2026-06-05 — M17 S2: CSV / formula-injection neutralization
 
 Second M17 fix (medium severity; logged in M16 as F11, carried here as S2). A
