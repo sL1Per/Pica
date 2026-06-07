@@ -1,0 +1,30 @@
+# Pica — Caddy reverse proxy
+#
+# Caddy is a single static binary (Windows .exe / Linux / macOS) with
+# automatic HTTPS. Download it from https://caddyserver.com/download, then
+# point it at Pica's loopback listener. Full walkthrough: docs/deployment.md.
+#
+# Pica listens on 127.0.0.1:8080 by default (config.json host/port). Keep it
+# on loopback — only Caddy should reach node.
+
+# ── Public domain (automatic Let's Encrypt certificate) ──
+# Replace pica.example.com with your domain. Its DNS A/AAAA record must point
+# at this host, and ports 80 + 443 must be reachable for the ACME challenge.
+pica.example.com {
+	reverse_proxy 127.0.0.1:8080
+	# Caddy sets X-Forwarded-Proto / X-Forwarded-For / Host correctly and
+	# strips client-supplied X-Forwarded-* by default — exactly what Pica's
+	# Secure-cookie and HSTS logic expect.
+}
+
+# ── LAN / no public domain (local internal CA) ──
+# Use this block INSTEAD of the one above when there is no public domain
+# (e.g. a Windows 11 machine on the office network). Caddy issues a cert from
+# its own local CA. You MUST install Caddy's root certificate on every client
+# device (see docs/deployment.md) so browsers trust it — otherwise the
+# punch-page geolocation and the Secure session cookie will not work.
+#
+# pica.lan {
+# 	tls internal
+# 	reverse_proxy 127.0.0.1:8080
+# }

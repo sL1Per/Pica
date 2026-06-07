@@ -1,0 +1,33 @@
+<!--
+  Pica - WinSW service definition (Windows 11 / Windows Server)
+
+  WinSW (https://github.com/winsw/winsw) wraps any executable as a Windows
+  service from a single .exe plus this XML. See deploy/windows/README.md for
+  the full walkthrough (and the NSSM / Task Scheduler alternatives).
+
+  1. Download WinSW-x64.exe, rename it pica-service.exe, and put it next to
+     this pica-service.xml inside your Pica folder.
+  2. Edit the paths and passphrase below.
+  3. Run, elevated:  pica-service.exe install   then   pica-service.exe start
+-->
+<service>
+  <id>pica</id>
+  <name>Pica time management</name>
+  <description>Pica - self-hosted time tracking</description>
+
+  <!-- Full path to node.exe -->
+  <executable>C:\Program Files\nodejs\node.exe</executable>
+  <arguments>server.js</arguments>
+
+  <!-- Folder containing server.js (and data\, backups\, config.json) -->
+  <workingdirectory>C:\Pica</workingdirectory>
+
+  <!-- Passphrase for the encryption key. Lock this file down (see README):
+       only the service account and Administrators should be able to read it. -->
+  <env name="PICA_PASSPHRASE" value="your-passphrase"/>
+
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>
