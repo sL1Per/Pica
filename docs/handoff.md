@@ -5,13 +5,32 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.56.0._
+_Last touched in 0.57.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.56.0 (released 2026-06-07) — **M18: deployment guide +
+- **Latest version:** 0.57.0 (released 2026-06-07) — **M19: user & admin
+  guides.** Docs + images only, **no application code change**. New
+  `docs/user-guide.md` (employee: sign-in, clocking, "Forgot to clock?", week,
+  request leave, balance/history, team calendar w/ the anonymized "Unavailable"
+  privacy rule, notifications, preferences) and `docs/admin-guide.md` (employer:
+  first-run setup + passphrase-recoverability warning, dashboard, team
+  add/edit/reset/deactivate-vs-delete, leave + correction approvals, today/week,
+  reports incl. CSV + print-PDF, Settings tabs, backups w/ restart +
+  config-not-in-backups caveats, Security passphrase/recovery/rotation). **20
+  real screenshots** under `docs/images/` (`user-*`/`admin-*`, default
+  Slate/light, en-US, 1440×900) captured from a throwaway seeded instance
+  (isolated temp copy on :8123/:8124, separate data dir, torn down — live :8080
+  never touched) + a `docs/images/README.md` (illustrative, may lag UI). Both
+  guides linked from `README.md` (docs table + a "new to Pica?" pointer) and
+  cross-linked. New `test-guides.mjs` drift guard (guides+images-README exist,
+  README links both, every referenced screenshot present, guides cross-link):
+  suite **58→59**. **No CACHE_VERSION bump** (no pre-cached asset touched).
+  English-only; no prose/pixel test (presence guard only). **M19 is the second
+  of the closing doc arc; next and last: M20 (project documentation sweep).**
+- **0.56.0** (released 2026-06-07) — **M18: deployment guide +
   TLS samples — opens M18.** Docs + sample configs, **no application code
   change**. Populated the previously-empty `deploy/` with `Caddyfile` (public
   auto-TLS + annotated LAN `tls internal`), `nginx/pica.conf` (with the
@@ -548,7 +567,7 @@ _Last touched in 0.56.0._
   64px so Status/Week/Today align row-to-row regardless of pending
   badge. See RELEASES 0.42.2. 0.42.1: employer home greeting + live
   clock, matching the employee home.))
-- **Test count:** 58 suites (0.56.0 added `test-deploy-samples`; 0.55.0 added `test-list-cap`; 0.54.4 added `test-auth-route`; 0.54.1 added `test-punches-route`; 0.53.0 added `test-report-overview`; 0.46.0 added `test-punch-manual`; 0.43.0 added `test-user-active` +
+- **Test count:** 59 suites (0.57.0 added `test-guides`; 0.56.0 added `test-deploy-samples`; 0.55.0 added `test-list-cap`; 0.54.4 added `test-auth-route`; 0.54.1 added `test-punches-route`; 0.53.0 added `test-report-overview`; 0.46.0 added `test-punch-manual`; 0.43.0 added `test-user-active` +
   `test-employee-deactivation`; 0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -578,10 +597,11 @@ _Last touched in 0.56.0._
   through 0.30.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~7 KLoC across `src/`, `public/`, `tests/`
-- **Active milestone:** **M18 (Deployment guide + TLS samples) — shipped at
-  0.56.0.** M16 (code review) closed 0.53.10; M17 (security review) closed
-  0.54.5. **Next: M19 (user guide) → M20 (docs sweep)** — the E2E/Playwright
-  milestone was dropped (zero-dependency constraint stands). _Historical M15
+- **Active milestone:** **M19 (User & admin guides) — shipped at 0.57.0.** M16
+  (code review) closed 0.53.10; M17 (security review) closed 0.54.5; M18
+  (deployment guide) shipped 0.56.0. **Next and last: M20 (project documentation
+  sweep)** — the E2E/Playwright milestone was dropped (zero-dependency constraint
+  stands). _Historical M15
   detail below:_ **M15 (Full UI revamp) — COMPLETE, closed at 0.41.0.** M15
   progression: foundation shipped at
   0.27.0; **employee home** at 0.28.0; **palette picker** at 0.29.0;

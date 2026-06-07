@@ -14,6 +14,50 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.57.0] — 2026-06-07 — User & admin guides (M19)
+
+**M19.** Two end-user-facing guides with real screenshots — no application
+code change (docs + images only).
+
+- **`docs/user-guide.md`** (new): an employee walkthrough — signing in and the
+  first-login password change, the dashboard, clocking in/out (location map +
+  comment), "Forgot to clock?" corrections, the week view, requesting leave,
+  leave balance/history, the team calendar (and the privacy rule: others' leave
+  shows as anonymized "Unavailable"), notifications, and preferences.
+- **`docs/admin-guide.md`** (new): an employer/admin walkthrough — first-run
+  setup and what the passphrase protects, the dashboard, managing the team
+  (add / edit / reset password / deactivate-vs-delete), approving leave and time
+  corrections, the today/this-week views, reports (KPIs, charts, CSV, print-PDF),
+  Settings (company, organization/working-time, email, backups), backups (with
+  the restart + `config.json`-not-in-backups caveats), and Security (passphrase,
+  recovery code, key rotation).
+- **`docs/images/`** (new): 20 screenshots (`user-*.png`, `admin-*.png`) captured
+  from a throwaway seeded instance in the default Slate/light theme at en-US,
+  1440×900, plus a `README.md` noting they're illustrative. The live install was
+  never touched (isolated temp copy, separate port + data dir, torn down after).
+- **`README.md`**: both guides linked from the docs table and from a "new to
+  using Pica?" pointer near the setup instructions.
+- **`tests/test-guides.mjs`** (new): a static drift guard — both guides and the
+  images README must exist, README must link both, every screenshot a guide
+  references must be present on disk, and the two guides must cross-link. Suite
+  count 58 → 59. No `CACHE_VERSION` bump (no pre-cached asset touched).
+
+### Honest Disclosures
+
+- The screenshots are **illustrative and will lag the live UI**. Pica's
+  interface changes most releases and there is no automated regeneration (the
+  project ships zero npm dependencies and no Playwright), so a shot may be a
+  release or two behind. The drift guard checks that referenced images *exist*,
+  not that they match the current pixels.
+- The guides are **English-only**. The app itself is bilingual (en-US / pt-PT),
+  but translating the documentation is out of scope for M19.
+- Screenshots target the **default Slate/light theme at desktop width** — dark
+  mode, other palettes, and the mobile layout aren't separately illustrated.
+- **No prose/accuracy test.** `test-guides` is a file/link/image presence guard;
+  the words themselves were verified by hand against the captured screens.
+
+---
+
 ## [0.56.0] — 2026-06-07 — Deployment guide + TLS samples (M18)
 
 **M18.** Operator-facing deployment documentation and copy-pasteable sample

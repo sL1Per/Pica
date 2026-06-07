@@ -37,7 +37,7 @@ app in a usable state.
 | M16       | Code review / optimization / simplification | ✅ 0.53.10 (closed; opened 0.52.0 · whole-codebase sweep · findings F1–F16: fixed/wontfix or deferred to M17 · doc-truth pass · isolated boot smoke passed) |
 | M17       | Full security review               | ✅ 0.54.5 (closed; opened 0.54.0 · S1–S3 + S5/S7/S13/S15 fixed · 11-domain sweep 0 crit/high/med · residuals documented) |
 | M18       | Deployment guide + TLS samples     | ✅ 0.56.0     |
-| M19       | User guide                         | 📋 Planned    |
+| M19       | User guide                         | ✅ 0.57.0     |
 | M20       | Project documentation update       | 📋 Planned    |
 
 The roadmap was renumbered after M9 closed: M10 was originally
@@ -458,8 +458,12 @@ posture rather than a moving target.
   the old M12 deployment-guide IOU in `security.md` and linked the guide from
   `README.md`; added a `test-deploy-samples` drift guard (57 → 58 suites).
   Documents the final, reviewed (post-M17) security posture. Next: M19.
-- **M19 — User guide.** Operator- and employee-facing documentation for
-  running and using Pica day to day.
+- **M19 — User guide.** ✅ **Shipped at 0.57.0.** Two end-user guides with real
+  screenshots: `docs/user-guide.md` (employee — sign-in, clocking, leave,
+  calendar, preferences) and `docs/admin-guide.md` (employer — setup, team,
+  approvals, reports, settings, backups, security), 20 screenshots under
+  `docs/images/`, both linked from `README.md`; added a `test-guides` drift
+  guard (58 → 59 suites). Docs/images only, no code change. Next: M20.
 - **M20 — Project documentation update.** A final sweep of all `docs/*`,
   `README.md`, and `RELEASES.md` to match the shipped state.
 
@@ -483,4 +487,4 @@ posture rather than a moving target.
 
 ---
 
-_Last touched in 0.56.0._
+_Last touched in 0.57.0._
