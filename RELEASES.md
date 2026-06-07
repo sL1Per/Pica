@@ -14,6 +14,53 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.56.0] — 2026-06-07 — Deployment guide + TLS samples (M18)
+
+**M18.** Operator-facing deployment documentation and copy-pasteable sample
+configs — no application code change.
+
+- **`deploy/`** (was empty): `Caddyfile` (public auto-TLS + an annotated LAN
+  `tls internal` variant), `nginx/pica.conf` (TLS server block + the
+  load-bearing `proxy_set_header X-Forwarded-Proto $scheme`),
+  `systemd/pica.service` (unprivileged user, `EnvironmentFile` passphrase,
+  auto-restart, sandboxing directives), and `windows/pica-service.xml` +
+  `windows/README.md` (WinSW, with NSSM / Task Scheduler alternatives). Plus a
+  `deploy/README.md` index.
+- **`docs/deployment.md`** (new): the browser→proxy→node architecture, public
+  vs LAN/internal TLS (including installing Caddy's root cert on clients so the
+  punch-page geolocation and the Secure cookie work), running as a service on
+  Linux and Windows 11, a hardening checklist, verification steps, and
+  troubleshooting.
+- **Reconciled** the standing IOU in `security.md` ("a sample Caddy config will
+  ship with the M12 deployment guide") with links to `deploy/` + the guide, and
+  linked the guide from `README.md`.
+- **`tests/test-deploy-samples.mjs`** (new): a static drift guard — the samples
+  must exist and the proxy configs must actively proxy to the `127.0.0.1:8080`
+  default derived from `src/config.js` (and the systemd unit must load the
+  passphrase via `EnvironmentFile`, not inline). Suite count 57 → 58.
+- Recommended path is **Caddy on both Linux and Windows** (single binary, auto
+  HTTPS). No `CACHE_VERSION` bump (no pre-cached asset touched).
+
+### Honest Disclosures
+
+- The configs are **samples, not turnkey** — you fill in your domain, cert
+  paths, install paths, and passphrase.
+- The LAN/internal-TLS path needs the Caddy root cert **manually installed on
+  every client device**; there is no central push.
+- **No Docker/container target** — least relevant to the "runs on a Windows 11
+  machine" use case; out of scope by decision.
+- Putting `PICA_PASSPHRASE` in a service file is an **availability-vs-secrecy
+  trade-off** — required for unattended restart, mitigated by file permissions,
+  not eliminated.
+- **No automated test of live TLS / HSTS / geolocation** — the drift-guard test
+  only checks the samples exist and stay in sync with the default upstream;
+  end-to-end verification is a manual operator checklist in the guide.
+- The guide documents the **current** (post-M17) posture; it adds no new
+  enforcement (e.g. no trusted-proxy `X-Forwarded-For` allowlist — still a
+  documented limitation in `security.md`).
+
+---
+
 ## [0.55.0] — 2026-06-05 — Long lists get a "Show all" toggle
 
 The leaves and corrections history lists grow without bound — after a few

@@ -64,7 +64,7 @@ pica/
 │   ├── security.md
 │   ├── development.md
 │   └── roadmap.md
-├── deploy/                  # sample deploy configs (Caddy etc., still TBD)
+├── deploy/                  # sample deploy configs (Caddy/nginx/systemd/WinSW + READMEs)
 ├── src/
 │   ├── router.js            # method/path matching, route registration
 │   ├── config.js            # config.json loader + defaults
@@ -378,7 +378,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **57 suites** (+`test-list-cap` in 0.55.0 — list display-cap Show-all toggle for leaves/corrections histories; +`test-auth-route` in 0.54.4 — M17 S7 cookie-Secure via
+- Total: **58 suites** (+`test-deploy-samples` in 0.56.0 — M18 static drift guard: the `deploy/` proxy/service samples must exist and stay in sync with the `127.0.0.1:8080` default in `src/config.js`; +`test-list-cap` in 0.55.0 — list display-cap Show-all toggle for leaves/corrections histories; +`test-auth-route` in 0.54.4 — M17 S7 cookie-Secure via
   X-Forwarded-Proto; +`test-punches-route` in 0.54.1 — M17 S1 punch `:id`
   traversal guard; +`test-report-overview` in 0.53.0 — the reports
   dashboard aggregation: worked-vs-target, punctuality, breaks, leaves,
@@ -510,4 +510,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.55.0 (list-cap display toggle for leaves/corrections histories)._
+_Last touched in 0.56.0 (M18: deploy/ populated with Caddy/nginx/systemd/WinSW samples; +test-deploy-samples drift guard, 58 suites)._

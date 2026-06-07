@@ -35,8 +35,8 @@ app in a usable state.
 | M14       | Add email notifications            | ✅ 0.25.0     |
 | M15       | Full UI revamp                     | ✅ 0.41.0 (closed; foundation 0.27.0 · employee home 0.28.0 · palette picker 0.29.0 · punch clock page 0.30.0 · corrections list+detail 0.31.0 · manual-time modal 0.32.0 · employer punches-today 0.33.0 · punch/topbar CSP+CSS polish 0.34.0 · leaves list+modal+detail 0.35.0 · calendar 0.36.0 · employer home+team+detail 0.37.0 · settings+security 0.38.0 · preferences+profile edit 0.39.0 · reports re-skin 0.40.0 · alias-removal+dedup+bell 0.41.0) |
 | M16       | Code review / optimization / simplification | ✅ 0.53.10 (closed; opened 0.52.0 · whole-codebase sweep · findings F1–F16: fixed/wontfix or deferred to M17 · doc-truth pass · isolated boot smoke passed) |
-| M17       | Full security review               | 🚧 In progress (0.54.0) |
-| M18       | Deployment guide + TLS samples     | 📋 Planned    |
+| M17       | Full security review               | ✅ 0.54.5 (closed; opened 0.54.0 · S1–S3 + S5/S7/S13/S15 fixed · 11-domain sweep 0 crit/high/med · residuals documented) |
+| M18       | Deployment guide + TLS samples     | ✅ 0.56.0     |
 | M19       | User guide                         | 📋 Planned    |
 | M20       | Project documentation update       | 📋 Planned    |
 
@@ -451,9 +451,13 @@ posture rather than a moving target.
   `m17-findings.md`); seeded with S1 (punch `:id` traversal), S2 (CSV formula
   injection), S3 (unsigned punch `clientTs`). Threat-model-relative severity;
   fixes ship as small releases with regression tests.
-- **M18 — Deployment guide + TLS samples.** Caddy / nginx / systemd
-  samples plus TLS guidance. Documents the final, reviewed security
-  posture.
+- **M18 — Deployment guide + TLS samples.** ✅ **Shipped at 0.56.0.** Caddy /
+  nginx / systemd / WinSW samples in `deploy/` plus `docs/deployment.md`
+  (browser→proxy→node, public + LAN TLS, running as a service on Linux +
+  Windows 11, a hardening checklist, verification, troubleshooting). Reconciled
+  the old M12 deployment-guide IOU in `security.md` and linked the guide from
+  `README.md`; added a `test-deploy-samples` drift guard (57 → 58 suites).
+  Documents the final, reviewed (post-M17) security posture. Next: M19.
 - **M19 — User guide.** Operator- and employee-facing documentation for
   running and using Pica day to day.
 - **M20 — Project documentation update.** A final sweep of all `docs/*`,
@@ -479,4 +483,4 @@ posture rather than a moving target.
 
 ---
 
-_Last touched in 0.53.0._
+_Last touched in 0.56.0._

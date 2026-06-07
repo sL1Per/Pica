@@ -5,13 +5,30 @@ This file is a snapshot in time. It describes where the project is
 spelunking through release notes. Update it when the state changes
 materially.
 
-_Last touched in 0.55.0._
+_Last touched in 0.56.0._
 
 ---
 
 ## At a glance
 
-- **Latest version:** 0.55.0 (released 2026-06-05) — **"Show all" toggle for
+- **Latest version:** 0.56.0 (released 2026-06-07) — **M18: deployment guide +
+  TLS samples — opens M18.** Docs + sample configs, **no application code
+  change**. Populated the previously-empty `deploy/` with `Caddyfile` (public
+  auto-TLS + annotated LAN `tls internal`), `nginx/pica.conf` (with the
+  load-bearing `X-Forwarded-Proto $scheme`), `systemd/pica.service`
+  (unprivileged user + `EnvironmentFile` passphrase + sandboxing), and
+  `windows/pica-service.xml` + `windows/README.md` (WinSW / NSSM / Task
+  Scheduler) + a `deploy/README.md` index. New **`docs/deployment.md`** walks
+  through architecture, public + LAN TLS (incl. installing Caddy's root cert on
+  clients so geolocation + the Secure cookie work), running as a service on
+  Linux + Windows 11, hardening, verification, and troubleshooting. Reconciled
+  the stale M12 deployment-guide IOU in `security.md` and linked the guide from
+  `README.md`. New `test-deploy-samples.mjs` drift guard (suite **57→58**); **no
+  CACHE_VERSION bump** (no pre-cached asset touched). Recommended path is Caddy
+  on both OSes. Verified by the full suite; no live-TLS test (impossible
+  offline) — manual operator checklist in the guide. **M18 is the first of the
+  closing doc arc; next M19 (user guide) → M20 (docs sweep).**
+- **0.55.0** (released 2026-06-05) — **"Show all" toggle for
   long leaves/corrections history lists.** Leaves history (employee + employer
   all-requests) and corrections history are now capped at 15 rows with an
   in-place **Show all (N)** / **Show less** toggle. New `public/list-cap.js`
@@ -531,7 +548,7 @@ _Last touched in 0.55.0._
   64px so Status/Week/Today align row-to-row regardless of pending
   badge. See RELEASES 0.42.2. 0.42.1: employer home greeting + live
   clock, matching the employee home.))
-- **Test count:** 53 suites (0.46.0 added `test-punch-manual`; 0.43.0 added `test-user-active` +
+- **Test count:** 58 suites (0.56.0 added `test-deploy-samples`; 0.55.0 added `test-list-cap`; 0.54.4 added `test-auth-route`; 0.54.1 added `test-punches-route`; 0.53.0 added `test-report-overview`; 0.46.0 added `test-punch-manual`; 0.43.0 added `test-user-active` +
   `test-employee-deactivation`; 0.37.0 added `test-team-status`; 0.36.0 added `test-calendar-grid`; 0.35.0 added `test-leaves-render`; 0.30.0 added `test-punch-week`; 0.29.0 added
   palette cases to the existing `test-user-prefs`), all green except **two** pre-existing
   flakes unrelated to recent work, both failing identically on the
@@ -561,9 +578,12 @@ _Last touched in 0.55.0._
   through 0.30.0 are feature drops on top; no new zip cut yet)
 - **Dependency count:** zero npm packages (Node 22 standard library only)
 - **Lines of code (rough):** ~7 KLoC across `src/`, `public/`, `tests/`
-- **Active milestone:** **M15 (Full UI revamp) — COMPLETE, closed at 0.41.0.**
-  Next is M16 (Playwright E2E — first npm dependency), then M17 (deployment
-  guide, ships last). M15 progression: foundation shipped at
+- **Active milestone:** **M18 (Deployment guide + TLS samples) — shipped at
+  0.56.0.** M16 (code review) closed 0.53.10; M17 (security review) closed
+  0.54.5. **Next: M19 (user guide) → M20 (docs sweep)** — the E2E/Playwright
+  milestone was dropped (zero-dependency constraint stands). _Historical M15
+  detail below:_ **M15 (Full UI revamp) — COMPLETE, closed at 0.41.0.** M15
+  progression: foundation shipped at
   0.27.0; **employee home** at 0.28.0; **palette picker** at 0.29.0;
   **employee punch (clock) page** at 0.30.0; **corrections list + detail**
   at 0.31.0; **manual-time modal** (`/corrections/new` retired) at 0.32.0;
