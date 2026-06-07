@@ -55,6 +55,10 @@ The passphrase is at least 8 characters. On first boot you'll be
 prompted to create the first employer account via the setup
 wizard at `/setup`.
 
+New to using Pica? Employees should start with the
+[user guide](./docs/user-guide.md), and whoever runs the company with the
+[admin guide](./docs/admin-guide.md) — both are illustrated walkthroughs.
+
 ---
 
 ## Repository layout
@@ -84,6 +88,8 @@ For anything beyond running the app, the deeper docs live in
 
 | Doc                                          | What's in it                                                          |
 |----------------------------------------------|-----------------------------------------------------------------------|
+| **[user-guide.md](./docs/user-guide.md)**     | For employees: signing in, clocking, leave, calendar, preferences      |
+| **[admin-guide.md](./docs/admin-guide.md)**   | For employers/admins: setup, team, approvals, reports, settings, backups, security |
 | **[architecture.md](./docs/architecture.md)** | Code organization, request flow, storage shape, tech choices         |
 | **[security.md](./docs/security.md)**         | Threat model, encryption, sessions, deployment expectations          |
 | **[deployment.md](./docs/deployment.md)**     | Production deploy: TLS, reverse proxy, running as a service, hardening |

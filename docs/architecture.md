@@ -378,7 +378,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **58 suites** (+`test-deploy-samples` in 0.56.0 — M18 static drift guard: the `deploy/` proxy/service samples must exist and stay in sync with the `127.0.0.1:8080` default in `src/config.js`; +`test-list-cap` in 0.55.0 — list display-cap Show-all toggle for leaves/corrections histories; +`test-auth-route` in 0.54.4 — M17 S7 cookie-Secure via
+- Total: **59 suites** (+`test-guides` in 0.57.0 — M19 static drift guard: the user/admin guides must exist, README must link both, and every screenshot they reference must be present under `docs/images/`; +`test-deploy-samples` in 0.56.0 — M18 static drift guard: the `deploy/` proxy/service samples must exist and stay in sync with the `127.0.0.1:8080` default in `src/config.js`; +`test-list-cap` in 0.55.0 — list display-cap Show-all toggle for leaves/corrections histories; +`test-auth-route` in 0.54.4 — M17 S7 cookie-Secure via
   X-Forwarded-Proto; +`test-punches-route` in 0.54.1 — M17 S1 punch `:id`
   traversal guard; +`test-report-overview` in 0.53.0 — the reports
   dashboard aggregation: worked-vs-target, punctuality, breaks, leaves,
@@ -510,4 +510,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.56.0 (M18: deploy/ populated with Caddy/nginx/systemd/WinSW samples; +test-deploy-samples drift guard, 58 suites)._
+_Last touched in 0.57.0 (M19: user + admin guides under docs/, screenshots under docs/images/; +test-guides drift guard, 59 suites)._
