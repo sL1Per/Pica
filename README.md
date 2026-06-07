@@ -40,8 +40,10 @@ Pica listening on http://localhost:8080
 ```
 
 That's it. No `npm install`, no build step. **Put it behind a
-reverse proxy with TLS in production** — see the
-[security doc](./docs/security.md#transport).
+reverse proxy with TLS in production** — the
+[deployment guide](./docs/deployment.md) has copy-pasteable Caddy / nginx /
+systemd / Windows-service samples for Linux and Windows 11, and the
+[security doc](./docs/security.md#transport) covers why.
 
 For automation:
 
@@ -84,6 +86,7 @@ For anything beyond running the app, the deeper docs live in
 |----------------------------------------------|-----------------------------------------------------------------------|
 | **[architecture.md](./docs/architecture.md)** | Code organization, request flow, storage shape, tech choices         |
 | **[security.md](./docs/security.md)**         | Threat model, encryption, sessions, deployment expectations          |
+| **[deployment.md](./docs/deployment.md)**     | Production deploy: TLS, reverse proxy, running as a service, hardening |
 | **[development.md](./docs/development.md)**   | Conventions, how-to recipes (add a page, translation, route, test)   |
 | **[roadmap.md](./docs/roadmap.md)**           | Milestone status, what's done, what's next                           |
 | **[handoff.md](./docs/handoff.md)**           | Current state snapshot — read this when picking up the project       |

@@ -341,7 +341,9 @@ Traefik). Reasons:
   plain HTTP they'd be sent over the wire in the clear.
 - Without TLS, passwords and PII go over the wire as plaintext.
 
-A sample Caddy config will ship with the M12 deployment guide.
+Sample Caddy, nginx, systemd, and Windows-service configs ship in
+[`deploy/`](../deploy/); the step-by-step walkthrough (public + LAN TLS,
+running as a service, hardening) is in [deployment.md](./deployment.md).
 
 ### Security headers (added in M12 Drop 2, 0.20.0)
 
@@ -962,4 +964,4 @@ patch.
 
 ---
 
-_Last touched in 0.54.5 (M17 Phase-3 docs reconciliation: folded accepted residual risks S4/S6/S8/S9/S10/S12/S14 into Known Limitations; added employee.deactivated/reactivated to the audit-event list; corrected the stale "approvals not audited" note)._
+_Last touched in 0.56.0 (M18: replaced the M12 deployment-guide IOU in Transport with links to `deploy/` samples + `deployment.md`)._
