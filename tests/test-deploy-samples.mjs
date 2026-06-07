@@ -30,19 +30,28 @@ const files = [
 ];
 for (const f of files) assert.ok(has(f), `missing deploy sample: ${f}`);
 
-// Proxy samples point at the loopback upstream.
-assert.ok(read('deploy/Caddyfile').includes(upstream), `Caddyfile must proxy to ${upstream}`);
-assert.ok(read('deploy/nginx/pica.conf').includes(upstream), `nginx sample must proxy to ${upstream}`);
+// Proxy samples must ACTIVELY proxy to the loopback upstream — assert on the
+// directive line, not a mere mention (the upstream also appears in comments).
+const up = upstream.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+assert.ok(new RegExp(`reverse_proxy\\s+${up}`).test(read('deploy/Caddyfile')),
+  `Caddyfile must have an active reverse_proxy to ${upstream}`);
+assert.ok(new RegExp(`proxy_pass\\s+http://${up}`).test(read('deploy/nginx/pica.conf')),
+  `nginx sample must proxy_pass to http://${upstream}`);
 
 // nginx must forward the proto header Pica's Secure-cookie / HSTS logic needs.
 assert.ok(/X-Forwarded-Proto\s+\$scheme/.test(read('deploy/nginx/pica.conf')),
   'nginx sample missing: proxy_set_header X-Forwarded-Proto $scheme');
 
-// The service samples must reference the non-interactive passphrase env var
-// (a service cannot answer the interactive Passphrase: prompt).
-assert.ok(read('deploy/systemd/pica.service').includes('PICA_PASSPHRASE'),
-  'systemd unit must reference PICA_PASSPHRASE');
-assert.ok(read('deploy/windows/pica-service.xml').includes('PICA_PASSPHRASE'),
-  'WinSW XML must reference PICA_PASSPHRASE');
+// The systemd unit must load the passphrase from an EnvironmentFile (so it can
+// restart unattended) and must NOT hard-code it inline.
+const unit = read('deploy/systemd/pica.service');
+assert.ok(/EnvironmentFile=/.test(unit),
+  'systemd unit must use EnvironmentFile to load PICA_PASSPHRASE');
+assert.ok(!/^PICA_PASSPHRASE\s*=/m.test(unit),
+  'systemd unit must not hard-code PICA_PASSPHRASE inline');
+
+// The WinSW service must inject the passphrase via an <env> entry.
+assert.ok(/<env\s+name="PICA_PASSPHRASE"/.test(read('deploy/windows/pica-service.xml')),
+  'WinSW XML must set PICA_PASSPHRASE via an <env> entry');
 
 console.log('test-deploy-samples: OK');
