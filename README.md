@@ -1,8 +1,22 @@
 # Pica — Time Management
 
-A minimalistic, file-based web application for tracking and managing
-employee working times. Runs on **Node.js alone** — zero npm
-dependencies, zero build steps, zero external databases.
+> Self-hosted time tracking for small teams that runs on **Node.js alone** —
+> zero npm dependencies, zero build steps, zero external database. Just
+> `node server.js`.
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+![Node ≥ 22](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)
+![Dependencies: 0](https://img.shields.io/badge/dependencies-0-success)
+![Build step: none](https://img.shields.io/badge/build-none-success)
+![PWA: installable](https://img.shields.io/badge/PWA-installable-5A0FC8)
+
+<p align="center">
+  <img src="docs/images/admin-dashboard.png" alt="Pica employer dashboard" width="860">
+</p>
+
+Clock in/out, leaves, time corrections, reports, and a calendar — encrypted at
+rest, bilingual (English / European Portuguese), installable as a PWA, and small
+enough to run on a laptop, a Raspberry Pi, or a tiny VPS.
 
 📜 **[See RELEASES.md](./RELEASES.md)** for the full version history
 and what's changed in each iteration.
@@ -28,6 +42,20 @@ A self-hostable time tracker for small teams (≤ 50 employees):
 
 It does NOT do payroll, taxes, social-security integrations,
 multi-tenant SaaS, or anything that would require a build step.
+
+---
+
+## A look at Pica
+
+| | |
+|:---:|:---:|
+| **Clock in / out** with location & comments | **Team calendar** with privacy-aware leave |
+| ![Clock page](docs/images/user-clock.png) | ![Calendar](docs/images/user-calendar.png) |
+| **Reports** — KPIs, charts, CSV, print-to-PDF | **Team management** for the employer |
+| ![Reports](docs/images/admin-reports.png) | ![Team](docs/images/admin-team.png) |
+
+More walkthrough screenshots are in the
+[user guide](./docs/user-guide.md) and [admin guide](./docs/admin-guide.md).
 
 ---
 
@@ -95,7 +123,6 @@ For anything beyond running the app, the deeper docs live in
 | **[deployment.md](./docs/deployment.md)**     | Production deploy: TLS, reverse proxy, running as a service, hardening |
 | **[development.md](./docs/development.md)**   | Conventions, how-to recipes (add a page, translation, route, test)   |
 | **[roadmap.md](./docs/roadmap.md)**           | Milestone status, what's done, what's next                           |
-| **[handoff.md](./docs/handoff.md)**           | Current state snapshot — read this when picking up the project       |
 
 The per-version changelog is [RELEASES.md](./RELEASES.md).
 
@@ -106,10 +133,11 @@ file headers at the top of each `src/routes/*.js` and
 ### For AI-assisted development
 
 If you're working on Pica with an AI coding assistant (Claude Code,
-Cursor, etc.), read **[CLAUDE.md](./CLAUDE.md)** at the repo root
-first. It captures the conventions and invariants that aren't
-obvious from reading individual files. Then read
-[docs/handoff.md](./docs/handoff.md) for the current state.
+Cursor, etc.), keep a `CLAUDE.md` at the repo root capturing the
+conventions and invariants that aren't obvious from reading
+individual files. This checkout's `CLAUDE.md` (and a `docs/handoff.md`
+state snapshot) are local and gitignored by design — they're operator
+notes for *this* working copy, not shipped with the repo.
 
 ---
 

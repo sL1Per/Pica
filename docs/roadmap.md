@@ -38,7 +38,7 @@ app in a usable state.
 | M17       | Full security review               | ✅ 0.54.5 (closed; opened 0.54.0 · S1–S3 + S5/S7/S13/S15 fixed · 11-domain sweep 0 crit/high/med · residuals documented) |
 | M18       | Deployment guide + TLS samples     | ✅ 0.56.0     |
 | M19       | User guide                         | ✅ 0.57.0     |
-| M20       | Project documentation update       | 📋 Planned    |
+| M20       | Project documentation update       | ✅ 0.58.0     |
 
 The roadmap was renumbered after M9 closed: M10 was originally
 "Backups" but the dashboard widget work earned its own milestone,
@@ -275,10 +275,11 @@ drops; each is independently shippable.
 - ✅ New `src/util/validators.js` (`isUuid`) and new test suite
       `tests/test-validators.mjs` (15 tests).
 
-**Pulled out into M17 (its own milestone) — Deployment guide:**
-- Will ship as the very last milestone before any future work, so
-  it can reference the final security posture rather than describing
-  a moving target.
+**Pulled out into its own milestone — Deployment guide:**
+- Shipped as **M18 (0.56.0)**, late in the arc, so it could reference
+  the final (post-M17) security posture rather than describing a
+  moving target. (Originally numbered M17 before the post-M15
+  renumbering — see the note below.)
 
 **Deferred / pulled out:**
 - ~~CSRF tokens~~ — `SameSite=Lax` cookies already provide solid
@@ -464,8 +465,16 @@ posture rather than a moving target.
   approvals, reports, settings, backups, security), 20 screenshots under
   `docs/images/`, both linked from `README.md`; added a `test-guides` drift
   guard (58 → 59 suites). Docs/images only, no code change. Next: M20.
-- **M20 — Project documentation update.** A final sweep of all `docs/*`,
-  `README.md`, and `RELEASES.md` to match the shipped state.
+- **M20 — Project documentation update.** ✅ **Shipped at 0.58.0 — closes the
+  roadmap.** A final sweep of `README.md`, `docs/*`, and `RELEASES.md` to match
+  the shipped state, plus repo cleanup for the public GitHub page: the README
+  got a landing treatment (badges, hero + feature screenshots), the internal
+  working docs (`notes.md`, `docs/handoff.md`) and the stale `i18n/` placeholder
+  were untracked, and
+  stale cross-references (the deployment guide's old M17 number, the
+  `architecture.md` test list missing the last two suites) were reconciled.
+  Added a `test-readme` drift guard (59 → 60 suites). Docs/images/config only,
+  no application code change.
 
 ---
 
@@ -487,4 +496,4 @@ posture rather than a moving target.
 
 ---
 
-_Last touched in 0.57.0._
+_Last touched in 0.58.0._

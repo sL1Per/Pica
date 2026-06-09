@@ -14,6 +14,72 @@ _Nothing yet — this section fills up as we work toward the next release._
 
 ---
 
+## [0.58.0] — 2026-06-09 — Project documentation update (M20)
+
+**M20 — the last milestone on the roadmap (M0–M20 now complete).** A
+documentation sweep and repo cleanup to make the project presentable on its
+GitHub page. Docs / images / config only — **no application code change**.
+
+- **`README.md` — landing treatment.** A sharper one-line tagline; a badge row
+  (MIT license · Node ≥ 22 · zero dependencies · no build step · PWA) using
+  static [shields.io](https://shields.io) image URLs — they render on GitHub and
+  add **no** npm dependency; a hero screenshot (`docs/images/admin-dashboard.png`)
+  under the title; and a 2×2 "A look at Pica" feature strip (clock in/out, team
+  calendar, reports, team management) reusing the M19 screenshots. The existing
+  sections (What it does / Running / layout / docs table / goals) were kept; all
+  links were verified.
+- **Repo cleanup for the public page.** Two internal working docs were untracked
+  (`git rm --cached`) and added to `.gitignore` — both stay on disk but no longer
+  appear on GitHub: `notes.md` (a personal TODO/bug scratchpad) and
+  `docs/handoff.md` (a 2,000-line cross-session state diary that served local
+  continuity; the public state story is told by `RELEASES.md` + `roadmap.md` +
+  `architecture.md`). Its two README references (the docs-table row and the
+  AI-assisted-development pointer) were removed, and the AI-dev note now states
+  plainly that both `CLAUDE.md` and `docs/handoff.md` are local-by-design. The
+  stale empty `i18n/` placeholder directory (`i18n/.gitkeep`, a leftover — the
+  real i18n lives in `public/locales/` + `public/i18n.js`) was removed.
+  `Pica.code-workspace` was deliberately kept. (`docs/superpowers/` was already
+  gitignored and is unaffected — it never appeared on GitHub.)
+- **Documentation truth-sweep.** Reconciled stale cross-references that had
+  drifted: the deployment guide's old milestone number (the M12 notes said it was
+  "pulled out into M17"; it actually shipped as **M18 / 0.56.0**) in
+  `roadmap.md`; the `architecture.md` test tree (its ASCII list had stopped at
+  `test-list-cap` / 0.55.0 and was missing `test-deploy-samples` and
+  `test-guides`); and the badly-stale milestone table in `docs/handoff.md` (which
+  still listed M16 as "E2E browser tests (Playwright)" and M17 as the deployment
+  guide) rewritten to the real M16–M20. `roadmap.md` flips **M20 → ✅ 0.58.0**.
+- **`package.json`.** `version` → `0.58.0`, `releaseDate` → `2026-06-09`, and the
+  `engines.node` field aligned from the stale `>=20.0.0` to **`>=22.0.0`** to
+  match what every doc (CLAUDE.md, `docs/deployment.md`, the plans) already
+  states — Node 22 is the supported target.
+- **`tests/test-readme.mjs`** (new): a static drift guard — every local image and
+  relative Markdown/HTML link in `README.md` must resolve to a file on disk, so
+  the landing page never ships a broken image or a dead doc link. It also asserts
+  the hero + four feature screenshots are embedded by name. Suite count 59 → 60.
+  No `CACHE_VERSION` bump (no pre-cached asset touched).
+
+### Honest Disclosures
+
+- **Screenshots are reused from M19 and remain illustrative** — they may lag the
+  live UI by a release or two; there is no automated regeneration (zero npm
+  dependencies, no Playwright). The new drift guard checks that referenced files
+  *exist*, not that they match the current pixels.
+- **The badges are external static endpoints** (shields.io). They are images
+  GitHub fetches at render time; they do not introduce a dependency or a build
+  step, but they do mean the badge row depends on a third-party service being up.
+- **`docs/handoff.md` history was not retroactively rewritten.** Only the
+  at-a-glance block at the top, the milestone table, the active-milestone line,
+  and the test count were corrected; the long dated snapshot list below remains
+  as written at each release.
+- **The `engines` bump to `>=22.0.0` is a documentation correction, not a tested
+  regression.** Pica very likely still runs on Node 20; the field now reflects
+  the *supported/target* runtime that the rest of the docs already claimed,
+  rather than asserting Node 20 was verified.
+- **No new feature, no behavior change, no API change.** This milestone closes
+  the roadmap; any further work begins a fresh arc.
+
+---
+
 ## [0.57.0] — 2026-06-07 — User & admin guides (M19)
 
 **M19.** Two end-user-facing guides with real screenshots — no application

@@ -228,7 +228,10 @@ pica/
 │   ├── test-theme-tokens.mjs       # design-token cascade: all 6 theme×palette combos defined, alias bridge present (0.27.0)
 │   ├── test-theme-bootstrap.mjs    # inline bootstrap byte-identical across all HTML (17 after /punches/today + /corrections list retired in 0.46.0), resolves mode+palette; no third-party CDN URLs in public/ (0.27.0)
 │   ├── test-sw-precache.mjs        # font woff2 files in SW pre-cache list; all listed assets exist on disk (0.27.0)
-│   └── test-list-cap.mjs           # capView + appendShowAll: cap logic, toggle rendering, filter-reset (0.55.0)
+│   ├── test-list-cap.mjs           # capView + appendShowAll: cap logic, toggle rendering, filter-reset (0.55.0)
+│   ├── test-deploy-samples.mjs     # M18 drift guard: deploy/ proxy+service samples exist, in sync with 127.0.0.1:8080 default (0.56.0)
+│   ├── test-guides.mjs             # M19 drift guard: user/admin guides + referenced screenshots exist, README links both (0.57.0)
+│   └── test-readme.mjs             # M20 drift guard: every local image/doc link in README resolves on disk (0.58.0)
 ├── data/                    # gitignored, created on first run
 └── backups/                 # gitignored, M11
 ```
@@ -378,7 +381,7 @@ corrupts an existing record) and gives us an audit log for free.
   underlying primitives — the right granularity for testing
   composition logic (period boundaries × matrix bucketing ×
   per-employee aggregation × scope/RBAC enforcement).
-- Total: **59 suites** (+`test-guides` in 0.57.0 — M19 static drift guard: the user/admin guides must exist, README must link both, and every screenshot they reference must be present under `docs/images/`; +`test-deploy-samples` in 0.56.0 — M18 static drift guard: the `deploy/` proxy/service samples must exist and stay in sync with the `127.0.0.1:8080` default in `src/config.js`; +`test-list-cap` in 0.55.0 — list display-cap Show-all toggle for leaves/corrections histories; +`test-auth-route` in 0.54.4 — M17 S7 cookie-Secure via
+- Total: **60 suites** (+`test-readme` in 0.58.0 — M20 static drift guard: every local image and relative doc link in `README.md` must resolve on disk, so the GitHub landing page never shows a broken image or dead link; +`test-guides` in 0.57.0 — M19 static drift guard: the user/admin guides must exist, README must link both, and every screenshot they reference must be present under `docs/images/`; +`test-deploy-samples` in 0.56.0 — M18 static drift guard: the `deploy/` proxy/service samples must exist and stay in sync with the `127.0.0.1:8080` default in `src/config.js`; +`test-list-cap` in 0.55.0 — list display-cap Show-all toggle for leaves/corrections histories; +`test-auth-route` in 0.54.4 — M17 S7 cookie-Secure via
   X-Forwarded-Proto; +`test-punches-route` in 0.54.1 — M17 S1 punch `:id`
   traversal guard; +`test-report-overview` in 0.53.0 — the reports
   dashboard aggregation: worked-vs-target, punctuality, breaks, leaves,
@@ -510,4 +513,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.57.0 (M19: user + admin guides under docs/, screenshots under docs/images/; +test-guides drift guard, 59 suites)._
+_Last touched in 0.58.0 (M20: README landing treatment + repo cleanup; test tree reconciled to disk; +test-readme drift guard, 60 suites)._

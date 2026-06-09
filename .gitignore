@@ -6,4 +6,7 @@ backups/
 docs/superpowers/
 config.json
 CLAUDE.md
-screenshots/old/
+notes.md
+docs/handoff.md
+screenshots/
+.Pica.code-workspace
