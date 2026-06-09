@@ -513,4 +513,4 @@ state and audit log are authoritative.
 
 ---
 
-_Last touched in 0.58.0 (M20: README landing treatment + repo cleanup; test tree reconciled to disk; +test-readme drift guard, 60 suites)._
+_Last touched in 1.0 (footer refresh in `topbar.js` `mountFooter` — author credit + Documentation link; CACHE_VERSION v103→v104)._

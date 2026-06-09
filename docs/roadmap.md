@@ -39,6 +39,11 @@ app in a usable state.
 | M18       | Deployment guide + TLS samples     | ✅ 0.56.0     |
 | M19       | User guide                         | ✅ 0.57.0     |
 | M20       | Project documentation update       | ✅ 0.58.0     |
+| —         | First stable release (footer refresh) | ✅ 1.0        |
+
+With M0–M20 all closed, the version graduated from the `0.x` line to **1.0**
+(2026-06-07) — a stability marker, not a new milestone. Any further work starts
+a fresh arc.
 
 The roadmap was renumbered after M9 closed: M10 was originally
 "Backups" but the dashboard widget work earned its own milestone,
@@ -496,4 +501,4 @@ posture rather than a moving target.
 
 ---
 
-_Last touched in 0.58.0._
+_Last touched in 1.0._

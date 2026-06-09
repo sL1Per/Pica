@@ -646,18 +646,26 @@ export async function mountFooter() {
   footer.className = 'app-footer';
   if (v) {
     const date = formatReleaseDate(v.releaseDate);
-    // Version label links to the changelog. Repo link stays separate so users
-    // can still get to the source root in one click.
-    const releasesUrl = v.repository ? `${v.repository.replace(/\/+$/, '')}/blob/main/RELEASES.md` : null;
+    const base = v.repository ? v.repository.replace(/\/+$/, '') : null;
+    // Version label links to the changelog; GitHub → source root; Documentation
+    // → the docs/ tree. All derived from the single repository URL so there is
+    // one source of truth. The author credit is plain text (no link).
+    const releasesUrl = base ? `${base}/blob/main/RELEASES.md` : null;
+    const docsUrl = base ? `${base}/tree/main/docs` : null;
     const versionEl = releasesUrl
       ? `<a href="${releasesUrl}" target="_blank" rel="noopener">Pica v${v.version}</a>`
       : `Pica v${v.version}`;
     const repoEl = v.repository
       ? `<a href="${v.repository}" target="_blank" rel="noopener">GitHub</a>`
       : '';
-    const parts = [versionEl];
+    const docsEl = docsUrl
+      ? `<a href="${docsUrl}" target="_blank" rel="noopener">Documentation</a>`
+      : '';
+    const creditEl = 'Made with ❤️ by Pedro Viegas';
+    const parts = [versionEl, creditEl];
     if (date)   parts.push(date);
     if (repoEl) parts.push(repoEl);
+    if (docsEl) parts.push(docsEl);
     footer.innerHTML = parts.join(' · ');
   } else {
     footer.textContent = 'Pica';

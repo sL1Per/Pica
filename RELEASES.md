@@ -5,12 +5,64 @@ Human-readable history of Pica releases. Format follows the
 entries are at the top.
 
 Each release corresponds to a point-in-time build — during development the
-build artifacts are named `pica-m<milestone>[-suffix].zip`. Versions are
-tagged as `0.N.0` where N matches the milestone number.
+build artifacts are named `pica-m<milestone>[-suffix].zip`. Through the
+milestone arc, versions were tagged `0.N.0` where N matched the milestone
+number; with the roadmap (M0–M20) complete the version graduated to **1.0**.
 
 ## [Unreleased]
 
 _Nothing yet — this section fills up as we work toward the next release._
+
+---
+
+## [1.0] — 2026-06-07 — First stable release
+
+The roadmap (M0–M20) is complete, so the version leaves the `0.x` line and
+becomes **1.0**. This is a **marker release**: it declares the codebase stable,
+not a feature drop. The only code change is a footer refresh.
+
+- **Version → `1.0`.** `package.json` `version` is now the two-segment `1.0`
+  (the footer renders `Pica v${version}` verbatim, so the displayed label is
+  `Pica v1.0`). The historical `0.N.0` scheme tracked milestone numbers; with
+  the milestone arc closed there is no further milestone to name, so the version
+  graduates to `1.0`. `releaseDate` is `2026-06-07`.
+- **Footer refresh (`public/topbar.js`, `mountFooter`).** The page footer now
+  reads: **Pica v1.0 · Made with ❤️ by Pedro Viegas · Jun 7, 2026 · GitHub ·
+  Documentation**. Two segments were added to the existing dynamic footer:
+  - an author credit, **Made with ❤️ by Pedro Viegas** (plain text; the heart is
+    a literal emoji — no markup, so nothing for the HTML parser to mis-handle);
+  - a **Documentation** link to the `docs/` tree (`<repo>/tree/main/docs`),
+    derived from the same `repository` URL that already powers the version
+    (→ `RELEASES.md`) and GitHub links. The date is always derived from
+    `package.json`'s `releaseDate` (via `/api/version`), so it shows
+    `Jun 7, 2026` in en-US and `7 de jun. de 2026` in pt-PT.
+- **Service worker.** `CACHE_VERSION` `v103 → v104` (`topbar.js` is a
+  pre-cached asset).
+- **`Pica.code-workspace` untracked.** The VS Code workspace file (kept tracked
+  through 0.58.0) is now `git rm --cached`'d and gitignored — it stays on disk
+  but no longer travels with clones or shows on GitHub, matching how `notes.md`
+  and `docs/handoff.md` were handled in M20. (The `.gitignore` pattern was also
+  corrected from the never-matching `.Pica.code-workspace` to
+  `Pica.code-workspace`.)
+
+**Honest Disclosures.**
+- **No new functionality, tests, or i18n keys.** Behaviour is unchanged except
+  for the two added footer segments. The suite count stays **60**; no test
+  asserts footer markup, so the change is covered only by the existing
+  shell-mounting tests, not by a content assertion.
+- **The author credit and "Documentation" label are hard-coded English.** Like
+  the pre-existing "GitHub" label they are not run through i18n; only the
+  release date localizes. Translating them was judged not worth a key each.
+- **`1.0` is not strict three-part semver.** It is deliberately two-segment to
+  match the requested footer label `Pica v1.0`. Nothing in the codebase parses
+  or compares the version string, so this is cosmetic; a future patch would be
+  `1.0.1` (or `1.1`).
+- **"1.0" is a stability marker, not a guarantee of completeness.** The Honest
+  Disclosures in every prior entry still stand — known limits (no CSRF tokens,
+  single-process, ≤ 50-employee scale, no server-side PDF, etc.) are unchanged.
+- **`releaseDate` is `2026-06-07`, two days before the commit date.** This is
+  intentional so the footer reads "Jun 7, 2026" as requested; the date is the
+  declared 1.0 date, not the build timestamp.
 
 ---
 
